@@ -1,7 +1,7 @@
-#pragma once
+#ifndef VEC2_H
+#define VEC2_H
 
 #include <cmath>
-#include <emscripten/bind.h>
 
 // Vec2 class definition
 class Vec2 {
@@ -50,3 +50,5 @@ public:
     }
 };
 
+
+#endif // VEC2_H

@@ -26,26 +26,24 @@ const examples = {
 		onInit: (gb2d, world)=>{
 			// The first (and only required) argument is the ID.
 			// All objects must have a unique ID.
-			world.addObject(new gb2d.PhysicalObject(1337, {
+			world.makeObject(1337, {
 				x: 500, // X position.
 				y: 500, // Y position.
 				r: 0, // Rotation in radians.
-				shape: gb2d.ObjectShape.BOX, // shape.
+				shape: gb2d.BOX, // shape.
 				width: 300, // Box width when rotated at 0.
 				height: 200, // Box height when rotated at 0.
 
-				// If we wanted to get rid of the onTick function altogether, we could set the angular velocity here.
-				// This is the preferred way do accomplish a spinning object.
-				// rs: 0.02, // Rotation speed in radians per second.
-				// rotationalDamping: 0 // Rotational damping. Set to 0 to disable.
-			}));
+				// This is the preferred way to have a perminently rotating object.
+				rs: 0.02, // Rotation speed in radians per second.
+				rotationalDamping: 0.0 // Rotational damping. Set to 0 to disable.
+			});
 		},
 		onTick: (gb2d, world, dt)=>{
-			// Get the object with ID 1337.
-			let obj = world.getObject(1337);
-			
-			// Rotate the object.
-			obj.setRotation(obj.r + dt / 50);
+			// The rotation can also be set directly as follows.
+
+			// Get the object with ID 1337 and rotate it.
+			// world.objectsById[1337].r += dt / 20;
 		}
 	}),
 
@@ -55,38 +53,38 @@ const examples = {
 			let id = 1;
 			let spacing = 200;
 
-			world.addObject(new gb2d.PhysicalObject(id++, {
+			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
-				shape: gb2d.ObjectShape.CIRCLE,
+				shape: gb2d.CIRCLE,
 				radius: 50,
-			}));
+			});
 
-			world.addObject(new gb2d.PhysicalObject(id++, {
+			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
 				r: Math.PI / 4,
-				shape: gb2d.ObjectShape.BOX,
+				shape: gb2d.BOX,
 				width: 80,
 				height: 95,
-			}));
+			});
 
-			world.addObject(new gb2d.PhysicalObject(id++, {
+			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
-				shape: gb2d.ObjectShape.CIRCLE,
+				shape: gb2d.CIRCLE,
 				radius: 100,
-			}));
+			});
 			
 			// Note that the rotation (r) doesn't do anything for AABBs.
-			world.addObject(new gb2d.PhysicalObject(id++, {
+			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
 				r: Math.PI / 4,
-				shape: gb2d.ObjectShape.AABB,
+				shape: gb2d.AABB,
 				width: 100,
 				height: 75,
-			}));
+			});
 		}
 	}),
 
@@ -95,29 +93,29 @@ const examples = {
 		onInit: (gb2d, world)=>{
 
 			// This small circle will orbit the bigger one.
-			world.addObject(new gb2d.PhysicalObject(1, {
+			world.makeObject(1, {
 				x: 500,
 				y: 250,
 				vx: 500,
 				mass: 0.1,
-				shape: gb2d.ObjectShape.CIRCLE,
+				shape: gb2d.CIRCLE,
 				radius: 30,
 				damping: 0.0
-			}));
+			});
 
 			// For decoration, let's add a shape in the middle.
-			world.addObject(new gb2d.PhysicalObject(2, {
+			world.makeObject(2, {
 				x: 500,
 				y: 500,
-				shape: gb2d.ObjectShape.CIRCLE,
-				type: gb2d.ObjectType.SENSOR, // Sensors don't collide with other objects.
+				shape: gb2d.CIRCLE,
+				type: gb2d.SENSOR, // Sensors don't collide with other objects.
 				radius: 100,
-			}));
+			});
 		},
 
 		onTick: (gb2d, world, dt)=>{
-			let obj = world.getObject(1);
-			let center = world.getObject(2);
+			let obj = world.objectsById[1];
+			let center = world.objectsById[2];
 
 			// Calculate the vector from the object to the center.
 			let dx = center.x - obj.x;
@@ -148,29 +146,29 @@ const examples = {
 		onInit: (gb2d, world)=>{
 
 			// This small circle will orbit the bigger one.
-			world.addObject(new gb2d.PhysicalObject(1, {
+			world.makeObject(1, {
 				x: 250,
 				y: 500,
-				shape: gb2d.ObjectShape.CIRCLE,
+				shape: gb2d.CIRCLE,
 				radius: 30,
 				mass: 10,
 				damping: 0.1
-			}));
+			});
 
-			world.addObject(new gb2d.PhysicalObject(2, {
+			world.makeObject(2, {
 				x: 750,
 				y: 500,
-				shape: gb2d.ObjectShape.CIRCLE,
+				shape: gb2d.CIRCLE,
 				radius: 60,
 				mass: 20,
 				damping: 0.1
-			}));
+			});
 		},
 
 		onTick: (gb2d, world, dt)=>{
 
-			let obj1 = world.getObject(1);
-			let obj2 = world.getObject(2);
+			let obj1 = world.objectsById[1];
+			let obj2 = world.objectsById[2];
 
 			let oldTimer = impulseTimer;
 			impulseTimer += dt * 5;
@@ -201,35 +199,36 @@ const examples = {
 		onTick: (gb2d, world, dt)=>{
 			if(Math.random() < 0.05){
 				let m = 1 + Math.random() * 20;
-				world.addObject(new gb2d.PhysicalObject(nextId++, {
+				world.makeObject(nextId++, {
 					x: 0,
 					y: 750,
 					vx: 100 + Math.random() * 500,
 					vy: -400 - Math.random() * 400,
-					shape: gb2d.ObjectShape.CIRCLE,
-					type: gb2d.ObjectType.SENSOR,
+					shape: gb2d.CIRCLE,
+					type: gb2d.SENSOR,
 					radius: 2 + m * 2,
 
 					// Remember, gravity is an acceleration vector. So it affects all masses equally. 
 					// This mass was selected to make the force vectors look good for the demo.
 					mass: m / 50, 
-				}));
+				});
 
 				// Scan for objects that are out of bounds and remove them.
 				// Another way to do this would be to use collision events.
-				let objectCount = world.getObjectCount();
+				let objectCount = world.objectCount;
 				let toRemove = [];
-				for(let i = 0; i < objectCount; i++){
-					let obj = world.getObjectAtIndex(i);
+
+				world.iterateObjects(obj=>{
+					
 					if(obj.y > 1050){
 						// Don't remove stuff in the middle of the loop!!!
 						toRemove.push(obj);
 					}
-				}
+				});
 
 				// Now remove everything we found that's out of bounds.
 				for(let obj of toRemove){
-					world.removeObject(obj.getId());
+					world.removeObject(obj.id);
 				}
 			}
 		}
@@ -244,41 +243,38 @@ const examples = {
 		onInit: (gb2d, world)=>{
 			for(let i = 0; i < 10000; i++){
 
-				let obj = new gb2d.PhysicalObject(i+1, {
+				world.makeObject(i+1, {
 					x: Math.random() * 1000,
 					y: Math.random() * 1000,
 					vx: Math.random() * 100 - 50,
 					vy: Math.random() * 100 - 50,
 					// Disable damping so they'll move forever.
 					damping: 0,
-					shape: gb2d.ObjectShape.POINT,
+					shape: gb2d.POINT,
 				});
-				world.addObject(obj);
 			}
 		},
 		onTick: (gb2d, world, dt)=>{
-			let objectCount = world.getObjectCount();
 
 			// Make the objects bounce off the walls.
-			for(let i = 0; i < objectCount; i++){
-				let obj = world.getObjectAtIndex(i);
+			world.iterateObjects(obj => {
 				if(obj.x < 0){
-					obj.setPosition(0, obj.y);
-					obj.setVelocity(-obj.vx, obj.vy);
+					obj.x = 0;
+					obj.vx = -obj.vx;
 				}
 				if(obj.x > 1000){
-					obj.setPosition(1000, obj.y);
-					obj.setVelocity(-obj.vx, obj.vy);
+					obj.x = 1000;
+					obj.vx = -obj.vx;
 				}
 				if(obj.y < 0){
-					obj.setPosition(obj.x, 0);
-					obj.setVelocity(obj.vx, -obj.vy);
+					obj.y = 0;
+					obj.vy = -obj.vy;
 				}
 				if(obj.y > 1000){
-					obj.setPosition(obj.x, 1000);
-					obj.setVelocity(obj.vx, -obj.vy);
+					obj.y = 1000;
+					obj.vy = -obj.vy;
 				}
-			}
+			});
 		}
 	})
 }

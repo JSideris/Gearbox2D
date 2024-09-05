@@ -199,7 +199,7 @@ import gb2d from "gb2d";
 let world;
 {{GLOBAL}}
 gb2d.init().then(()=>{
-    world = new gb2d.World();
+    world = gb2d.makeWorld();
     
     // Optional:
     gb2d.enableDebugGraphics(document.getElementById("debug-canvas"), world);
@@ -238,7 +238,8 @@ gb2d.init().then(()=>{
         let avgStepTime = 0;
 
         gb2d.init().then(() => {
-            world = new gb2d.World();
+            // world = new gb2d.World();
+            world = gb2d.makeWorld();
 
             function animate() {
                 const now = performance.now();
@@ -250,7 +251,7 @@ gb2d.init().then(()=>{
                     const startTime = performance.now();
 
                     world.step();
-                    examples[currentExample]?.tick(gb2d, world, timeout / 1000);
+                    examples[currentExample]?.tick(gb2d, world, elapsed / 1000);
 
                     const endTime = performance.now();
                     const stepTime = (endTime - startTime) * 1000;

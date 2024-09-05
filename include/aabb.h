@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AABB_H
+#define AABB_H
 
 #include <algorithm>
 #include <limits>
@@ -10,7 +11,7 @@ public:
     Vec2 min;  // Minimum corner of the AABB
     Vec2 max;  // Maximum corner of the AABB
 
-    // Default constructor initializes to an invalid AABB
+    // Avoid using this default constructor whenever possible.
     Aabb() 
         : min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max()),
           max(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()) {}
@@ -72,3 +73,5 @@ public:
                 point.y >= min.y && point.y <= max.y);
     }
 };
+
+#endif

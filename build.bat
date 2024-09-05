@@ -1,1 +1,0 @@
-emcc ./src/main.cpp -o ./build/gb2d.html

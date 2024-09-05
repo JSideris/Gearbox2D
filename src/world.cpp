@@ -1,10 +1,16 @@
+
+#include <iostream>
 #include "world.h"
 #include "physical-object.h"
 // #include "bvh.h"
 
+using namespace std;
+
 World::World() {
     setTimeStep(1.0f / 60.0f);
-    liveData.reserve(4096);
+    int size = 10000;
+    liveFloatData.reserve(size * LIVE_FLOAT_EPO);
+    liveIntData.reserve(size * LIVE_INT_EPO);
 }
 
 World::~World() {
@@ -13,53 +19,80 @@ World::~World() {
     }
 }
 
-void World::addObject(PhysicalObject* object) {
-    auto it = objectsMap.find(object->getId());
+int World::makeObject(int id, emscripten_val options){
+    auto object = new PhysicalObject(id, options);
 
-    // Make sure the id doesn't exist in this world already.
-    if (it == objectsMap.end()) {
+    object->world = this;
+    object->worldIndex = objectsList.size();
 
-        if (object->world != nullptr) {
-            object->world->removeObject(object->getId());
-        }
+    objectsMap[id] = object;
+    objectsList.push_back(object);
 
-        object->world = this;
-        object->worldIndex = objectsList.size();
+    // object->bvhNode = bvh.insert(object->aabb, object);
 
-        int id = object->getId();
+    liveIntData.push_back(id);
+    liveIntData.push_back((int)object->shape);
+    liveIntData.push_back((int)object->type);
+    liveIntData.push_back(0);
 
-        objectsMap[id] = object;
-        objectsList.push_back(object);
+    // auto position = object->getPosition();
+    // auto velocity = object->getVelocity();
+    // auto rotation = object->getRotation();
+    // auto rotationalSpeed = object->getRotationalSpeed();
 
-        object->bvhNode = tree.insert(object->aabb, object);
+    liveFloatData.push_back(options.hasOwnProperty("x") ? options["x"].as<float>() : 0.0f); // x
+    liveFloatData.push_back(options.hasOwnProperty("y") ? options["y"].as<float>() : 0.0f); // y
+    liveFloatData.push_back(options.hasOwnProperty("r") ? options["r"].as<float>() : 0.0f); // rotation
+    liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
+    liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
+    liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
+    liveFloatData.push_back(options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f); // mass
+    liveFloatData.push_back(
+        (
+            options.hasOwnProperty("radius") ? options["radius"].as<float>() : (
+                options.hasOwnProperty("width") ? options["width"].as<float>() : 0.0f)
+        )
+    ); // radius or width
+    liveFloatData.push_back(options.hasOwnProperty("height") ? options["height"].as<float>() : 0.0f); // height
 
-        ids.push_back(id);
+    liveFloatData.push_back(0.0f); // fx
+    liveFloatData.push_back(0.0f); // fy
+    liveFloatData.push_back(0.0f); // ix
+    liveFloatData.push_back(0.0f); // iy
 
-        auto position = object->getPosition();
-        auto velocity = object->getVelocity();
-        auto rotation = object->getRotation();
-        auto rotationalSpeed = object->getRotationalSpeed();
+    liveFloatData.push_back(object->aabb.min.x); // x0
+    liveFloatData.push_back(object->aabb.min.y); // y0
+    liveFloatData.push_back(object->aabb.max.x); // x1
+    liveFloatData.push_back(object->aabb.max.y); // y1
+    
+    liveFloatData.push_back(0.0f); // nfx
+    liveFloatData.push_back(0.0f); // nfy
+    liveFloatData.push_back(0.0f); // nix
+    liveFloatData.push_back(0.0f); // niy
 
-        liveData.push_back(position.x);
-        liveData.push_back(position.y);
-        liveData.push_back(rotation);
-        liveData.push_back(velocity.x);
-        liveData.push_back(velocity.y);
-        liveData.push_back(rotationalSpeed);
+    object->recomputeAabb(true);
 
-        // TODO: also push aabb data.
-    }
+    auto * bvhNode = bvh.insert(object->aabb, object);
+    object->bvhNode = bvhNode;
+
+    return object->worldIndex;
 }
 
-void World::removeObject(int id) {
+int World::removeObject(int id) {
+
+    // cout << "Removing object with id: " << id << endl;
+
     auto it = objectsMap.find(id);
 
     if (it != objectsMap.end()) {
         auto object = it->second;
 
-        // Remove the object from the BVH tree
+        // Remove the object from the BVH
+        // cout << "Remove from BVH???" << endl;
         if (object->bvhNode) {
-            tree.remove(object->bvhNode);
+            cout << "Removing from BVH" << endl;
+            // TODO: ensure that this frees up the memory used by the node.
+            bvh.remove(object->bvhNode);
             object->bvhNode = nullptr;
         }
 
@@ -70,33 +103,40 @@ void World::removeObject(int id) {
         object->world = nullptr;
         object->worldIndex = -1;
 
-        int liveDataPerObject = 6;
-
         // Remove the object from the list if it has a valid index
         if (index != -1 && index < objectsList.size()) {
             // Swap the object to be removed with the last object in the list
-            std::iter_swap(objectsList.begin() + index, objectsList.end() - 1);
-            std::iter_swap(ids.begin() + index, ids.end() - 1);
-            // std::iter_swap(liveData.begin() + index, liveData.end() - 1);
-            std::iter_swap(liveData.begin() + index * liveDataPerObject + 0, liveData.end() - 6);
-            std::iter_swap(liveData.begin() + index * liveDataPerObject + 1, liveData.end() - 5);
-            std::iter_swap(liveData.begin() + index * liveDataPerObject + 2, liveData.end() - 4);
-            std::iter_swap(liveData.begin() + index * liveDataPerObject + 3, liveData.end() - 3);
-            std::iter_swap(liveData.begin() + index * liveDataPerObject + 4, liveData.end() - 2);
-            std::iter_swap(liveData.begin() + index * liveDataPerObject + 5, liveData.end() - 1);
+            iter_swap(objectsList.begin() + index, objectsList.end() - 1);
 
+            for(int i = 0; i < LIVE_INT_EPO; i++){
+                iter_swap(
+                    liveIntData.begin() + index * LIVE_INT_EPO + i, 
+                    liveIntData.begin() + (liveIntData.size() / LIVE_INT_EPO - 1) * LIVE_INT_EPO + i
+                );
+            }
+
+            for(int i = 0; i < LIVE_FLOAT_EPO; i++){
+                iter_swap(
+                    liveFloatData.begin() + index * LIVE_FLOAT_EPO + i, 
+                    liveFloatData.begin() + (liveFloatData.size() / LIVE_FLOAT_EPO - 1) * LIVE_FLOAT_EPO + i
+                );
+            }
             // Update the worldIndex of the swapped object
             objectsList[index]->worldIndex = index;
 
             // Remove the last element (which is the object we want to remove)
             objectsList.pop_back();
-            ids.pop_back();
-            liveData.resize(objectsList.size() * liveDataPerObject);
+            // ids.pop_back();
+            liveFloatData.resize(objectsList.size() * LIVE_FLOAT_EPO);
+            liveIntData.resize(objectsList.size() * LIVE_INT_EPO);
         }
 
         // Remove the object from the map
         objectsMap.erase(it);
+
+        return index;
     }
+    else return -1;
 }
 
 PhysicalObject* World::getObject(int id) const {
@@ -114,6 +154,15 @@ PhysicalObject* World::getObjectAtIndex(int index) const {
     return nullptr;
 }
 
+int World::findeIndexForObject(int id){
+    auto it = objectsMap.find(id);
+    if (it != objectsMap.end()) {
+        return it->second->worldIndex;
+    }
+    return -1;
+
+}
+
 int World::getObjectCount() const {
     return objectsList.size();
 }
@@ -126,82 +175,73 @@ void World::setGravity(float x, float y) {
 // Expose the raw pointers
 
 
-emscripten::val World::getLiveData() {
-    size_t size = std::max(static_cast<size_t>(4096u), liveData.size() * 2);
-    return emscripten::val(emscripten::typed_memory_view(size * sizeof(float), liveData.data()));
+#ifdef EMSCRIPTEN
+emscripten_val World::getLiveFloatData() {
+    size_t size = max(static_cast<size_t>(4096u), liveFloatData.size() * 2);
+    return emscripten_val(emscripten::typed_memory_view(size * sizeof(float), liveFloatData.data()));
 }
 
-emscripten::val World::getIds() {
-    size_t size = std::max(static_cast<size_t>(4096u), ids.size() * 2);
-    return emscripten::val(emscripten::typed_memory_view(size * sizeof(int), ids.data()));
+emscripten_val World::getLiveIntData() {
+    size_t size = max(static_cast<size_t>(4096u), liveIntData.size() * 2);
+    return emscripten_val(emscripten::typed_memory_view(size * sizeof(int), liveIntData.data()));
 }
+#endif
 
 void World::step() {
 
+    auto* _this = this;
+
     for (auto& object : objectsList) {
-        float m = object->mass;
-        object->applyForce(gravity.x * m, gravity.y * m);
+        liveIntData[object->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_AABB_COLLISION] = 0;
+        float m = liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_M];
+
+        // Apply gravity.
+        liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_NFX] += gravity.x * m;
+        liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_NFY] += gravity.y * m;
+        
+        // Physics step.
         bool moved = object->stepMovement(timeStep);
+
+        // Recompute AABB and update BVH.
         if(moved){
-            // TODO: only recompute if the object is actually outside of the AABB.
-            // Because we also need to update the BVH tree which is expensive.
-            bool treeNeedsUpdate = object->recomputeAabb();
+            bool treeNeedsUpdate = object->recomputeAabb(false);
 
             if(treeNeedsUpdate){
-                // tree.update(object->bvhNode, object->aabb);
+                bvh.update(object->bvhNode, object->aabb);
             }
         }
     }
 
-    // Update live data.
-    for (auto& object : objectsList) {
+    bvh.traverseAndCheckCollisions([_this](void* obja, void* objb) {
+        auto* obj1 = static_cast<PhysicalObject*>(obja);
+        auto* obj2 = static_cast<PhysicalObject*>(objb);
+        // For debugging.
+        // cout << "Collision detected between object " << obj1->id
+        //     << " and object " << obj2->id << endl;
+        _this->liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_AABB_COLLISION] = 1;
+        _this->liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_AABB_COLLISION] = 1;
+    });
 
-        auto position = object->getPosition();
-        auto velocity = object->getVelocity();
-        auto rotation = object->getRotation();
-        auto rotationalSpeed = object->getRotationalSpeed();
-
-        object->x = position.x;
-        object->y = position.y;
-        object->r = rotation;
-        object->vx = velocity.x;
-        object->vy = velocity.y;
-        object->rs = rotationalSpeed;
-        object->x0 = object->aabb.min.x;
-        object->y0 = object->aabb.min.y;
-        object->x1 = object->aabb.max.x;
-        object->y1 = object->aabb.max.y;
-
-        // The following would be ideal instead.
-
-        liveData[object->worldIndex + 0] = (position.x);
-        liveData[object->worldIndex + 1] = (position.y);
-        liveData[object->worldIndex + 2] = (rotation);
-        liveData[object->worldIndex + 3] = (velocity.x);
-        liveData[object->worldIndex + 4] = (velocity.y);
-        liveData[object->worldIndex + 5] = (rotationalSpeed);
-        // liveData[object->worldIndex + 6] = (object->aabb.min.x);
-        // liveData[object->worldIndex + 7] = (object->aabb.min.y);
-        // liveData[object->worldIndex + 8] = (object->aabb.max.x);
-        // liveData[object->worldIndex + 9] = (object->aabb.max.y);
-    }
+    cout << bvh._nodeCount << endl;
 }
 
 void World::setTimeStep(float dt) {
     timeStep = dt;
-    decayMap[99] = std::pow(1.0f - 0.99f, dt); // E.g. 99% decay in 1 s, given the fixed time step dt.
-    decayMap[90] = std::pow(1.0f - 0.90f, dt);
-    decayMap[75] = std::pow(1.0f - 0.75f, dt);
-    decayMap[50] = std::pow(1.0f - 0.50f, dt);
-    decayMap[25] = std::pow(1.0f - 0.25f, dt);
-    decayMap[10] = std::pow(1.0f - 0.10f, dt);
-    decayMap[5] = std::pow(1.0f - 0.05f, dt);
-    decayMap[2] = std::pow(1.0f - 0.02f, dt);
-    decayMap[1] = std::pow(1.0f - 0.01f, dt);
+    decayMap[99] = pow(1.0f - 0.99f, dt); // E.g. 99% decay in 1 s, given the fixed time step dt.
+    decayMap[90] = pow(1.0f - 0.90f, dt);
+    decayMap[75] = pow(1.0f - 0.75f, dt);
+    decayMap[50] = pow(1.0f - 0.50f, dt);
+    decayMap[25] = pow(1.0f - 0.25f, dt);
+    decayMap[10] = pow(1.0f - 0.10f, dt);
+    decayMap[5] = pow(1.0f - 0.05f, dt);
+    decayMap[2] = pow(1.0f - 0.02f, dt);
+    decayMap[1] = pow(1.0f - 0.01f, dt);
 }
 
 // Remove all objects from the world and clean them up.
 void World::clear() {
+    bvh.clear();
+
     for (auto& object : objectsList) {
         object->world = nullptr; // Optimization: avoid calling removeObject since we're nuking the lists too.
         object->destroy();
@@ -211,10 +251,14 @@ void World::clear() {
 
     objectsMap.clear();
     objectsList.clear();
-    // ids.clear();
-    // liveData.clear();
 
-    // TODO: empty the quad tree when we develop that.
+    liveIntData.clear();
+    liveFloatData.clear();
+
+    // objectsList.resize(0);
+    // liveIntData.resize(0);
+    // liveFloatData.resize(0);
+
 }
 
 // Note that objects can be removed from the world and moved into other worlds.

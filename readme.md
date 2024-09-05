@@ -1,5 +1,10 @@
 
+# Setup:
+To run tests, run `make test -B`. To build for wasm, run `make wasm -B`. It's configured to work in a Linux environment. It was developed in Ubuntu via WSL.
 
+You might need a live server in order to use the example app. A really simple option is Live Server (Five Server). 
+
+Once the code is built and the server is running, open the webpage hosted from examples/index.html.
 
 # Plan:
 
@@ -23,7 +28,7 @@
 [*] Add rotations.
 [*] Compute/track AABB for each object.
 [*] Implement VBH.
-[ ] Implement broad phase collision detection using VBH.
+[*] Implement broad phase collision detection using VBH.
 [ ] Implement narrow phase collision detection.
 [ ] Implement collision events.
 [ ] Implement collision masks.
@@ -42,8 +47,45 @@
 	[ ] Hinged.
 [ ] Implement objects at rest as an optimization.
 
+# Physical Object Data
+
+Gear2Engine is data-oriented, allowing it to be optimized for data transfer between JavaScript and WASM. Most volatile object data for `PhysicalObject`s is stored in vectors within the `World` object. At the start of a world step, the data is copied into each `PhysicalObject` for easy processing, then the data is copied back into the vectors for transfer back into the main application. 
 
 
 
 
+Update?
+	Contains Point?
+	remove?
+		removeNode call?
+			Removing node.
+		ok
+		deallocateNode call?
+		ok
+	ok
+	Insert?
+	Done.
+ok
 
+Update?
+	Contains Point?
+	remove call?
+		removeNode call?
+			Removing node.
+			inside grandParent != nullptr else (grandParent == nullptr)
+			deallocateNode call?
+			ok
+		ok
+		deallocateNode call?
+		ok
+	ok
+	Insert?
+	Done.
+ok
+
+Update?
+	Contains Point?
+	remove call?
+		removeNode call?
+			Removing node.
+			inside grandParent != nullptr if
