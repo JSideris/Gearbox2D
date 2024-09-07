@@ -1,6 +1,5 @@
-// #include <iostream>
-
 #include "debug.h"
+#include "collision-solver.h"
 #include "world.h"
 #include "physical-object.h"
 #include "vec2.h"

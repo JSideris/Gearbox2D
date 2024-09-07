@@ -831,17 +831,17 @@ TEST(BvhTest, TraverseAndCheckCollisions_SingleCollision) {
     std::vector<std::pair<void*, void*>> collisionPairs;
 
     // Define the callback function
-    auto callback = [&](void* obj1, void* obj2) {
-        collisionPairs.emplace_back(obj1, obj2);
-    };
+    // auto callback = [&](void* obj1, void* obj2) {
+    //     collisionPairs.emplace_back(obj1, obj2);
+    // };
 
     // Traverse and check for collisions
-    bvh.traverseAndCheckCollisions(callback);
+    bvh.traverseAndCheckCollisions();
 
     // Assert that one collision was detected
-    ASSERT_EQ(collisionPairs.size(), 1);
-    EXPECT_EQ(collisionPairs[0].first, userData1);
-    EXPECT_EQ(collisionPairs[0].second, userData2);
+    ASSERT_EQ(bvh.collisionPairs.size(), 1);
+    EXPECT_EQ(bvh.collisionPairs[0].first, userData1);
+    EXPECT_EQ(bvh.collisionPairs[0].second, userData2);
 }
 
 // Test Bvh traversal with no collisions
@@ -861,15 +861,15 @@ TEST(BvhTest, TraverseAndCheckCollisions_NoCollision) {
     std::vector<std::pair<void*, void*>> collisionPairs;
 
     // Define the callback function
-    auto callback = [&](void* obj1, void* obj2) {
-        collisionPairs.emplace_back(obj1, obj2);
-    };
+    // auto callback = [&](void* obj1, void* obj2) {
+    //     collisionPairs.emplace_back(obj1, obj2);
+    // };
 
     // Traverse and check for collisions
-    bvh.traverseAndCheckCollisions(callback);
+    bvh.traverseAndCheckCollisions();
 
     // Assert that no collisions were detected
-    ASSERT_EQ(collisionPairs.size(), 0);
+    ASSERT_EQ(bvh.collisionPairs.size(), 0);
 }
 
 // Test Bvh traversal with multiple collisions
@@ -890,15 +890,15 @@ TEST(BvhTest, TraverseAndCheckCollisions_MultipleCollisions) {
     bvh.insert(aabb3, userData3);
 
     // Vector to hold callback results
-    vector<pair<void*, void*>> collisionPairs;
+    // vector<pair<void*, void*>> collisionPairs;
 
     // Define the callback function
-    auto callback = [&](void* obj1, void* obj2) {
-        collisionPairs.emplace_back(obj1, obj2);
-    };
+    // auto callback = [&](void* obj1, void* obj2) {
+    //     collisionPairs.emplace_back(obj1, obj2);
+    // };
 
     // Traverse and check for collisions
-    bvh.traverseAndCheckCollisions(callback);
+    bvh.traverseAndCheckCollisions();
 
     // Log the detected collisions for debugging.
     // for (const auto& pair : collisionPairs) {
@@ -907,7 +907,7 @@ TEST(BvhTest, TraverseAndCheckCollisions_MultipleCollisions) {
     // }
 
     // Assert that multiple collisions were detected
-    ASSERT_EQ(collisionPairs.size(), 3);
+    ASSERT_EQ(bvh.collisionPairs.size(), 3);
 
     // Check if specific pairs were detected (without order constraints)
     std::set<std::pair<void*, void*>> expectedCollisions = {
@@ -917,7 +917,7 @@ TEST(BvhTest, TraverseAndCheckCollisions_MultipleCollisions) {
     };
 
     std::set<std::pair<void*, void*>> actualCollisions;
-    for (const auto& pair : collisionPairs) {
+    for (const auto& pair : bvh.collisionPairs) {
         // Ensure each pair is ordered to avoid issues with order in the set
         if (pair.first < pair.second) {
             actualCollisions.insert(pair);
@@ -928,10 +928,5 @@ TEST(BvhTest, TraverseAndCheckCollisions_MultipleCollisions) {
 
     EXPECT_EQ(expectedCollisions, actualCollisions);
 }
-
-
-
-
-
 
 #endif

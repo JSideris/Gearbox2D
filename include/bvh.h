@@ -23,8 +23,12 @@ struct TreeNode {
     TreeNode(Aabb aabb, void* userData) : aabb(aabb), userData(userData), parent(nullptr), left(nullptr), right(nullptr) {}
 };
 
+// template <typename T> // TODO: try this later.
 class Bvh {
 public:
+    // Usually, this will be physical objects.
+    vector<pair<void*, void*>> collisionPairs;
+
     Bvh() : _root(nullptr), _nodeCount(0), _insertionCount(0) {
         // DEBUG_PRINT("BVH created.");
     }
@@ -84,6 +88,7 @@ public:
 
     // Deallocate all nodes.
     void clear() {
+        collisionPairs.clear();
         if (!_root) return;  // No tree to clear
 
         stack<TreeNode*> stack;
@@ -118,8 +123,10 @@ public:
         _queryNode(_root, aabb, results);
     }
 
-    void traverseAndCheckCollisions(std::function<void(void*, void*)> callback){
-        _traverseAndCheckCollisions(_root->left, _root->right, callback);
+    // void traverseAndCheckCollisions(std::function<void(void*, void*)> callback){
+    void traverseAndCheckCollisions(){
+        collisionPairs.clear();
+        _traverseAndCheckCollisions(_root->left, _root->right);
     }
 
 
@@ -128,36 +135,37 @@ public:
     int _nodeCount;
     int _insertionCount;
 
-    void _traverseAndCheckCollisions(TreeNode* node1, TreeNode* node2, std::function<void(void*, void*)> callback) {
+    void _traverseAndCheckCollisions(TreeNode* node1, TreeNode* node2) {
         if (!node1 && !node2) return;
-        else if(!node2) _traverseAndCheckCollisions(node1->left, node1->right, callback);
-        else if(!node1) _traverseAndCheckCollisions(node2->left, node2->right, callback);
+        else if(!node2) _traverseAndCheckCollisions(node1->left, node1->right);
+        else if(!node1) _traverseAndCheckCollisions(node2->left, node2->right);
         else if(node1->isLeaf() && node2->isLeaf()){
             if(node1->aabb.overlaps(node2->aabb)){
-                callback(node1->userData, node2->userData);
+                // callback(node1->userData, node2->userData);
+                collisionPairs.push_back({node1->userData, node2->userData});
             }
         }
         else if(node1->isLeaf()){
             // Right is a leaf node. Try it against left's children.
-            _traverseAndCheckCollisions(node1, node2->left, callback);
-            _traverseAndCheckCollisions(node1, node2->right, callback);
-            _traverseAndCheckCollisions(node1->left, node2, callback);
+            _traverseAndCheckCollisions(node1, node2->left);
+            _traverseAndCheckCollisions(node1, node2->right);
+            _traverseAndCheckCollisions(node1->left, node2);
         }
         else if(node2->isLeaf()){
             // Left is a leaf node. Try it against right's children.
-            _traverseAndCheckCollisions(node1->left, node2, callback);
-            _traverseAndCheckCollisions(node1->right, node2, callback);
-            _traverseAndCheckCollisions(node1, node2->left, callback);
+            _traverseAndCheckCollisions(node1->left, node2);
+            _traverseAndCheckCollisions(node1->right, node2);
+            _traverseAndCheckCollisions(node1, node2->left);
         }
         else{
             // Neither side is a leaf node.
-            _traverseAndCheckCollisions(node1->left, node1->right, callback);
-            _traverseAndCheckCollisions(node2->left, node2->right, callback);
+            _traverseAndCheckCollisions(node1->left, node1->right);
+            _traverseAndCheckCollisions(node2->left, node2->right);
 
-            _traverseAndCheckCollisions(node1->left, node2->left, callback);
-            _traverseAndCheckCollisions(node1->left, node2->right, callback);
-            _traverseAndCheckCollisions(node1->right, node2->left, callback);
-            _traverseAndCheckCollisions(node1->right, node2->right, callback);
+            _traverseAndCheckCollisions(node1->left, node2->left);
+            _traverseAndCheckCollisions(node1->left, node2->right);
+            _traverseAndCheckCollisions(node1->right, node2->left);
+            _traverseAndCheckCollisions(node1->right, node2->right);
         }
     }
 

@@ -8,6 +8,9 @@
         "xstring": "cpp",
         "xutility": "cpp",
         "utility": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "unordered_map": "cpp",
+        "variant": "cpp",
+        "type_traits": "cpp"
     }
 }

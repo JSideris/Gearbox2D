@@ -8,6 +8,7 @@ Once the code is built and the server is running, open the webpage hosted from e
 
 # Plan:
 
+## Phase 1
 [*] Setup and test Rust w/ web assembly target.
 [*] Define basic starting classes for the physics module.
 	[*] RigidBody.
@@ -23,15 +24,21 @@ Once the code is built and the server is running, open the webpage hosted from e
 	[*] AABB.
 	[*] Box.
 	[ ] Capsule?
-[ ] Add arbitrary polygons.
+	[ ] Convex polygons.
+	[ ] Concave polygons / decomposition.
 [ ] Objects can be made up of one or more shapes.
 [*] Add rotations.
 [*] Compute/track AABB for each object.
 [*] Implement VBH.
 [*] Implement broad phase collision detection using VBH.
 [ ] Implement narrow phase collision detection.
+	[*] Circle-Circle.
+	[ ] AABB-AABB.
+	[ ] Circle-AABB
+	[ ] Circle-Box
+	[ ] Box-Box
+[ ] Collision resolvers.
 [ ] Implement collision events.
-[ ] Implement collision masks.
 [*] Define object types.
 	[*] Sensor.
 	[*] Physical.
@@ -45,7 +52,23 @@ Once the code is built and the server is running, open the webpage hosted from e
 	[ ] Distance.
 	[ ] Spring.
 	[ ] Hinged.
-[ ] Implement objects at rest as an optimization.
+
+## Misc
+[ ] Elasticity.
+[ ]	Static/dynamic friction.
+[ ] Advanced drag?
+[ ] Forcefields?
+
+## Optimizations
+[ ] Implement collision masks.
+[ ] Sleeping objects.
+[ ] Caching previous broad-phase collisions.
+[ ] Consider combining the broad phase with the kinematics phase.
+[ ] Instead of reinserting on movement, consider tree traversal. This requires experimentation.
+
+## AI
+[ ] Implement A* directly into the engine.
+
 
 # Physical Object Data
 

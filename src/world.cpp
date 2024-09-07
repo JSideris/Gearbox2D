@@ -1,28 +1,30 @@
 
 #include <iostream>
 #include "world.h"
-#include "physical-object.h"
+// #include "physical-object.h"
 // #include "bvh.h"
 
 using namespace std;
 
-World::World() {
+World::World():
+    collisionSolver(liveIntData, liveFloatData){
+    // TODO: if we add more than 10k items, there should be some kind of event to warn the client.
+    // Currently, the engine crashes with that many items. But with optimizations it's possible to exceed that.
     setTimeStep(1.0f / 60.0f);
     int size = 10000;
     liveFloatData.reserve(size * LIVE_FLOAT_EPO);
     liveIntData.reserve(size * LIVE_INT_EPO);
+
+    // collisionSolver = CollisionSolver(liveIntData, liveFloatData);
 }
 
 World::~World() {
-    for (auto& object : objectsList) {
-        delete object;  // Manually delete the objects to avoid memory leaks
-    }
+    clear();
 }
 
 int World::makeObject(int id, emscripten_val options){
-    auto object = new PhysicalObject(id, options);
+    auto object = new PhysicalObject(*this, id, options);
 
-    object->world = this;
     object->worldIndex = objectsList.size();
 
     objectsMap[id] = object;
@@ -90,7 +92,7 @@ int World::removeObject(int id) {
         // Remove the object from the BVH
         // cout << "Remove from BVH???" << endl;
         if (object->bvhNode) {
-            cout << "Removing from BVH" << endl;
+            // cout << "Removing from BVH" << endl;
             // TODO: ensure that this frees up the memory used by the node.
             bvh.remove(object->bvhNode);
             object->bvhNode = nullptr;
@@ -100,7 +102,9 @@ int World::removeObject(int id) {
         int index = object->worldIndex;
 
         // Clear the object's reference to the world
-        object->world = nullptr;
+        // object->world = nullptr;
+        // TODO: shouldn't I delete the object reference too?
+        // This can be done by calling object->destroy(true);
         object->worldIndex = -1;
 
         // Remove the object from the list if it has a valid index
@@ -133,6 +137,8 @@ int World::removeObject(int id) {
 
         // Remove the object from the map
         objectsMap.erase(it);
+
+        delete object;
 
         return index;
     }
@@ -188,11 +194,18 @@ emscripten_val World::getLiveIntData() {
 #endif
 
 void World::step() {
+    _doKinematics();
+    _doBroadPhase();
+    _doNarrowPhase();
+    _doResolution();
+    // _doConstraints();
+    // _doStabilization(); // Optional.
+}
 
-    auto* _this = this;
-
+void World::_doKinematics(){
+    // Update all objects in the world
     for (auto& object : objectsList) {
-        liveIntData[object->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_AABB_COLLISION] = 0;
+        liveIntData[object->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0;
         float m = liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_M];
 
         // Apply gravity.
@@ -211,18 +224,41 @@ void World::step() {
             }
         }
     }
+}
 
-    bvh.traverseAndCheckCollisions([_this](void* obja, void* objb) {
-        auto* obj1 = static_cast<PhysicalObject*>(obja);
-        auto* obj2 = static_cast<PhysicalObject*>(objb);
-        // For debugging.
-        // cout << "Collision detected between object " << obj1->id
-        //     << " and object " << obj2->id << endl;
-        _this->liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_AABB_COLLISION] = 1;
-        _this->liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_AABB_COLLISION] = 1;
-    });
+void World::_doBroadPhase(){
+    bvh.traverseAndCheckCollisions();
+    // [_this](void* obja, void* objb) {
+    //     auto* obj1 = static_cast<PhysicalObject*>(obja);
+    //     auto* obj2 = static_cast<PhysicalObject*>(objb);
+    //     // For debugging.
+    //     // cout << "Collision detected between object " << obj1->id
+    //     //     << " and object " << obj2->id << endl;
+    //     _this->liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 1;
+    //     _this->liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 1;
 
-    cout << bvh._nodeCount << endl;
+    //     // collisionPairs.push_back({obj1, obj2});
+    // });
+}
+
+void World::_doNarrowPhase(){
+    collisionSolver.clear();
+    
+    for (auto& pair : bvh.collisionPairs) {
+        PhysicalObject* obj1 = static_cast<PhysicalObject*>(pair.first);
+        PhysicalObject* obj2 = static_cast<PhysicalObject*>(pair.second);
+        
+
+        // Perform narrow phase collision detection between obj1 and obj2
+        auto colliding = collisionSolver.solve(obj1->worldIndex, obj2->worldIndex);
+
+        liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION | (colliding * HAS_PHYSICAL_COLLISION);
+        liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION | (colliding * HAS_PHYSICAL_COLLISION);
+    }
+}
+
+void World::_doResolution(){
+    
 }
 
 void World::setTimeStep(float dt) {
@@ -241,10 +277,10 @@ void World::setTimeStep(float dt) {
 // Remove all objects from the world and clean them up.
 void World::clear() {
     bvh.clear();
+    collisionSolver.clear();
 
     for (auto& object : objectsList) {
-        object->world = nullptr; // Optimization: avoid calling removeObject since we're nuking the lists too.
-        object->destroy();
+        delete object;
     }
 
     // Clear the lists
@@ -258,14 +294,8 @@ void World::clear() {
     // objectsList.resize(0);
     // liveIntData.resize(0);
     // liveFloatData.resize(0);
-
 }
 
-// Note that objects can be removed from the world and moved into other worlds.
-// But if the world is destroyed, all objects in it are also destroyed.
-// We don't assume that the user has other references to the objects.
 void World::destroy(){
-    clear();
     delete this;
 }
-
