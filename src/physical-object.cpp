@@ -15,10 +15,49 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
         id(id),
         bvhNode(nullptr),
         type(options.hasOwnProperty("type") ? static_cast<ObjectType>(options["type"].as<int>()) : ObjectType::RIGID_BODY),
-        // damping(options.hasOwnProperty("damping") ? options["damping"].as<float>() : 0.1f),
-        // rotationalDamping(options.hasOwnProperty("rotationalDamping") ? options["rotationalDamping"].as<float>() : 0.1f),
         shape(options.hasOwnProperty("shape") ? static_cast<ObjectShape>(options["shape"].as<int>()) : ObjectShape::CIRCLE)
-{}
+{
+    world.liveIntData.push_back(id); // id.
+    world.liveIntData.push_back((int)shape); // shape.
+    world.liveIntData.push_back((int)type); // type.
+    world.liveIntData.push_back(0); // has collision bits.
+
+    world.liveFloatData.push_back(options.hasOwnProperty("x") ? options["x"].as<float>() : 0.0f); // x
+    world.liveFloatData.push_back(options.hasOwnProperty("y") ? options["y"].as<float>() : 0.0f); // y
+    world.liveFloatData.push_back(options.hasOwnProperty("r") ? options["r"].as<float>() : 0.0f); // rotation
+    world.liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
+    world.liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
+    world.liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
+    world.liveFloatData.push_back(options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f); // mass
+    world.liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
+    world.liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.5f);
+    world.liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 0.3f);
+    world.liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 0.2f);
+    world.liveFloatData.push_back(options.hasOwnProperty("linearDamping") ? options["linearDamping"].as<float>() : 0.05f);
+    world.liveFloatData.push_back(options.hasOwnProperty("angularDamping") ? options["angularDamping"].as<float>() : 0.05f);
+    world.liveFloatData.push_back(
+        (
+            options.hasOwnProperty("radius") ? options["radius"].as<float>() : (
+                options.hasOwnProperty("width") ? options["width"].as<float>() : 0.0f)
+        )
+    ); // radius or width
+    world.liveFloatData.push_back(options.hasOwnProperty("height") ? options["height"].as<float>() : 0.0f); // height
+
+    world.liveFloatData.push_back(0.0f); // fx
+    world.liveFloatData.push_back(0.0f); // fy
+    world.liveFloatData.push_back(0.0f); // ix
+    world.liveFloatData.push_back(0.0f); // iy
+
+    world.liveFloatData.push_back(aabb.min.x); // x0
+    world.liveFloatData.push_back(aabb.min.y); // y0
+    world.liveFloatData.push_back(aabb.max.x); // x1
+    world.liveFloatData.push_back(aabb.max.y); // y1
+    
+    world.liveFloatData.push_back(0.0f); // nfx
+    world.liveFloatData.push_back(0.0f); // nfy
+    world.liveFloatData.push_back(0.0f); // nix
+    world.liveFloatData.push_back(0.0f); // niy
+}
 
 // Getters and Setters
 float PhysicalObject::getX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X]; }

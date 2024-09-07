@@ -58,6 +58,7 @@ Once the code is built and the server is running, open the webpage hosted from e
 [ ]	Static/dynamic friction.
 [ ] Advanced drag?
 [ ] Forcefields?
+[ ] Anti-passthrough (optional).
 
 ## Fluid Dynamics
 [ ] Wind.

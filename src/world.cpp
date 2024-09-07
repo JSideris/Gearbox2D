@@ -30,55 +30,6 @@ int World::makeObject(int id, emscripten_val options){
     objectsMap[id] = object;
     objectsList.push_back(object);
 
-    // object->bvhNode = bvh.insert(object->aabb, object);
-
-    liveIntData.push_back(id);
-    liveIntData.push_back((int)object->shape);
-    liveIntData.push_back((int)object->type);
-    liveIntData.push_back(0);
-
-    // auto position = object->getPosition();
-    // auto velocity = object->getVelocity();
-    // auto rotation = object->getRotation();
-    // auto rotationalSpeed = object->getRotationalSpeed();
-
-    liveFloatData.push_back(options.hasOwnProperty("x") ? options["x"].as<float>() : 0.0f); // x
-    liveFloatData.push_back(options.hasOwnProperty("y") ? options["y"].as<float>() : 0.0f); // y
-    liveFloatData.push_back(options.hasOwnProperty("r") ? options["r"].as<float>() : 0.0f); // rotation
-    liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
-    liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
-    liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
-    liveFloatData.push_back(options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f); // mass
-    liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
-    liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.5f);
-    liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 0.3f);
-    // liveFloatData.push_back(options.hasOwnProperty("dFriction") ? options["dFriction"].as<float>() : 0.2f);
-    liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 0.2f);
-    liveFloatData.push_back(options.hasOwnProperty("linearDamping") ? options["linearDamping"].as<float>() : 0.05f);
-    liveFloatData.push_back(options.hasOwnProperty("angularDamping") ? options["angularDamping"].as<float>() : 0.05f);
-    liveFloatData.push_back(
-        (
-            options.hasOwnProperty("radius") ? options["radius"].as<float>() : (
-                options.hasOwnProperty("width") ? options["width"].as<float>() : 0.0f)
-        )
-    ); // radius or width
-    liveFloatData.push_back(options.hasOwnProperty("height") ? options["height"].as<float>() : 0.0f); // height
-
-    liveFloatData.push_back(0.0f); // fx
-    liveFloatData.push_back(0.0f); // fy
-    liveFloatData.push_back(0.0f); // ix
-    liveFloatData.push_back(0.0f); // iy
-
-    liveFloatData.push_back(object->aabb.min.x); // x0
-    liveFloatData.push_back(object->aabb.min.y); // y0
-    liveFloatData.push_back(object->aabb.max.x); // x1
-    liveFloatData.push_back(object->aabb.max.y); // y1
-    
-    liveFloatData.push_back(0.0f); // nfx
-    liveFloatData.push_back(0.0f); // nfy
-    liveFloatData.push_back(0.0f); // nix
-    liveFloatData.push_back(0.0f); // niy
-
     object->recomputeAabb(true);
 
     auto * bvhNode = bvh.insert(object->aabb, object);
