@@ -25,8 +25,8 @@ private:
     // Vec2 force;
     // float rotation;  // Current rotation in degrees
     // float rotationalSpeed;  // Angular velocity (degrees per second)
-    float damping;   // Linear damping factor (0 = no damping, 1 = full damping)
-    float rotationalDamping; // Rotational damping factor (0 = no damping, 1 = full damping)
+    // float damping;   // Linear damping factor (0 = no damping, 1 = full damping)
+    // float rotationalDamping; // Rotational damping factor (0 = no damping, 1 = full damping)
 
     float lastX = 0.0f;
     float lastY = 0.0f;
@@ -46,6 +46,36 @@ public:
     int worldIndex = -1;
     
     PhysicalObject(World& world, int id, emscripten_val options);
+
+
+    float getX() const;
+    void setX(float x);
+    float getY() const;
+    void setY(float y);
+    float getRotation() const;
+    void setRotation(float r);
+    float getVelocityX() const;
+    void setVelocityX(float vx);
+    float getVelocityY() const;
+    void setVelocityY(float vy);
+    float getMass() const;
+    void setMass(float m);
+    float getDamping() const;
+    void setDamping(float d);
+    float getRotationalDamping() const;
+    void setRotationalDamping(float rd);
+    float getImpulseX() const;
+    void setImpulseX(float ix);
+    float getImpulseY() const;
+    void setImpulseY(float iy);
+    float getForceX() const;
+    void setForceX(float fx);
+    float getForceY() const;
+    void setForceY(float fy);
+    int getId() const;
+    float getRadius() const;
+    float getWidth() const;
+    float getHeight() const;
 
     bool recomputeAabb(bool disablePadding);
 

@@ -44,12 +44,12 @@ bool CollisionSolver::solve(int indexA, int indexB) {
 
     // Get the correct solver for the obj types
 bool CollisionSolver::_solveCircleCircle(int indexA, int indexB) {
-    float rA = floatData[indexA * LIVE_FLOAT_EPO + LIVE_FLOAT_RADIUS];
-    float rB = floatData[indexB * LIVE_FLOAT_EPO + LIVE_FLOAT_RADIUS];
-    float xA = floatData[indexA * LIVE_FLOAT_EPO + LIVE_FLOAT_X];
-    float yA = floatData[indexA * LIVE_FLOAT_EPO + LIVE_FLOAT_Y];
-    float xB = floatData[indexB * LIVE_FLOAT_EPO + LIVE_FLOAT_X];
-    float yB = floatData[indexB * LIVE_FLOAT_EPO + LIVE_FLOAT_Y];
+    float rA = floatData[indexA * FDATA_EPO + FDATA_RADIUS];
+    float rB = floatData[indexB * FDATA_EPO + FDATA_RADIUS];
+    float xA = floatData[indexA * FDATA_EPO + FDATA_X];
+    float yA = floatData[indexA * FDATA_EPO + FDATA_Y];
+    float xB = floatData[indexB * FDATA_EPO + FDATA_X];
+    float yB = floatData[indexB * FDATA_EPO + FDATA_Y];
     auto pA = Vec2(xA, yA);
     auto pB = Vec2(xB, yB);
 

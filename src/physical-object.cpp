@@ -15,38 +15,48 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
         id(id),
         bvhNode(nullptr),
         type(options.hasOwnProperty("type") ? static_cast<ObjectType>(options["type"].as<int>()) : ObjectType::RIGID_BODY),
-        damping(options.hasOwnProperty("damping") ? options["damping"].as<float>() : 0.1f),
-        rotationalDamping(options.hasOwnProperty("rotationalDamping") ? options["rotationalDamping"].as<float>() : 0.1f),
+        // damping(options.hasOwnProperty("damping") ? options["damping"].as<float>() : 0.1f),
+        // rotationalDamping(options.hasOwnProperty("rotationalDamping") ? options["rotationalDamping"].as<float>() : 0.1f),
         shape(options.hasOwnProperty("shape") ? static_cast<ObjectShape>(options["shape"].as<int>()) : ObjectShape::CIRCLE)
 {}
 
-    // Getters
-    // int getId() const { return id; }
-    // const Vec2& getPosition() const { return position; }
-    // // const float getX() const { return position.x; }
-    // // const float getY() const { return position.y; }
-    // float getRotation() const { return rotation; }
-    // ObjectType getType() const { return type; }
-    // ObjectShape getShape() const { return shape; }
-    // const Vec2& getVelocity() const { return velocity; }
-    // float getRotationalSpeed() const { return rotationalSpeed; }
-    // float getDamping() const { return damping; }
-    // float getRotationalDamping() const { return rotationalDamping; }
+// Getters and Setters
+float PhysicalObject::getX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X]; }
+void PhysicalObject::setX(float x) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X] = x; }
+float PhysicalObject::getY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_Y]; }
+void PhysicalObject::setY(float y) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_Y] = y; }
 
-    // float getRadius() const { return radius; }
-    // // float* getPoints() const { return points; }
-    // float getWidth() const { return width; }
-    // float getHeight() const { return height; }
+float PhysicalObject::getRotation() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R]; }
+void PhysicalObject::setRotation(float r) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R] = r; }
 
-    // Setters
-    // void setPosition(float x, float y) { position.x = x; position.y = y; this->x = x; this->y = y; }
-    // void setRotation(float newRotation) { rotation = newRotation; }
-    // void setType(ObjectType newType) { type = newType; }
-    // void setVelocity(float x, float y) { velocity.x = x; velocity.y = y; }
-    // void setRotationalSpeed(float newRotationalSpeed) { rotationalSpeed = newRotationalSpeed; }
-    // void setMass(float newMass) { mass = newMass; }
-    // void setDamping(float newDamping) { damping = newDamping; }
-    // void setRotationalDamping(float newRotationalDamping) { rotationalDamping = newRotationalDamping; }
+float PhysicalObject::getVelocityX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX]; }
+void PhysicalObject::setVelocityX(float vx) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX] = vx; }
+float PhysicalObject::getVelocityY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY]; }
+void PhysicalObject::setVelocityY(float vy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY] = vy; }
+
+float PhysicalObject::getMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M]; }
+void PhysicalObject::setMass(float m) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M] = m; }
+
+float PhysicalObject::getDamping() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING]; }
+void PhysicalObject::setDamping(float d) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING] = d; }
+float PhysicalObject::getRotationalDamping() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_ANGULAR_DAMPING]; }
+void PhysicalObject::setRotationalDamping(float rd) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_ANGULAR_DAMPING] = rd; }
+
+float PhysicalObject::getImpulseX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX]; }
+void PhysicalObject::setImpulseX(float ix) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX] = ix; }
+float PhysicalObject::getImpulseY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IY]; }
+void PhysicalObject::setImpulseY(float iy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IY] = iy; }
+
+float PhysicalObject::getForceX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX]; }
+void PhysicalObject::setForceX(float fx) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] = fx; }
+float PhysicalObject::getForceY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY]; }
+void PhysicalObject::setForceY(float fy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] = fy; }
+
+// Read only stuff.
+int PhysicalObject::getId() const { return id; }
+float PhysicalObject::getRadius() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R]; }
+float PhysicalObject::getWidth() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_W]; }
+float PhysicalObject::getHeight() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_H]; }
 
 bool PhysicalObject::recomputeAabb(bool disablePadding){
     float newX1 = aabb.min.x;
@@ -54,11 +64,11 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
     float newX2 = aabb.max.x;
     float newY2 = aabb.max.y;
 
-    float px = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_X];
-    float py = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_Y];
-    float w = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_W];
-    float h = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_H];
-    float r = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_R] * 180.0f / 3.14159f;
+    float px = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X];
+    float py = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_Y];
+    float w = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_W];
+    float h = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_H];
+    float r = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R] * 180.0f / 3.14159f;
     // float r = 1.0f;
     float cr;
     float sr;
@@ -133,8 +143,8 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
         float paddingAmount = 0.2f;
         if (disablePadding) paddingAmount = 0.0f;
 
-        float vx = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_VX];
-        float vy = world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_VY];
+        float vx = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX];
+        float vy = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY];
         
         Vec2 paddingA = Vec2(std::min(vx * paddingAmount, 0.0f), std::min(vy * paddingAmount, 0.0f));
         Vec2 paddingB = Vec2(std::max(vx * paddingAmount, 0.0f), std::max(vy * paddingAmount, 0.0f));
@@ -156,10 +166,10 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
         // Update the AABB with consistent padding.
         aabb = Aabb(Vec2(newX1, newY1) + paddingA, Vec2(newX2, newY2) + paddingB);
 
-        world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_AX1] = aabb.min.x;
-        world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_AY1] = aabb.min.y;
-        world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_AX2] = aabb.max.x;
-        world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_AY2] = aabb.max.y;
+        world.liveFloatData[worldIndex * FDATA_EPO + FDATA_AX1] = aabb.min.x;
+        world.liveFloatData[worldIndex * FDATA_EPO + FDATA_AY1] = aabb.min.y;
+        world.liveFloatData[worldIndex * FDATA_EPO + FDATA_AX2] = aabb.max.x;
+        world.liveFloatData[worldIndex * FDATA_EPO + FDATA_AY2] = aabb.max.y;
 
         return true;
     }
@@ -169,22 +179,22 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
 
     // INTERNAL USE ONLY.
 void PhysicalObject::applyForce(float x, float y){
-    world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_FX] += x;
-    world.liveFloatData[worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_FY] += y;
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] += x;
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] += y;
 }
 
 void PhysicalObject::applyImpulse(float x, float y){
 
-    int index = worldIndex * LIVE_FLOAT_EPO;
+    int index = worldIndex * FDATA_EPO;
 
-    world.liveFloatData[index + LIVE_FLOAT_IX] += x;
-    world.liveFloatData[index + LIVE_FLOAT_IY] += y;
+    world.liveFloatData[index + FDATA_IX] += x;
+    world.liveFloatData[index + FDATA_IY] += y;
 
-    float mass = world.liveFloatData[index + LIVE_FLOAT_M];
+    float mass = world.liveFloatData[index + FDATA_M];
 
     if (mass != 0 && mass != INFINITY && type != ObjectType::FIXED_OBJECT) {
-        world.liveFloatData[index + LIVE_FLOAT_VX] += x / mass;
-        world.liveFloatData[index + LIVE_FLOAT_VY] += y / mass;
+        world.liveFloatData[index + FDATA_VX] += x / mass;
+        world.liveFloatData[index + FDATA_VY] += y / mass;
     }
 }
 
@@ -195,32 +205,33 @@ void PhysicalObject::applyImpulse(float x, float y){
 
     // Step function to update position and rotation
 bool PhysicalObject::stepMovement(float dt) {
-    int index = worldIndex * LIVE_FLOAT_EPO;
-    float mass = world.liveFloatData[index + LIVE_FLOAT_M];
+    int index = worldIndex * FDATA_EPO;
+    float mass = world.liveFloatData[index + FDATA_M];
 
     // TODO: these should be moved out of the function as an optimization.
-    world.liveFloatData[index + LIVE_FLOAT_FX] = 0;
-    world.liveFloatData[index + LIVE_FLOAT_FY] = 0;
+    world.liveFloatData[index + FDATA_FX] = 0;
+    world.liveFloatData[index + FDATA_FY] = 0;
 
-    _position.x = world.liveFloatData[index + LIVE_FLOAT_X];
-    _position.y = world.liveFloatData[index + LIVE_FLOAT_Y];
+    _position.x = world.liveFloatData[index + FDATA_X];
+    _position.y = world.liveFloatData[index + FDATA_Y];
 
-    applyImpulse(world.liveFloatData[index + LIVE_FLOAT_NIX], world.liveFloatData[index + LIVE_FLOAT_NIY]);
+    applyImpulse(world.liveFloatData[index + FDATA_NIX], world.liveFloatData[index + FDATA_NIY]);
 
-    world.liveFloatData[index + LIVE_FLOAT_NIX] = 0.0f;
-    world.liveFloatData[index + LIVE_FLOAT_NIY] = 0.0f;
+    world.liveFloatData[index + FDATA_NIX] = 0.0f;
+    world.liveFloatData[index + FDATA_NIY] = 0.0f;
 
     // Set the class's vectors based on the live data.
-    _velocity.x = world.liveFloatData[index + LIVE_FLOAT_VX];
-    _velocity.y = world.liveFloatData[index + LIVE_FLOAT_VY];
+    _velocity.x = world.liveFloatData[index + FDATA_VX];
+    _velocity.y = world.liveFloatData[index + FDATA_VY];
     
     // Apply the force that is currently in memory, then clear it.
-    applyForce(world.liveFloatData[index + LIVE_FLOAT_NFX], world.liveFloatData[index + LIVE_FLOAT_NFY]);
-    world.liveFloatData[index + LIVE_FLOAT_NFX] = 0;
-    world.liveFloatData[index + LIVE_FLOAT_NFY] = 0;
+    applyForce(world.liveFloatData[index + FDATA_NFX], world.liveFloatData[index + FDATA_NFY]);
+    world.liveFloatData[index + FDATA_NFX] = 0;
+    world.liveFloatData[index + FDATA_NFY] = 0;
 
     // Apply damping force.
-    _dampingForce = _velocity * -damping;
+    // TODO: may want to consider wind resistance, etc.
+    _dampingForce = _velocity * -getDamping();
     applyForce(_dampingForce.x, _dampingForce.y);
 
     // Calculate acceleration based on force and mass.
@@ -228,8 +239,8 @@ bool PhysicalObject::stepMovement(float dt) {
         _acceleration.x = 0.0f;
         _acceleration.y = 0.0f;
     } else {
-        _force.x = world.liveFloatData[index + LIVE_FLOAT_FX];
-        _force.y = world.liveFloatData[index + LIVE_FLOAT_FY];
+        _force.x = world.liveFloatData[index + FDATA_FX];
+        _force.y = world.liveFloatData[index + FDATA_FY];
         _acceleration = _force / mass;
     }
 
@@ -240,19 +251,19 @@ bool PhysicalObject::stepMovement(float dt) {
     // ix and iy are for visual debugging.
     // We can decay them here.
 
-    world.liveFloatData[index + LIVE_FLOAT_IX] *= world.decayMap[99];
-    world.liveFloatData[index + LIVE_FLOAT_IY] *= world.decayMap[99];
+    world.liveFloatData[index + FDATA_IX] *= world.decayMap[99];
+    world.liveFloatData[index + FDATA_IY] *= world.decayMap[99];
 
     // Update position based on velocity and time step.
     _position = _position + _velocity * dt;
 
     // Apply rotational damping to rotational speed.
-    float rs1 = world.liveFloatData[index + LIVE_FLOAT_RS];
-    world.liveFloatData[index + LIVE_FLOAT_RS] *= (1.0f - rotationalDamping * dt);
-    float rs2 = world.liveFloatData[index + LIVE_FLOAT_RS];
+    float rs1 = world.liveFloatData[index + FDATA_RS];
+    world.liveFloatData[index + FDATA_RS] *= (1.0f - getRotationalDamping() * dt);
+    float rs2 = world.liveFloatData[index + FDATA_RS];
 
     // Update rotation based on rotational speed and time step.
-    world.liveFloatData[index + LIVE_FLOAT_R] += (rs1 + rs2) * dt / 2.0f;
+    world.liveFloatData[index + FDATA_R] += (rs1 + rs2) * dt / 2.0f;
 
     // TODO: I don't like how the full damping takes effect per frame. It should be per second.
     // This requires us to basically hard code frame rates.
@@ -263,18 +274,18 @@ bool PhysicalObject::stepMovement(float dt) {
     // velocity = velocity * (1.0f - damping * dt);
 
     // Reassign the values to the live data.
-    world.liveFloatData[index + LIVE_FLOAT_X] = _position.x;
-    world.liveFloatData[index + LIVE_FLOAT_Y] = _position.y;
-    world.liveFloatData[index + LIVE_FLOAT_VX] = _velocity.x;
-    world.liveFloatData[index + LIVE_FLOAT_VY] = _velocity.y;
+    world.liveFloatData[index + FDATA_X] = _position.x;
+    world.liveFloatData[index + FDATA_Y] = _position.y;
+    world.liveFloatData[index + FDATA_VX] = _velocity.x;
+    world.liveFloatData[index + FDATA_VY] = _velocity.y;
 
-    bool moved = world.liveFloatData[index + LIVE_FLOAT_X] != lastX 
-        || world.liveFloatData[index + LIVE_FLOAT_Y] != lastY 
-        || world.liveFloatData[index + LIVE_FLOAT_R] != lastR;
+    bool moved = world.liveFloatData[index + FDATA_X] != lastX 
+        || world.liveFloatData[index + FDATA_Y] != lastY 
+        || world.liveFloatData[index + FDATA_R] != lastR;
 
-    lastX = world.liveFloatData[index + LIVE_FLOAT_X];
-    lastY = world.liveFloatData[index + LIVE_FLOAT_Y];
-    lastR = world.liveFloatData[index + LIVE_FLOAT_R];
+    lastX = world.liveFloatData[index + FDATA_X];
+    lastY = world.liveFloatData[index + FDATA_Y];
+    lastR = world.liveFloatData[index + FDATA_R];
 
     return moved;
 }

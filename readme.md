@@ -59,6 +59,12 @@ Once the code is built and the server is running, open the webpage hosted from e
 [ ] Advanced drag?
 [ ] Forcefields?
 
+## Fluid Dynamics
+[ ] Wind.
+[ ] Advanced drag.
+[ ] Under water / liquid.
+	[ ]	 Bouancy.
+
 ## Optimizations
 [ ] Implement collision masks.
 [ ] Sleeping objects.

@@ -12,7 +12,7 @@ World::World():
     // Currently, the engine crashes with that many items. But with optimizations it's possible to exceed that.
     setTimeStep(1.0f / 60.0f);
     int size = 10000;
-    liveFloatData.reserve(size * LIVE_FLOAT_EPO);
+    liveFloatData.reserve(size * FDATA_EPO);
     liveIntData.reserve(size * LIVE_INT_EPO);
 
     // collisionSolver = CollisionSolver(liveIntData, liveFloatData);
@@ -49,6 +49,13 @@ int World::makeObject(int id, emscripten_val options){
     liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
     liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
     liveFloatData.push_back(options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f); // mass
+    liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
+    liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.5f);
+    liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 0.3f);
+    // liveFloatData.push_back(options.hasOwnProperty("dFriction") ? options["dFriction"].as<float>() : 0.2f);
+    liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 0.2f);
+    liveFloatData.push_back(options.hasOwnProperty("linearDamping") ? options["linearDamping"].as<float>() : 0.05f);
+    liveFloatData.push_back(options.hasOwnProperty("angularDamping") ? options["angularDamping"].as<float>() : 0.05f);
     liveFloatData.push_back(
         (
             options.hasOwnProperty("radius") ? options["radius"].as<float>() : (
@@ -119,10 +126,10 @@ int World::removeObject(int id) {
                 );
             }
 
-            for(int i = 0; i < LIVE_FLOAT_EPO; i++){
+            for(int i = 0; i < FDATA_EPO; i++){
                 iter_swap(
-                    liveFloatData.begin() + index * LIVE_FLOAT_EPO + i, 
-                    liveFloatData.begin() + (liveFloatData.size() / LIVE_FLOAT_EPO - 1) * LIVE_FLOAT_EPO + i
+                    liveFloatData.begin() + index * FDATA_EPO + i, 
+                    liveFloatData.begin() + (liveFloatData.size() / FDATA_EPO - 1) * FDATA_EPO + i
                 );
             }
             // Update the worldIndex of the swapped object
@@ -131,7 +138,7 @@ int World::removeObject(int id) {
             // Remove the last element (which is the object we want to remove)
             objectsList.pop_back();
             // ids.pop_back();
-            liveFloatData.resize(objectsList.size() * LIVE_FLOAT_EPO);
+            liveFloatData.resize(objectsList.size() * FDATA_EPO);
             liveIntData.resize(objectsList.size() * LIVE_INT_EPO);
         }
 
@@ -206,11 +213,11 @@ void World::_doKinematics(){
     // Update all objects in the world
     for (auto& object : objectsList) {
         liveIntData[object->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0;
-        float m = liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_M];
+        float m = liveFloatData[object->worldIndex * FDATA_EPO + FDATA_M];
 
         // Apply gravity.
-        liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_NFX] += gravity.x * m;
-        liveFloatData[object->worldIndex * LIVE_FLOAT_EPO + LIVE_FLOAT_NFY] += gravity.y * m;
+        liveFloatData[object->worldIndex * FDATA_EPO + FDATA_NFX] += gravity.x * m;
+        liveFloatData[object->worldIndex * FDATA_EPO + FDATA_NFY] += gravity.y * m;
         
         // Physics step.
         bool moved = object->stepMovement(timeStep);
