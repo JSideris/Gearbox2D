@@ -15,6 +15,9 @@ struct CollisionInfo {
     float penetrationDepth;
     int indexA;
     int indexB;
+    float imA;
+    float imB;
+    float totalInverseMass;
 };
 
 class CollisionSolver {
@@ -31,5 +34,5 @@ public:
     bool solve(int indexA, int indexB);
 
     // Get the correct solver for the obj types
-    bool _solveCircleCircle(int indexA, int indexB);
+    bool _solveCircleCircle();
 };

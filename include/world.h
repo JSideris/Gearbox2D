@@ -76,7 +76,9 @@ public:
     void _doBroadPhase();
     void _doNarrowPhase();
     void _doResolution();
-    void __doPenetrationResolution(CollisionInfo collisionInfo);
+    void __doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
+    void __doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
+    void __doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
 
 	void clear();
 

@@ -64,6 +64,8 @@ public:
     void setDamping(float d);
     float getRotationalDamping() const;
     void setRotationalDamping(float rd);
+    float getRestitution() const;
+    void setRestitution(float d);
     float getImpulseX() const;
     void setImpulseX(float ix);
     float getImpulseY() const;
@@ -85,8 +87,10 @@ public:
     bool recomputeAabb(bool disablePadding);
 
     // INTERNAL USE ONLY.
+    void applyForce(const Vec2& force);
     void applyForce(float x, float y);
 
+    void applyImpulse(const Vec2& impulse);
     void applyImpulse(float x, float y);
 
     // Step function to update position and rotation

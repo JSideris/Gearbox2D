@@ -81,6 +81,9 @@ void PhysicalObject::setDamping(float d) { world.liveFloatData[worldIndex * FDAT
 float PhysicalObject::getRotationalDamping() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_ANGULAR_DAMPING]; }
 void PhysicalObject::setRotationalDamping(float rd) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_ANGULAR_DAMPING] = rd; }
 
+float PhysicalObject::getRestitution() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RESTITUTION]; }
+void PhysicalObject::setRestitution(float r) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RESTITUTION] = r; }
+
 float PhysicalObject::getImpulseX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX]; }
 void PhysicalObject::setImpulseX(float ix) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX] = ix; }
 float PhysicalObject::getImpulseY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IY]; }
@@ -221,10 +224,17 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
     return false;
 }
 
-    // INTERNAL USE ONLY.
+// INTERNAL USE ONLY.
+void PhysicalObject::applyForce(const Vec2& force){
+    applyForce(force.x, force.y);
+}
 void PhysicalObject::applyForce(float x, float y){
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] += x;
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] += y;
+}
+
+void PhysicalObject::applyImpulse(const Vec2&  impulse){
+    applyImpulse(impulse.x, impulse.y);
 }
 
 void PhysicalObject::applyImpulse(float x, float y){

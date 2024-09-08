@@ -38,6 +38,7 @@ Once the code is built and the server is running, open the webpage hosted from e
 	[ ] Circle-Box
 	[ ] Box-Box
 [ ] Collision resolvers.
+	[*] Penetration resolution.
 [ ] Implement collision events.
 [*] Define object types.
 	[*] Sensor.
@@ -52,6 +53,8 @@ Once the code is built and the server is running, open the webpage hosted from e
 	[ ] Distance.
 	[ ] Spring.
 	[ ] Hinged.
+	[ ] Gear constraint.
+[ ] Support changing the center of mass.
 
 ## Misc
 [ ] Elasticity.

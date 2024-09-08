@@ -210,45 +210,70 @@ void World::_doNarrowPhase(){
 // 4. Collision resolution.
 void World::_doResolution(){
     for (auto& collisionInfo : collisionSolver.collisions) {
+        PhysicalObject* objA = objectsList[collisionInfo.indexA];
+        PhysicalObject* objB = objectsList[collisionInfo.indexB];
+
         // SEPARATION STEP
-        __doPenetrationResolution(collisionInfo);
+        __doPenetrationResolution(collisionInfo, objA, objB);
+        __doCollisionImpulse(collisionInfo, objA, objB);
+        __doCollisionFriction(collisionInfo, objA, objB);
     }
 }
 
 // 4.a. Penetration resolution.
-void World::__doPenetrationResolution(CollisionInfo collisionInfo){
-
-    PhysicalObject* objA = objectsList[collisionInfo.indexA];
-    PhysicalObject* objB = objectsList[collisionInfo.indexB];
-
-    float mA = objA->getMass();
-    float mB = objB->getMass();
+void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject*  objB){
         
-    if(mA == 0.0f && mB == 0.0f){
+    if(collisionInfo.totalInverseMass == 0.0f){
         return;
     }
-    else if(mA == 0.0f){
+    // else if(mA == 0.0f){
 
-    }
-    else if(mB == 0.0f){
+    // }
+    // else if(mB == 0.0f){
 
-    }
+    // }
     else{
         // TODO: potential to cache to remove a division. 
-        float imA = 1.0f / mA;
-        float imB = 1.0f / mB;
-        float totalInverseMass = imA + imB;
-        Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / totalInverseMass);
+        Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / collisionInfo.totalInverseMass);
         
         Vec2 pA = objA->getPosition();
         Vec2 pB = objB->getPosition();
 
-        Vec2 cpA = pA - correction * mA;
-        Vec2 cpB = pB + correction * mB;
+        Vec2 cpA = pA - correction * objA->getMass();
+        Vec2 cpB = pB + correction * objB->getMass();
 
         objA->setPosition(cpA);
         objB->setPosition(cpB);
     }
+}
+
+// 4.b. Collision impulse.
+void World::__doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
+    // Relative velocity.
+    Vec2 rv = objB->getVelocity() - objA->getVelocity();
+
+    // Relative velocity along the normal.
+    float velAlongNormal = rv.dot(collisionInfo.normal);
+
+    // Do not resolve if velocities are separating.
+    if (velAlongNormal > 0) {
+        return;
+    }
+
+    // Calculate restitution.
+    float e = max(objA->getRestitution(), objB->getRestitution());
+    float j = -(1 + e) * velAlongNormal / collisionInfo.totalInverseMass;
+
+    // Apply impulse.
+    Vec2 impulse = collisionInfo.normal * j;
+
+    objA->applyImpulse(impulse * -1.0f);
+    objB->applyImpulse(impulse);
+}
+
+// 4.c. Collision friction.
+void World::__doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
+
 }
 
 void World::setTimeStep(float dt) {

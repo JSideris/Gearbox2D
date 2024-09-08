@@ -48,6 +48,10 @@ public:
         float mag = magnitude();
         return (mag > 0) ? Vec2(x / mag, y / mag) : Vec2();
     }
+
+    float dot(const Vec2& other) const {
+        return x * other.x + y * other.y;
+    }
 };
 
 
