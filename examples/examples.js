@@ -27,12 +27,12 @@ const examples = {
 			// The first (and only required) argument is the ID.
 			// All objects must have a unique ID.
 			world.makeObject(1337, {
-				x: 500, // X position.
-				y: 500, // Y position.
+				x: 5, // X position.
+				y: 5, // Y position.
 				r: 0, // Rotation in radians.
 				shape: gb2d.BOX, // shape.
-				width: 300, // Box width when rotated at 0.
-				height: 200, // Box height when rotated at 0.
+				width: 3, // Box width of 3 m when rotated at 0.
+				height: 2, // Box height of 2 m when rotated at 0.
 
 				// This is the preferred way to have a perminently rotating object.
 				rs: 0.02, // Rotation speed in radians per second.
@@ -51,13 +51,13 @@ const examples = {
 		description: "A simple example featuring a few supported shapes: circle, box, another circle, AABB.",
 		onInit: (gb2d, world)=>{
 			let id = 1;
-			let spacing = 200;
+			let spacing = 2;
 
 			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
 				shape: gb2d.CIRCLE,
-				radius: 50,
+				radius: .5,
 			});
 
 			world.makeObject(id++, {
@@ -65,15 +65,15 @@ const examples = {
 				y: (id-1) * spacing,
 				r: Math.PI / 4,
 				shape: gb2d.BOX,
-				width: 80,
-				height: 95,
+				width: .80,
+				height: .95,
 			});
 
 			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
 				shape: gb2d.CIRCLE,
-				radius: 100,
+				radius: .100,
 			});
 			
 			// Note that the rotation (r) doesn't do anything for AABBs.
@@ -82,8 +82,8 @@ const examples = {
 				y: (id-1) * spacing,
 				r: Math.PI / 4,
 				shape: gb2d.AABB,
-				width: 100,
-				height: 75,
+				width: 1.00,
+				height: .75,
 			});
 		}
 	}),
@@ -94,22 +94,22 @@ const examples = {
 
 			// This small circle will orbit the bigger one.
 			world.makeObject(1, {
-				x: 500,
-				y: 250,
-				vx: 500,
-				mass: 0.1,
+				x: 5.00,
+				y: 2.50,
+				vx: 5.00,
+				mass: 0.1, // 100g
 				shape: gb2d.CIRCLE,
-				radius: 30,
-				damping: 0.0
+				radius: .30,
+				linearDamping: 0.0 // Set to 0 to prevent the orbit from slowing down.
 			});
 
 			// For decoration, let's add a shape in the middle.
 			world.makeObject(2, {
-				x: 500,
-				y: 500,
+				x: 5.00,
+				y: 5.00,
 				shape: gb2d.CIRCLE,
 				type: gb2d.SENSOR, // Sensors don't collide with other objects.
-				radius: 100,
+				radius: 1.00,
 			});
 		},
 
@@ -129,7 +129,7 @@ const examples = {
 			dy /= magnitude;
 
 			// Define the fixed magnitude of the force.
-			const forceMagnitude = 200;
+			const forceMagnitude = 2.00;
 
 			// Apply a force to the object.
 			obj.applyForce(dx * forceMagnitude, dy * forceMagnitude);
@@ -147,19 +147,19 @@ const examples = {
 
 			// This small circle will orbit the bigger one.
 			world.makeObject(1, {
-				x: 250,
-				y: 500,
+				x: 2.50,
+				y: 5.00,
 				shape: gb2d.CIRCLE,
-				radius: 30,
+				radius: .30,
 				mass: 10,
 				damping: 0.1
 			});
 
 			world.makeObject(2, {
-				x: 750,
-				y: 500,
+				x: 7.50,
+				y: 5.00,
 				shape: gb2d.CIRCLE,
-				radius: 60,
+				radius: .60,
 				mass: 20,
 				damping: 0.1
 			});
@@ -176,8 +176,8 @@ const examples = {
 			let t1 = Math.floor(oldTimer) ;
 			let t2 = Math.floor(impulseTimer);
 			if(t1 != t2 && t2 % 2 == 0){
-				let impulse = (500 - obj1.y) * 20;
-				if(impulse < 50 && impulse > -50) impulse = 2000;
+				let impulse = (5.00 - obj1.y) * 20;
+				if(impulse < .50 && impulse > -.50) impulse = 20.00;
 
 				obj1.applyImpulse(0, impulse);
 				obj2.applyImpulse(0, impulse);
@@ -192,25 +192,25 @@ const examples = {
 		onInit: (gb2d, world)=>{
 			// Mind you that while we like to think of things in terms of SI units, the scale is arbitrary.
 			// In this case, the canvas is 1000x1000 units. So it won't be very exciting to just apply a 10 m/s^2 gravity.
-			world.setGravity(0, 1000);
+			world.setGravity(0, 10);
 
 			// Objects will be created in the tick function.
 		},
 		onTick: (gb2d, world, dt)=>{
 			if(Math.random() < 0.05){
-				let m = 1 + Math.random() * 20;
+				let m = .1 + Math.random() * .4;
 				world.makeObject(nextId++, {
 					x: 0,
-					y: 750,
-					vx: 100 + Math.random() * 500,
-					vy: -400 - Math.random() * 400,
+					y: 7.50,
+					vx: 1.00 + Math.random() * 5.00,
+					vy: -4.00 - Math.random() * 4.00,
 					shape: gb2d.CIRCLE,
 					type: gb2d.SENSOR,
-					radius: 2 + m * 2,
+					radius: .2 + m * .2,
 
 					// Remember, gravity is an acceleration vector. So it affects all masses equally. 
 					// This mass was selected to make the force vectors look good for the demo.
-					mass: m / 50, 
+					mass: m,
 				});
 
 				// Scan for objects that are out of bounds and remove them.
@@ -220,7 +220,7 @@ const examples = {
 
 				world.iterateObjects(obj=>{
 					
-					if(obj.y > 1050){
+					if(obj.y > 10.50){
 						// Don't remove stuff in the middle of the loop!!!
 						toRemove.push(obj);
 					}
@@ -233,21 +233,65 @@ const examples = {
 			}
 		}
 	}),
-	// collisions: new Example({
-	// 	description
-	// }),
+	
+	collisions: new Example({
+		description: "Collisions on objects are enabled by default. For more realistic collisions, set the mass of objects. Make sure the object type is set to RIGID_BODY.\n\nThis demo is basically just the gravity demo but we have objects coming from both sides.",
+		globalLines: ["let nextId = 1;"],
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 10);
+
+			// Objects will be created in the tick function.
+		},
+		// Once collisions are a bit more stable, the number of colliding objects can be doubled.
+		onTick: (gb2d, world, dt)=>{
+			if(Math.random() < 0.05){
+				let m = .1 + Math.random() * .4;
+				let dir = 1;
+				if(Math.random() < 0.5) dir = -1;
+
+				world.makeObject(nextId++, {
+					x: 5.00 - dir * 5.00,
+					y: 7.50,
+					vx: (2.00 + Math.random() * 5.00) * dir,
+					vy: -6.00 - Math.random() * 1.00,
+					shape: gb2d.CIRCLE,
+					type: gb2d.RIGID_BODY,
+					radius: .2 + m * .2,
+					mass: m, 
+				});
+
+				// Scan for objects that are out of bounds and remove them.
+				// Another way to do this would be to use collision events.
+				let objectCount = world.objectCount;
+				let toRemove = [];
+
+				world.iterateObjects(obj=>{
+					
+					if(obj.y > 10.50){
+						// Don't remove stuff in the middle of the loop!!!
+						toRemove.push(obj);
+					}
+				});
+
+				// Now remove everything we found that's out of bounds.
+				for(let obj of toRemove){
+					world.removeObject(obj.id);
+				}
+			}
+		}
+	}),
 
 	// Load Tests
 	particles: new Example({
-		description: "A load test featuring 10 thousand particles. No collisions. Note that a significant FPS cost is the debug rendering itself. On an Intel Core i9-9900KF this was benchmarked with an average step time of about 6.5-8.5 ms, if the weather is good.",
+		description: "A load test featuring 1 thousand particles. No collisions. Note that a significant FPS cost is the debug rendering itself. On an Intel Core i9-9900KF this was benchmarked with an average step time of about 6.5-8.5 ms, if the weather is good.",
 		onInit: (gb2d, world)=>{
-			for(let i = 0; i < 10000; i++){
+			for(let i = 0; i < 1000; i++){
 
 				world.makeObject(i+1, {
-					x: Math.random() * 1000,
-					y: Math.random() * 1000,
-					vx: Math.random() * 100 - 50,
-					vy: Math.random() * 100 - 50,
+					x: Math.random() * 10,
+					y: Math.random() * 10,
+					vx: Math.random() * 1.00 - .50,
+					vy: Math.random() * 1.00 - .50,
 					// Disable damping so they'll move forever.
 					damping: 0,
 					shape: gb2d.POINT,
@@ -262,16 +306,16 @@ const examples = {
 					obj.x = 0;
 					obj.vx = -obj.vx;
 				}
-				if(obj.x > 1000){
-					obj.x = 1000;
+				if(obj.x > 10){
+					obj.x = 10;
 					obj.vx = -obj.vx;
 				}
 				if(obj.y < 0){
 					obj.y = 0;
 					obj.vy = -obj.vy;
 				}
-				if(obj.y > 1000){
-					obj.y = 1000;
+				if(obj.y > 10){
+					obj.y = 10;
 					obj.vy = -obj.vy;
 				}
 			});
