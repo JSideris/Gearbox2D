@@ -77,6 +77,11 @@ public:
     float getWidth() const;
     float getHeight() const;
 
+    Vec2 getPosition() const;
+    void setPosition(Vec2 p);
+    Vec2 getVelocity() const;
+    void setVelocity(Vec2 v);
+
     bool recomputeAabb(bool disablePadding);
 
     // INTERNAL USE ONLY.

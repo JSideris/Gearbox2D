@@ -160,6 +160,7 @@ void World::step() {
     // _doStabilization(); // Optional.
 }
 
+// 1. Kinematics.
 void World::_doKinematics(){
     // Update all objects in the world
     for (auto& object : objectsList) {
@@ -184,21 +185,12 @@ void World::_doKinematics(){
     }
 }
 
+// 2. Broad phase collision detection.
 void World::_doBroadPhase(){
     bvh.traverseAndCheckCollisions();
-    // [_this](void* obja, void* objb) {
-    //     auto* obj1 = static_cast<PhysicalObject*>(obja);
-    //     auto* obj2 = static_cast<PhysicalObject*>(objb);
-    //     // For debugging.
-    //     // cout << "Collision detected between object " << obj1->id
-    //     //     << " and object " << obj2->id << endl;
-    //     _this->liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 1;
-    //     _this->liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 1;
-
-    //     // collisionPairs.push_back({obj1, obj2});
-    // });
 }
 
+// 3. Narrow phase collision detection.
 void World::_doNarrowPhase(){
     collisionSolver.clear();
     
@@ -215,8 +207,48 @@ void World::_doNarrowPhase(){
     }
 }
 
+// 4. Collision resolution.
 void World::_doResolution(){
-    
+    for (auto& collisionInfo : collisionSolver.collisions) {
+        // SEPARATION STEP
+        __doPenetrationResolution(collisionInfo);
+    }
+}
+
+// 4.a. Penetration resolution.
+void World::__doPenetrationResolution(CollisionInfo collisionInfo){
+
+    PhysicalObject* objA = objectsList[collisionInfo.indexA];
+    PhysicalObject* objB = objectsList[collisionInfo.indexB];
+
+    float mA = objA->getMass();
+    float mB = objB->getMass();
+        
+    if(mA == 0.0f && mB == 0.0f){
+        return;
+    }
+    else if(mA == 0.0f){
+
+    }
+    else if(mB == 0.0f){
+
+    }
+    else{
+        // TODO: potential to cache to remove a division. 
+        float imA = 1.0f / mA;
+        float imB = 1.0f / mB;
+        float totalInverseMass = imA + imB;
+        Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / totalInverseMass);
+        
+        Vec2 pA = objA->getPosition();
+        Vec2 pB = objB->getPosition();
+
+        Vec2 cpA = pA - correction * mA;
+        Vec2 cpB = pB + correction * mB;
+
+        objA->setPosition(cpA);
+        objB->setPosition(cpB);
+    }
 }
 
 void World::setTimeStep(float dt) {

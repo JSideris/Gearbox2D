@@ -13,6 +13,8 @@ struct CollisionInfo {
     Vec2 contactPoint;
     Vec2 normal;
     float penetrationDepth;
+    int indexA;
+    int indexB;
 };
 
 class CollisionSolver {

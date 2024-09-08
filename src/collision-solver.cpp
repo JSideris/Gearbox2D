@@ -65,8 +65,7 @@ bool CollisionSolver::_solveCircleCircle(int indexA, int indexB) {
         auto normal = pDiff.normalize();
         auto penetrationDepth = rA + rB - pDiff.magnitude();
         auto contactPoint = pA + normal * rA;
-        auto info = CollisionInfo{true, contactPoint, normal, penetrationDepth};
-        collisions.push_back(info);
+        collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, indexA, indexB});
         return true;
     }
 

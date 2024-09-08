@@ -76,6 +76,7 @@ public:
     void _doBroadPhase();
     void _doNarrowPhase();
     void _doResolution();
+    void __doPenetrationResolution(CollisionInfo collisionInfo);
 
 	void clear();
 

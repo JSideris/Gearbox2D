@@ -91,6 +91,11 @@ void PhysicalObject::setForceX(float fx) { world.liveFloatData[worldIndex * FDAT
 float PhysicalObject::getForceY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY]; }
 void PhysicalObject::setForceY(float fy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] = fy; }
 
+Vec2 PhysicalObject::getPosition() const { return Vec2(getX(), getY()); }
+void PhysicalObject::setPosition(Vec2 p) { setX(p.x); setY(p.y); }
+Vec2 PhysicalObject::getVelocity() const { return Vec2(getVelocityX(), getVelocityY()); }
+void PhysicalObject::setVelocity(Vec2 v) { setVelocityX(v.x); setVelocityY(v.y); }
+
 // Read only stuff.
 int PhysicalObject::getId() const { return id; }
 float PhysicalObject::getRadius() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R]; }
