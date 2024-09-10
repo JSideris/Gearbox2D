@@ -1,0 +1,43 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Install dependencies (including Google Test)
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential cmake
+
+    # Step 3: Clone and build Google Test
+    - name: Set up Google Test
+      run: |
+        git clone https://github.com/google/googletest.git /tmp/googletest
+        cd /tmp/googletest
+        mkdir build
+        cd build
+        cmake ..
+        make
+      # Set GTEST_DIR to the installed Google Test location
+      env:
+        GTEST_DIR: /tmp/googletest/googletest
+
+    # Step 4: Build and run tests
+    - name: Build and run tests
+      run: make test -B
+      env:
+        GTEST_DIR: /tmp/googletest/googletest

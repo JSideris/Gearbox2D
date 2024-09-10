@@ -4,7 +4,7 @@ BUILD_DIR = lib/build
 INCLUDE_DIR = include
 TEST_DIR = tests
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
-GTEST_DIR = /home/josh/googletest/googletest
+GTEST_DIR ?= /home/josh/googletest/googletest
 
 # Compiler
 EMCC = emcc
