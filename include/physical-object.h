@@ -58,8 +58,12 @@ public:
     void setVelocityX(float vx);
     float getVelocityY() const;
     void setVelocityY(float vy);
+    float getAngularVelocity() const;
+    void setAngularVelocity(float rs);
+
     float getMass() const;
     void setMass(float m);
+    float getInverseMass() const;
     float getDamping() const;
     void setDamping(float d);
     float getRotationalDamping() const;
@@ -79,6 +83,11 @@ public:
     float getWidth() const;
     float getHeight() const;
 
+    float getStaticFriction() const;
+    void setStaticFriction(float f);
+    float getKineticFriction() const;
+    void setKineticFriction(float f);
+
     Vec2 getPosition() const;
     void setPosition(Vec2 p);
     Vec2 getVelocity() const;
@@ -90,8 +99,8 @@ public:
     void applyForce(const Vec2& force);
     void applyForce(float x, float y);
 
-    void applyImpulse(const Vec2& impulse);
-    void applyImpulse(float x, float y);
+    void applyImpulse(const Vec2& impulse, const Vec2& contactPoint);
+    void applyImpulse(float x, float y, float cx, float cy);
 
     // Step function to update position and rotation
     bool stepMovement(float dt);

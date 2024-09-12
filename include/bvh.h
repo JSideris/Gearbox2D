@@ -8,6 +8,7 @@
 #include <stack>
 #include "aabb.h"
 #include "debug.h"
+// #include "physical-object.h"
 
 using namespace std;
 
@@ -135,6 +136,10 @@ public:
     int _nodeCount;
     int _insertionCount;
 
+    // TODO: One optimization might be to count the number of fixed objects in a node
+    // then if it's equal to the number of nodes, we don't need to traverse.
+    // We could do something similar with nodes that contain leafs in 
+    // non-colliding masks.
     void _traverseAndCheckCollisions(TreeNode* node1, TreeNode* node2) {
         if (!node1 && !node2) return;
         else if(!node2) _traverseAndCheckCollisions(node1->left, node1->right);
@@ -142,6 +147,8 @@ public:
         else if(node1->isLeaf() && node2->isLeaf()){
             if(node1->aabb.overlaps(node2->aabb)){
                 // callback(node1->userData, node2->userData);
+                // auto* obj1 = static_cast<PhysicalObject*>(node1->userData);
+                // auto* obj2 = static_cast<PhysicalObject*>(node2->userData);
                 collisionPairs.push_back({node1->userData, node2->userData});
             }
         }

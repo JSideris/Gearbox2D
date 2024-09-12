@@ -28,11 +28,13 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
     world.liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
     world.liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
-    world.liveFloatData.push_back(options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f); // mass
+    float mass = options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f;
+    world.liveFloatData.push_back(mass); // mass
+    world.liveFloatData.push_back(mass > 0.0f ? 1.0f / mass : 0.0f); // inverse mass
     world.liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
     world.liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.5f);
-    world.liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 0.3f);
-    world.liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 0.2f);
+    world.liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 1.0f);
+    world.liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 1.0f);
     world.liveFloatData.push_back(options.hasOwnProperty("linearDamping") ? options["linearDamping"].as<float>() : 0.05f);
     world.liveFloatData.push_back(options.hasOwnProperty("angularDamping") ? options["angularDamping"].as<float>() : 0.05f);
     world.liveFloatData.push_back(
@@ -73,8 +75,22 @@ void PhysicalObject::setVelocityX(float vx) { world.liveFloatData[worldIndex * F
 float PhysicalObject::getVelocityY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY]; }
 void PhysicalObject::setVelocityY(float vy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY] = vy; }
 
+float PhysicalObject::getAngularVelocity() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS]; }
+void PhysicalObject::setAngularVelocity(float rs) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS] = rs; }
+
 float PhysicalObject::getMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M]; }
-void PhysicalObject::setMass(float m) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M] = m; }
+void PhysicalObject::setMass(float m) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M] = m;
+    if(m > 0){
+        world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM] = 1.0f / m;
+    }
+    else{
+        world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM] = 0.0f;
+    }
+}
+
+float PhysicalObject::getInverseMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM]; }
+// void PhysicalObject::setInverseMass(float im) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM] = im; }
 
 float PhysicalObject::getDamping() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING]; }
 void PhysicalObject::setDamping(float d) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING] = d; }
@@ -93,6 +109,11 @@ float PhysicalObject::getForceX() const { return world.liveFloatData[worldIndex 
 void PhysicalObject::setForceX(float fx) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] = fx; }
 float PhysicalObject::getForceY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY]; }
 void PhysicalObject::setForceY(float fy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] = fy; }
+
+float PhysicalObject::getStaticFriction() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_S_FRICTION]; }
+void PhysicalObject::setStaticFriction(float f) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_S_FRICTION] = f; }
+float PhysicalObject::getKineticFriction() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_K_FRICTION]; }
+void PhysicalObject::setKineticFriction(float f) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_K_FRICTION] = f; }
 
 Vec2 PhysicalObject::getPosition() const { return Vec2(getX(), getY()); }
 void PhysicalObject::setPosition(Vec2 p) { setX(p.x); setY(p.y); }
@@ -233,22 +254,32 @@ void PhysicalObject::applyForce(float x, float y){
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] += y;
 }
 
-void PhysicalObject::applyImpulse(const Vec2&  impulse){
-    applyImpulse(impulse.x, impulse.y);
+void PhysicalObject::applyImpulse(const Vec2& impulse, const Vec2& contactPoint){
+    applyImpulse(impulse.x, impulse.y, contactPoint.x, contactPoint.y);
 }
 
-void PhysicalObject::applyImpulse(float x, float y){
+void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
 
     int index = worldIndex * FDATA_EPO;
 
     world.liveFloatData[index + FDATA_IX] += x;
     world.liveFloatData[index + FDATA_IY] += y;
 
-    float mass = world.liveFloatData[index + FDATA_M];
+    float inverseMass = world.liveFloatData[index + FDATA_IM];
 
-    if (mass != 0 && mass != INFINITY && type != ObjectType::FIXED_OBJECT) {
-        world.liveFloatData[index + FDATA_VX] += x / mass;
-        world.liveFloatData[index + FDATA_VY] += y / mass;
+    if (inverseMass != 0 && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT) {
+        world.liveFloatData[index + FDATA_VX] += x * inverseMass;
+        world.liveFloatData[index + FDATA_VY] += y * inverseMass;
+
+        // float torque = contactPoint.cross(impulse);  // 2D cross product gives scalar torque
+        float torque = cpX * y - cpY * x;
+
+        // obj.angularVelocity += torque / objA.momentOfInertia;
+
+        // Temporary approximation for moment of inertia.
+        // TODO: this could be computed per shape!
+        float momentOfInertia = world.liveFloatData[index + FDATA_M];
+        world.liveFloatData[index + FDATA_RS] += torque / momentOfInertia;
     }
 }
 
@@ -260,16 +291,19 @@ void PhysicalObject::applyImpulse(float x, float y){
     // Step function to update position and rotation
 bool PhysicalObject::stepMovement(float dt) {
     int index = worldIndex * FDATA_EPO;
-    float mass = world.liveFloatData[index + FDATA_M];
+    float inverseMass = world.liveFloatData[index + FDATA_IM];
 
     // TODO: these should be moved out of the function as an optimization.
     world.liveFloatData[index + FDATA_FX] = 0;
     world.liveFloatData[index + FDATA_FY] = 0;
 
+    // Cache the last position.
+    // Probably redundant now.
     _position.x = world.liveFloatData[index + FDATA_X];
     _position.y = world.liveFloatData[index + FDATA_Y];
 
-    applyImpulse(world.liveFloatData[index + FDATA_NIX], world.liveFloatData[index + FDATA_NIY]);
+    // Apply the acculumated impulse.
+    applyImpulse(world.liveFloatData[index + FDATA_NIX], world.liveFloatData[index + FDATA_NIY], 0.0f, 0.0f);
 
     world.liveFloatData[index + FDATA_NIX] = 0.0f;
     world.liveFloatData[index + FDATA_NIY] = 0.0f;
@@ -289,14 +323,16 @@ bool PhysicalObject::stepMovement(float dt) {
     applyForce(_dampingForce.x, _dampingForce.y);
 
     // Calculate acceleration based on force and mass.
-    if (mass == 0 || mass == INFINITY || type == ObjectType::FIXED_OBJECT) {
+    if (inverseMass == 0 || inverseMass == INFINITY || type == ObjectType::FIXED_OBJECT) {
         _acceleration.x = 0.0f;
         _acceleration.y = 0.0f;
     } else {
         _force.x = world.liveFloatData[index + FDATA_FX];
         _force.y = world.liveFloatData[index + FDATA_FY];
-        _acceleration = _force / mass;
+        _acceleration = _force * inverseMass;
     }
+
+    // cout << inverseMass << endl;
 
     // Update velocity based on acceleration and time step.
     _dv = _acceleration * dt * 0.5f;
@@ -317,7 +353,7 @@ bool PhysicalObject::stepMovement(float dt) {
     float rs2 = world.liveFloatData[index + FDATA_RS];
 
     // Update rotation based on rotational speed and time step.
-    world.liveFloatData[index + FDATA_R] += (rs1 + rs2) * dt / 2.0f;
+    world.liveFloatData[index + FDATA_R] += (rs1 + rs2) * dt * 0.5f;
 
     // TODO: I don't like how the full damping takes effect per frame. It should be per second.
     // This requires us to basically hard code frame rates.

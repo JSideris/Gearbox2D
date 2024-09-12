@@ -223,7 +223,9 @@ void World::_doResolution(){
 // 4.a. Penetration resolution.
 void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject*  objB){
         
-    if(collisionInfo.totalInverseMass == 0.0f){
+    float totalInverseMass = objA->getInverseMass() + objB->getInverseMass();
+
+    if(totalInverseMass == 0.0f){
         return;
     }
     // else if(mA == 0.0f){
@@ -234,7 +236,7 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
     // }
     else{
         // TODO: potential to cache to remove a division. 
-        Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / collisionInfo.totalInverseMass);
+        Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / totalInverseMass);
         
         Vec2 pA = objA->getPosition();
         Vec2 pB = objB->getPosition();
@@ -249,6 +251,8 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
 
 // 4.b. Collision impulse.
 void World::__doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
+    float totalInverseMass = objA->getInverseMass() + objB->getInverseMass();
+    
     // Relative velocity.
     Vec2 rv = objB->getVelocity() - objA->getVelocity();
 
@@ -262,19 +266,58 @@ void World::__doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* o
 
     // Calculate restitution.
     float e = max(objA->getRestitution(), objB->getRestitution());
-    float j = -(1 + e) * velAlongNormal / collisionInfo.totalInverseMass;
+    float j = -(1 + e) * velAlongNormal / totalInverseMass;
 
     // Apply impulse.
-    Vec2 impulse = collisionInfo.normal * j;
+    auto impulse = collisionInfo.normal * j;
 
-    objA->applyImpulse(impulse * -1.0f);
-    objB->applyImpulse(impulse);
+    objA->applyImpulse(impulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
+    objB->applyImpulse(impulse, collisionInfo.contactPoint - objB->getPosition());
+
+    collisionInfo.normalImpulseMagnitude = impulse.magnitude();
 }
 
 // 4.c. Collision friction.
 void World::__doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
+    // Compute the lever arms (from center of mass to contact point)
+    Vec2 rA = collisionInfo.contactPoint - objA->getPosition();
+    Vec2 rB = collisionInfo.contactPoint - objB->getPosition();
 
+    // Compute the tangential velocities due to rotation
+    Vec2 tangentialVelocityA = Vec2(-rA.y * objA->getAngularVelocity(), rA.x * objA->getAngularVelocity()); // Cross product in 2D
+    Vec2 tangentialVelocityB = Vec2(-rB.y * objB->getAngularVelocity(), rB.x * objB->getAngularVelocity());
+
+    // Compute the total velocity at the point of contact (linear + tangential)
+    Vec2 contactVelocityA = objA->getVelocity() + tangentialVelocityA;
+    Vec2 contactVelocityB = objB->getVelocity() + tangentialVelocityB;
+
+    // Compute the relative velocity at the point of contact
+    Vec2 relativeVelocity = contactVelocityB - contactVelocityA;
+
+    // Remove the normal component of the relative velocity to get the tangential component
+    Vec2 relativeNormalComponent = collisionInfo.normal * (relativeVelocity.dot(collisionInfo.normal));
+    Vec2 tangentialVelocity = relativeVelocity - relativeNormalComponent;
+
+    // If the object is nearly stationary in the tangential direction, apply static friction
+    if (tangentialVelocity.magnitude() < 0.001f) {
+        // Static friction case: cancel out the tangential velocity
+        float maxStaticFriction = min(objA->getStaticFriction(), objB->getStaticFriction());
+        Vec2 staticFrictionImpulse = tangentialVelocity * -maxStaticFriction;
+
+        // Apply static friction (impulse)
+        objA->applyImpulse(staticFrictionImpulse, collisionInfo.contactPoint - objA->getPosition());
+        objB->applyImpulse(staticFrictionImpulse * -1.0f, collisionInfo.contactPoint - objB->getPosition());
+    } else {
+        // Dynamic friction case: reduce sliding velocity
+        float frictionCoefficient = min(objA->getKineticFriction(), objB->getKineticFriction());
+        Vec2 dynamicFrictionImpulse = tangentialVelocity.normalize() * -frictionCoefficient * collisionInfo.normalImpulseMagnitude;
+
+        // Apply dynamic friction (impulse)
+        objA->applyImpulse(dynamicFrictionImpulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
+        objB->applyImpulse(dynamicFrictionImpulse, collisionInfo.contactPoint - objB->getPosition());
+    }
 }
+
 
 void World::setTimeStep(float dt) {
     timeStep = dt;

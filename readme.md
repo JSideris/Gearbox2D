@@ -75,6 +75,8 @@ Once the code is built and the server is running, open the webpage hosted from e
 [ ] Caching previous broad-phase collisions.
 [ ] Consider combining the broad phase with the kinematics phase.
 [ ] Instead of reinserting on movement, consider tree traversal. This requires experimentation.
+[*] Cache inverse mass.
+[ ] Cache inverse dt.
 
 ## AI
 [ ] Implement A* directly into the engine.
@@ -84,41 +86,3 @@ Once the code is built and the server is running, open the webpage hosted from e
 
 Gear2Engine is data-oriented, allowing it to be optimized for data transfer between JavaScript and WASM. Most volatile object data for `PhysicalObject`s is stored in vectors within the `World` object. At the start of a world step, the data is copied into each `PhysicalObject` for easy processing, then the data is copied back into the vectors for transfer back into the main application. 
 
-
-
-
-Update?
-	Contains Point?
-	remove?
-		removeNode call?
-			Removing node.
-		ok
-		deallocateNode call?
-		ok
-	ok
-	Insert?
-	Done.
-ok
-
-Update?
-	Contains Point?
-	remove call?
-		removeNode call?
-			Removing node.
-			inside grandParent != nullptr else (grandParent == nullptr)
-			deallocateNode call?
-			ok
-		ok
-		deallocateNode call?
-		ok
-	ok
-	Insert?
-	Done.
-ok
-
-Update?
-	Contains Point?
-	remove call?
-		removeNode call?
-			Removing node.
-			inside grandParent != nullptr if

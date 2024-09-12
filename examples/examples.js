@@ -56,6 +56,7 @@ const examples = {
 			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
+				r: Math.PI / 4,
 				shape: gb2d.CIRCLE,
 				radius: .5,
 			});
@@ -72,8 +73,8 @@ const examples = {
 			world.makeObject(id++, {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
-				shape: gb2d.CIRCLE,
-				radius: .100,
+				shape: gb2d.POINT,
+				// radius: .100,
 			});
 			
 			// Note that the rotation (r) doesn't do anything for AABBs.
@@ -97,9 +98,12 @@ const examples = {
 				x: 5.00,
 				y: 2.50,
 				vx: 5.00,
+				r: Math.PI / 2 * Math.random(),
+				rs: 5,
 				mass: 0.1, // 100g
 				shape: gb2d.CIRCLE,
 				radius: .30,
+				angularDamping: 0.0, 
 				linearDamping: 0.0 // Set to 0 to prevent the orbit from slowing down.
 			});
 
@@ -107,9 +111,12 @@ const examples = {
 			world.makeObject(2, {
 				x: 5.00,
 				y: 5.00,
+				r: Math.PI / 2 * Math.random(),
+				rs: .1,
 				shape: gb2d.CIRCLE,
 				type: gb2d.SENSOR, // Sensors don't collide with other objects.
 				radius: 1.00,
+				angularDamping: 0.0, 
 			});
 		},
 
@@ -149,19 +156,21 @@ const examples = {
 			world.makeObject(1, {
 				x: 2.50,
 				y: 5.00,
+				r: Math.PI / 2 * Math.random(),
 				shape: gb2d.CIRCLE,
 				radius: .30,
-				mass: 10,
+				mass: 1,
 				damping: 0.1
 			});
 
 			world.makeObject(2, {
 				x: 7.50,
 				y: 5.00,
+				r: Math.PI / 2 * Math.random(),
 				shape: gb2d.CIRCLE,
 				radius: .60,
-				mass: 20,
-				damping: 0.1
+				mass: 2,
+				damping: 0.02
 			});
 		},
 
@@ -176,8 +185,8 @@ const examples = {
 			let t1 = Math.floor(oldTimer) ;
 			let t2 = Math.floor(impulseTimer);
 			if(t1 != t2 && t2 % 2 == 0){
-				let impulse = (5.00 - obj1.y) * 20;
-				if(impulse < .50 && impulse > -.50) impulse = 20.00;
+				let impulse = (5.00 - obj1.y) * .20;
+				if(impulse < .050 && impulse > -.050) impulse = 2.000;
 
 				obj1.applyImpulse(0, impulse);
 				obj2.applyImpulse(0, impulse);
@@ -202,6 +211,8 @@ const examples = {
 				world.makeObject(nextId++, {
 					x: 0,
 					y: 7.50,
+					r: Math.PI / 2 * Math.random(),
+					rs: (Math.random() - 0.5) * 5.00,
 					vx: 1.00 + Math.random() * 5.00,
 					vy: -4.00 - Math.random() * 4.00,
 					shape: gb2d.CIRCLE,
@@ -233,6 +244,67 @@ const examples = {
 			}
 		}
 	}),
+
+	bounce: new Example({
+		description: "",
+		onInit: (gb2d, world)=>{
+			// Gravity
+			world.setGravity(0, 10);
+
+			// Walls
+			world.makeObject(1, {
+				x: 5,
+				y: 0,
+				shape: gb2d.AABB,
+				type: gb2d.FIXED_OBJECT,
+				width: 11,
+				height: 2,
+				
+			});
+			world.makeObject(2, {
+				x: 5,
+				y: 10,
+				shape: gb2d.AABB,
+				type: gb2d.FIXED_OBJECT,
+				width: 11,
+				height: 2,
+			});
+			world.makeObject(3, {
+				x: 0,
+				y: 5,
+				shape: gb2d.AABB,
+				type: gb2d.FIXED_OBJECT,
+				width: 2,
+				height: 11,
+			});
+			world.makeObject(4, {
+				x: 10,
+				y: 5,
+				shape: gb2d.AABB,
+				type: gb2d.FIXED_OBJECT,
+				width: 2,
+				height: 11,
+			});
+			world.makeObject(5, {
+				x: 5,
+				y: 2,
+				vx: 3, 
+				r: Math.PI / 2 * Math.random(),
+				shape: gb2d.CIRCLE,
+				type: gb2d.RIGID_BODY,
+				radius: .75,
+				mass: 0.5,
+				linearDamping: 0.0,
+
+				// The most important part. 100% bouncy.
+				// There's currently a bug where significant energy is being lost somehow.
+				restitution: 1,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+			// The engine does all the work. Nothing to do here!
+		},
+	}),
 	
 	collisions: new Example({
 		description: "Collisions on objects are enabled by default. For more realistic collisions, set the mass of objects. Make sure the object type is set to RIGID_BODY.\n\nThis demo is basically just the gravity demo but we have objects coming from both sides.",
@@ -252,6 +324,8 @@ const examples = {
 				world.makeObject(nextId++, {
 					x: 5.00 - dir * 5.00,
 					y: 7.50,
+					r: Math.PI / 2 * Math.random(),
+					rs: (Math.random() - 0.5) * 5.00,
 					vx: (2.00 + Math.random() * 5.00) * dir,
 					vy: -6.00 - Math.random() * 1.00,
 					shape: gb2d.CIRCLE,
@@ -278,6 +352,40 @@ const examples = {
 					world.removeObject(obj.id);
 				}
 			}
+		}
+	}),
+
+	friction: new Example({
+		description: "",
+		onInit: (gb2d, world)=>{
+
+			world.setGravity(0, 10);
+
+			let id = 1;
+			for(; id <= 5; id++){
+				world.makeObject(id, {
+					x: 5,
+					y: 2.5 * id - 0.5,
+					shape: gb2d.AABB,
+					type: gb2d.FIXED_OBJECT,
+					width: 9.9,
+					height: 1,
+				});
+			}
+			world.makeObject(id++, {
+				x: 0,
+				y: 1.0,
+				vx: 5,
+				kFriction: 0.5,
+				sFriction: 0.5,
+				shape: gb2d.CIRCLE,
+				type: gb2d.RIGID_BODY,
+				radius: 0.5,
+				mass: 0.5
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+
 		}
 	}),
 

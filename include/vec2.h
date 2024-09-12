@@ -52,6 +52,10 @@ public:
     float dot(const Vec2& other) const {
         return x * other.x + y * other.y;
     }
+
+    float cross(const Vec2& other) const {
+        return x * other.y - y * other.x;
+    }
 };
 
 
