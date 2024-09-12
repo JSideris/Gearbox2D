@@ -56,6 +56,18 @@ public:
     float cross(const Vec2& other) const {
         return x * other.y - y * other.x;
     }
+
+    // Rotate this vector by angle (in radians)
+    Vec2 rotate(float angle) const {
+        float cosTheta = cos(angle);
+        float sinTheta = sin(angle);
+
+        // Apply the 2D rotation matrix
+        float xRot = x * cosTheta - y * sinTheta;
+        float yRot = x * sinTheta + y * cosTheta;
+
+        return Vec2(xRot, yRot);
+    }
 };
 
 

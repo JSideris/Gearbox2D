@@ -48,7 +48,7 @@ const examples = {
 	}),
 
 	shapes: new Example({
-		description: "A simple example featuring a few supported shapes: circle, box, another circle, AABB.",
+		description: "A simple example featuring a few supported shapes: circle, box, point, AABB.",
 		onInit: (gb2d, world)=>{
 			let id = 1;
 			let spacing = 2;
@@ -74,7 +74,6 @@ const examples = {
 				x: (id-1) * spacing,
 				y: (id-1) * spacing,
 				shape: gb2d.POINT,
-				// radius: .100,
 			});
 			
 			// Note that the rotation (r) doesn't do anything for AABBs.
@@ -356,22 +355,40 @@ const examples = {
 	}),
 
 	friction: new Example({
-		description: "",
+		description: "Friction is applied as the last step of collision resolution. It deals with static and dynamic friction, applied as impulses at the point of contact, given the relative tangential velocity at that point. Take note of the blue impulse vector on the platforms wich are present when dynamic friction is being applied.\n\n"
+		+ "Line 1: A circle with no angular momentum gains some due to friction, then continues to roll.\n\n"
+		+ "Line 2: A spinning circle with no linear momentum transfers momentum from angular to lienar due to friciton, then continues to roll.\n\n"
+		+ "Line 3: A box slides across the platform and grinds to a halt due to friction.\n\n"
+		+ "Line 4: Two boxes slide down a ramp. The left box has a high static friction, and eventually stops. The right box has no static friction and continues to slide as dynamic friction and gravitational forces dominate.\n\n",
 		onInit: (gb2d, world)=>{
 
 			world.setGravity(0, 10);
 
 			let id = 1;
-			for(; id <= 5; id++){
+			// Platforms.
+			for(; id <= 3; id++){
 				world.makeObject(id, {
-					x: 5,
+					x: 4.5,
 					y: 2.5 * id - 0.5,
 					shape: gb2d.AABB,
 					type: gb2d.FIXED_OBJECT,
-					width: 9.9,
+					width: 9.0,
 					height: 1,
 				});
 			}
+
+			// One more (tilted) platform for static friction.
+			world.makeObject(id++, {
+				x: 4.5,
+				y: 9.7,
+				r: 0.003,
+				shape: gb2d.BOX,
+				type: gb2d.FIXED_OBJECT,
+				width: 9.0,
+				height: 1,
+			});
+
+			// Linear to angular rolling object.
 			world.makeObject(id++, {
 				x: 0,
 				y: 1.0,
@@ -381,6 +398,61 @@ const examples = {
 				shape: gb2d.CIRCLE,
 				type: gb2d.RIGID_BODY,
 				radius: 0.5,
+				mass: 0.5
+			});
+
+			// Angular to linear rolling object.
+			world.makeObject(id++, {
+				x: 0.5,
+				y: 3.5,
+				rs: 10,
+				kFriction: 0.5,
+				sFriction: 0.5,
+				shape: gb2d.CIRCLE,
+				type: gb2d.RIGID_BODY,
+				radius: 0.5,
+				mass: 0.5
+			});
+
+			// Sliding box grinds to a halt.
+			world.makeObject(id++, {
+				x: 0.5,
+				y: 6,
+				vx: 7,
+				kFriction: 0.5,
+				sFriction: 0.5,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 1,
+				height: 1,
+				mass: 0.5
+			});
+
+			// Sliding box stops due to static friction.
+			world.makeObject(id++, {
+				x: 0.5,
+				y: 8.0,
+				vx: 7,
+				kFriction: 0.5,
+				sFriction: 0.5,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 1,
+				height: .5,
+				mass: 0.5
+			});
+
+			// Another sliding box but with no static friction.
+			world.makeObject(id++, {
+				x: 1.6,
+				y: 8.0,
+				vx: 7,
+				kFriction: 0.5,
+				sFriction: 0.0,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 1,
+				height: .5,
 				mass: 0.5
 			});
 		},

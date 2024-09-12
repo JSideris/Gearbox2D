@@ -33,12 +33,15 @@ Once the code is built and the server is running, open the webpage hosted from e
 [*] Implement broad phase collision detection using VBH.
 [ ] Implement narrow phase collision detection.
 	[*] Circle-Circle.
-	[ ] AABB-AABB.
-	[ ] Circle-AABB
-	[ ] Circle-Box
+	[*] AABB-AABB.
+	[*] AABB-Circle
 	[ ] Box-Box
-[ ] Collision resolvers.
+	[ ] Box-AABB
+	[ ] Box-Circle
+[*] Collision resolvers.
 	[*] Penetration resolution.
+	[*] Collision impulse.
+	[*] Collision friction.
 [ ] Implement collision events.
 [*] Define object types.
 	[*] Sensor.
