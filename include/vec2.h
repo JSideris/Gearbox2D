@@ -24,6 +24,12 @@ public:
         return Vec2(x - other.x, y - other.y);
     }
 
+    // Negation (unary minus)
+    Vec2 operator-() const {
+        return Vec2(-x, -y);
+    }
+
+
     // Scalar multiplication
     Vec2 operator*(float scalar) const {
         return Vec2(x * scalar, y * scalar);

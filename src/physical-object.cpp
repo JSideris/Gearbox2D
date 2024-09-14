@@ -10,6 +10,14 @@
 // static Vec2 _velocity;   // Linear velocity of the object
 
 
+static Vec2 _dampingForce;
+static Vec2 _acceleration;
+static Vec2 _dv;
+static Vec2 _force;
+static Vec2 _position;
+static Vec2 _velocity;   // Linear velocity of the object
+static float _inverseMass;
+
 PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options) 
     : world(world),
         id(id),
@@ -28,11 +36,11 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
     world.liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
     world.liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
-    float mass = options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f;
+    float mass = type != ObjectType::FIXED_OBJECT && options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f;
     world.liveFloatData.push_back(mass); // mass
-    world.liveFloatData.push_back(mass > 0.0f ? 1.0f / mass : 0.0f); // inverse mass
+    world.liveFloatData.push_back((mass > 0.0f) ? 1.0f / mass : 0.0f); // inverse mass
     world.liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
-    world.liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.5f);
+    world.liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.2f);
     world.liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 1.0f);
     world.liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 1.0f);
     world.liveFloatData.push_back(options.hasOwnProperty("linearDamping") ? options["linearDamping"].as<float>() : 0.05f);
@@ -136,7 +144,7 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
     float py = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_Y];
     float w = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_W];
     float h = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_H];
-    float r = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R] * 180.0f / 3.14159f;
+    float r = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R];
     // float r = 1.0f;
     float cr;
     float sr;
@@ -267,7 +275,7 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
 
     float inverseMass = world.liveFloatData[index + FDATA_IM];
 
-    if (inverseMass != 0 && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT) {
+    if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT) {
         world.liveFloatData[index + FDATA_VX] += x * inverseMass;
         world.liveFloatData[index + FDATA_VY] += y * inverseMass;
 
@@ -291,7 +299,7 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
     // Step function to update position and rotation
 bool PhysicalObject::stepMovement(float dt) {
     int index = worldIndex * FDATA_EPO;
-    float inverseMass = world.liveFloatData[index + FDATA_IM];
+    _inverseMass = world.liveFloatData[index + FDATA_IM];
 
     // TODO: these should be moved out of the function as an optimization.
     world.liveFloatData[index + FDATA_FX] = 0;
@@ -323,13 +331,13 @@ bool PhysicalObject::stepMovement(float dt) {
     applyForce(_dampingForce.x, _dampingForce.y);
 
     // Calculate acceleration based on force and mass.
-    if (inverseMass == 0 || inverseMass == INFINITY || type == ObjectType::FIXED_OBJECT) {
+    if (_inverseMass == 0.0f || _inverseMass == INFINITY || type == ObjectType::FIXED_OBJECT) {
         _acceleration.x = 0.0f;
         _acceleration.y = 0.0f;
     } else {
         _force.x = world.liveFloatData[index + FDATA_FX];
         _force.y = world.liveFloatData[index + FDATA_FY];
-        _acceleration = _force * inverseMass;
+        _acceleration = _force * _inverseMass;
     }
 
     // cout << inverseMass << endl;
@@ -376,6 +384,10 @@ bool PhysicalObject::stepMovement(float dt) {
     lastX = world.liveFloatData[index + FDATA_X];
     lastY = world.liveFloatData[index + FDATA_Y];
     lastR = world.liveFloatData[index + FDATA_R];
+
+    if(shape == ObjectShape::AABB){
+        setRotation(0.0f);
+    }
 
     return moved;
 }

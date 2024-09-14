@@ -13,13 +13,6 @@ class World;
 #include "bvh.h"
 #include "constants.h"
 
-static Vec2 _dampingForce;
-static Vec2 _acceleration;
-static Vec2 _dv;
-static Vec2 _force;
-static Vec2 _position;
-static Vec2 _velocity;   // Linear velocity of the object
-
 class PhysicalObject {
 private:
     // Vec2 force;

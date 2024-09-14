@@ -147,11 +147,13 @@ bool CollisionSolver::_solveAabbAabb() {
     if (overlapX < overlapY) {
         // Collision is primarily on the X axis
         penetrationDepth = overlapX;
-        normal = Vec2((xA < xB) ? -1.0f : 1.0f, 0.0f); // A is to the left of B if xA < xB
+        Vec2 normalDirection = Vec2(xB - xA, 0.0f);
+        normal = (normalDirection.dot(Vec2(1.0f, 0.0f)) > 0.0f) ? Vec2(1.0f, 0.0f) : Vec2(-1.0f, 0.0f);
     } else {
         // Collision is primarily on the Y axis
         penetrationDepth = overlapY;
-        normal = Vec2(0.0f, (yA < yB) ? -1.0f : 1.0f); // A is below B if yA < yB
+        Vec2 normalDirection = Vec2(0.0f, yB - yA);
+        normal = (normalDirection.dot(Vec2(0.0f, 1.0f)) > 0.0f) ? Vec2(0.0f, 1.0f) : Vec2(0.0f, -1.0f);
     }
 
     // Calculate the contact point (optional, approximate it to the center of overlap)
@@ -263,7 +265,6 @@ bool CollisionSolver::_solveAabbCircle() {
     return false;
 }
 
-
 bool CollisionSolver::_solveBoxBox() {
     // Get Box A data
     float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
@@ -290,7 +291,6 @@ bool CollisionSolver::_solveBoxBox() {
 
     float minPenetrationDepth = FLT_MAX;  // Store minimum penetration depth
     Vec2 bestAxis;  // Store the axis that results in the smallest penetration
-    bool isColliding = true;
 
     // Helper function to project a box onto an axis
     auto projectBoxOntoAxis = [&](float x, float y, float w, float h, float rotation, const Vec2& axis) {
@@ -338,8 +338,16 @@ bool CollisionSolver::_solveBoxBox() {
     }
 
     // If we get here, the boxes are colliding on all axes
-    // The collision normal is the axis with the least penetration depth
-    Vec2 normal = bestAxis;
+    // Compute the vector from Box A to Box B
+    Vec2 AB = Vec2(xB - xA, yB - yA);
+
+    // Adjust the normal direction based on the relative position of the boxes
+    Vec2 normal;
+    if (AB.dot(bestAxis) > 0.0f) {
+        normal = bestAxis;
+    } else {
+        normal = -bestAxis;
+    }
 
     // Compute the contact point (optional, approximate it)
     Vec2 contactPoint = Vec2((xA + xB) / 2, (yA + yB) / 2);  // Midpoint approximation
@@ -358,6 +366,7 @@ bool CollisionSolver::_solveBoxBox() {
 
     return true;
 }
+
 
 bool CollisionSolver::_solveAabbBox() {
     // Get AABB (Object A) data
@@ -463,18 +472,26 @@ bool CollisionSolver::_solveAabbBox() {
     }
 
     // If we get here, the AABB and Box are colliding on all axes
-    // The collision normal is the axis with the least penetration depth
-    Vec2 normal = bestAxis;
+    // Compute the vector from AABB to Box centers
+    Vec2 AB = Vec2(xB - xA, yB - yA);
+
+    // Determine the correct normal direction
+    Vec2 normal;
+    if (AB.dot(bestAxis) > 0.0f) {
+        normal = bestAxis;
+    } else {
+        normal = -bestAxis;
+    }
 
     // Compute the contact point (optional, approximate it)
-    Vec2 contactPoint = Vec2((xA + xB) / 2, (yA + yB) / 2);  // Midpoint approximation
+    Vec2 contactPoint = Vec2((xA + xB) / 2.0f, (yA + yB) / 2.0f);  // Midpoint approximation
 
     // Store the collision info
     collisions.push_back(CollisionInfo{
         true,                      // Collision detected
-        contactPoint,               // Contact point
+        contactPoint,              // Contact point
         normal,                    // Collision normal
-        minPenetrationDepth,        // Penetration depth
+        minPenetrationDepth,       // Penetration depth
         _indexA,                   // Object A index (AABB)
         _indexB,                   // Object B index (Box)
         _relativeVelocity,         // Relative velocity (already computed)

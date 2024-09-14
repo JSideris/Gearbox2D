@@ -170,6 +170,14 @@
             <li class="example" data-example="particles">Particles</li>
             <li class="example" data-example="rain">Rain</li>
             <li class="example" data-example="washing-machine">Washing Machine</li>
+            
+            <li class="section">Known Issues</li>
+            <!-- <li class="example" data-example="tc1">TC-1</li>
+            <li class="example" data-example="tc2">TC-2</li> -->
+            <li class="example" data-example="tc3">TC-3</li>
+            <li class="example" data-example="tc4">TC-4</li>
+            <li class="example" data-example="tc5">TC-5</li>
+            <li class="example" data-example="tc6">TC-6</li>
         </ul>
     </div>
     <div id="main">
@@ -310,7 +318,10 @@ gb2d.init().then(()=>{
         function loadExample(exampleName) {
             if (!world) return;
 
-            window.location.hash = exampleName;
+            // window.location.hash = exampleName;
+            if(window.location.hash != '#' + exampleName){
+                history.pushState(null, '', '#' + exampleName);
+            }
 
             world.clear();
             world.setGravity(0,0);

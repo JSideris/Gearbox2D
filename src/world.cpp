@@ -223,26 +223,31 @@ void World::_doResolution(){
 // 4.a. Penetration resolution.
 void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject*  objB){
         
-    float totalInverseMass = objA->getInverseMass() + objB->getInverseMass();
+    // Note that this isn't the same as the inverse of total mass.
+    float imA = objA->getInverseMass();
+    float imB = objB->getInverseMass();
+    float totalInverseMass = imA + imB;
+
+    // cout << objA->getMass() << endl;
+    // cout << objA->getInverseMass() << endl;
+    // cout << objB->getMass() << endl;
+    // cout << objB->getInverseMass() << endl;
 
     if(totalInverseMass == 0.0f){
         return;
     }
-    // else if(mA == 0.0f){
-
-    // }
-    // else if(mB == 0.0f){
-
-    // }
     else{
-        // TODO: potential to cache to remove a division. 
         Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / totalInverseMass);
         
         Vec2 pA = objA->getPosition();
         Vec2 pB = objB->getPosition();
 
-        Vec2 cpA = pA - correction * objA->getMass();
-        Vec2 cpB = pB + correction * objB->getMass();
+        Vec2 cpA = pA - correction * imA;
+        Vec2 cpB = pB + correction * imB;
+
+        // cout << static_cast<int>(std::round((collisionInfo.penetrationDepth / totalInverseMass) * 1000)) << endl;
+        // cout << collisionInfo.normal.y << endl;
+        // cout << static_cast<int>(std::round(correction.magnitude() * 1000)) << endl;
 
         objA->setPosition(cpA);
         objB->setPosition(cpB);
@@ -270,6 +275,9 @@ void World::__doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* o
 
     // Apply impulse.
     auto impulse = collisionInfo.normal * j;
+
+    // impulse.x = -impulse.x;
+    // impulse.y = -impulse.y;
 
     objA->applyImpulse(impulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
     objB->applyImpulse(impulse, collisionInfo.contactPoint - objB->getPosition());

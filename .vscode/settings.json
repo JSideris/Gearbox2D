@@ -12,6 +12,7 @@
         "unordered_map": "cpp",
         "variant": "cpp",
         "type_traits": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "deque": "cpp"
     }
 }

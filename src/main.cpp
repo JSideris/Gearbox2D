@@ -19,17 +19,17 @@ EMSCRIPTEN_BINDINGS(general) {
     emscripten::register_vector<int>("vector<int>");
 }
 
-EMSCRIPTEN_BINDINGS(vec2) {
-    emscripten::class_<Vec2>("Vec2")
-        .constructor<float, float>()
-        .property("x", &Vec2::x)
-        .property("y", &Vec2::y)
-        .function("add", &Vec2::operator+)
-        .function("subtract", &Vec2::operator-)
-        .function("scale", &Vec2::operator*)
-        .function("magnitude", &Vec2::magnitude)
-        .function("normalize", &Vec2::normalize);
-}
+// EMSCRIPTEN_BINDINGS(vec2) {
+//     emscripten::class_<Vec2>("Vec2")
+//         .constructor<float, float>()
+//         .property("x", &Vec2::x)
+//         .property("y", &Vec2::y)
+//         .function("add", &Vec2::operator+)
+//         .function("subtract", &Vec2::operator-)
+//         .function("scale", &Vec2::operator*)
+//         .function("magnitude", &Vec2::magnitude)
+//         .function("normalize", &Vec2::normalize);
+// }
 
 // EMSCRIPTEN_BINDINGS(physical_object) {
 

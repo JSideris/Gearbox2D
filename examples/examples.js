@@ -35,7 +35,7 @@ const examples = {
 				height: 2, // Box height of 2 m when rotated at 0.
 
 				// This is the preferred way to have a perminently rotating object.
-				rs: 0.02, // Rotation speed in radians per second.
+				rs: 1, // Rotation speed in radians per second.
 				rotationalDamping: 0.0 // Rotational damping. Set to 0 to disable.
 			});
 		},
@@ -306,7 +306,10 @@ const examples = {
 	}),
 	
 	collisions: new Example({
-		description: "Collisions on objects are enabled by default. For more realistic collisions, set the mass of objects. Make sure the object type is set to RIGID_BODY.\n\nThis demo is basically just the gravity demo but we have objects coming from both sides.",
+		description: [
+			"Collisions on objects are enabled by default. For more realistic collisions, set the mass of objects. Make sure the object type is set to RIGID_BODY.",
+			"Note that while gb2d is in beta, glitches may be observed."
+		].join("\n\n"),
 		globalLines: ["let nextId = 1;"],
 		onInit: (gb2d, world)=>{
 			world.setGravity(0, 10);
@@ -320,6 +323,10 @@ const examples = {
 				let dir = 1;
 				if(Math.random() < 0.5) dir = -1;
 
+				let r = .2 + m*m * .8;
+				let h = 0.1 + Math.random() * (r - 0.1);
+				let w = r * r / h;
+				let isBox = Math.random() < 0.5;
 				world.makeObject(nextId++, {
 					x: 5.00 - dir * 5.00,
 					y: 7.50,
@@ -327,9 +334,11 @@ const examples = {
 					rs: (Math.random() - 0.5) * 5.00,
 					vx: (2.00 + Math.random() * 5.00) * dir,
 					vy: -6.00 - Math.random() * 1.00,
-					shape: gb2d.CIRCLE,
+					shape: isBox ? gb2d.BOX : gb2d.CIRCLE,
 					type: gb2d.RIGID_BODY,
-					radius: .2 + m * .2,
+					radius: isBox ? w : r,
+					// width: isBox ? r * 2 : 0,
+					height: isBox ? h : 0,
 					mass: m, 
 				});
 
@@ -359,7 +368,7 @@ const examples = {
 		+ "Line 1: A circle with no angular momentum gains some due to friction, then continues to roll.\n\n"
 		+ "Line 2: A spinning circle with no linear momentum transfers momentum from angular to lienar due to friciton, then continues to roll.\n\n"
 		+ "Line 3: A box slides across the platform and grinds to a halt due to friction.\n\n"
-		+ "Line 4: Two boxes slide down a ramp. The left box has a high static friction, and eventually stops. The right box has no static friction and continues to slide as dynamic friction and gravitational forces dominate.\n\n",
+		+ "Line 4: (BUGGY - see TC-6) Two boxes slide down a ramp. The left box has a high static friction, and eventually stops. The right box has no static friction and continues to slide as dynamic friction and gravitational forces dominate.\n\n",
 		onInit: (gb2d, world)=>{
 
 			world.setGravity(0, 10);
@@ -374,6 +383,7 @@ const examples = {
 					type: gb2d.FIXED_OBJECT,
 					width: 9.0,
 					height: 1,
+					mass: 1,
 				});
 			}
 
@@ -381,18 +391,19 @@ const examples = {
 			world.makeObject(id++, {
 				x: 4.5,
 				y: 9.7,
-				r: 0.003,
+				r: 0.1,
 				shape: gb2d.BOX,
 				type: gb2d.FIXED_OBJECT,
 				width: 9.0,
 				height: 1,
+				mass: 1,
 			});
 
 			// Linear to angular rolling object.
 			world.makeObject(id++, {
 				x: 0,
 				y: 1.0,
-				vx: 5,
+				vx: 6,
 				kFriction: 0.5,
 				sFriction: 0.5,
 				shape: gb2d.CIRCLE,
@@ -428,33 +439,33 @@ const examples = {
 				mass: 0.5
 			});
 
-			// Sliding box stops due to static friction.
-			world.makeObject(id++, {
-				x: 0.5,
-				y: 8.0,
-				vx: 7,
-				kFriction: 0.5,
-				sFriction: 0.5,
-				shape: gb2d.BOX,
-				type: gb2d.RIGID_BODY,
-				width: 1,
-				height: .5,
-				mass: 0.5
-			});
+			// // Sliding box stops due to static friction.
+			// world.makeObject(id++, {
+			// 	x: 0.5,
+			// 	y: 8.0,
+			// 	vx: 0,
+			// 	kFriction: 0.5,
+			// 	sFriction: 0.5,
+			// 	shape: gb2d.BOX,
+			// 	type: gb2d.RIGID_BODY,
+			// 	width: 1,
+			// 	height: .5,
+			// 	mass: 0.5
+			// });
 
-			// Another sliding box but with no static friction.
-			world.makeObject(id++, {
-				x: 1.6,
-				y: 8.0,
-				vx: 7,
-				kFriction: 0.5,
-				sFriction: 0.0,
-				shape: gb2d.BOX,
-				type: gb2d.RIGID_BODY,
-				width: 1,
-				height: .5,
-				mass: 0.5
-			});
+			// // Another sliding box but with no static friction.
+			// world.makeObject(id++, {
+			// 	x: 1.6,
+			// 	y: 8.0,
+			// 	vx: 0,
+			// 	kFriction: 0.5,
+			// 	sFriction: 0.0,
+			// 	shape: gb2d.BOX,
+			// 	type: gb2d.RIGID_BODY,
+			// 	width: 1,
+			// 	height: .5,
+			// 	mass: 0.5
+			// });
 		},
 		onTick: (gb2d, world, dt)=>{
 
@@ -500,7 +511,226 @@ const examples = {
 				}
 			});
 		}
-	})
+	}),
+
+	tc1: new Example({
+		description: "SOLVED: Boxes colliding with other boxes go crazy.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 10);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 5,
+				y: 8,
+				// r: Math.PI,
+				shape: gb2d.BOX,
+				type: gb2d.FIXED_OBJECT,
+				width: 1,
+				height: 1,
+				mass: 1,
+			});
+
+			// Anohter box but this time a rigid body.
+			world.makeObject(id++, {
+				x: 7,
+				y: 2,
+				// r: Math.PI,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				// radius: 1,
+				width: 5,
+				height: 1,
+				mass: 1,
+			});
+
+			world.makeObject(id++, {
+				x: 3,
+				y: 5,
+				// r: Math.PI,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				// radius: 1,
+				width: 5,
+				height: 1,
+				mass: 1,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
+	
+	tc2: new Example({
+		description: "SOLVED: Boxes warp right through AABBs.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 10);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 5,
+				y: 8,
+				r: Math.PI / 2,
+				shape: gb2d.AABB,
+				type: gb2d.FIXED_OBJECT,
+				width: 1,
+				height: 1,
+				mass: 1,
+			});
+
+			// Anohter box but this time a rigid body.
+			world.makeObject(id++, {
+				x: 7,
+				y: 2,
+				// r: Math.PI / 2,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 5,
+				height: 1,
+				mass: 1,
+			});
+			world.makeObject(id++, {
+				x: 3,
+				y: 5,
+				// r: Math.PI / 2,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 5,
+				height: 1,
+				mass: 1,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
+
+	tc3: new Example({
+		description: "This isn't bad, but could be made better. The moving object loses all of its x momentum after the collision. In an actual collision of this type, one might expect the collision to apply a bunch of angular momentum and for the moving object to continue moving.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 0);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 8,
+				y: 5,
+				// r: Math.PI,
+				shape: gb2d.BOX,
+				type: gb2d.FIXED_OBJECT,
+				width: 1,
+				height: 1,
+				mass: 1,
+			});
+
+			// Anohter box but this time a rigid body.
+			world.makeObject(id++, {
+				x: 2,
+				y: 3,
+				vx: 3,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				// radius: 1,
+				width: 1,
+				height: 5,
+				mass: 1,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
+	tc4: new Example({
+		description: "The collision in this test is somewhat puzzling since hte object seems to receive angular velocity in the wrong direction.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 0);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 8,
+				y: 5,
+				// r: Math.PI,
+				shape: gb2d.BOX,
+				type: gb2d.FIXED_OBJECT,
+				width: 1,
+				height: 1,
+				mass: 1,
+			});
+
+			// Anohter box but this time a rigid body.
+			world.makeObject(id++, {
+				x: 2,
+				y: 6,
+				vx: 3,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				// radius: 1,
+				width: 1,
+				height: 5,
+				mass: 1,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
+	tc5: new Example({
+		description: "Even the slightest rs for the moving circle causes a dramatic difference in the resulting collision response. If commenting out rs, the collision is completely linear in the diagonal direction. If setting rs to 10, the collision is the nearly identical to an rs of 0.01.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 0);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 5,
+				y: 5,
+				shape: gb2d.CIRCLE,
+				type: gb2d.RIGID_BODY,
+				radius: 1,
+				mass: 4,
+			});
+
+			world.makeObject(id++, {
+				x: 2,
+				y: 2,
+				vx: 3,
+				vy: 3,
+				shape: gb2d.CIRCLE,
+				type: gb2d.RIGID_BODY,
+				radius: 0.5,
+				mass: 1,
+
+				// rs: 10,
+				rs: 0.01,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
+
+	tc6: new Example({
+		description: "Incorrect normal vector applied during certain box-box collisions.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 10);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 5,
+				y: 6,
+				r: Math.PI / 8,
+				shape: gb2d.BOX,
+				type: gb2d.FIXED_OBJECT,
+				width: 8,
+				height: 1,
+			});
+
+			// Anohter box but this time a rigid body.
+			world.makeObject(id++, {
+				x: 2,
+				y: 2,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 1,
+				height: 1,
+				mass: 0.2,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
 }
 
 export default examples;
