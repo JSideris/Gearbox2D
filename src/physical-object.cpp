@@ -130,7 +130,7 @@ void PhysicalObject::setVelocity(Vec2 v) { setVelocityX(v.x); setVelocityY(v.y);
 
 // Read only stuff.
 int PhysicalObject::getId() const { return id; }
-float PhysicalObject::getRadius() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R]; }
+float PhysicalObject::getRadius() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RADIUS]; }
 float PhysicalObject::getWidth() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_W]; }
 float PhysicalObject::getHeight() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_H]; }
 

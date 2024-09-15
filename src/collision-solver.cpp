@@ -350,8 +350,10 @@ bool CollisionSolver::_solveBoxBox() {
     }
 
     // Compute the contact point (optional, approximate it)
+    // TODO: this approximation is not accurate.
+    // I recommend doing a rework. This will require computig multiple collision points.
     Vec2 contactPoint = Vec2((xA + xB) / 2, (yA + yB) / 2);  // Midpoint approximation
-
+ 
     // Store the collision info
     collisions.push_back(CollisionInfo{
         true,                      // Collision detected

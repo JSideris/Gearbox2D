@@ -13,6 +13,7 @@
         "variant": "cpp",
         "type_traits": "cpp",
         "cmath": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "memory": "cpp"
     }
 }

@@ -326,7 +326,7 @@ const examples = {
 				let r = .2 + m*m * .8;
 				let h = 0.1 + Math.random() * (r - 0.1);
 				let w = r * r / h;
-				let isBox = Math.random() < 0.5;
+				let isBox = false; //Math.random() < 0.5;
 				world.makeObject(nextId++, {
 					x: 5.00 - dir * 5.00,
 					y: 7.50,
@@ -636,7 +636,7 @@ const examples = {
 		}
 	}),
 	tc4: new Example({
-		description: "The collision in this test is somewhat puzzling since hte object seems to receive angular velocity in the wrong direction.",
+		description: "SOLVED: The collision in this test is somewhat puzzling since hte object seems to receive angular velocity in the wrong direction.",
 		onInit: (gb2d, world)=>{
 			world.setGravity(0, 0);
 
@@ -669,7 +669,7 @@ const examples = {
 		}
 	}),
 	tc5: new Example({
-		description: "Even the slightest rs for the moving circle causes a dramatic difference in the resulting collision response. If commenting out rs, the collision is completely linear in the diagonal direction. If setting rs to 10, the collision is the nearly identical to an rs of 0.01.",
+		description: "SOLVED: Even the slightest rs for the moving circle causes a dramatic difference in the resulting collision response. If commenting out rs, the collision is completely linear in the diagonal direction. If setting rs to 10, the collision is the nearly identical to an rs of 0.01.",
 		onInit: (gb2d, world)=>{
 			world.setGravity(0, 0);
 
@@ -702,15 +702,48 @@ const examples = {
 	}),
 
 	tc6: new Example({
-		description: "Incorrect normal vector applied during certain box-box collisions.",
+		description: "Incorrect response impulse applied during certain box-box collisions. Likely due to an error in the contact point calculation. Reccomend doing an edge clipping technique.",
 		onInit: (gb2d, world)=>{
 			world.setGravity(0, 10);
+			world.setHasFriction(false);
 
 			let id = 1;
 			world.makeObject(id++, {
 				x: 5,
 				y: 6,
 				r: Math.PI / 8,
+				shape: gb2d.BOX,
+				type: gb2d.FIXED_OBJECT,
+				width: 8,
+				height: 1,
+			});
+
+			// Anohter box but this time a rigid body.
+			world.makeObject(id++, {
+				x: 2,
+				y: 2,
+				shape: gb2d.BOX,
+				type: gb2d.RIGID_BODY,
+				width: 1,
+				height: 1,
+				mass: 0.2,
+			});
+		},
+		onTick: (gb2d, world, dt)=>{
+		}
+	}),
+
+	tc7: new Example({
+		description: "Friction applies an incorrect vector to certain collisions. Likely due to an incorrect normal vector. Problem doesn't happen when restitution is off, so this could be a symptom of TC-6.",
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 10);
+			// world.setHasRestitution(false);
+
+			let id = 1;
+			world.makeObject(id++, {
+				x: 5,
+				y: 6,
+				// r: Math.PI / 8,
 				shape: gb2d.BOX,
 				type: gb2d.FIXED_OBJECT,
 				width: 8,

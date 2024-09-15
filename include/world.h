@@ -32,6 +32,10 @@ private:
 
 	Vec2 gravity = Vec2(0.0f, 0.0f);  // Default gravity vector
 
+    bool hasPenetrationResolution = true;
+    bool hasRestitution = true;
+    bool hasFriction = true;
+
 public:
 
 	std::vector<float> liveFloatData;  // x1, y1, r1, xs1, ys1, rs1, mass, fx, fy, ix, iy  x2, ...
@@ -55,6 +59,10 @@ public:
 
     void setTimeStep(float dt);
 
+    void setHasPenetrationResolution(bool value);
+    void setHasRestitution(bool value);
+    void setHasFriction(bool value);
+
     void setGravity(float x, float y);
 
     int findeIndexForObject(int id);
@@ -77,7 +85,7 @@ public:
     void _doNarrowPhase();
     void _doResolution();
     void __doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
-    void __doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
+    void __doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
     void __doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
 
 	void clear();

@@ -119,7 +119,11 @@ EMSCRIPTEN_BINDINGS(world) {
 
         .function("step", &World::step)
         .function("clear", &World::clear)
-        .function("destroy", &World::destroy);
+        .function("destroy", &World::destroy)
+
+        .function("setHasPenetrationResolution", &World::setHasPenetrationResolution)
+        .function("setHasRestitution", &World::setHasRestitution)
+        .function("setHasFriction", &World::setHasFriction);
 }
 
 #endif

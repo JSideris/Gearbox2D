@@ -35,6 +35,8 @@ int World::makeObject(int id, emscripten_val options){
     auto * bvhNode = bvh.insert(object->aabb, object);
     object->bvhNode = bvhNode;
 
+    // cout << object->getRadius() << endl;
+
     return object->worldIndex;
 }
 
@@ -213,10 +215,9 @@ void World::_doResolution(){
         PhysicalObject* objA = objectsList[collisionInfo.indexA];
         PhysicalObject* objB = objectsList[collisionInfo.indexB];
 
-        // SEPARATION STEP
-        __doPenetrationResolution(collisionInfo, objA, objB);
-        __doCollisionImpulse(collisionInfo, objA, objB);
-        __doCollisionFriction(collisionInfo, objA, objB);
+        if(hasPenetrationResolution) __doPenetrationResolution(collisionInfo, objA, objB);
+        if(hasRestitution) __doRestitution(collisionInfo, objA, objB);
+        if(hasFriction) __doCollisionFriction(collisionInfo, objA, objB);
     }
 }
 
@@ -227,11 +228,6 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
     float imA = objA->getInverseMass();
     float imB = objB->getInverseMass();
     float totalInverseMass = imA + imB;
-
-    // cout << objA->getMass() << endl;
-    // cout << objA->getInverseMass() << endl;
-    // cout << objB->getMass() << endl;
-    // cout << objB->getInverseMass() << endl;
 
     if(totalInverseMass == 0.0f){
         return;
@@ -245,17 +241,13 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
         Vec2 cpA = pA - correction * imA;
         Vec2 cpB = pB + correction * imB;
 
-        // cout << static_cast<int>(std::round((collisionInfo.penetrationDepth / totalInverseMass) * 1000)) << endl;
-        // cout << collisionInfo.normal.y << endl;
-        // cout << static_cast<int>(std::round(correction.magnitude() * 1000)) << endl;
-
         objA->setPosition(cpA);
         objB->setPosition(cpB);
     }
 }
 
 // 4.b. Collision impulse.
-void World::__doCollisionImpulse(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
+void World::__doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
     float totalInverseMass = objA->getInverseMass() + objB->getInverseMass();
     
     // Relative velocity.
@@ -365,3 +357,8 @@ void World::clear() {
 void World::destroy(){
     delete this;
 }
+
+
+void World::setHasPenetrationResolution(bool value){ hasPenetrationResolution = value; }
+void World::setHasRestitution(bool value){ hasRestitution = value; }
+void World::setHasFriction(bool value){ hasFriction = value; }

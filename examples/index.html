@@ -155,6 +155,7 @@
             <li class="example" data-example="masking">Masking</li>
 
             <li class="section">Capabilities</li>
+            <li class="example" data-example="true-drag">True Drag</li>
             <li class="example" data-example="buoyancy">Buoyancy</li>
             <li class="example" data-example="sleep">Sleep</li>
             <li class="example" data-example="teleporting">Teleporting</li>
@@ -175,9 +176,10 @@
             <!-- <li class="example" data-example="tc1">TC-1</li>
             <li class="example" data-example="tc2">TC-2</li> -->
             <li class="example" data-example="tc3">TC-3</li>
-            <li class="example" data-example="tc4">TC-4</li>
-            <li class="example" data-example="tc5">TC-5</li>
+            <!-- <li class="example" data-example="tc4">TC-4</li> -->
+            <!-- <li class="example" data-example="tc5">TC-5</li> -->
             <li class="example" data-example="tc6">TC-6</li>
+            <li class="example" data-example="tc7">TC-7</li>
         </ul>
     </div>
     <div id="main">
@@ -297,22 +299,9 @@ gb2d.init().then(()=>{
 
             gb2d.enableDebugGraphics(canvas, world);
             // loadExample("hello-world");
-            let defaultLi = document.getElementsByClassName("selected")[0];
-
-            let hash = window.location.hash.substring(1);
-            let allLi = document.getElementsByClassName("example");
-            let hashLi = null;
-            for(let i = 0; i < allLi.length; i++){
-                if(allLi[i].getAttribute("data-example") == hash){
-                    hashLi = allLi[i];
-                    break;
-                }
-            }
-            if(hashLi){
-                defaultLi.classList.remove("selected");
-                hashLi.classList.add("selected");
-            }
-            loadExample(hash || defaultLi?.getAttribute("data-example") || "hello-world");
+            
+            
+            loadExampleFromHash();
         });
 
         function loadExample(exampleName) {
@@ -324,6 +313,9 @@ gb2d.init().then(()=>{
             }
 
             world.clear();
+            world.setHasPenetrationResolution(true);
+            world.setHasRestitution(true);
+            world.setHasFriction(true);
             world.setGravity(0,0);
             currentExample = exampleName;
             examples[currentExample]?.init(gb2d, world);
@@ -344,6 +336,24 @@ gb2d.init().then(()=>{
             document.getElementById("description").innerHTML = examples[currentExample]?.description?.split("\n").join("<br/>") || "";
         }
 
+        function loadExampleFromHash(){
+            let hash = window.location.hash.substring(1);
+            let defaultLi = document.getElementsByClassName("selected")[0];
+            let allLi = document.getElementsByClassName("example");
+            let hashLi = null;
+            for(let i = 0; i < allLi.length; i++){
+                if(allLi[i].getAttribute("data-example") == hash){
+                    hashLi = allLi[i];
+                    break;
+                }
+            }
+            if(hashLi){
+                defaultLi.classList.remove("selected");
+                hashLi.classList.add("selected");
+            }
+            loadExample(hash || defaultLi?.getAttribute("data-example") || "hello-world");
+        }
+
         exampleItems.forEach(item => {
             if (item.classList.contains("section")) return;
             item.addEventListener("click", () => {
@@ -354,15 +364,9 @@ gb2d.init().then(()=>{
             });
         });
 
-        // toggleCode.addEventListener("click", () => {
-        //     if (codeSection.style.display === "none") {
-        //         codeSection.style.display = "flex";
-        //         toggleCode.textContent = "Hide Code";
-        //     } else {
-        //         codeSection.style.display = "none";
-        //         toggleCode.textContent = "Show Code";
-        //     }
-        // });
+        window.addEventListener('popstate', function(event) {
+            loadExampleFromHash();
+        });
 
     </script>
 </body>
