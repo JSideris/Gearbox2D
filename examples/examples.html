@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GearBox2D Examples</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #sidebar {
+            width: 250px;
+            background-color: #333;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        #sidebar h2 {
+            margin: 0;
+            padding: 10px;
+            background-color: #444;
+            text-align: center;
+        }
+        #sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        #sidebar li.example {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #444;
+        }
+        #sidebar li.example.selected {
+            background-color: #558;
+        }
+        #sidebar li.example:hover {
+            background-color: #555;
+        }
+        #sidebar li.section {
+            padding: 4px;
+            background-color: #543c23;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            border-top-right-radius: 4px;
+            border-top-left-radius: 4px;
+        }
+        #main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* justify-content: center; */
+            background-color: #f0f0f0;
+            position: relative;
+            overflow-y: auto;
+        }
+        #main h1 {
+            margin: 20px 0;
+            font-size: 24px;
+        }
+        #debug-canvas {
+            border: 1px solid #ccc;
+            background-color: white;
+        }
+        #metrics {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        #code-section {
+            width: 80%;
+            background-color: #f8f8f8;
+            padding: 10px;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            /* max-height: 300px; */
+            /* overflow-y: auto; */
+            /* display: none; */
+            flex-direction: column;
+        }
+        #code-section pre {
+            margin: 0;
+            padding: 0;
+            font-family: monospace;
+            font-size: 14px;
+            background-color: #e8e8e8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #toggle-code {
+            cursor: pointer;
+            color: #007BFF;
+            text-decoration: underline;
+            margin-top: 10px;
+        }
+        #toggle-code:hover {
+            color: #0056b3;
+        }
+
+        #description{
+            /* width: 80%; */
+            padding: 10px;
+            margin-top: 20px;
+            max-width: 1000px;
+            
+            font-style: italic;
+            /* border: 1px solid #ccc; */
+            /* border-radius: 4px; */
+            /* background-color: #f8f8f8; */
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>Examples</h2>
+        <ul>
+            <li class="section">General</li>
+            <li class="example selected" data-example="hello-world">Hello World</li>
+            <li class="example" data-example="shapes">Shapes</li>
+            <!-- <li class="example" data-example="center-of-mass">Center of Mass</li> -->
+            <li class="example" data-example="force">Force</li>
+            <li class="example" data-example="torque">Torque</li>
+            <li class="example" data-example="impulse">Impulse</li>
+            <li class="example" data-example="gravity">Gravity</li>
+            <li class="example" data-example="bounce">Bounce</li>
+            <li class="example" data-example="collisions">Collisions</li>
+            <li class="example" data-example="friction">Friction</li>
+            
+            <li class="section">Advanced</li>
+            <li class="example" data-example="composite">Composite</li>
+            <li class="example" data-example="interactive">Interactive</li>
+            <li class="example" data-example="distance-constraint">Distance Constraint</li>
+            <li class="example" data-example="spring-constraint">Spring Constraint</li>
+            <li class="example" data-example="hinge-constraint">Hinge Constraint</li>
+            <li class="example" data-example="collision-events">Collision Events</li>
+            <li class="example" data-example="breakable-constraints">Breakable Constraints</li>
+            <li class="example" data-example="masking">Masking</li>
+
+            <li class="section">Capabilities</li>
+            <li class="example" data-example="true-drag">True Drag</li>
+            <li class="example" data-example="buoyancy">Buoyancy</li>
+            <li class="example" data-example="sleep">Sleep</li>
+            <li class="example" data-example="teleporting">Teleporting</li>
+            <li class="example" data-example="teleporting-on-spring">Teleporting on Spring</li>
+            <li class="example" data-example="resize">Resize</li>
+            <li class="example" data-example="dynamic">Dynamic Object</li>
+            <li class="example" data-example="anti-tunneling">Anti Tunneling</li>
+            
+            <li class="section">Applications</li>
+            <li class="example" data-example="pong">Pong</li>
+
+            <li class="section">Load Testing</li>
+            <li class="example" data-example="particles">Particles</li>
+            <li class="example" data-example="rain">Rain</li>
+            <li class="example" data-example="washing-machine">Washing Machine</li>
+            
+            <li class="section">Known Issues</li>
+            <!-- <li class="example" data-example="tc1">TC-1</li>
+            <li class="example" data-example="tc2">TC-2</li> -->
+            <li class="example" data-example="tc3">TC-3</li>
+            <!-- <li class="example" data-example="tc4">TC-4</li> -->
+            <!-- <li class="example" data-example="tc5">TC-5</li> -->
+            <li class="example" data-example="tc6">TC-6</li>
+            <li class="example" data-example="tc7">TC-7</li>
+            <li class="example" data-example="tc8">TC-8</li>
+        </ul>
+    </div>
+    <div id="main">
+        <h1 id="example-name">Please wait...</h1>
+        <canvas id="debug-canvas" width="1000" height="1000"></canvas>
+        <div id="description"></div>
+        <div id="metrics">
+            <div id="fps">FPS: 0</div>
+            <div id="memory">Memory: 0 MB</div>
+            <div id="step-time">Step Time: 0 μs</div>
+        </div>
+        <div id="code-section">
+            <div><strong>General Setup:</strong></div>
+            <pre id="general-code"></pre>
+            <br />
+            <div><strong>Init Function:</strong></div>
+            <pre id="init-code"></pre>
+            <br />
+            <div><strong>Tick Function:</strong></div>
+            <pre id="tick-code"></pre>
+        </div>
+        <div id="toggle-code">Show/Hide Code</div>
+    </div>
+    <script type="module">
+        import gb2d from '../lib/gb2d.js';
+        import examples from "./examples.js";
+
+        let generalSetupTemplate = `
+import gb2d from "gb2d";
+
+let world;
+{{GLOBAL}}
+gb2d.init().then(()=>{
+    world = gb2d.makeWorld();
+    
+    // Optional:
+    gb2d.enableDebugGraphics(document.getElementById("debug-canvas"), world);
+
+    init();
+    setInterval(()=>{
+        tick(1/60);
+        world.step();
+    }, 1000/60);
+})
+`.trim();
+
+        let world;
+        let lastTime = 0;
+        let h1 = document.getElementById("example-name");
+        let canvas = document.getElementById("debug-canvas");
+        let exampleItems = document.querySelectorAll("#sidebar li");
+        let currentExample = null;
+        let codeSection = document.getElementById("code-section");
+        let generalCodePre = document.getElementById("general-code");
+        let initCodePre = document.getElementById("init-code");
+        let tickCodePre = document.getElementById("tick-code");
+        let toggleCode = document.getElementById("toggle-code");
+        let fpsDiv = document.getElementById("fps");
+        let memoryDiv = document.getElementById("memory");
+        let stepTimeDiv = document.getElementById("step-time");
+        h1.innerHTML = "Please wait...";
+
+        let dataPtr = 0;
+        let animTimeData = [];
+        let memoryData = [];
+        let stepTimeData = [];
+
+        let avgAnimFrame = 1000;
+        let avgMemory = 0;
+        let avgStepTime = 0;
+
+        gb2d.init().then(() => {
+            // world = new gb2d.World();
+            world = gb2d.makeWorld();
+
+            function animate() {
+                const now = performance.now();
+                const elapsed = now - lastTime;
+
+                // Correct for timing drift
+                const timeout = Math.max(0, 17 - elapsed);
+                setTimeout(() => {
+                    const startTime = performance.now();
+
+                    world.step();
+                    examples[currentExample]?.tick(gb2d, world, elapsed / 1000);
+
+                    const endTime = performance.now();
+                    const stepTime = (endTime - startTime) * 1000;
+
+                    // Update metrics
+
+                    let removedAnimTime = animTimeData[dataPtr % 100] ?? 1000;
+                    let removedMemory = memoryData[dataPtr % 100] ?? 0;
+                    let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
+
+                    animTimeData[dataPtr % 100] = gb2d.debugFrameTime ?? 0;
+                    memoryData[dataPtr % 100] = performance.memory.usedJSHeapSize / 1048576;
+                    stepTimeData[dataPtr % 100] = stepTime;
+
+                    avgAnimFrame += (animTimeData[dataPtr % 100] - removedAnimTime) / 100;
+                    avgMemory += (memoryData[dataPtr % 100] - removedMemory) / 100;
+                    avgStepTime += (stepTimeData[dataPtr % 100] - removedStepTime) / 100;
+
+                    dataPtr++;
+
+                    fpsDiv.textContent = `Canvas FPS: ${Math.round(1000 / avgAnimFrame)}`;
+                    memoryDiv.textContent = `Memory: ${avgMemory.toFixed(2)} MB`;
+                    stepTimeDiv.textContent = `Step Time: ${avgStepTime.toFixed(0)} μs`;
+
+                    lastTime = now;
+                    requestAnimationFrame(animate);
+                }, timeout);
+            }
+
+            requestAnimationFrame(animate);
+
+            gb2d.enableDebugGraphics(canvas, world);
+            // loadExample("hello-world");
+            
+            
+            loadExampleFromHash();
+        });
+
+        function loadExample(exampleName) {
+            if (!world) return;
+
+            // window.location.hash = exampleName;
+            if(window.location.hash != '#' + exampleName){
+                history.pushState(null, '', '#' + exampleName);
+            }
+
+            world.clear();
+            world.setHasPenetrationResolution(true);
+            world.setHasRestitution(true);
+            world.setHasFriction(true);
+            world.setGravity(0,0);
+            currentExample = exampleName;
+            examples[currentExample]?.init(gb2d, world);
+
+            // Display the init and tick code
+
+            let globalLines = (examples[currentExample]?.globalLines?.join("\n") ?? "");
+            let initCode = ("        " + (examples[currentExample]?.onInit?.toString()?.split("\t").join("    ").split("(gb2d, world)=>{").join("function init(){") || 'function init(){}')).split("\n").map(l=>l.substring(8)).join("\n");
+            let tickCode = ("        " + (examples[currentExample]?.onTick?.toString()?.split("\t").join("    ").split("(gb2d, world, dt)=>{").join("function tick(dt){") || 'function tick(dt){}')).split("\n").map(l=>l.substring(8)).join("\n");
+
+            generalCodePre.textContent = (generalSetupTemplate.split("{{GLOBAL}}").join(globalLines));
+            initCodePre.textContent = initCode.trim();
+            tickCodePre.textContent = tickCode.trim();
+
+            let li = document.getElementsByClassName("selected")[0];
+            h1.textContent = li?.innerHTML;
+
+            document.getElementById("description").innerHTML = examples[currentExample]?.description?.split("\n").join("<br/>") || "";
+        }
+
+        function loadExampleFromHash(){
+            let hash = window.location.hash.substring(1);
+            let defaultLi = document.getElementsByClassName("selected")[0];
+            let allLi = document.getElementsByClassName("example");
+            let hashLi = null;
+            for(let i = 0; i < allLi.length; i++){
+                if(allLi[i].getAttribute("data-example") == hash){
+                    hashLi = allLi[i];
+                    break;
+                }
+            }
+            if(hashLi){
+                defaultLi.classList.remove("selected");
+                hashLi.classList.add("selected");
+            }
+            loadExample(hash || defaultLi?.getAttribute("data-example") || "hello-world");
+        }
+
+        exampleItems.forEach(item => {
+            if (item.classList.contains("section")) return;
+            item.addEventListener("click", () => {
+                document.getElementsByClassName("selected")[0].classList.remove("selected");
+                item.classList.add("selected");
+                const exampleName = item.getAttribute("data-example");
+                loadExample(exampleName);
+            });
+        });
+
+        window.addEventListener('popstate', function(event) {
+            loadExampleFromHash();
+        });
+
+    </script>
+</body>
+</html>

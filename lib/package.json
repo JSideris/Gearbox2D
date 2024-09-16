@@ -1,0 +1,30 @@
+{
+  "name": "gearbox2d",
+  "version": "0.0.1",
+  "description": "High-Speed 2D Physics Engine powered by WebAssembly.",
+  "main": "gb2d.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JSideris/Gearbox2D.git"
+  },
+  "keywords": [
+    "physics",
+    "2d",
+    "game",
+    "engine",
+    "simulation",
+    "\"rigid",
+    "body\"",
+    "tool",
+    "wasm"
+  ],
+  "author": "Joshua Sideris",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JSideris/Gearbox2D/issues"
+  },
+  "homepage": "https://github.com/JSideris/Gearbox2D#readme"
+}

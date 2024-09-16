@@ -764,6 +764,72 @@ const examples = {
 		onTick: (gb2d, world, dt)=>{
 		}
 	}),
+
+	tc8: new Example({
+		description: [
+			"Circle collisions sometimes glitch."
+		].join("\n\n"),
+		globalLines: ["let nextId = 1;"],
+		onInit: (gb2d, world)=>{
+			world.setGravity(0, 10);
+			impulseTimer = 0;
+
+			// Objects will be created in the tick function.
+		},
+		// Once collisions are a bit more stable, the number of colliding objects can be doubled.
+		onTick: (gb2d, world, dt)=>{
+			impulseTimer++;
+			if(impulseTimer % 60 == 0){
+				let m = .1 + Math.random() * .4;
+				let r = .2 + m*m * .8;
+				world.makeObject(nextId++, {
+					x: 0,
+					y: 7.50,
+					r: Math.PI / 2 * Math.random(),
+					rs: (Math.random() - 0.5) * 5.00,
+					vx: (2.00 + Math.random() * 5.00) * 1,
+					vy: -6.00 - Math.random() * 1.00,
+					shape: gb2d.CIRCLE,
+					type: gb2d.RIGID_BODY,
+					radius: r,
+					mass: m, 
+				});
+
+				m = .1 + Math.random() * .4;
+				r = .2 + m*m * .8;
+				world.makeObject(nextId++, {
+					x: 10,
+					y: 7.50,
+					r: Math.PI / 2 * Math.random(),
+					rs: (Math.random() - 0.5) * 5.00,
+					vx: (2.00 + Math.random() * 5.00) * -1,
+					vy: -6.00 - Math.random() * 1.00,
+					shape: gb2d.CIRCLE,
+					type: gb2d.RIGID_BODY,
+					radius: r,
+					mass: m, 
+				});
+
+				// Scan for objects that are out of bounds and remove them.
+				// Another way to do this would be to use collision events.
+				let objectCount = world.objectCount;
+				let toRemove = [];
+
+				world.iterateObjects(obj=>{
+					
+					if(obj.y > 10.50){
+						// Don't remove stuff in the middle of the loop!!!
+						toRemove.push(obj);
+					}
+				});
+
+				// Now remove everything we found that's out of bounds.
+				for(let obj of toRemove){
+					world.removeObject(obj.id);
+				}
+			}
+		}
+	}),
 }
 
 export default examples;
