@@ -300,13 +300,25 @@ void World::__doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* 
 
     // If the object is nearly stationary in the tangential direction, apply static friction
     if (tangentialVelocity.magnitude() < 0.001f) {
-        // Static friction case: cancel out the tangential velocity
-        float maxStaticFriction = min(objA->getStaticFriction(), objB->getStaticFriction());
-        Vec2 staticFrictionImpulse = tangentialVelocity * -maxStaticFriction;
+        // No need to apply friction if the objects are not sliding
+        return; 
 
-        // Apply static friction (impulse)
-        objA->applyImpulse(staticFrictionImpulse, collisionInfo.contactPoint - objA->getPosition());
-        objB->applyImpulse(staticFrictionImpulse * -1.0f, collisionInfo.contactPoint - objB->getPosition());
+        // TODO:
+        // If we do need to handle cases where other forces would cause sliding after
+        // the collision, we must:
+        // 1. Calculate the impulse needed to prevent sliding
+        // 2. Cap it by the max static friction (μₛ * normal force)
+        // 3. Apply it with opposite signs to each object
+
+        // Old code:
+
+        // // Static friction case: cancel out the tangential velocity
+        // float maxStaticFriction = min(objA->getStaticFriction(), objB->getStaticFriction());
+        // Vec2 staticFrictionImpulse = tangentialVelocity * -maxStaticFriction;
+
+        // // Apply static friction (impulse)
+        // objA->applyImpulse(staticFrictionImpulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
+        // objB->applyImpulse(staticFrictionImpulse, collisionInfo.contactPoint - objB->getPosition());
     } else {
         // Dynamic friction case: reduce sliding velocity
         float frictionCoefficient = min(objA->getKineticFriction(), objB->getKineticFriction());

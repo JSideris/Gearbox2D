@@ -280,14 +280,16 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
         world.liveFloatData[index + FDATA_VY] += y * inverseMass;
 
         // float torque = contactPoint.cross(impulse);  // 2D cross product gives scalar torque
-        float torque = cpX * y - cpY * x;
+        // float torque = cpX * y - cpY * x; // this one might be backwards.
+        float torque = x * cpY - y * cpX;
 
         // obj.angularVelocity += torque / objA.momentOfInertia;
 
         // Temporary approximation for moment of inertia.
         // TODO: this could be computed per shape!
+        // For instance, I = (1/2) * m * r²
         float momentOfInertia = world.liveFloatData[index + FDATA_M];
-        world.liveFloatData[index + FDATA_RS] += torque / momentOfInertia;
+        world.liveFloatData[index + FDATA_RS] -= torque / momentOfInertia;
     }
 }
 

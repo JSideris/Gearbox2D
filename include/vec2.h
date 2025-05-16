@@ -74,6 +74,12 @@ public:
 
         return Vec2(xRot, yRot);
     }
+
+    
+    // Returns a perpendicular vector (90 degrees counterclockwise)
+    Vec2 perp() const {
+        return Vec2(-y, x);
+    }
 };
 
 

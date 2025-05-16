@@ -1,29 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GearBox2D Examples</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
     <style>
-        body {
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --secondary: #3f37c9;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --gray-100: #f8f9fa;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-400: #ced4da;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+            --section-bg: #4cc9f0;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            --transition: all 0.2s ease;
+        }
+
+        * {
             margin: 0;
-            font-family: Arial, sans-serif;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
             display: flex;
             height: 100vh;
             overflow: hidden;
+            background-color: var(--light);
+            color: var(--gray-800);
         }
+
         #sidebar {
-            width: 250px;
-            background-color: #333;
-            color: white;
+            width: 280px;
+            background-color: var(--gray-800);
+            color: var(--light);
             display: flex;
             flex-direction: column;
-            padding: 10px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            transition: var(--transition);
         }
-        #sidebar h2 {
+
+        #sidebar-header {
+            padding: 20px;
+            background-color: var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #sidebar-header h2 {
             margin: 0;
-            padding: 10px;
-            background-color: #444;
-            text-align: center;
+            font-weight: 600;
+            font-size: 1.2rem;
         }
+
+        #sidebar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--light);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
         #sidebar ul {
             list-style-type: none;
             padding: 0;
@@ -31,179 +87,363 @@
             flex-grow: 1;
             overflow-y: auto;
         }
+
+        #sidebar ul::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #sidebar ul::-webkit-scrollbar-track {
+            background: var(--gray-700);
+        }
+
+        #sidebar ul::-webkit-scrollbar-thumb {
+            background-color: var(--gray-500);
+            border-radius: 3px;
+        }
+
         #sidebar li.example {
-            padding: 10px;
+            padding: 12px 20px;
             cursor: pointer;
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid var(--gray-700);
+            transition: var(--transition);
+            font-size: 0.95rem;
         }
+
         #sidebar li.example.selected {
-            background-color: #558;
+            background-color: var(--primary);
+            color: white;
+            position: relative;
         }
-        #sidebar li.example:hover {
-            background-color: #555;
+
+        #sidebar li.example.selected::after {
+            content: '';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: white;
         }
+
+        #sidebar li.example:hover:not(.selected) {
+            background-color: var(--gray-700);
+        }
+
         #sidebar li.section {
-            padding: 4px;
-            background-color: #543c23;
-            color: #ffffff;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 10px;
-            border-top-right-radius: 4px;
-            border-top-left-radius: 4px;
+            padding: 10px 15px;
+            background-color: var(--section-bg);
+            color: var(--gray-900);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+            border-bottom: none;
         }
+
         #main {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            /* justify-content: center; */
-            background-color: #f0f0f0;
+            background-color: var(--light);
             position: relative;
-            overflow-y: auto;
-        }
-        #main h1 {
-            margin: 20px 0;
-            font-size: 24px;
-        }
-        #debug-canvas {
-            border: 1px solid #ccc;
-            background-color: white;
-        }
-        #metrics {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 200px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 14px;
-            z-index: 1000;
-        }
-        #code-section {
-            width: 80%;
-            background-color: #f8f8f8;
-            padding: 10px;
-            margin-top: 20px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            /* max-height: 300px; */
-            /* overflow-y: auto; */
-            /* display: none; */
-            flex-direction: column;
-        }
-        #code-section pre {
-            margin: 0;
-            padding: 0;
-            font-family: monospace;
-            font-size: 14px;
-            background-color: #e8e8e8;
-            padding: 10px;
-            border-radius: 4px;
+            overflow-y: scroll;
             overflow-x: auto;
         }
-        #toggle-code {
-            cursor: pointer;
-            color: #007BFF;
-            text-decoration: underline;
-            margin-top: 10px;
-        }
-        #toggle-code:hover {
-            color: #0056b3;
+
+        #main-header {
+            padding: 20px;
+            background-color: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+            position: sticky;
+            top: 0;
         }
 
-        #description{
-            /* width: 80%; */
-            padding: 10px;
-            margin-top: 20px;
-            max-width: 1000px;
-            
-            font-style: italic;
-            /* border: 1px solid #ccc; */
-            /* border-radius: 4px; */
-            /* background-color: #f8f8f8; */
+        #main-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        #content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: max-content;
+        }
+
+        #canvas-container {
+            position: relative;
+            margin: 10px 0 30px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            width: 1000px;
+            height: 1000px;
+            flex-shrink: 0; /* Prevent canvas from shrinking */
+        }
+
+        #debug-canvas {
+            background-color: white;
+            display: block;
+            width: 1000px;
+            height: 1000px;
+        }
+
+        #metrics {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        #metrics div {
+            margin: 4px 0;
+        }
+
+        #metrics div i {
+            width: 20px;
+            margin-right: 8px;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        #description {
+            max-width: 800px;
+            width: 100%;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            line-height: 1.6;
+            color: var(--gray-700);
+            font-size: 0.95rem;
+            flex-shrink: 0; /* Prevent description from shrinking */
+        }
+
+        #code-container {
+            max-width: 800px;
+            width: 100%;
+            margin-bottom: 30px;
+            flex-shrink: 0; /* Prevent code container from shrinking */
+        }
+
+        #code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background-color: var(--gray-800);
+            color: white;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        #code-header-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        #toggle-code {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        #toggle-code i {
+            margin-left: 8px;
+            transition: var(--transition);
+        }
+
+        #code-tabs {
+            display: flex;
+            background-color: var(--gray-700);
+        }
+
+        .code-tab {
+            padding: 10px 20px;
+            background-color: var(--gray-700);
+            color: var(--gray-300);
+            cursor: pointer;
+            border: none;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .code-tab.active {
+            background-color: var(--gray-600);
+            color: white;
+        }
+
+        .code-tab:hover:not(.active) {
+            background-color: var(--gray-600);
+        }
+
+        #code-section {
+            background-color: var(--gray-900);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .code-panel {
+            display: none;
+            padding: 20px;
+        }
+
+        .code-panel.active {
+            display: block;
+        }
+
+        .code-panel pre {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--gray-300);
+            overflow-x: auto;
+            line-height: 1.5;
+            background-color: var(--gray-900);
+        }
+
+        /* Override highlight.js background */
+        .hljs {
+            background: var(--gray-900) !important;
+            padding: 0 !important;
+        }
+
+        .code-panel pre::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .code-panel pre::-webkit-scrollbar-track {
+            background: var(--gray-800);
+        }
+
+        .code-panel pre::-webkit-scrollbar-thumb {
+            background-color: var(--gray-600);
+            border-radius: 4px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 50vh;
+            }
+
+            #sidebar-toggle {
+                display: block;
+            }
+
+            #sidebar.collapsed ul {
+                display: none;
+            }
+
+            #sidebar.collapsed {
+                max-height: 60px;
+            }
+
+            #canvas-container {
+                width: 1000px;
+                height: 1000px;
+                max-width: none;
+                overflow: visible;
+                flex-shrink: 0;
+            }
         }
     </style>
 </head>
 <body>
     <div id="sidebar">
-        <h2>Examples</h2>
-        <ul>
-            <li class="section">General</li>
-            <li class="example selected" data-example="hello-world">Hello World</li>
-            <li class="example" data-example="shapes">Shapes</li>
-            <!-- <li class="example" data-example="center-of-mass">Center of Mass</li> -->
-            <li class="example" data-example="force">Force</li>
-            <li class="example" data-example="torque">Torque</li>
-            <li class="example" data-example="impulse">Impulse</li>
-            <li class="example" data-example="gravity">Gravity</li>
-            <li class="example" data-example="bounce">Bounce</li>
-            <li class="example" data-example="collisions">Collisions</li>
-            <li class="example" data-example="friction">Friction</li>
-            
-            <li class="section">Advanced</li>
-            <li class="example" data-example="composite">Composite</li>
-            <li class="example" data-example="interactive">Interactive</li>
-            <li class="example" data-example="distance-constraint">Distance Constraint</li>
-            <li class="example" data-example="spring-constraint">Spring Constraint</li>
-            <li class="example" data-example="hinge-constraint">Hinge Constraint</li>
-            <li class="example" data-example="collision-events">Collision Events</li>
-            <li class="example" data-example="breakable-constraints">Breakable Constraints</li>
-            <li class="example" data-example="masking">Masking</li>
-
-            <li class="section">Capabilities</li>
-            <li class="example" data-example="true-drag">True Drag</li>
-            <li class="example" data-example="buoyancy">Buoyancy</li>
-            <li class="example" data-example="sleep">Sleep</li>
-            <li class="example" data-example="teleporting">Teleporting</li>
-            <li class="example" data-example="teleporting-on-spring">Teleporting on Spring</li>
-            <li class="example" data-example="resize">Resize</li>
-            <li class="example" data-example="dynamic">Dynamic Object</li>
-            <li class="example" data-example="anti-tunneling">Anti Tunneling</li>
-            
-            <li class="section">Applications</li>
-            <li class="example" data-example="pong">Pong</li>
-
-            <li class="section">Load Testing</li>
-            <li class="example" data-example="particles">Particles</li>
-            <li class="example" data-example="rain">Rain</li>
-            <li class="example" data-example="washing-machine">Washing Machine</li>
-            
-            <li class="section">Known Issues</li>
-            <!-- <li class="example" data-example="tc1">TC-1</li>
-            <li class="example" data-example="tc2">TC-2</li> -->
-            <li class="example" data-example="tc3">TC-3</li>
-            <!-- <li class="example" data-example="tc4">TC-4</li> -->
-            <!-- <li class="example" data-example="tc5">TC-5</li> -->
-            <li class="example" data-example="tc6">TC-6</li>
-            <li class="example" data-example="tc7">TC-7</li>
-            <li class="example" data-example="tc8">TC-8</li>
+        <div id="sidebar-header">
+            <h2>Examples</h2>
+            <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+        </div>
+        <ul id="examples-list">
+            <!-- Examples will be dynamically generated from the examples.js data -->
         </ul>
     </div>
+    
     <div id="main">
-        <h1 id="example-name">Please wait...</h1>
-        <canvas id="debug-canvas" width="1000" height="1000"></canvas>
-        <div id="description"></div>
-        <div id="metrics">
-            <div id="fps">FPS: 0</div>
-            <div id="memory">Memory: 0 MB</div>
-            <div id="step-time">Step Time: 0 μs</div>
+        <div id="main-header">
+            <h1 id="example-name">Loading example...</h1>
         </div>
-        <div id="code-section">
-            <div><strong>General Setup:</strong></div>
-            <pre id="general-code"></pre>
-            <br />
-            <div><strong>Init Function:</strong></div>
-            <pre id="init-code"></pre>
-            <br />
-            <div><strong>Tick Function:</strong></div>
-            <pre id="tick-code"></pre>
+        
+        <div id="content">
+            <div id="canvas-container">
+                <canvas id="debug-canvas" width="1000" height="1000"></canvas>
+            </div>
+            
+            <div id="metrics">
+                <div id="fps"><i class="fas fa-tachometer-alt"></i>FPS: 0</div>
+                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
+                <div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
+            </div>
+            
+            <div id="description"></div>
+            
+            <div id="code-container">
+                <div id="code-header">
+                    <div id="code-header-title">Example Code</div>
+                    <button id="toggle-code">
+                        <span>Show Code</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                
+                <div id="code-section" style="display: none;">
+                    <div id="code-tabs">
+                        <button class="code-tab active" data-panel="general">Setup</button>
+                        <button class="code-tab" data-panel="init">Init</button>
+                        <button class="code-tab" data-panel="tick">Tick</button>
+                    </div>
+                    
+                    <div class="code-panel active" id="general-panel">
+                        <pre id="general-code"></pre>
+                    </div>
+                    
+                    <div class="code-panel" id="init-panel">
+                        <pre id="init-code"></pre>
+                    </div>
+                    
+                    <div class="code-panel" id="tick-panel">
+                        <pre id="tick-code"></pre>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="toggle-code">Show/Hide Code</div>
     </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
         import gb2d from '../lib/gb2d.js';
         import examples from "./examples.js";
@@ -227,12 +467,71 @@ gb2d.init().then(()=>{
 })
 `.trim();
 
+        // Create data-driven map for faster lookups
+        let examplesMap = {};
+        let currentExample = null;
+        
+        // Function to populate the sidebar from examples data
+        function populateSidebar() {
+            const sidebarList = document.getElementById("examples-list");
+            
+            // Clear any existing content
+            sidebarList.innerHTML = '';
+            
+            // Iterate through each category
+            examples.forEach((category, categoryIndex) => {
+                // Create category header
+                const categoryElement = document.createElement('li');
+                categoryElement.className = 'section';
+                categoryElement.textContent = category.name;
+                sidebarList.appendChild(categoryElement);
+                
+                // Create examples under this category
+                if (category.examples && Array.isArray(category.examples)) {
+                    category.examples.forEach((example, exampleIndex) => {
+                        // Get the example key
+                        const exampleKey = example.key || `${categoryIndex}-${exampleIndex}`;
+                        
+                        // Store in our lookup map
+                        examplesMap[exampleKey] = {
+                            category: categoryIndex,
+                            index: exampleIndex,
+                            example: example
+                        };
+                        
+                        // Create the example element
+                        const exampleElement = document.createElement('li');
+                        exampleElement.className = 'example';
+                        exampleElement.textContent = example.name;
+                        exampleElement.setAttribute('data-example', exampleKey);
+                        
+                        sidebarList.appendChild(exampleElement);
+                    });
+                }
+            });
+            
+            // Add event listeners to the newly created example items
+            document.querySelectorAll("#sidebar li.example").forEach(item => {
+                item.addEventListener("click", () => {
+                    document.querySelectorAll("#sidebar li.example.selected").forEach(el => {
+                        el.classList.remove("selected");
+                    });
+                    item.classList.add("selected");
+                    const exampleKey = item.getAttribute("data-example");
+                    loadExample(exampleKey);
+                    
+                    // Auto-collapse sidebar on mobile
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.add('collapsed');
+                    }
+                });
+            });
+        }
+
         let world;
         let lastTime = 0;
         let h1 = document.getElementById("example-name");
         let canvas = document.getElementById("debug-canvas");
-        let exampleItems = document.querySelectorAll("#sidebar li");
-        let currentExample = null;
         let codeSection = document.getElementById("code-section");
         let generalCodePre = document.getElementById("general-code");
         let initCodePre = document.getElementById("init-code");
@@ -241,8 +540,14 @@ gb2d.init().then(()=>{
         let fpsDiv = document.getElementById("fps");
         let memoryDiv = document.getElementById("memory");
         let stepTimeDiv = document.getElementById("step-time");
-        h1.innerHTML = "Please wait...";
+        let codeTabs = document.querySelectorAll(".code-tab");
+        let codePanels = document.querySelectorAll(".code-panel");
+        let sidebarToggle = document.getElementById("sidebar-toggle");
+        let sidebar = document.getElementById("sidebar");
+        
+        h1.innerHTML = "Loading example...";
 
+        // Metrics tracking
         let dataPtr = 0;
         let animTimeData = [];
         let memoryData = [];
@@ -252,9 +557,10 @@ gb2d.init().then(()=>{
         let avgMemory = 0;
         let avgStepTime = 0;
 
+        // Initialize the physics engine
         gb2d.init().then(() => {
-            // world = new gb2d.World();
             world = gb2d.makeWorld();
+            gb2d.enableDebugGraphics(canvas, world);
 
             function animate() {
                 const now = performance.now();
@@ -266,13 +572,17 @@ gb2d.init().then(()=>{
                     const startTime = performance.now();
 
                     world.step();
-                    examples[currentExample]?.tick(gb2d, world, elapsed / 1000);
+                    if (currentExample && examplesMap[currentExample]) {
+                        const exampleObj = examplesMap[currentExample].example;
+                        if (exampleObj && typeof exampleObj.onTick === 'function') {
+                            exampleObj.onTick(gb2d, world, elapsed / 1000);
+                        }
+                    }
 
                     const endTime = performance.now();
                     const stepTime = (endTime - startTime) * 1000;
 
                     // Update metrics
-
                     let removedAnimTime = animTimeData[dataPtr % 100] ?? 1000;
                     let removedMemory = memoryData[dataPtr % 100] ?? 0;
                     let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
@@ -287,88 +597,178 @@ gb2d.init().then(()=>{
 
                     dataPtr++;
 
-                    fpsDiv.textContent = `Canvas FPS: ${Math.round(1000 / avgAnimFrame)}`;
-                    memoryDiv.textContent = `Memory: ${avgMemory.toFixed(2)} MB`;
-                    stepTimeDiv.textContent = `Step Time: ${avgStepTime.toFixed(0)} μs`;
+                    fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>FPS: ${Math.round(1000 / avgAnimFrame)}`;
+                    memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${avgMemory.toFixed(2)} MB`;
+                    stepTimeDiv.innerHTML = `<i class="fas fa-stopwatch"></i>Step Time: ${avgStepTime.toFixed(0)} μs`;
 
                     lastTime = now;
                     requestAnimationFrame(animate);
                 }, timeout);
             }
 
-            requestAnimationFrame(animate);
-
-            gb2d.enableDebugGraphics(canvas, world);
-            // loadExample("hello-world");
+            // Populate the sidebar based on data
+            populateSidebar();
             
-            
+            // Check if we need to load an example from the hash
             loadExampleFromHash();
+            
+            // Start animation loop
+            animate();
         });
 
-        function loadExample(exampleName) {
-            if (!world) return;
+        // Code to load an example
+        function loadExample(exampleKey) {
+            if (!world || !examplesMap[exampleKey]) return;
 
-            // window.location.hash = exampleName;
-            if(window.location.hash != '#' + exampleName){
-                history.pushState(null, '', '#' + exampleName);
+            // Update the URL hash without duplicating history
+            if (window.location.hash != '#' + exampleKey) {
+                history.pushState(null, '', '#' + exampleKey);
             }
 
             world.clear();
             world.setHasPenetrationResolution(true);
             world.setHasRestitution(true);
             world.setHasFriction(true);
-            world.setGravity(0,0);
-            currentExample = exampleName;
-            examples[currentExample]?.init(gb2d, world);
+            world.setGravity(0, 0);
+            
+            currentExample = exampleKey;
+            const exampleInfo = examplesMap[exampleKey];
+            const exampleObj = exampleInfo.example;
+            
+            console.log("Loading example:", exampleObj.name, "with key:", exampleKey);
+            
+            // Initialize the example
+            if (exampleObj && typeof exampleObj.onInit === 'function') {
+                exampleObj.onInit(gb2d, world);
+            } else {
+                console.error("Example onInit method not found:", exampleObj);
+            }
 
             // Display the init and tick code
-
-            let globalLines = (examples[currentExample]?.globalLines?.join("\n") ?? "");
-            let initCode = ("        " + (examples[currentExample]?.onInit?.toString()?.split("\t").join("    ").split("(gb2d, world)=>{").join("function init(){") || 'function init(){}')).split("\n").map(l=>l.substring(8)).join("\n");
-            let tickCode = ("        " + (examples[currentExample]?.onTick?.toString()?.split("\t").join("    ").split("(gb2d, world, dt)=>{").join("function tick(dt){") || 'function tick(dt){}')).split("\n").map(l=>l.substring(8)).join("\n");
+            let globalLines = (exampleObj.globalLines?.join("\n") ?? "");
+            let initCode = ("        " + (exampleObj.onInit?.toString()?.split("\t").join("    ").split("(gb2d, world)=>{").join("function init(){") || 'function init(){}')).split("\n").map(l => l.substring(8)).join("\n");
+            let tickCode = ("        " + (exampleObj.onTick?.toString()?.split("\t").join("    ").split("(gb2d, world, dt)=>{").join("function tick(dt){") || 'function tick(dt){}')).split("\n").map(l => l.substring(8)).join("\n");
 
             generalCodePre.textContent = (generalSetupTemplate.split("{{GLOBAL}}").join(globalLines));
             initCodePre.textContent = initCode.trim();
             tickCodePre.textContent = tickCode.trim();
 
-            let li = document.getElementsByClassName("selected")[0];
-            h1.textContent = li?.innerHTML;
+            // Apply syntax highlighting
+            applyHighlighting();
 
-            document.getElementById("description").innerHTML = examples[currentExample]?.description?.split("\n").join("<br/>") || "";
+            // Update example name in header
+            h1.textContent = exampleObj.name || "Unknown Example";
+
+            // Update description
+            document.getElementById("description").innerHTML = exampleObj.description?.split("\n").join("<br/>") || "";
         }
 
-        function loadExampleFromHash(){
+        // Load example from URL hash
+        function loadExampleFromHash() {
             let hash = window.location.hash.substring(1);
-            let defaultLi = document.getElementsByClassName("selected")[0];
-            let allLi = document.getElementsByClassName("example");
-            let hashLi = null;
-            for(let i = 0; i < allLi.length; i++){
-                if(allLi[i].getAttribute("data-example") == hash){
-                    hashLi = allLi[i];
-                    break;
+            
+            // Default to "hello-world" if no hash specified
+            if (!hash) {
+                hash = "hello-world";
+            }
+            
+            // Check if the hash is directly in our map
+            if (!examplesMap[hash]) {
+                // If not found, we'll have to search for it
+                console.log("Example not found directly, searching...");
+                let found = false;
+                
+                // Search through all categories and examples
+                for (let categoryIndex = 0; categoryIndex < examples.length; categoryIndex++) {
+                    const category = examples[categoryIndex];
+                    if (category.examples && Array.isArray(category.examples)) {
+                        for (let exampleIndex = 0; exampleIndex < category.examples.length; exampleIndex++) {
+                            const example = category.examples[exampleIndex];
+                            if (example.key === hash) {
+                                console.log(`Found example ${hash} in category ${categoryIndex}, index ${exampleIndex}`);
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                }
+                
+                // If still not found, default to first example
+                if (!found) {
+                    console.warn(`Example with key '${hash}' not found, defaulting to first available example`);
+                    if (examples.length > 0 && examples[0].examples && examples[0].examples.length > 0) {
+                        hash = examples[0].examples[0].key || "0-0";
+                    } else {
+                        console.error("No examples found");
+                        return;
+                    }
                 }
             }
-            if(hashLi){
-                defaultLi.classList.remove("selected");
-                hashLi.classList.add("selected");
+            
+            // Find and update the selected item in the sidebar
+            const selectedElement = document.querySelector(`#sidebar li.example[data-example="${hash}"]`);
+            if (selectedElement) {
+                document.querySelectorAll("#sidebar li.example.selected").forEach(el => {
+                    el.classList.remove("selected");
+                });
+                selectedElement.classList.add("selected");
             }
-            loadExample(hash || defaultLi?.getAttribute("data-example") || "hello-world");
+            
+            // Load the example
+            loadExample(hash);
         }
 
-        exampleItems.forEach(item => {
-            if (item.classList.contains("section")) return;
-            item.addEventListener("click", () => {
-                document.getElementsByClassName("selected")[0].classList.remove("selected");
-                item.classList.add("selected");
-                const exampleName = item.getAttribute("data-example");
-                loadExample(exampleName);
+        // Event listeners for code tabs and toggle
+        codeTabs.forEach(tab => {
+            tab.addEventListener("click", () => {
+                codeTabs.forEach(t => t.classList.remove("active"));
+                codePanels.forEach(p => p.classList.remove("active"));
+                
+                tab.classList.add("active");
+                const panel = document.getElementById(`${tab.dataset.panel}-panel`);
+                panel.classList.add("active");
             });
         });
 
+        // Function to apply syntax highlighting
+        function applyHighlighting() {
+            const codeElements = document.querySelectorAll('pre');
+            codeElements.forEach((block) => {
+                // Get the raw code text
+                const codeText = block.textContent;
+                // Apply highlighting manually
+                block.innerHTML = hljs.highlight(codeText, {language: 'javascript'}).value;
+            });
+        }
+
+        // Code toggle
+        toggleCode.addEventListener("click", () => {
+            if (codeSection.style.display === "none") {
+                codeSection.style.display = "block";
+                toggleCode.querySelector("span").textContent = "Hide Code";
+                toggleCode.querySelector("i").classList.remove("fa-chevron-down");
+                toggleCode.querySelector("i").classList.add("fa-chevron-up");
+                
+                // Apply syntax highlighting when code is shown
+                applyHighlighting();
+            } else {
+                codeSection.style.display = "none";
+                toggleCode.querySelector("span").textContent = "Show Code";
+                toggleCode.querySelector("i").classList.remove("fa-chevron-up");
+                toggleCode.querySelector("i").classList.add("fa-chevron-down");
+            }
+        });
+
+        // Sidebar toggle for mobile
+        sidebarToggle.addEventListener("click", () => {
+            sidebar.classList.toggle("collapsed");
+        });
+
+        // Handle history navigation
         window.addEventListener('popstate', function(event) {
             loadExampleFromHash();
         });
-
     </script>
 </body>
 </html>

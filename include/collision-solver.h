@@ -34,6 +34,11 @@ public:
     
     bool solve(int indexA, int indexB);
 
+    float closestPointsBetweenLines(
+        const Vec2& p1, const Vec2& p2,
+        const Vec2& p3, const Vec2& p4,
+        Vec2& pointOnLine1, Vec2& pointOnLine2);
+
     // Get the correct solver for the obj types
     bool _solveAabbAabb();
     
