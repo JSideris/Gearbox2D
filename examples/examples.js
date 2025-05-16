@@ -589,7 +589,7 @@ const examples = [
 		name: "Known Issues",
 		examples: [
 			new Example({
-				name: "TC-1 (MITIGATED)",
+				name: "TC-1 (SOLVED)",
 				key: "tc-1",
 				hidden: true,
 				description: "Boxes colliding with other boxes go crazy.",
@@ -755,7 +755,7 @@ const examples = [
 				}
 			}),
 			new Example({
-				name: "TC-5",
+				name: "TC-5 (SOLVED)",
 				key: "tc-5",
 				hidden: true,
 				description: "Even the slightest rs for the moving circle causes a dramatic difference in the resulting collision response. If commenting out rs, the collision is completely linear in the diagonal direction. If setting rs to 10, the collision is the nearly identical to an rs of 0.01.\n\nThere's another weird thing going on here. Notice how both circles end up spinning in the same direction. That's noh how physics works.",
@@ -825,7 +825,7 @@ const examples = [
 			}),
 		
 			new Example({
-				name: "TC-7 (BUGGY)",
+				name: "TC-7 (SOLVED)",
 				key: "tc-7",
 				description: "Friction applies an incorrect vector to certain collisions. Likely due to an incorrect normal vector. Problem doesn't happen when restitution is off, so this could be a symptom of TC-6.",
 				onInit: (gb2d, world)=>{
@@ -955,6 +955,41 @@ const examples = [
 						width: 1,
 						height: 1,
 						mass: 0.2,
+					});
+				},
+				onTick: (gb2d, world, dt)=>{
+				}
+			}),
+
+			new Example({
+				name: "TC-10 (SOLVED)",
+				key: "tc-10",
+				description: "A circle falling on a platform. Collision resolution is crazy.",
+				onInit: (gb2d, world)=>{
+					world.setGravity(0, 3);
+					// world.setHasRestitution(false);
+		
+					let id = 1;
+					world.makeObject(id++, {
+						x: 5,
+						y: 8,
+						shape: gb2d.AABB,
+						type: gb2d.FIXED_OBJECT,
+						width: 8,
+						height: 1,
+						// restitution: 1
+					});
+		
+					// Anohter box but this time a rigid body.
+					world.makeObject(id++, {
+						x: 7,
+						y: 2,
+						shape: gb2d.CIRCLE,
+						type: gb2d.RIGID_BODY,
+						radius: 1,
+						mass: 0.2,
+						restitution: 1,
+						rs: -0.1,
 					});
 				},
 				onTick: (gb2d, world, dt)=>{

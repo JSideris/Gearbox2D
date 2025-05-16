@@ -98,7 +98,32 @@ void PhysicalObject::setMass(float m) {
 }
 
 float PhysicalObject::getInverseMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM]; }
-// void PhysicalObject::setInverseMass(float im) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM] = im; }
+// No setter for inverse mass, it is calculated from mass.
+
+float PhysicalObject::getInverseInertia() const {
+    float imass = getInverseMass();
+    
+    // Fixed objects have zero inverse inertia
+    if (imass == 0.0f) {
+        return 0.0f;
+    }
+    
+    // Calculate inverse inertia based on shape
+    if (shape == ObjectShape::CIRCLE) {
+        float radius = getRadius();
+        // For circle: I = (1/2) * m * r^2, so I^-1 = 2 / (m * r^2) = 2 * imass / r^2
+        return 2.0f * imass / (radius * radius);
+    } 
+    else if (shape == ObjectShape::AABB || shape == ObjectShape::BOX) {
+        float width = getWidth();
+        float height = getHeight();
+        // For rectangle: I = (1/12) * m * (w^2 + h^2), so I^-1 = 12 / (m * (w^2 + h^2)) = 12 * imass / (w^2 + h^2)
+        return 12.0f * imass / (width * width + height * height);
+    }
+    
+    // Default case (shouldn't reach here if all shapes are handled)
+    return imass;
+}
 
 float PhysicalObject::getDamping() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING]; }
 void PhysicalObject::setDamping(float d) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING] = d; }

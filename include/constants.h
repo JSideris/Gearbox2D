@@ -28,13 +28,14 @@ enum class ObjectShape {
 #define HAS_AABB_COLLISION 0x1
 #define HAS_PHYSICAL_COLLISION 0x2
 
-#define FDATA_EPO 28
+#define FDATA_EPO 28 // Number of float data per object.
+
 #define FDATA_X 0 // Position
 #define FDATA_Y 1 // Position
 #define FDATA_R 2 // Rotation
 #define FDATA_VX 3 // Velocity
 #define FDATA_VY 4 // Velocity
-#define FDATA_RS 5 // Rotation speed
+#define FDATA_RS 5 // Rotation speed // Not sure what the units are. Need to double-check.
 #define FDATA_M 6 // Mass
 #define FDATA_IM 7 // Inverse Mass
 #define FDATA_G_SCALE 8 // How much gravity affects this object.
@@ -48,8 +49,9 @@ enum class ObjectShape {
 #define FDATA_H 15 // Height
 #define FDATA_FX 16 // Force accumulator (READ ONLY)
 #define FDATA_FY 17 // Force accumulator (READ ONLY)
-#define FDATA_IX 18
-#define FDATA_IY 19
+#define FDATA_IX 18 // Impulse accumulator X (READ ONLY)
+#define FDATA_IY 19 // Impulse accumulator Y (READ ONLY)
+// AABB Info
 #define FDATA_AX1 20
 #define FDATA_AY1 21
 #define FDATA_AX2 22
@@ -58,3 +60,4 @@ enum class ObjectShape {
 #define FDATA_NFY 25
 #define FDATA_NIX 26
 #define FDATA_NIY 27
+// Always increase FDATA_EPO when adding new fields.

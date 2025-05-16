@@ -57,6 +57,7 @@ public:
     float getMass() const;
     void setMass(float m);
     float getInverseMass() const;
+    float getInverseInertia() const;
     float getDamping() const;
     void setDamping(float d);
     float getRotationalDamping() const;

@@ -209,6 +209,7 @@ void World::_doNarrowPhase(){
     }
 }
 
+
 // 4. Collision resolution.
 void World::_doResolution(){
     for (auto& collisionInfo : collisionSolver.collisions) {
@@ -224,20 +225,32 @@ void World::_doResolution(){
 // 4.a. Penetration resolution.
 void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject*  objB){
         
-    // Note that this isn't the same as the inverse of total mass.
+    // Calculate inverse masses
     float imA = objA->getInverseMass();
     float imB = objB->getInverseMass();
     float totalInverseMass = imA + imB;
 
+    // Skip if both objects have infinite mass
     if(totalInverseMass == 0.0f){
         return;
     }
     else{
+        // Scale the correction by penetration depth
         Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / totalInverseMass);
+        
+        // Add a baumgarte stabilization term to help prevent sinking
+        float baumgarte = 0.2f;  // Stabilization factor
+        float slop = 0.01f;      // Small penetration allowed
+        
+        if (collisionInfo.penetrationDepth > slop) {
+            // Apply baumgarte only when penetration exceeds slop
+            correction = correction * (1.0f + baumgarte);
+        }
         
         Vec2 pA = objA->getPosition();
         Vec2 pB = objB->getPosition();
 
+        // Apply correction proportionally to inverse mass
         Vec2 cpA = pA - correction * imA;
         Vec2 cpB = pB + correction * imB;
 
@@ -248,86 +261,213 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
 
 // 4.b. Collision impulse.
 void World::__doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
-    float totalInverseMass = objA->getInverseMass() + objB->getInverseMass();
+    float imA = objA->getInverseMass();
+    float imB = objB->getInverseMass();
+    float totalInverseMass = imA + imB;
     
-    // Relative velocity.
-    Vec2 rv = objB->getVelocity() - objA->getVelocity();
-
-    // Relative velocity along the normal.
-    float velAlongNormal = rv.dot(collisionInfo.normal);
-
-    // Do not resolve if velocities are separating.
-    if (velAlongNormal > 0) {
+    // Skip if both objects have infinite mass
+    if (totalInverseMass == 0.0f) {
         return;
     }
-
-    // Calculate restitution.
-    float e = max(objA->getRestitution(), objB->getRestitution());
-    float j = -(1 + e) * velAlongNormal / totalInverseMass;
-
-    // Apply impulse.
-    auto impulse = collisionInfo.normal * j;
-
-    // impulse.x = -impulse.x;
-    // impulse.y = -impulse.y;
-
-    objA->applyImpulse(impulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
-    objB->applyImpulse(impulse, collisionInfo.contactPoint - objB->getPosition());
-
+    
+    // Get the radius vectors (from center of mass to contact point)
+    Vec2 rA = collisionInfo.contactPoint - objA->getPosition();
+    Vec2 rB = collisionInfo.contactPoint - objB->getPosition();
+    
+    // Calculate inverse inertia on-the-fly based on shape and mass
+    float iaInv = objA->getInverseInertia();
+    float ibInv = objB->getInverseInertia();
+    
+    // CRITICAL - Calculate the correct relative velocity at the contact point
+    // This MUST include both linear and angular components to avoid erratic behavior
+    
+    // Calculate the tangential velocities due to rotation at the contact point
+    // Cross product: r × ω = (-r.y * ω, r.x * ω) for 2D
+    Vec2 tangentialVelocityA(
+        -rA.y * objA->getAngularVelocity(),
+        rA.x * objA->getAngularVelocity()
+    );
+    
+    Vec2 tangentialVelocityB(
+        -rB.y * objB->getAngularVelocity(),
+        rB.x * objB->getAngularVelocity()
+    );
+    
+    // Calculate the total velocity at the contact point (linear + rotational)
+    Vec2 contactVelocityA = objA->getVelocity() + tangentialVelocityA;
+    Vec2 contactVelocityB = objB->getVelocity() + tangentialVelocityB;
+    
+    // Calculate the relative velocity at the contact point
+    Vec2 rv = contactVelocityB - contactVelocityA;
+    
+    // Relative velocity along the normal
+    float velAlongNormal = rv.dot(collisionInfo.normal);
+    
+    // Apply a small threshold for numerical stability
+    float velocitySeparationThreshold = 0.0001f;
+    if (velAlongNormal > velocitySeparationThreshold) {
+        // Objects are separating, no impulse needed
+        return;
+    }
+    
+    // Calculate restitution coefficient
+    float restitutionThreshold = -0.2f;
+    float e;
+    
+    if (velAlongNormal > restitutionThreshold) {
+        // Objects are moving slowly relative to each other, reduce restitution
+        e = 0.0f;
+    } else {
+        // Normal restitution for faster collisions
+        e = max(objA->getRestitution(), objB->getRestitution());
+        
+        // Allow full 1.0 restitution with tiny cap for extreme numerical stability
+        e = min(0.9999f, e);
+    }
+    
+    // Calculate the impulse scalar
+    // For 2D: j = -(1 + e) * velAlongNormal / (totalInverseMass + (rA × n)² * iaInv + (rB × n)² * ibInv)
+    
+    // Calculate cross products: r × normal
+    float rACrossN = rA.x * collisionInfo.normal.y - rA.y * collisionInfo.normal.x;
+    float rBCrossN = rB.x * collisionInfo.normal.y - rB.y * collisionInfo.normal.x;
+    
+    // Calculate the angular contribution to the impulse denominator
+    float angularFactor = (rACrossN * rACrossN * iaInv) + (rBCrossN * rBCrossN * ibInv);
+    
+    // Total denominator for impulse calculation
+    float j_denom = totalInverseMass + angularFactor;
+    
+    // Prevent division by zero
+    if (j_denom < 0.00001f) {
+        j_denom = 0.00001f;
+    }
+    
+    // Calculate the impulse magnitude
+    float j = -(1.0f + e) * velAlongNormal / j_denom;
+    
+    // Apply impulse along the normal direction
+    Vec2 impulse = collisionInfo.normal * j;
+    
+    // Apply the impulse to linear velocity
+    objA->setVelocity(objA->getVelocity() - impulse * imA);
+    objB->setVelocity(objB->getVelocity() + impulse * imB);
+    
+    // Apply the impulse to angular velocity (torque = r × F)
+    // For 2D: torque = r.x * F.y - r.y * F.x
+    float torqueA = -rA.x * impulse.y - rA.y * impulse.x;
+    float torqueB = (rB.x * impulse.y - rB.y * impulse.x); // Note the negative sign for opposite reaction
+    
+    // Set new angular velocities
+    objA->setAngularVelocity(objA->getAngularVelocity() + torqueA * iaInv);
+    objB->setAngularVelocity(objB->getAngularVelocity() + torqueB * ibInv);
+    
+    // Store impulse magnitude for friction calculations
     collisionInfo.normalImpulseMagnitude = impulse.magnitude();
 }
 
 // 4.c. Collision friction.
 void World::__doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB){
-    // Compute the lever arms (from center of mass to contact point)
+    // Skip friction if no normal impulse was applied
+    if (collisionInfo.normalImpulseMagnitude < 0.001f) {
+        return;
+    }
+    
+    // Get the radius vectors (from center of mass to contact point)
     Vec2 rA = collisionInfo.contactPoint - objA->getPosition();
     Vec2 rB = collisionInfo.contactPoint - objB->getPosition();
-
-    // Compute the tangential velocities due to rotation
-    Vec2 tangentialVelocityA = Vec2(-rA.y * objA->getAngularVelocity(), rA.x * objA->getAngularVelocity()); // Cross product in 2D
-    Vec2 tangentialVelocityB = Vec2(-rB.y * objB->getAngularVelocity(), rB.x * objB->getAngularVelocity());
-
-    // Compute the total velocity at the point of contact (linear + tangential)
+    
+    // Calculate inverse mass and inertia
+    float imA = objA->getInverseMass();
+    float imB = objB->getInverseMass();
+    
+    // Calculate inverse inertia on-the-fly based on shape and mass
+    float iaInv = objA->getInverseInertia();
+    float ibInv = objB->getInverseInertia();
+    
+    // Total inverse mass (skip if both objects have infinite mass)
+    float totalInverseMass = imA + imB;
+    if (totalInverseMass <= 0.00001f) {
+        return;
+    }
+    
+    // Calculate the tangential velocities due to rotation at the contact point
+    Vec2 tangentialVelocityA(
+        -rA.y * objA->getAngularVelocity(),
+        rA.x * objA->getAngularVelocity()
+    );
+    
+    Vec2 tangentialVelocityB(
+        -rB.y * objB->getAngularVelocity(),
+        rB.x * objB->getAngularVelocity()
+    );
+    
+    // Calculate the total velocity at the contact point (linear + rotational)
     Vec2 contactVelocityA = objA->getVelocity() + tangentialVelocityA;
     Vec2 contactVelocityB = objB->getVelocity() + tangentialVelocityB;
-
-    // Compute the relative velocity at the point of contact
+    
+    // Calculate the relative velocity at the contact point
     Vec2 relativeVelocity = contactVelocityB - contactVelocityA;
+    
+    // Calculate the tangential component (relative velocity projected onto tangent plane)
+    float normalComponent = relativeVelocity.dot(collisionInfo.normal);
+    Vec2 tangentialComponent = relativeVelocity - (collisionInfo.normal * normalComponent);
 
-    // Remove the normal component of the relative velocity to get the tangential component
-    Vec2 relativeNormalComponent = collisionInfo.normal * (relativeVelocity.dot(collisionInfo.normal));
-    Vec2 tangentialVelocity = relativeVelocity - relativeNormalComponent;
+    // Get the magnitude of the tangential velocity
+    float tangentialMagnitude = tangentialComponent.magnitude();
 
-    // If the object is nearly stationary in the tangential direction, apply static friction
-    if (tangentialVelocity.magnitude() < 0.001f) {
-        // No need to apply friction if the objects are not sliding
-        return; 
-
-        // TODO:
-        // If we do need to handle cases where other forces would cause sliding after
-        // the collision, we must:
-        // 1. Calculate the impulse needed to prevent sliding
-        // 2. Cap it by the max static friction (μₛ * normal force)
-        // 3. Apply it with opposite signs to each object
-
-        // Old code:
-
-        // // Static friction case: cancel out the tangential velocity
-        // float maxStaticFriction = min(objA->getStaticFriction(), objB->getStaticFriction());
-        // Vec2 staticFrictionImpulse = tangentialVelocity * -maxStaticFriction;
-
-        // // Apply static friction (impulse)
-        // objA->applyImpulse(staticFrictionImpulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
-        // objB->applyImpulse(staticFrictionImpulse, collisionInfo.contactPoint - objB->getPosition());
-    } else {
-        // Dynamic friction case: reduce sliding velocity
-        float frictionCoefficient = min(objA->getKineticFriction(), objB->getKineticFriction());
-        Vec2 dynamicFrictionImpulse = tangentialVelocity.normalize() * -frictionCoefficient * collisionInfo.normalImpulseMagnitude;
-
-        // Apply dynamic friction (impulse)
-        objA->applyImpulse(dynamicFrictionImpulse * -1.0f, collisionInfo.contactPoint - objA->getPosition());
-        objB->applyImpulse(dynamicFrictionImpulse, collisionInfo.contactPoint - objB->getPosition());
+    // Skip if tangential velocity is negligible
+    if (tangentialMagnitude < 0.0001f) {
+        return;
     }
+
+    // Calculate the tangent direction - pointing OPPOSITE to the sliding direction
+    Vec2 tangent = -tangentialComponent / tangentialMagnitude;
+    
+    // Calculate friction coefficients
+    float staticFriction = min(objA->getStaticFriction(), objB->getStaticFriction());
+    float kineticFriction = min(objA->getKineticFriction(), objB->getKineticFriction());
+    
+    // Calculate impulse in the tangent direction
+    // For 2D: jt = -(relativeVelocity · tangent) / (totalInverseMass + (rA × tangent)² * iaInv + (rB × tangent)² * ibInv)
+    
+    // Cross products: r × tangent
+    float rACrossT = rA.x * tangent.y - rA.y * tangent.x;
+    float rBCrossT = rB.x * tangent.y - rB.y * tangent.x;
+    
+    // Calculate the denominator for the tangential impulse
+    float jt_denom = totalInverseMass + (rACrossT * rACrossT * iaInv) + (rBCrossT * rBCrossT * ibInv);
+    
+    // Prevent division by zero
+    if (jt_denom < 0.00001f) {
+        jt_denom = 0.00001f;
+    }
+    
+    // Calculate the raw tangential impulse magnitude
+    float jt = -relativeVelocity.dot(tangent) / jt_denom;
+    
+    // Maximum friction force (Coulomb model: |Ft| ≤ μ|Fn|)
+    float maxFriction = collisionInfo.normalImpulseMagnitude * 
+                        (tangentialMagnitude < 0.01f ? staticFriction : kineticFriction);
+    
+    // Clamp the tangential impulse to not exceed the maximum friction force
+    if (abs(jt) > maxFriction) {
+        jt = jt > 0 ? maxFriction : -maxFriction;
+    }
+    
+    // Apply impulse in the tangent direction
+    Vec2 frictionImpulse = tangent * jt;
+
+    // Apply the impulse to linear velocity
+    objA->setVelocity(objA->getVelocity() - frictionImpulse * imA);
+    objB->setVelocity(objB->getVelocity() + frictionImpulse * imB);
+
+    // Apply the impulse to angular velocity (torque = r × F)
+    float torqueA = -rA.cross(frictionImpulse); // Using your cross product method
+    float torqueB = rB.cross(frictionImpulse); // Opposite reaction
+    
+    objA->setAngularVelocity(objA->getAngularVelocity() + torqueA * iaInv);
+    objB->setAngularVelocity(objB->getAngularVelocity() + torqueB * ibInv);
 }
 
 

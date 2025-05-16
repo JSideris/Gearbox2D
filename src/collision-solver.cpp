@@ -285,10 +285,12 @@ bool CollisionSolver::_solveCircleCircle() {
     return false;
 }
 
+
 bool CollisionSolver::_solveAabbCircle() {
     float rC = floatData[_indexB * FDATA_EPO + FDATA_RADIUS];
     float xC = floatData[_indexB * FDATA_EPO + FDATA_X];
     float yC = floatData[_indexB * FDATA_EPO + FDATA_Y];
+    float wC = floatData[_indexB * FDATA_EPO + FDATA_RS]; 
 
     float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
     float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
@@ -314,16 +316,26 @@ bool CollisionSolver::_solveAabbCircle() {
     if (distanceSquared < rC * rC) {
         float distance = sqrt(distanceSquared);
         Vec2 normal;
+        Vec2 contactPoint;
+        float penetrationDepth;
         
-        // Handle the case where circle center is inside AABB or very close to surface
-        if (distance < 0.0001f) {
-            // Find the closest AABB face to push the circle out
+        // Circle center is inside AABB or very close to surface
+        bool isCircleInside = (xC >= minX && xC <= maxX && yC >= minY && yC <= maxY);
+        
+        if (distance < 0.001f || isCircleInside) {
+            // Retrieve both linear and angular velocity for better collision handling
+            Vec2 velocity = Vec2(
+                floatData[_indexB * FDATA_EPO + FDATA_VX],
+                floatData[_indexB * FDATA_EPO + FDATA_VY]
+            );
+            
+            // Find distances to each face
             float dLeft = xC - minX;
             float dRight = maxX - xC;
             float dTop = yC - minY;
             float dBottom = maxY - yC;
             
-            // Find minimum penetration axis
+            // Default to minimum penetration
             float minDist = dLeft;
             normal = Vec2(-1.0f, 0.0f);
             
@@ -342,39 +354,93 @@ bool CollisionSolver::_solveAabbCircle() {
                 normal = Vec2(0.0f, 1.0f);
             }
             
-            // Adjust penetration depth and contact point
-            float penetrationDepth = rC + minDist;
-            Vec2 contactPoint = Vec2(xC, yC) + normal * -rC;
+            // If velocity magnitude is significant, use it to inform the normal direction
+            if (velocity.magnitudeSquared() > 0.01f) { // Lower threshold for better sensitivity
+                // Dot product to find face most aligned with negative velocity
+                Vec2 normVel = velocity.normalize() * -1.0f;
+                
+                // Candidate normals for each face
+                Vec2 normals[4] = {
+                    Vec2(-1.0f, 0.0f), // Left
+                    Vec2(1.0f, 0.0f),  // Right
+                    Vec2(0.0f, -1.0f), // Top
+                    Vec2(0.0f, 1.0f)   // Bottom
+                };
+                
+                // Find best matching normal based on velocity
+                float maxDot = normals[0].dot(normVel);
+                normal = normals[0];
+                
+                for (int i = 1; i < 4; i++) {
+                    float dotProduct = normals[i].dot(normVel);
+                    if (dotProduct > maxDot) {
+                        maxDot = dotProduct;
+                        normal = normals[i];
+                    }
+                }
+            }
             
-            collisions.push_back(CollisionInfo{
-                true,
-                contactPoint,
-                normal,
-                penetrationDepth,
-                _indexA, _indexB,
-                _relativeVelocity, 0.0f
-            });
+            // Penetration depth calculation (no arbitrary scaling)
+            penetrationDepth = rC + minDist;
+            
+            // Contact point is where the circle would touch the AABB from outside
+            contactPoint = Vec2(xC, yC) - normal * rC;
         } else {
             // Normal case - circle is outside AABB but penetrating
-            normal = distanceVec.normalize() * -1.0f; // Point from AABB to circle
-            float penetrationDepth = rC - distance;
-            Vec2 contactPoint = Vec2(closestX, closestY);
-            
-            collisions.push_back(CollisionInfo{
-                true,
-                contactPoint,
-                normal,
-                penetrationDepth,
-                _indexA, _indexB,
-                _relativeVelocity, 0.0f
-            });
+            normal = distanceVec.normalize() * -1.0f;
+            penetrationDepth = rC - distance;
+            contactPoint = Vec2(closestX, closestY);
         }
+        
+        // Compute relative velocity including rotational effects at contact point
+        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
+                floatData[_indexA * FDATA_EPO + FDATA_VY]);
+        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
+                floatData[_indexB * FDATA_EPO + FDATA_VY]);
+                
+        // Get rotational speeds (in radians per second)
+        float wA = floatData[_indexA * FDATA_EPO + FDATA_RS];
+        float wB = floatData[_indexB * FDATA_EPO + FDATA_RS];
+        
+        // Calculate radius vectors (from center to contact point)
+        Vec2 rA = contactPoint - Vec2(xA, yA);
+        Vec2 rB = contactPoint - Vec2(xC, yC);
+        
+        // Calculate tangential velocities due to rotation
+        Vec2 tangentialVelocityA(
+            -rA.y * wA,  // Cross product in 2D
+            rA.x * wA
+        );
+        
+        Vec2 tangentialVelocityB(
+            -rB.y * wB,  // Cross product in 2D
+            rB.x * wB
+        );
+        
+        // Total velocities at contact point
+        Vec2 totalVelocityA = vA + tangentialVelocityA;
+        Vec2 totalVelocityB = vB + tangentialVelocityB;
+        
+        // Store the actual relative velocity at the contact point
+        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
+        
+        collisions.push_back(CollisionInfo{
+            true,                // Collision detected
+            contactPoint,        // Contact point
+            normal,              // Collision normal
+            penetrationDepth,    // Penetration depth
+            _indexA,             // Object A index
+            _indexB,             // Object B index
+            relativeVelocity,    // Correct relative velocity including rotational effects
+            0.0f                 // Friction coefficient (can be set based on material properties)
+        });
         
         return true;
     }
     
     return false;
 }
+
 
 
 bool CollisionSolver::_solveBoxBox() {
