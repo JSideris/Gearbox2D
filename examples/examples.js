@@ -313,7 +313,6 @@ const examples = [
 						linearDamping: 0.0,
 
 						// The most important part. 100% bouncy.
-						// There's currently a bug where significant energy is being lost somehow.
 						restitution: 1,
 					});
 				},

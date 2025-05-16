@@ -22,6 +22,10 @@
     <div id="main">
         <div id="main-header">
             <h1 id="example-name">Loading example...</h1>
+            <button id="reset-button" title="Reset current example">
+                <i class="fas fa-redo-alt"></i>
+                Reset Example
+            </button>
         </div>
         
         <div id="content">
@@ -72,7 +76,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
-        import gb2d from '../lib/gb2d.js';
+        import gb2d from '../dist/js/gb2d.js';
         import examples from "./examples.js";
 
         let generalSetupTemplate = `
@@ -171,6 +175,7 @@ gb2d.init().then(()=>{
         let codePanels = document.querySelectorAll(".code-panel");
         let sidebarToggle = document.getElementById("sidebar-toggle");
         let sidebar = document.getElementById("sidebar");
+        let resetButton = document.getElementById("reset-button");
         
         h1.innerHTML = "Loading example...";
 
@@ -238,6 +243,13 @@ gb2d.init().then(()=>{
             
             // Check if we need to load an example from the hash
             loadExampleFromHash();
+            
+            // Add event listener for the reset button
+            resetButton.addEventListener("click", () => {
+                if (currentExample) {
+                    loadExample(currentExample);
+                }
+            });
             
             // Start animation loop
             animate();

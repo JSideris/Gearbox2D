@@ -1,8 +1,8 @@
 # Directories
-SRC_DIR = src
-BUILD_DIR = lib/build
-INCLUDE_DIR = include
-TEST_DIR = tests
+SRC_DIR = cpp/src
+INCLUDE_DIR = cpp/include
+TEST_DIR = cpp/tests
+BUILD_DIR = dist/wasm
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
 GTEST_DIR ?= /home/josh/googletest/googletest
 

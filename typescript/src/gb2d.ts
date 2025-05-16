@@ -1,5 +1,5 @@
 
-import gb2dModule from './build/gb2d-module.js';
+import gb2dModule from '../../dist/wasm/gb2d-module.js';
 
 const SIZE_I = 4;
 const SIZE_F = 28;
@@ -44,6 +44,11 @@ const NIY_OFFSET = 27;
 const ANIMSCALE = 100;
 
 class World {
+	world: any;
+	liveFloatData: number[];
+	liveIntData: number[];
+	objectCount: number;
+	objectsById: Record<number, PhysicalObject>;
 	constructor(WorldConstructor){
 		this.world = new WorldConstructor();
 		// this.ids = this.world.getIds();
@@ -131,7 +136,12 @@ class World {
 // Thing is, this probably isn't something that needs to happen on each frame, and certainly not on each data read.
 // I bet there's a way to just mark the object as "dirty".
 class PhysicalObject{
-	constructor(index, world, liveFData, liveIData){
+	id: number;
+	liveFData: number[];
+	liveIData: number[];
+	index: number;
+	world: World;
+	constructor(index: number, world: World, liveFData: number[], liveIData: number[]){
 		this.id = liveIData[index * SIZE_I + ID_OFFSET];
 		this.liveFData = liveFData;
 		this.liveIData = liveIData;
@@ -226,8 +236,8 @@ class PhysicalObject{
 	// get dynamicFriction() { return this.liveFData[this.index * SIZE_F + D_FRICTION_OFFSET]; }
 	// set dynamicFriction(v) { this.liveFData[this.index * SIZE_F + D_FRICTION_OFFSET] = v; }
 	
-	get kineticFriction() { return this.liveFData[this.index * SIZE_F + F_FRICTION_OFFSET]; }
-	set kineticFriction(v) { this.liveFData[this.index * SIZE_F + F_FRICTION_OFFSET] = v; }
+	get kineticFriction() { return this.liveFData[this.index * SIZE_F + K_FRICTION_OFFSET]; }
+	set kineticFriction(v) { this.liveFData[this.index * SIZE_F + K_FRICTION_OFFSET] = v; }
 
 	
 
@@ -244,12 +254,32 @@ class PhysicalObject{
 
 /**@type {Gb2d} */
 class Gb2d{
+	canvas: HTMLCanvasElement;
+	ctx: CanvasRenderingContext2D;
+	debugWorld: World;
+	animFrame: number;
+	debugFps: number;
+	lastTick: number;
+	isInitialized: boolean;
+	POINT: number;
+	CIRCLE: number;
+	AABB: number;
+	BOX: number;
+	ELLIPSE: number;
+	CAPSULE: number;
+	POLYGON: number;
+	RIGID_BODY: number;
+	SENSOR: number;
+	FIXED_OBJECT: number;
+	private _world: any;
+	private _vec2: any;
+	debugFrameTime: number;
 	
 	constructor(){
-		this.canvas = null;
-		this.ctx = null;
-		this.debugWorld = null;
-		this.animFrame = null;
+		this.canvas = null as unknown as HTMLCanvasElement;
+		this.ctx = null as unknown as CanvasRenderingContext2D;
+		this.debugWorld = null as unknown as World;
+		this.animFrame = null as unknown as number;
 		this.debugFps = 0;
 		this.lastTick = Date.now();
 
@@ -271,15 +301,15 @@ class Gb2d{
 	// get World(){ return this._world; }
 	get Vec2(){ return this._vec2; }
 	// get PhysicalObject(){ return this._physicalObject; }
-	get ObjectType(){ return this._objectType; }
-	get ObjectShape(){ return this._objectShape; }
+	// get ObjectType(){ return this._objectType; }
+	// get ObjectShape(){ return this._objectShape; }
 
 	_initCheck(){
 		if(!this.isInitialized) throw new Error("Engine is not initialized. Call and await init() first.");
 	}
 
 	init(){
-		return new Promise((resolve, reject) => {
+		return new Promise<void>((resolve, reject) => {
 
 			if(this.isInitialized) resolve();
 
