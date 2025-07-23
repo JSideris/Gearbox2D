@@ -13,7 +13,7 @@
 	--gray-700: #495057;
 	--gray-800: #343a40;
 	--gray-900: #212529;
-	--section-bg: #4cc9f0;
+	--section-bg: #516971;
 	--shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
 	--shadow: 0 4px 6px rgba(0,0,0,0.1);
 	--shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
@@ -125,7 +125,7 @@ body {
 #sidebar li.section {
 	padding: 10px 15px;
 	background-color: var(--section-bg);
-	color: var(--gray-900);
+	color: var(--gray-200);
 	font-weight: 600;
 	font-size: 0.85rem;
 	text-transform: uppercase;

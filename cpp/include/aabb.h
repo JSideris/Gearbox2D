@@ -68,10 +68,16 @@ public:
     }
 
     // Check if a point is inside the AABB
-    bool containsPoint(const Vec2& point) const {
+    bool contains(const Vec2& point) const {
         return (point.x >= min.x && point.x <= max.x &&
                 point.y >= min.y && point.y <= max.y);
     }
+
+    bool contains(const Aabb& other) const {
+        return (contains(other.min) && contains(other.max));
+    }
+
+    
 };
 
 #endif

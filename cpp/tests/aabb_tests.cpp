@@ -93,12 +93,12 @@ TEST(AabbTest, GetSurfaceArea) {
 TEST(AabbTest, ContainsPointTrue) {
     Aabb aabb(Vec2(1.0f, 1.0f), Vec2(5.0f, 5.0f));
     Vec2 point(3.0f, 3.0f);
-    EXPECT_TRUE(aabb.containsPoint(point));
+    EXPECT_TRUE(aabb.contains(point));
 }
 
 // Test point containment (outside case)
 TEST(AabbTest, ContainsPointFalse) {
     Aabb aabb(Vec2(1.0f, 1.0f), Vec2(5.0f, 5.0f));
     Vec2 point(6.0f, 3.0f);
-    EXPECT_FALSE(aabb.containsPoint(point));
+    EXPECT_FALSE(aabb.contains(point));
 }

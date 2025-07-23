@@ -41,11 +41,12 @@ public:
 
     // Get the correct solver for the obj types
     bool _solveAabbAabb();
-    
-    bool _solveCircleCircle();
+    bool _solveAabbPoint();
+    bool _solveAabbBox();
     bool _solveAabbCircle();
     
+    bool _solveCircleCircle();
+    
     bool _solveBoxBox();
-    bool _solveAabbBox();
     bool _solveCircleBox();
 };

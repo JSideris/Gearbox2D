@@ -2,6 +2,9 @@
 #include "physical-object.h"
 // #include "world.h"
 
+#define EXPERIMENTAL_SHRINK_WRAP_AABB_ON_SLEEP
+#define ENABLE_SLEEPING
+
 // static Vec2 _dampingForce;
 // static Vec2 _acceleration;
 // static Vec2 _dv;
@@ -9,6 +12,10 @@
 // static Vec2 _position;
 // static Vec2 _velocity;   // Linear velocity of the object
 
+// TODO: probably makes more sense to make this configurable.
+// Or compute it based on world scale.
+// TODO: make sure this doesn't get weird with different frame rates.
+#define WAKE_MOVEMENT_THRESHOLD 0.02f
 
 static Vec2 _dampingForce;
 static Vec2 _acceleration;
@@ -71,20 +78,53 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
 
 // Getters and Setters
 float PhysicalObject::getX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X]; }
-void PhysicalObject::setX(float x) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X] = x; }
+void PhysicalObject::setX(float x) { 
+    int i = worldIndex * FDATA_EPO + FDATA_X;
+    float err = world.liveFloatData[i] - x;
+    if(err){ 
+        // sleepErrAccumulator += abs(err);
+        world.liveFloatData[i] = x; 
+        wakeUp();
+    }
+}
 float PhysicalObject::getY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_Y]; }
-void PhysicalObject::setY(float y) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_Y] = y; }
+void PhysicalObject::setY(float y) { 
+    int i = worldIndex * FDATA_EPO + FDATA_Y;
+    float err = world.liveFloatData[i] - y;
+    if(err){
+        // sleepErrAccumulator += abs(err);
+        world.liveFloatData[i] = y; 
+        wakeUp();
+    }
+}
 
 float PhysicalObject::getRotation() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R]; }
-void PhysicalObject::setRotation(float r) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_R] = r; }
+void PhysicalObject::setRotation(float r) { 
+    int i = worldIndex * FDATA_EPO + FDATA_R;
+    float err = world.liveFloatData[i] - r;
+    if(err){
+        // sleepErrAccumulator += abs(err);
+        world.liveFloatData[i] = r; 
+        wakeUp();
+    }
+}
 
 float PhysicalObject::getVelocityX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX]; }
-void PhysicalObject::setVelocityX(float vx) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX] = vx; }
+void PhysicalObject::setVelocityX(float vx) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX] = vx; 
+    if(vx) wakeUp();
+}
 float PhysicalObject::getVelocityY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY]; }
-void PhysicalObject::setVelocityY(float vy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY] = vy; }
+void PhysicalObject::setVelocityY(float vy) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY] = vy; 
+    if(vy) wakeUp();
+}
 
 float PhysicalObject::getAngularVelocity() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS]; }
-void PhysicalObject::setAngularVelocity(float rs) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS] = rs; }
+void PhysicalObject::setAngularVelocity(float rs) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS] = rs;
+    if(rs) wakeUp();
+}
 
 float PhysicalObject::getMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M]; }
 void PhysicalObject::setMass(float m) { 
@@ -134,14 +174,26 @@ float PhysicalObject::getRestitution() const { return world.liveFloatData[worldI
 void PhysicalObject::setRestitution(float r) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RESTITUTION] = r; }
 
 float PhysicalObject::getImpulseX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX]; }
-void PhysicalObject::setImpulseX(float ix) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX] = ix; }
+void PhysicalObject::setImpulseX(float ix) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IX] = ix; 
+    if(ix) wakeUp();
+}
 float PhysicalObject::getImpulseY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IY]; }
-void PhysicalObject::setImpulseY(float iy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IY] = iy; }
+void PhysicalObject::setImpulseY(float iy) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IY] = iy; 
+    if(iy) wakeUp();
+}
 
 float PhysicalObject::getForceX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX]; }
-void PhysicalObject::setForceX(float fx) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] = fx; }
+void PhysicalObject::setForceX(float fx) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] = fx; 
+    if(fx) wakeUp();
+}
 float PhysicalObject::getForceY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY]; }
-void PhysicalObject::setForceY(float fy) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] = fy; }
+void PhysicalObject::setForceY(float fy) { 
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] = fy; 
+    if(fy) wakeUp();
+}
 
 float PhysicalObject::getStaticFriction() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_S_FRICTION]; }
 void PhysicalObject::setStaticFriction(float f) { world.liveFloatData[worldIndex * FDATA_EPO + FDATA_S_FRICTION] = f; }
@@ -159,7 +211,11 @@ float PhysicalObject::getRadius() const { return world.liveFloatData[worldIndex 
 float PhysicalObject::getWidth() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_W]; }
 float PhysicalObject::getHeight() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_H]; }
 
-bool PhysicalObject::recomputeAabb(bool disablePadding){
+// Modes:
+// 0: with padding.
+// 1: without padding.
+// 2: shrink wrap.
+bool PhysicalObject::recomputeAabb(int mode){
     float newX1 = aabb.min.x;
     float newY1 = aabb.min.y;
     float newX2 = aabb.max.x;
@@ -187,8 +243,8 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
     switch (shape) {
         case ObjectShape::POINT:
             newX1 = px;
-            newY1 = px;
-            newX2 = py;
+            newY1 = py;
+            newX2 = px;
             newY2 = py;
 
             break;
@@ -239,10 +295,10 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
             break;
     }
 
-    if (newX1 < aabb.min.x || newY1 < aabb.min.y || newX2 > aabb.max.x || newY2 > aabb.max.y) {
+    if (mode == 2 || newX1 < aabb.min.x || newY1 < aabb.min.y || newX2 > aabb.max.x || newY2 > aabb.max.y) {
         // Determine the maximum required padding amount.
         float paddingAmount = 0.2f;
-        if (disablePadding) paddingAmount = 0.0f;
+        if (mode != 0) paddingAmount = 0.0f;
 
         float vx = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX];
         float vy = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY];
@@ -272,7 +328,8 @@ bool PhysicalObject::recomputeAabb(bool disablePadding){
         world.liveFloatData[worldIndex * FDATA_EPO + FDATA_AX2] = aabb.max.x;
         world.liveFloatData[worldIndex * FDATA_EPO + FDATA_AY2] = aabb.max.y;
 
-        return true;
+        // No tree update needed in shrink wrap mode.
+        return mode != 2;
     }
 
     return false;
@@ -283,8 +340,16 @@ void PhysicalObject::applyForce(const Vec2& force){
     applyForce(force.x, force.y);
 }
 void PhysicalObject::applyForce(float x, float y){
-    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FX] += x;
-    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_FY] += y;
+    int index = worldIndex * FDATA_EPO;
+    float inverseMass = world.liveFloatData[index + FDATA_IM];
+    
+    if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT && (x || y)) {
+        world.liveFloatData[index + FDATA_FX] += x;
+        world.liveFloatData[index + FDATA_FY] += y;
+        // TODO: net forces might cancel out.
+        // Consider removing this.
+        wakeUp();
+    }
 }
 
 void PhysicalObject::applyImpulse(const Vec2& impulse, const Vec2& contactPoint){
@@ -295,12 +360,14 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
 
     int index = worldIndex * FDATA_EPO;
 
-    world.liveFloatData[index + FDATA_IX] += x;
-    world.liveFloatData[index + FDATA_IY] += y;
-
+    
     float inverseMass = world.liveFloatData[index + FDATA_IM];
-
+    
     if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT) {
+        
+        world.liveFloatData[index + FDATA_IX] += x;
+        world.liveFloatData[index + FDATA_IY] += y;
+
         world.liveFloatData[index + FDATA_VX] += x * inverseMass;
         world.liveFloatData[index + FDATA_VY] += y * inverseMass;
 
@@ -315,7 +382,10 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
         // For instance, I = (1/2) * m * r²
         float momentOfInertia = world.liveFloatData[index + FDATA_M];
         world.liveFloatData[index + FDATA_RS] -= torque / momentOfInertia;
+
+        wakeUp();
     }
+
 }
 
     // void destroy(bool skipWorldRemove = false){
@@ -404,9 +474,15 @@ bool PhysicalObject::stepMovement(float dt) {
     world.liveFloatData[index + FDATA_VX] = _velocity.x;
     world.liveFloatData[index + FDATA_VY] = _velocity.y;
 
-    bool moved = world.liveFloatData[index + FDATA_X] != lastX 
-        || world.liveFloatData[index + FDATA_Y] != lastY 
-        || world.liveFloatData[index + FDATA_R] != lastR;
+    float dx = world.liveFloatData[index + FDATA_X] - lastX;
+    float dy = world.liveFloatData[index + FDATA_Y] - lastY;
+    float dr = world.liveFloatData[index + FDATA_R] - lastR;
+
+    sleepErrAccumulatorX += dx;
+    sleepErrAccumulatorY += dy;
+    sleepErrAccumulatorR += dr;
+
+    bool moved = dx || dy || dr;
 
     lastX = world.liveFloatData[index + FDATA_X];
     lastY = world.liveFloatData[index + FDATA_Y];
@@ -416,5 +492,94 @@ bool PhysicalObject::stepMovement(float dt) {
         setRotation(0.0f);
     }
 
+
+    // If moved, compute isWakable based on the amount of movement surpassing a threshold.
+    float dErr = sleepErrAccumulatorX * sleepErrAccumulatorX + sleepErrAccumulatorY * sleepErrAccumulatorY;
+    bool isWakable = moved && (
+        abs(sleepErrAccumulatorR) > WAKE_MOVEMENT_THRESHOLD
+        || dErr > WAKE_MOVEMENT_THRESHOLD * WAKE_MOVEMENT_THRESHOLD
+    );
+
+    if(isWakable){
+        sleepTimer = 0.0f;
+        sleepErrAccumulatorX = 0.0f;
+        sleepErrAccumulatorY = 0.0f;
+        sleepErrAccumulatorR = 0.0f;
+    }
+    else{
+        sleepTimer += dt;
+        if(sleepTimer > sleepTimeRequired){
+            sleep();
+        }
+    }
+
     return moved;
 }
+
+void PhysicalObject::sleep(){
+#ifndef ENABLE_SLEEPING
+    return;
+#endif
+    if(!isSleeping && canSleep){
+        isSleeping = true;
+        world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0x4;
+        setVelocityX(0.0f);
+        setVelocityY(0.0f);
+        setAngularVelocity(0.0f);
+
+#ifdef EXPERIMENTAL_SHRINK_WRAP_AABB_ON_SLEEP
+        // I don't think the tree being updated is needed here ever.
+        // Because the shrunken AABB will alwasy be smaller than the original.
+        // However, if this causes bugs, we'll know what to look out for.
+        bool treeNeedsUpdate = recomputeAabb(2);
+#endif
+
+        bvhNode->sleep();
+    }
+}
+
+void PhysicalObject::wakeUp() {
+    // TODO: consider only resetting the timer during kinematics.
+    // sleepTimer = 0.0f;
+    if (isSleeping) {
+        isSleeping = false;
+        bvhNode->wakeUp();
+        
+        for (auto* contact : contacts) {
+            // This won't circle back because we've already set isSleeping to false.
+            contact->wakeUp();
+        }
+    }
+}
+
+void PhysicalObject::addContact(PhysicalObject* other) {
+    // Check if contact already exists (simple linear search)
+    for (auto* contact : contacts) {
+        if (contact == other) return;
+    }
+    
+    bool wasEmpty = contacts.empty();
+    contacts.push_back(other);
+    
+    // Wake up if this is the first contact
+    // Experiment: Let the kinematics updates do the wakeup. If no movement happens, keep it sleeping.
+    // if (wasEmpty) {
+    //     wakeUp();
+    // }
+}
+
+void PhysicalObject::removeContact(PhysicalObject* other) {
+    // Store original size to detect if removal happened
+    size_t originalSize = contacts.size();
+    
+    // Use remove-erase idiom correctly
+    auto it = std::remove(contacts.begin(), contacts.end(), other);
+    contacts.erase(it, contacts.end());
+    
+    // Wake up only if a contact was actually removed
+    // Experiment: Let the kinematics updates do the wakeup. If no movement happens, keep it sleeping.
+    // if (contacts.size() < originalSize) {
+    //     wakeUp();
+    // }
+}
+

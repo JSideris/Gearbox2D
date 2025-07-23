@@ -73,6 +73,9 @@
         </div>
     </div>
     
+    <script>
+        var hljs;
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
@@ -88,7 +91,7 @@ gb2d.init().then(()=>{
     world = gb2d.makeWorld();
     
     // Optional:
-    gb2d.enableDebugGraphics(document.getElementById("debug-canvas"), world);
+    gb2d.debug.enableDebugGraphics(document.getElementById("debug-canvas"), world);
 
     init();
     setInterval(()=>{
@@ -185,14 +188,14 @@ gb2d.init().then(()=>{
         let memoryData = [];
         let stepTimeData = [];
 
-        let avgAnimFrame = 1000;
+        let avgAnimFrame = 1000 / 60;
         let avgMemory = 0;
         let avgStepTime = 0;
 
         // Initialize the physics engine
         gb2d.init().then(() => {
             world = gb2d.makeWorld();
-            gb2d.enableDebugGraphics(canvas, world);
+            gb2d.debug.enableDebugGraphics(canvas, world);
 
             function animate() {
                 const now = performance.now();
@@ -207,7 +210,7 @@ gb2d.init().then(()=>{
                     if (currentExample && examplesMap[currentExample]) {
                         const exampleObj = examplesMap[currentExample].example;
                         if (exampleObj && typeof exampleObj.onTick === 'function') {
-                            exampleObj.onTick(gb2d, world, elapsed / 1000);
+                            exampleObj.onTick(world, elapsed / 1000);
                         }
                     }
 
@@ -215,11 +218,12 @@ gb2d.init().then(()=>{
                     const stepTime = (endTime - startTime) * 1000;
 
                     // Update metrics
-                    let removedAnimTime = animTimeData[dataPtr % 100] ?? 1000;
+                    let removedAnimTime = animTimeData[dataPtr % 100] ?? avgAnimFrame; // Default to current avg instead of 1000
                     let removedMemory = memoryData[dataPtr % 100] ?? 0;
                     let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
 
-                    animTimeData[dataPtr % 100] = gb2d.debugFrameTime ?? 0;
+                    // Use actual elapsed time instead of gb2d.debugFrameTime
+                    animTimeData[dataPtr % 100] = elapsed || 16.67; // Fallback to 60fps if elapsed is 0
                     memoryData[dataPtr % 100] = performance.memory.usedJSHeapSize / 1048576;
                     stepTimeData[dataPtr % 100] = stepTime;
 
@@ -229,7 +233,9 @@ gb2d.init().then(()=>{
 
                     dataPtr++;
 
-                    fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>FPS: ${Math.round(1000 / avgAnimFrame)}`;
+                    // Prevent division by zero
+                    const fps = avgAnimFrame > 0 ? Math.round(1000 / avgAnimFrame) : 0;
+                    fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>FPS: ${fps}`;
                     memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${avgMemory.toFixed(2)} MB`;
                     stepTimeDiv.innerHTML = `<i class="fas fa-stopwatch"></i>Step Time: ${avgStepTime.toFixed(0)} μs`;
 
@@ -274,19 +280,19 @@ gb2d.init().then(()=>{
             const exampleInfo = examplesMap[exampleKey];
             const exampleObj = exampleInfo.example;
             
-            console.log("Loading example:", exampleObj.name, "with key:", exampleKey);
+            // console.log("Loading example:", exampleObj.name, "with key:", exampleKey);
             
             // Initialize the example
             if (exampleObj && typeof exampleObj.onInit === 'function') {
-                exampleObj.onInit(gb2d, world);
+                exampleObj.onInit(world);
             } else {
                 console.error("Example onInit method not found:", exampleObj);
             }
 
             // Display the init and tick code
             let globalLines = (exampleObj.globalLines?.join("\n") ?? "");
-            let initCode = ("        " + (exampleObj.onInit?.toString()?.split("\t").join("    ").split("(gb2d, world)=>{").join("function init(){") || 'function init(){}')).split("\n").map(l => l.substring(8)).join("\n");
-            let tickCode = ("        " + (exampleObj.onTick?.toString()?.split("\t").join("    ").split("(gb2d, world, dt)=>{").join("function tick(dt){") || 'function tick(dt){}')).split("\n").map(l => l.substring(8)).join("\n");
+            let initCode = ("        " + (exampleObj.onInit?.toString()?.split("\t").join("    ").split("(world)=>{").join("function init(){") || 'function init(){}')).split("\n").map(l => l.substring(8)).join("\n");
+            let tickCode = ("        " + (exampleObj.onTick?.toString()?.split("\t").join("    ").split("(world, dt)=>{").join("function tick(dt){") || 'function tick(dt){}')).split("\n").map(l => l.substring(8)).join("\n");
 
             generalCodePre.textContent = (generalSetupTemplate.split("{{GLOBAL}}").join(globalLines));
             initCodePre.textContent = initCode.trim();
@@ -377,7 +383,7 @@ gb2d.init().then(()=>{
                 // Get the raw code text
                 const codeText = block.textContent;
                 // Apply highlighting manually
-                block.innerHTML = hljs.highlight(codeText, {language: 'javascript'}).value;
+                block.innerHTML = hljs?.highlight(codeText, {language: 'javascript'}).value;
             });
         }
 

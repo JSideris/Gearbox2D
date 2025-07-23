@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // class CollisionSolver;
@@ -35,6 +36,8 @@ private:
     bool hasPenetrationResolution = true;
     bool hasRestitution = true;
     bool hasFriction = true;
+
+    // std::unordered_set<std::pair<int, int>, PairHash, PairEqual> contactPairs;
 
 public:
 
@@ -83,10 +86,14 @@ public:
     void _doKinematics();
     void _doBroadPhase();
     void _doNarrowPhase();
+    void _doContactManagement();
     void _doResolution();
     void __doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
     void __doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
     void __doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
+    void _doConstraints();
+    void _doSleepManagement();
+    // void __updateSleepTimers();
 
 	void clear();
 

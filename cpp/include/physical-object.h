@@ -2,7 +2,9 @@
 #define PHYSICAL_OBJECT_H
 
 #include <initializer_list>
+#include <unordered_set>
 #include <iostream>
+#include <vector>
 
 class World;
 
@@ -24,6 +26,7 @@ private:
     float lastX = 0.0f;
     float lastY = 0.0f;
     float lastR = 0.0f;
+    std::vector<PhysicalObject*> contacts; // List of contacts with other objects
 
 public:
     int id;
@@ -32,11 +35,23 @@ public:
     ObjectType type;
 
     Aabb aabb;
-    TreeNode* bvhNode; 
+    BvhNode* bvhNode; 
     
     // float mass;
     World& world;
     int worldIndex = -1;
+
+    // Sleep properties
+    bool isSleeping = false;
+    bool canSleep = true; // Some objects might never sleep
+    float sleepTimer = 0.0f;
+    // float sleepThreshold = 0.01f; // Velocity threshold
+    float sleepTimeRequired = 1.0f; // Seconds of inactivity before sleeping
+    // float angularSleepThreshold = 0.01f; // Angular velocity threshold
+    // int islandId = -1; // For island management
+    float sleepErrAccumulatorX = 0.0f;
+    float sleepErrAccumulatorY = 0.0f;
+    float sleepErrAccumulatorR = 0.0f;
     
     PhysicalObject(World& world, int id, emscripten_val options);
 
@@ -87,7 +102,7 @@ public:
     Vec2 getVelocity() const;
     void setVelocity(Vec2 v);
 
-    bool recomputeAabb(bool disablePadding);
+    bool recomputeAabb(int mode);
 
     // INTERNAL USE ONLY.
     void applyForce(const Vec2& force);
@@ -98,6 +113,12 @@ public:
 
     // Step function to update position and rotation
     bool stepMovement(float dt);
+
+    void sleep();
+    void wakeUp();
+    void addContact(PhysicalObject* other);
+    void removeContact(PhysicalObject* other);
+    // void wakeConnectedObjects(std::unordered_set<PhysicalObject*>& visited);
 };
 
 

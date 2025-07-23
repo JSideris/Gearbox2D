@@ -1,8 +1,9 @@
 
 #include <iostream>
+#include <cstdlib>
+#include <cmath>
 #include "world.h"
-// #include "physical-object.h"
-// #include "bvh.h"
+#include "constants.h"
 
 using namespace std;
 
@@ -11,11 +12,9 @@ World::World():
     // TODO: if we add more than 10k items, there should be some kind of event to warn the client.
     // Currently, the engine crashes with that many items. But with optimizations it's possible to exceed that.
     setTimeStep(1.0f / 60.0f);
-    int size = 10000;
-    liveFloatData.reserve(size * FDATA_EPO);
-    liveIntData.reserve(size * LIVE_INT_EPO);
-
-    // collisionSolver = CollisionSolver(liveIntData, liveFloatData);
+    int maxSize = 10000;
+    liveFloatData.reserve(maxSize * FDATA_EPO);
+    liveIntData.reserve(maxSize * LIVE_INT_EPO);
 }
 
 World::~World() {
@@ -23,16 +22,20 @@ World::~World() {
 }
 
 int World::makeObject(int id, emscripten_val options){
+    int currentSize = objectsList.size();
+    // liveFloatData.resize((currentSize + 1) * FDATA_EPO);
+    // liveIntData.resize((currentSize + 1) * LIVE_INT_EPO);
+
     auto object = new PhysicalObject(*this, id, options);
 
-    object->worldIndex = objectsList.size();
+    object->worldIndex = currentSize;
 
     objectsMap[id] = object;
     objectsList.push_back(object);
 
-    object->recomputeAabb(true);
+    object->recomputeAabb(1);
 
-    auto * bvhNode = bvh.insert(object->aabb, object);
+    auto* bvhNode = bvh.insert(object->aabb, object);
     object->bvhNode = bvhNode;
 
     // cout << object->getRadius() << endl;
@@ -62,9 +65,6 @@ int World::removeObject(int id) {
         int index = object->worldIndex;
 
         // Clear the object's reference to the world
-        // object->world = nullptr;
-        // TODO: shouldn't I delete the object reference too?
-        // This can be done by calling object->destroy(true);
         object->worldIndex = -1;
 
         // Remove the object from the list if it has a valid index
@@ -90,9 +90,6 @@ int World::removeObject(int id) {
 
             // Remove the last element (which is the object we want to remove)
             objectsList.pop_back();
-            // ids.pop_back();
-            liveFloatData.resize(objectsList.size() * FDATA_EPO);
-            liveIntData.resize(objectsList.size() * LIVE_INT_EPO);
         }
 
         // Remove the object from the map
@@ -143,30 +140,48 @@ void World::setGravity(float x, float y) {
 
 #ifdef EMSCRIPTEN
 emscripten_val World::getLiveFloatData() {
-    size_t size = max(static_cast<size_t>(4096u), liveFloatData.size() * 2);
+    size_t size = 10000*FDATA_EPO;
     return emscripten_val(emscripten::typed_memory_view(size * sizeof(float), liveFloatData.data()));
 }
 
 emscripten_val World::getLiveIntData() {
-    size_t size = max(static_cast<size_t>(4096u), liveIntData.size() * 2);
+    size_t size = 10000*LIVE_INT_EPO;
     return emscripten_val(emscripten::typed_memory_view(size * sizeof(int), liveIntData.data()));
 }
 #endif
 
 void World::step() {
+    static int frameCount = 0;
     _doKinematics();
     _doBroadPhase();
     _doNarrowPhase();
     _doResolution();
-    // _doConstraints();
+    // _doConstraints(); // Coming soon.
     // _doStabilization(); // Optional.
+
+    // if (++frameCount % 60 == 0) { 
+    //     std::cout << "Frame " << frameCount 
+    //               << " Objects: " << objectsList.size()
+    //               << " CollisionPairs capacity: " << bvh.collisionPairs.capacity()
+    //               << " Solver collisions: " << collisionSolver.collisions.size()
+    //               << " capacity: " << collisionSolver.collisions.capacity()
+    //               << std::endl;
+    // }
 }
 
 // 1. Kinematics.
 void World::_doKinematics(){
     // Update all objects in the world
+    // TODO: would be cool to have a separate list for only awake objects.
+    // TODO: obvious parallilization opportunity.
     for (auto& object : objectsList) {
+        
+        if(object->isSleeping){
+            continue;
+        }
+        
         liveIntData[object->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0;
+
         float m = liveFloatData[object->worldIndex * FDATA_EPO + FDATA_M];
 
         // Apply gravity.
@@ -178,10 +193,10 @@ void World::_doKinematics(){
 
         // Recompute AABB and update BVH.
         if(moved){
-            bool treeNeedsUpdate = object->recomputeAabb(false);
+            bool treeNeedsUpdate = object->recomputeAabb(0);
 
             if(treeNeedsUpdate){
-                bvh.update(object->bvhNode, object->aabb);
+                bvh.updateLeaf(object->bvhNode, object->aabb);
             }
         }
     }
@@ -189,12 +204,13 @@ void World::_doKinematics(){
 
 // 2. Broad phase collision detection.
 void World::_doBroadPhase(){
-    bvh.traverseAndCheckCollisions();
+    bvh.detectCollisions();
 }
 
 // 3. Narrow phase collision detection.
 void World::_doNarrowPhase(){
     collisionSolver.clear();
+    // currentPairs.clear();
     
     for (auto& pair : bvh.collisionPairs) {
         PhysicalObject* obj1 = static_cast<PhysicalObject*>(pair.first);
@@ -204,14 +220,44 @@ void World::_doNarrowPhase(){
         // Perform narrow phase collision detection between obj1 and obj2
         auto colliding = collisionSolver.solve(obj1->worldIndex, obj2->worldIndex);
 
-        liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION | (colliding * HAS_PHYSICAL_COLLISION);
-        liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION | (colliding * HAS_PHYSICAL_COLLISION);
+        liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION 
+            | (colliding * HAS_PHYSICAL_COLLISION);
+        liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION 
+            | (colliding * HAS_PHYSICAL_COLLISION);
+
+        // if(colliding){
+        //     // Add the pair to the current pairs for contact management
+        //     currentPairs.insert({obj1->worldIndex, obj2->worldIndex});
+        // }
     }
 }
 
+void World::_doContactManagement(){
+
+    // std::unordered_set<std::pair<int, int>, PairHash, PairEqual> confirmedContacts;
+    // for (const auto& pair : currentPairs) {
+    //     confirmedContacts.insert(pair);
+    // }
+    
+    // Find missing pairs
+    // for (const auto& pair : prev_pairs) {
+    //     if (confirmedContacts.find(pair) == confirmedContacts.end()) {
+    //         raiseEvent(pair);
+    //     }
+    // }
+    
+    // Update for next iteration
+    // prev_pairs = std::move(confirmedContacts);
+
+        // if(colliding){
+        //     obj1->addContact(obj2);
+        //     obj2->addContact(obj1);
+        // }
+}
 
 // 4. Collision resolution.
 void World::_doResolution(){
+    // TODO: this could also be parallelized.
     for (auto& collisionInfo : collisionSolver.collisions) {
         PhysicalObject* objA = objectsList[collisionInfo.indexA];
         PhysicalObject* objB = objectsList[collisionInfo.indexB];
@@ -223,39 +269,58 @@ void World::_doResolution(){
 }
 
 // 4.a. Penetration resolution.
-void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject*  objB){
-        
+void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB) {
     // Calculate inverse masses
     float imA = objA->getInverseMass();
     float imB = objB->getInverseMass();
     float totalInverseMass = imA + imB;
 
     // Skip if both objects have infinite mass
-    if(totalInverseMass == 0.0f){
+    if(totalInverseMass == 0.0f) {
         return;
     }
-    else{
-        // Scale the correction by penetration depth
-        Vec2 correction = collisionInfo.normal * (collisionInfo.penetrationDepth / totalInverseMass);
+    
+    // Get current velocities
+    Vec2 vA = objA->getVelocity();
+    Vec2 vB = objB->getVelocity();
+    
+    // Calculate relative velocity along normal
+    float relVelAlongNormal = (vB - vA).dot(collisionInfo.normal);
+    
+    // Scale the correction by penetration depth
+    // TODO: compute slop based on scale.
+    float slop = 0.001f;      // Small penetration allowed
+    float percent = 0.2f;     // Reduced Baumgarte factor for stacking
+    
+    // Only correct if penetration is significant
+    float correction = 0.0f;
+    if (collisionInfo.penetrationDepth > slop) {
+        correction = (collisionInfo.penetrationDepth - slop) * percent / totalInverseMass;
+    }
+    
+    Vec2 correctionVector = collisionInfo.normal * correction;
+    
+    // Apply positional correction
+    Vec2 pA = objA->getPosition();
+    Vec2 pB = objB->getPosition();
+    objA->setPosition(pA - correctionVector * imA);
+    objB->setPosition(pB + correctionVector * imB);
+    
+    // Apply velocity correction for resting contacts
+    // This prevents objects from vibrating when at rest
+    float restingThreshold = 0.01f;
+    if (std::abs(relVelAlongNormal) < restingThreshold) {
+        // Calculate how much velocity would be needed to correct the penetration
+        float velCorrection = correction / (timeStep * totalInverseMass);
         
-        // Add a baumgarte stabilization term to help prevent sinking
-        float baumgarte = 0.2f;  // Stabilization factor
-        float slop = 0.01f;      // Small penetration allowed
+        // Apply a small damping effect to reduce energy in the system
+        float damping = 0.2f;
         
-        if (collisionInfo.penetrationDepth > slop) {
-            // Apply baumgarte only when penetration exceeds slop
-            correction = correction * (1.0f + baumgarte);
+        if (relVelAlongNormal < 0) {
+            Vec2 dampingImpulse = collisionInfo.normal * (-(1.0f + damping) * relVelAlongNormal);
+            objA->setVelocity(vA + dampingImpulse * imA);
+            objB->setVelocity(vB - dampingImpulse * imB);
         }
-        
-        Vec2 pA = objA->getPosition();
-        Vec2 pB = objB->getPosition();
-
-        // Apply correction proportionally to inverse mass
-        Vec2 cpA = pA - correction * imA;
-        Vec2 cpB = pB + correction * imB;
-
-        objA->setPosition(cpA);
-        objB->setPosition(cpB);
     }
 }
 
@@ -314,6 +379,7 @@ void World::__doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, 
     float restitutionThreshold = -0.2f;
     float e;
     
+    // old:
     if (velAlongNormal > restitutionThreshold) {
         // Objects are moving slowly relative to each other, reduce restitution
         e = 0.0f;
@@ -355,8 +421,16 @@ void World::__doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, 
     
     // Apply the impulse to angular velocity (torque = r × F)
     // For 2D: torque = r.x * F.y - r.y * F.x
-    float torqueA = -rA.x * impulse.y - rA.y * impulse.x;
-    float torqueB = (rB.x * impulse.y - rB.y * impulse.x); // Note the negative sign for opposite reaction
+    
+    // Old calculation (wrong)
+    // float torqueA = -rA.x * impulse.y - rA.y * impulse.x;
+    // float torqueB = (rB.x * impulse.y - rB.y * impulse.x);
+    // Also wrong:
+    // float torqueA = rA.x * impulse.y - rA.y * impulse.x;
+    // float torqueB = rB.x * impulse.y - rB.y * impulse.x;
+    // Correct?
+    float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
+    float torqueB = rB.x * impulse.y - rB.y * impulse.x;
     
     // Set new angular velocities
     objA->setAngularVelocity(objA->getAngularVelocity() + torqueA * iaInv);
@@ -463,12 +537,18 @@ void World::__doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* 
     objB->setVelocity(objB->getVelocity() + frictionImpulse * imB);
 
     // Apply the impulse to angular velocity (torque = r × F)
-    float torqueA = -rA.cross(frictionImpulse); // Using your cross product method
-    float torqueB = rB.cross(frictionImpulse); // Opposite reaction
+    // Old:
+    // float torqueA = -rA.cross(frictionImpulse); // Using your cross product method
+    // float torqueB = rB.cross(frictionImpulse); // Opposite reaction
+    float torqueA = rA.cross(frictionImpulse);
+    float torqueB = rB.cross(frictionImpulse);
     
     objA->setAngularVelocity(objA->getAngularVelocity() + torqueA * iaInv);
     objB->setAngularVelocity(objB->getAngularVelocity() + torqueB * ibInv);
 }
+
+// 5. Constraints.
+void World::_doConstraints(){}
 
 
 void World::setTimeStep(float dt) {
@@ -485,25 +565,30 @@ void World::setTimeStep(float dt) {
 }
 
 // Remove all objects from the world and clean them up.
+// This could be more efficient by just clearing the vector.
+// The downside is added complexity and potential for bugs.
+// Removing the nodes 1 by 1 from the BVH is tried and tested already.
 void World::clear() {
-    bvh.clear();
     collisionSolver.clear();
 
-    for (auto& object : objectsList) {
-        delete object;
+    while (!objectsList.empty()) {
+        removeObject(objectsList[0]->id);
     }
 
     // Clear the lists
 
-    objectsMap.clear();
-    objectsList.clear();
+    // These should already be cleared by the removeObject function.
+    // But we should add some logging in case something goes wrong.
+    if(objectsList.size() != 0){
+        cout << "World::clear() - objectsList not cleared!" << endl;
+    }
+    if(objectsMap.size() != 0){
+        cout << "World::clear() - objectsMap not cleared!" << endl;
+    }
 
+    // Delete all the object data.
     liveIntData.clear();
     liveFloatData.clear();
-
-    // objectsList.resize(0);
-    // liveIntData.resize(0);
-    // liveFloatData.resize(0);
 }
 
 void World::destroy(){

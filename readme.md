@@ -8,7 +8,7 @@ Once the code is built and the server is running, open the webpage hosted from e
 
 # Plan:
 
-## Phase 1
+## Shapes, Kinematics, Collisions
 [*] Setup and test Rust w/ web assembly target.
 [*] Define basic starting classes for the physics module.
 	[*] RigidBody.
@@ -18,26 +18,66 @@ Once the code is built and the server is running, open the webpage hosted from e
 [ ] Ability to export raw data as a byte array.
 [*] Add debug visuals.
 [*] Add a few different shapes.
-	[*] Point (default / no shape).
-	[*] Circle.
-	[ ] Ellipse?
 	[*] AABB.
 	[*] Box.
-	[ ] Capsule?
+	[ ] Capsule.
+	[*] Circle.
+	[ ] Concave polygons.
 	[ ] Convex polygons.
-	[ ] Concave polygons / decomposition.
-[ ] Objects can be made up of one or more shapes.
+	[ ] Ellipse.
+	[ ] Line.
+	[*] Point.
+[ ] Composite objects.
 [*] Add rotations.
 [*] Compute/track AABB for each object.
 [*] Implement VBH.
-[*] Implement broad phase collision detection using VBH.
+[*] Implement broad phase collision detection using BVH.
 [ ] Implement narrow phase collision detection.
-	[*] Circle-Circle.
 	[*] AABB-AABB.
-	[*] AABB-Circle
-	[ ] Box-Box
-	[ ] Box-AABB
-	[ ] Box-Circle
+	[*] Box-AABB -> Box-Box.
+	[*] Box-Box.
+	[ ] Capsule-AABB.
+	[ ] Capsule-Box.
+	[ ] Capsule-Capsule.
+	[*] Circle-AABB.
+	[ ] Circle-Box.
+	[ ] Circle-Capsule.
+	[*] Circle-Circle.
+	[ ] Convex-AABB.
+	[ ] Convex-Box.
+	[ ] Convex-Capsule.
+	[ ] Convex-Circle.
+	[ ] Convex-Convex.
+	[ ] Concave-AABB.
+	[ ] Concave-Box.
+	[ ] Concave-Capsule.
+	[ ] Concave-Circle.
+	[ ] Concave-Convex.
+	[ ] Ellipse-AABB.
+	[ ] Ellipse-Box.
+	[ ] Ellipse-Capsule.
+	[ ] Ellipse-Circle.
+	[ ] Ellipse-Concave.
+	[ ] Ellipse-Convex.
+	[ ] Ellipse-Ellipse.
+	[ ] Line-AABB.
+	[ ] Line-Box.
+	[ ] Line-Capsule.
+	[ ] Line-Circle.
+	[ ] Line-Concave.
+	[ ] Line-Convex.
+	[ ] Line-Ellipse.
+	[ ] Line-Line.
+	[*] Point-AABB.
+	[ ] Point-Box.
+	[ ] Point-Capsule.
+	[ ] Point-Circle.
+	[ ] Point-Concave.
+	[ ] Point-Convex.
+	[ ] Point-Ellipse.
+	[ ] Point-Line.
+	[*] Point-Point.
+	Convave polygons?
 [*] Collision resolvers.
 	[*] Penetration resolution.
 	[*] Collision impulse.
@@ -47,24 +87,25 @@ Once the code is built and the server is running, open the webpage hosted from e
 	[*] Sensor.
 	[*] Physical.
 	[*] Fixed.
+	[ ] Kinematic. Maybe.
 [*] Implement an applyForce on objects.
 [*] Implement an applyImpulse on objects.
-[ ] Determine and apply impulse for rigid body collisions with basic shapes.
+[*] Determine and apply impulse for rigid body collisions with basic shapes.
 [ ] Determine and apply impulse for convex polygons.
 [ ] Determine and apply impulse for concave polygons (by splitting them up into convex polygons).
-[ ] Add constraints.
-	[ ] Distance.
-	[ ] Spring.
-	[ ] Hinged.
-	[ ] Gear constraint.
-[ ] Support changing the center of mass.
+[ ] Collision tracking.
+
+## Constraints
+[ ] Distance.
+[ ] Spring.
+[ ] Hinged.
+[ ] Gear constraint.
 
 ## Misc
-[ ] Elasticity.
-[ ]	Static/dynamic friction.
-[ ] Advanced drag?
-[ ] Forcefields?
-[ ] Anti-passthrough (optional).
+[*] Elasticity (restitution).
+[*]	Static/dynamic friction.
+[ ] Support changing the center of mass.
+[ ] Events.
 
 ## Fluid Dynamics
 [ ] Wind.
@@ -73,19 +114,55 @@ Once the code is built and the server is running, open the webpage hosted from e
 	[ ]	 Bouancy.
 
 ## Optimizations
-[ ] Implement collision masks.
-[ ] Sleeping objects.
-[ ] Caching previous broad-phase collisions.
-[ ] Consider combining the broad phase with the kinematics phase.
-[ ] Instead of reinserting on movement, consider tree traversal. This requires experimentation.
+
+### General Optimizations
 [*] Cache inverse mass.
+[ ] Cache inverse inertia.
 [ ] Cache inverse dt.
+[*] Cache exponential decay factor when dt is set.
+[ ] Implement collision masks.
+[ ] Focus areas & resolution.
+
+### Broad Phase Optimizations
+[*] Broad phase using AABBs.
+[*] Do not recompute AABB when no movement happens.
+[ ] Stagger AABB recalculation when movement is slow.
+[*] Speed-dependant bounding area padding.
+[ ] Spin-dependant bounding area padding.
+[*] Bounding volume hierarchy (BVH).
+[*] BVH sleep biasing.
+[ ] BVH particle biasing.
+[ ] BVH collision mask biasing.
+[ ] Rebalance BVH.
+[ ] Experimental: Caching previous broad-phase collisions.
+[ ] Experimental: Instead of reinserting on movement, consider tree traversal.
+[ ] Experimental: Consider combining the broad phase with the kinematics phase.
+
+### Sleep Optimizations
+[*] Sleeping objects.
+[ ] Islands.
+[*] Shrinkwrap AABB on sleep.
+[ ] Experimental: Separate vectors for sleeping/awake objects.
+[ ] Experimental: Re-insert into BVH upon sleep.
+[ ] Experimental: Sleep drift (sleeping at terminal velocity).
+
+## Advanced Features
+[ ] Smart anti-tunelling.
+[ ] Advanced drag.
+[ ] Forcefields.
+[ ] Microscopic scale.
+[ ] Galactic scales.
+[ ] Automatic handling for big world problem.
 
 ## AI
-[ ] Implement A* directly into the engine.
+[ ] A*.
+[ ] A* biasing.
+[ ] A* advanced coordination.
+[ ] A* precomputed mesh.
 
 
 # Physical Object Data
 
 Gear2Engine is data-oriented, allowing it to be optimized for data transfer between JavaScript and WASM. Most volatile object data for `PhysicalObject`s is stored in vectors within the `World` object. At the start of a world step, the data is copied into each `PhysicalObject` for easy processing, then the data is copied back into the vectors for transfer back into the main application. 
+
 

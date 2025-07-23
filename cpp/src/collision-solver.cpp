@@ -126,11 +126,29 @@ bool CollisionSolver::solve(int indexA, int indexB) {
                 case static_cast<int>(ObjectShape::CIRCLE):
                     return _solveAabbCircle();
                 case static_cast<int>(ObjectShape::BOX):
-                    return _solveAabbBox();
+                    return _solveBoxBox();
+                case static_cast<int>(ObjectShape::POINT):
+                    return _solveAabbPoint();
                 default:
                     cerr << "Unsupported collision shape combo." << endl;
                     break;
             }
+        case static_cast<int>(ObjectShape::BOX):
+            switch(shapeB){
+                case static_cast<int>(ObjectShape::AABB):
+                    _swap();
+                    return _solveBoxBox();
+                case static_cast<int>(ObjectShape::CIRCLE):
+                    _swap();
+                    return _solveCircleBox();
+                case static_cast<int>(ObjectShape::BOX):
+                    // _swap();
+                    return _solveBoxBox();
+                default:
+                    cerr << "Unsupported collision shape combo." << endl;
+                    break;
+            }
+            break;
         case static_cast<int>(ObjectShape::CIRCLE):
             switch(shapeB){
                 case static_cast<int>(ObjectShape::CIRCLE):
@@ -145,21 +163,14 @@ bool CollisionSolver::solve(int indexA, int indexB) {
                     break;
             }
             break;
-        case static_cast<int>(ObjectShape::BOX):
+        case static_cast<int>(ObjectShape::POINT):
             switch(shapeB){
+                case static_cast<int>(ObjectShape::POINT):
+                    return false;
                 case static_cast<int>(ObjectShape::AABB):
                     _swap();
-                    return _solveAabbBox();
-                case static_cast<int>(ObjectShape::CIRCLE):
-                    _swap();
-                    return _solveCircleBox();
-                case static_cast<int>(ObjectShape::BOX):
-                    return _solveBoxBox();
-                default:
-                    cerr << "Unsupported collision shape combo." << endl;
-                    break;
+                    return _solveAabbPoint();
             }
-            break;
         default: 
             cerr << "Unsupported collision shape combo." << endl;
             break;
@@ -246,45 +257,6 @@ bool CollisionSolver::_solveAabbAabb() {
 
     return true;
 }
-
-
-// Get the correct solver for the obj types
-bool CollisionSolver::_solveCircleCircle() {
-    float rA = floatData[_indexA * FDATA_EPO + FDATA_RADIUS];
-    float rB = floatData[_indexB * FDATA_EPO + FDATA_RADIUS];
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
-
-    auto pA = Vec2(xA, yA);
-    auto pB = Vec2(xB, yB);
-
-    auto pDiff = (pB-pA);
-
-    auto pd2 = pDiff.magnitudeSquared();
-
-    if((rA + rB)*(rA + rB) > pd2){
-        auto normal = pDiff.normalize();
-        auto penetrationDepth = rA + rB - pDiff.magnitude();
-        auto contactPoint = pA + normal * rA;
-        collisions.push_back(CollisionInfo{
-            true,               // Collision detected
-            contactPoint,       // Contact point
-            normal,             // Collision normal
-            penetrationDepth,   // Penetration depth
-            _indexA,            // Object A index
-            _indexB,            // Object B index
-            _relativeVelocity,  // Relative velocity
-            0.0f                // Friction coefficient
-        });
-
-        return true;
-    }
-
-    return false;
-}
-
 
 bool CollisionSolver::_solveAabbCircle() {
     float rC = floatData[_indexB * FDATA_EPO + FDATA_RADIUS];
@@ -438,6 +410,135 @@ bool CollisionSolver::_solveAabbCircle() {
         return true;
     }
     
+    return false;
+}
+
+bool CollisionSolver::_solveAabbPoint() {
+    // Extract point data
+    float xP = floatData[_indexB * FDATA_EPO + FDATA_X];
+    float yP = floatData[_indexB * FDATA_EPO + FDATA_Y];
+    
+    // Extract AABB data
+    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
+    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
+    float wA = floatData[_indexA * FDATA_EPO + FDATA_W];
+    float hA = floatData[_indexA * FDATA_EPO + FDATA_H];
+    
+    // Calculate AABB boundaries
+    float minX = xA - wA/2;
+    float maxX = xA + wA/2;
+    float minY = yA - hA/2;
+    float maxY = yA + hA/2;
+    
+    // Simple check: is point inside AABB?
+    if (xP >= minX && xP <= maxX && yP >= minY && yP <= maxY) {
+        
+        // Find distances to each edge
+        float dLeft = xP - minX;
+        float dRight = maxX - xP;
+        float dTop = yP - minY;
+        float dBottom = maxY - yP;
+        
+        // Find which edge is closest
+        float minDist = dLeft;
+        Vec2 normal(-1.0f, 0.0f); // Push left
+        
+        if (dRight < minDist) {
+            minDist = dRight;
+            normal = Vec2(1.0f, 0.0f); // Push right
+        }
+        
+        if (dTop < minDist) {
+            minDist = dTop;
+            normal = Vec2(0.0f, -1.0f); // Push up
+        }
+        
+        if (dBottom < minDist) {
+            minDist = dBottom;
+            normal = Vec2(0.0f, 1.0f); // Push down
+        }
+        
+        // Contact point is the point itself
+        Vec2 contactPoint(xP, yP);
+        
+        // Penetration depth is distance to closest edge
+        float penetrationDepth = minDist;
+        
+        // Compute relative velocity including rotational effects at contact point
+        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
+                floatData[_indexA * FDATA_EPO + FDATA_VY]);
+        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
+                floatData[_indexB * FDATA_EPO + FDATA_VY]);
+                
+        // Get rotational speeds
+        float wA = floatData[_indexA * FDATA_EPO + FDATA_RS];
+        float wB = floatData[_indexB * FDATA_EPO + FDATA_RS];
+        
+        // Calculate radius vectors (from center to contact point)
+        Vec2 rA = contactPoint - Vec2(xA, yA);
+        Vec2 rB = contactPoint - Vec2(xP, yP); // This is (0,0) for a point
+        
+        // Calculate tangential velocities due to rotation
+        Vec2 tangentialVelocityA(-rA.y * wA, rA.x * wA);
+        Vec2 tangentialVelocityB(-rB.y * wB, rB.x * wB); // This is (0,0) for a point
+        
+        // Total velocities at contact point
+        Vec2 totalVelocityA = vA + tangentialVelocityA;
+        Vec2 totalVelocityB = vB + tangentialVelocityB; // Just vB for a point
+        
+        // Relative velocity at contact point
+        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
+        
+        collisions.push_back(CollisionInfo{
+            true,                // Collision detected
+            contactPoint,        // Contact point
+            normal,              // Collision normal
+            penetrationDepth,    // Penetration depth
+            _indexA,             // Object A index
+            _indexB,             // Object B index
+            relativeVelocity,    // Relative velocity
+            0.0f                 // Friction coefficient
+        });
+        
+        return true;
+    }
+    
+    return false;
+}
+
+bool CollisionSolver::_solveCircleCircle() {
+    float rA = floatData[_indexA * FDATA_EPO + FDATA_RADIUS];
+    float rB = floatData[_indexB * FDATA_EPO + FDATA_RADIUS];
+    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
+    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
+    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
+    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
+
+    auto pA = Vec2(xA, yA);
+    auto pB = Vec2(xB, yB);
+
+    auto pDiff = (pB-pA);
+
+    auto pd2 = pDiff.magnitudeSquared();
+
+    if((rA + rB)*(rA + rB) > pd2){
+        auto normal = pDiff.normalize();
+        auto penetrationDepth = rA + rB - pDiff.magnitude();
+        auto contactPoint = pA + normal * rA;
+        collisions.push_back(CollisionInfo{
+            true,               // Collision detected
+            contactPoint,       // Contact point
+            normal,             // Collision normal
+            penetrationDepth,   // Penetration depth
+            _indexA,            // Object A index
+            _indexB,            // Object B index
+            _relativeVelocity,  // Relative velocity
+            0.0f                // Friction coefficient
+        });
+
+        return true;
+    }
+
     return false;
 }
 
@@ -668,140 +769,6 @@ bool CollisionSolver::_solveBoxBox() {
     return true;
 }
 
-
-
-bool CollisionSolver::_solveAabbBox() {
-    // Get AABB (Object A) data
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-    float wA = floatData[_indexA * FDATA_EPO + FDATA_W];
-    float hA = floatData[_indexA * FDATA_EPO + FDATA_H];
-
-    // Get Box (Object B) data
-    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
-    float wB = floatData[_indexB * FDATA_EPO + FDATA_W];
-    float hB = floatData[_indexB * FDATA_EPO + FDATA_H];
-    float rotationB = floatData[_indexB * FDATA_EPO + FDATA_R];
-
-    // AABB's axes are just the X and Y world axes
-    Vec2 axisA1(1.0f, 0.0f);  // X-axis
-    Vec2 axisA2(0.0f, 1.0f);  // Y-axis
-
-    // Box B's rotated axes
-    Vec2 axisB1(cos(rotationB), sin(rotationB));    // X-axis for Box B
-    Vec2 axisB2(-sin(rotationB), cos(rotationB));   // Y-axis for Box B
-
-    // The separating axes to test: X and Y for AABB, rotated axes for Box B
-    Vec2 axes[] = {axisA1, axisA2, axisB1, axisB2};
-
-    float minPenetrationDepth = FLT_MAX;  // Store the minimum penetration depth
-    Vec2 bestAxis;  // Store the axis that results in the smallest penetration
-    bool isColliding = true;
-
-    // Helper function to project the AABB onto an axis
-    auto projectAabbOntoAxis = [&](float x, float y, float w, float h, const Vec2& axis) {
-        // Get the min/max of the AABB based on its extents
-        float hw = w / 2.0f;
-        float hh = h / 2.0f;
-
-        // Project the corners of the AABB onto the axis
-        Vec2 corners[4] = {
-            Vec2(x - hw, y - hh),
-            Vec2(x + hw, y - hh),
-            Vec2(x + hw, y + hh),
-            Vec2(x - hw, y + hh)
-        };
-
-        // Find the minimum and maximum projection values
-        float minProj = corners[0].dot(axis);
-        float maxProj = minProj;
-
-        for (int i = 1; i < 4; i++) {
-            float proj = corners[i].dot(axis);
-            if (proj < minProj) minProj = proj;
-            if (proj > maxProj) maxProj = proj;
-        }
-
-        return std::make_pair(minProj, maxProj);
-    };
-
-    // Helper function to project the rotated box onto an axis (reusing from box-box)
-    auto projectBoxOntoAxis = [&](float x, float y, float w, float h, float rotation, const Vec2& axis) {
-        Vec2 corners[4];
-        float hw = w / 2.0f;
-        float hh = h / 2.0f;
-
-        // Get the rotated corners of the box
-        corners[0] = Vec2(-hw, -hh).rotate(rotation) + Vec2(x, y);
-        corners[1] = Vec2(hw, -hh).rotate(rotation) + Vec2(x, y);
-        corners[2] = Vec2(hw, hh).rotate(rotation) + Vec2(x, y);
-        corners[3] = Vec2(-hw, hh).rotate(rotation) + Vec2(x, y);
-
-        // Project all corners onto the axis and find the min/max projections
-        float minProj = corners[0].dot(axis);
-        float maxProj = minProj;
-
-        for (int i = 1; i < 4; i++) {
-            float proj = corners[i].dot(axis);
-            if (proj < minProj) minProj = proj;
-            if (proj > maxProj) maxProj = proj;
-        }
-
-        return std::make_pair(minProj, maxProj);
-    };
-
-    // Check all axes for overlap (for both AABB and Box)
-    for (const Vec2& axis : axes) {
-        // Project AABB (Object A) onto the current axis
-        auto [minA, maxA] = projectAabbOntoAxis(xA, yA, wA, hA, axis);
-
-        // Project Box (Object B) onto the current axis
-        auto [minB, maxB] = projectBoxOntoAxis(xB, yB, wB, hB, rotationB, axis);
-
-        // Check for overlap between projections
-        if (maxA < minB || maxB < minA) {
-            // No overlap on this axis, so there is a separating axis -> no collision
-            return false;
-        }
-
-        // Calculate the penetration depth on this axis
-        float overlap = std::min(maxA, maxB) - std::max(minA, minB);
-        if (overlap < minPenetrationDepth) {
-            minPenetrationDepth = overlap;
-            bestAxis = axis;
-        }
-    }
-
-    // If we get here, the AABB and Box are colliding on all axes
-    // Compute the vector from AABB to Box centers
-    Vec2 AB = Vec2(xB - xA, yB - yA);
-
-    // Determine the correct normal direction
-    Vec2 normal;
-    if (AB.dot(bestAxis) > 0.0f) {
-        normal = bestAxis;
-    } else {
-        normal = -bestAxis;
-    }
-
-    // Compute the contact point (optional, approximate it)
-    Vec2 contactPoint = Vec2((xA + xB) / 2.0f, (yA + yB) / 2.0f);  // Midpoint approximation
-
-    // Store the collision info
-    collisions.push_back(CollisionInfo{
-        true,                      // Collision detected
-        contactPoint,              // Contact point
-        normal,                    // Collision normal
-        minPenetrationDepth,       // Penetration depth
-        _indexA,                   // Object A index (AABB)
-        _indexB,                   // Object B index (Box)
-        _relativeVelocity,         // Relative velocity (already computed)
-        0.0f                       // Friction placeholder (can be computed later)
-    });
-
-    return true;
-}
 
 bool CollisionSolver::_solveCircleBox() {
     // Get Circle (Object A) data
