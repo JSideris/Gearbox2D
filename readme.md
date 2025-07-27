@@ -1,10 +1,172 @@
 
-# Setup:
-To run tests, run `make test -B`. To build for wasm, run `make wasm -B`. It's configured to work in a Linux environment. It was developed in Ubuntu via WSL.
+# GearBox2D - High-Speed 2D Physics Engine
 
-You might need a live server in order to use the example app. A really simple option is Live Server (Five Server). 
+A blazing-fast 2D physics engine written in C++ and compiled to WebAssembly, with a TypeScript interface. Perfect for high-frequency simulations and applications requiring frequent updates.
 
-Once the code is built and the server is running, open the webpage hosted from examples/index.html.
+## Prerequisites
+
+Before you can build and run GearBox2D, you'll need to install the following dependencies:
+
+### Required Dependencies
+
+1. **Node.js and npm** (v16 or higher)
+   - Download from [nodejs.org](https://nodejs.org/)
+   - Verify installation: `node --version` and `npm --version`
+
+2. **Emscripten SDK** (for WebAssembly compilation)
+   - Install via [emsdk](https://emscripten.org/docs/getting_started/downloads.html):
+   ```bash
+   git clone https://github.com/emscripten-core/emsdk.git
+   cd emsdk
+   ./emsdk install latest
+   ./emsdk activate latest
+   source ./emsdk_env.sh  # On Windows: emsdk_env.bat
+   ```
+   - Verify installation: `emcc --version`
+
+3. **GNU Make** (for build automation)
+   - **Linux/macOS**: Usually pre-installed, verify with `make --version`. If not installed, use `sudo apt install make`.
+   - **Windows**: Install via WSL, MinGW, or use `nmake` (requires Visual Studio)
+
+4. **C++ Compiler** (for running tests)
+   - **Linux**: `g++` (usually pre-installed)
+   - **macOS**: Install Xcode Command Line Tools: `xcode-select --install`
+   - **Windows**: Install MinGW or use WSL
+
+5. **Google Test** (for C++ unit tests)
+   - Clone to `/home/josh/googletest/googletest` (or update the path in Makefile)
+   ```bash
+   git clone https://github.com/google/googletest.git /home/josh/googletest
+   ```
+
+### Optional Dependencies
+
+- **Live Server** (for running examples): Install via npm: `npm install -g live-server`
+
+## Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/JSideris/Gearbox2D.git
+   cd Gearbox2D
+   ```
+
+2. **Install Node.js dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Build the project**:
+   ```bash
+   # Build everything (C++ to WASM + TypeScript)
+   npm run build
+   
+   # Or build components separately:
+   npm run build:cpp  # Build WebAssembly module
+   npm run build:ts   # Build TypeScript interface
+   ```
+
+## Usage
+
+### Running Tests
+
+```bash
+# Run all tests (C++ and TypeScript)
+npm test
+
+# Run only C++ tests
+npm run test:cpp
+
+# Run only TypeScript tests
+npm run test:ts
+```
+
+### Running Examples
+
+1. **Start a local server** (required for WASM loading):
+   ```bash
+   # Using live-server (if installed globally)
+   live-server examples/
+   
+   # Or using Python
+   python -m http.server 8000
+   
+   # Or using Node.js
+   npx http-server examples/
+   ```
+
+2. **Open your browser** and navigate to:
+   - `http://localhost:8080` (live-server default)
+   - `http://localhost:8000` (Python default)
+   - Or whatever port your server is using
+
+3. **View the examples** by opening `examples/index.html`
+
+### Development
+
+```bash
+# Watch TypeScript files for changes
+npm run dev
+
+# Clean build artifacts
+npm run clean
+
+# Rebuild everything from scratch
+make clean && npm run build
+```
+
+## Project Structure
+
+```
+Gearbox2D/
+├── cpp/                    # C++ source code
+│   ├── include/           # Header files
+│   ├── src/              # Source files
+│   └── tests/            # C++ unit tests
+├── typescript/           # TypeScript interface
+│   └── src/
+├── examples/             # Web examples and demos
+├── dist/                 # Build output
+│   ├── js/              # Compiled TypeScript
+│   └── wasm/            # WebAssembly modules
+├── Makefile             # C++ build configuration
+├── package.json         # Node.js dependencies
+└── tsconfig.json        # TypeScript configuration
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Emscripten not found**: Make sure you've activated the emsdk environment
+2. **Google Test not found**: Verify the path in Makefile matches your installation
+3. **WASM loading errors**: Ensure you're serving files via HTTP/HTTPS, not file://
+4. **Build failures**: Try `make clean && npm run build` to rebuild from scratch
+
+### Platform-Specific Notes
+
+- **Windows**: Consider using WSL for the best development experience
+- **macOS**: You may need to install Xcode Command Line Tools
+- **Linux**: Most dependencies should be available via package managers
+  - **Ubuntu/Debian**: If you get `libatomic.so.1` errors with Emscripten, install: `sudo apt install libatomic1`
+
+## API Documentation
+
+The TypeScript interface provides a clean API for creating and managing physics worlds:
+
+```typescript
+import { Gb2d } from './dist/js/gb2d.js';
+
+// Initialize the engine
+const gb2d = new Gb2d();
+await gb2d.init();
+
+// Create a world
+const world = gb2d.makeWorld();
+
+// Add objects and run simulation
+// See examples/ for complete usage examples
+```
 
 # Plan:
 
