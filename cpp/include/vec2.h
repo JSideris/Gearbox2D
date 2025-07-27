@@ -82,5 +82,10 @@ public:
     }
 };
 
+// Free function to allow scalar * Vec2 (not just Vec2 * scalar)
+inline Vec2 operator*(float scalar, const Vec2& vec) {
+    return vec * scalar;
+}
+
 
 #endif // VEC2_H
