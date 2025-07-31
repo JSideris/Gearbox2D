@@ -17,8 +17,26 @@
 #include "impulse-solver.h"
 #include "constants.h"
 
-
 class PhysicalObject;  // Forward declaration of PhysicalObject
+
+struct ContactConstraint {
+    PhysicalObject* a;
+    PhysicalObject* b;
+    Vec2 point;
+    Vec2 normal;
+    float depth;
+    Vec2 rA, rB;
+    float normalMass, tangentMass;
+    Vec2 tangent;
+    float friction;
+    float bias;
+    float normalImpulse, frictionImpulse;
+
+    void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
+    void solve(bool enableNormal, bool enableFriction);
+
+    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f) {}
+};
 
 class World {
 private:
@@ -36,6 +54,8 @@ private:
     bool hasPenetrationResolution = true;
     bool hasRestitution = true;
     bool hasFriction = true;
+    std::vector<ContactConstraint> contactConstraints;
+    int velocityIterations;
 
     // std::unordered_set<std::pair<int, int>, PairHash, PairEqual> contactPairs;
 

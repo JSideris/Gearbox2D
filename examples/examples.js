@@ -1,10 +1,23 @@
 import gb2d from '../dist/js/gb2d.js';
 
+/**
+ * @callback OnInitCallback
+ * @param {gb2d.World} world - The physics world
+ * @returns {void}
+ */
+
+/**
+ * @callback OnTickCallback
+ * @param {gb2d.World} world - The physics world
+ * @param {number} dt - Delta time
+ * @returns {void}
+ */
+
 class Example{
 	/**
 	 * @param {object} options - Constructor options.
-	 * @param {function(world: gb2d.World): void} [options.onInit] - Optional. Called when the example is initialized.
-	 * @param {function(world: gb2d.World, dt: number): void} [options.onTick] - Optional. Called on each simulation tick.
+	 * @param {OnInitCallback} [options.onInit] - Optional. Called when the example is initialized.
+	 * @param {OnTickCallback} [options.onTick] - Optional. Called on each simulation tick.
 	 * @param {string} options.description - A description of the example.
 	 * @param {string} options.name - The display name of the example.
 	 * @param {string} options.key - A unique key for the example (e.g., for URLs).
@@ -18,11 +31,17 @@ class Example{
 		key, 
 		globalLines
 	}){
+		/** @type {OnInitCallback|undefined} */
 		this.onInit = onInit;
+		/** @type {OnTickCallback|undefined} */
 		this.onTick = onTick;
+		/** @type {string} */
 		this.description = description;
+		/** @type {string} */
 		this.name = name;
+		/** @type {string} */
 		this.key = key;
+		/** @type {string[]} */
 		this.globalLines = globalLines || [];
 	}
 
@@ -1236,7 +1255,7 @@ const examples = [
 				}
 			}),
 			new Example({
-				name: "TC-11 (SOLVED)",
+				name: "TC-11 (REGRESSION)",
 				key: "tc-11",
 				description: "Circles get stuck in other shapes.",
 				onInit: (world)=>{
@@ -1261,6 +1280,39 @@ const examples = [
 						radius: 0.1,
 						mass: 0.2,
 						restitution: 0.5,
+					});
+				},
+				onTick: (world, dt)=>{
+				}
+			}),
+
+			new Example({
+				name: "TC-12",
+				key: "tc-12",
+				description: "The box, under high gravity, sinks through the AABB.",
+				onInit: (world)=>{
+					world.setGravity(0, 10);
+					// world.setHasRestitution(false);
+		
+					let id = 1;
+					world.makeObject(id++, {
+						x: 5,
+						y: 6,
+						shape: gb2d.shapes.AABB,
+						type: gb2d.bodyTypes.FIXED_OBJECT,
+						width: 8,
+						height: 1,
+					});
+		
+					// Anohter box but this time a rigid body.
+					world.makeObject(id++, {
+						x: 7,
+						y: 4,
+						shape: gb2d.shapes.BOX,
+						type: gb2d.bodyTypes.RIGID_BODY,
+						width: 1,
+						height: 1,
+						mass: 0.2,
 					});
 				},
 				onTick: (world, dt)=>{
