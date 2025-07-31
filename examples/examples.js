@@ -373,7 +373,8 @@ const examples = [
 						let r = .2 + m*m * .8;
 						let h = 0.1 + Math.random() * (r - 0.1);
 						let w = r * r / h;
-						let isBox = false; //Math.random() < 0.5;
+						// let isBox = false; //Math.random() < 0.5;
+						let isBox = Math.random() < 0.5;
 						world.makeObject(nextId++, {
 							x: 5.00 - dir * 5.00,
 							y: 7.50,
@@ -572,7 +573,7 @@ const examples = [
 				],
 				onInit: (world)=>{
 					world.setGravity(0, 10);
-					simulationTime = 0;
+					simulationTime = 3;
 					nextId = 0;
 		
 					world.makeObject(nextId++, {
@@ -590,19 +591,21 @@ const examples = [
 				// Once collisions are a bit more stable, the number of colliding objects can be doubled.
 				onTick: (world, dt)=>{
 					simulationTime += dt;
-					let numbSeconds = Math.floor(simulationTime);
+					let numbSeconds = Math.floor(simulationTime / 3);
 					if(numbSeconds > nextId){
 						if(nextId < 10){
 							world.makeObject(nextId++, {
 								x: 5,
 								y: 0,
-								width: 3,
-								height: 1,
+								width: 6,
+								height: 0.5,
 								vx: 0,
 								vy: 0,
 								shape: gb2d.shapes.BOX,
 								type: gb2d.bodyTypes.RIGID_BODY,
 								mass: 0.2, 
+								sFriction: 10,
+								kFriction: 10,
 							});
 						}
 					}
@@ -1233,7 +1236,7 @@ const examples = [
 				}
 			}),
 			new Example({
-				name: "TC-11",
+				name: "TC-11 (SOLVED)",
 				key: "tc-11",
 				description: "Circles get stuck in other shapes.",
 				onInit: (world)=>{

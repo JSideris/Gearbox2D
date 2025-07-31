@@ -105,9 +105,6 @@ class World {
 	
 	}
 	removeObject(id){
-		// console.log("REMOVE OBJECT");
-
-		// console.debug(`Deleting #${id}.`);
 		if(!this.objectsById[id]) {
 			console.warn(`Object ${id} not found.`);
 			return false;

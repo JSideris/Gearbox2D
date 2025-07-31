@@ -654,9 +654,8 @@ bool CollisionSolver::_solveBoxBox() {
     for (int i = 0; i < 4; i++) {
         bool inside = true;
         for (int j = 0; j < 4; j++) {
-            // Check if corner is inside box A (behind all edges of A)
             Vec2 edgeNormal = Vec2(-edgesA[j].y, edgesA[j].x).normalize();
-            if (edgeNormal.dot(cornersB[i] - cornersA[j]) > 0) {
+            if (edgeNormal.dot(cornersB[i] - cornersA[j]) < 0) {
                 inside = false;
                 break;
             }
@@ -672,9 +671,8 @@ bool CollisionSolver::_solveBoxBox() {
         for (int i = 0; i < 4; i++) {
             bool inside = true;
             for (int j = 0; j < 4; j++) {
-                // Check if corner is inside box B (behind all edges of B)
                 Vec2 edgeNormal = Vec2(-edgesB[j].y, edgesB[j].x).normalize();
-                if (edgeNormal.dot(cornersA[i] - cornersB[j]) > 0) {
+                if (edgeNormal.dot(cornersA[i] - cornersB[j]) < 0) {
                     inside = false;
                     break;
                 }

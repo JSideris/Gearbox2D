@@ -90,6 +90,14 @@ int World::removeObject(int id) {
 
             // Remove the last element (which is the object we want to remove)
             objectsList.pop_back();
+
+            // Remove the corresponding data from arrays
+            for(int i = 0; i < LIVE_INT_EPO; i++){
+                liveIntData.pop_back();
+            }
+            for(int i = 0; i < FDATA_EPO; i++){
+                liveFloatData.pop_back();
+            }
         }
 
         // Remove the object from the map
@@ -158,15 +166,6 @@ void World::step() {
     _doResolution();
     // _doConstraints(); // Coming soon.
     // _doStabilization(); // Optional.
-
-    // if (++frameCount % 60 == 0) { 
-    //     std::cout << "Frame " << frameCount 
-    //               << " Objects: " << objectsList.size()
-    //               << " CollisionPairs capacity: " << bvh.collisionPairs.capacity()
-    //               << " Solver collisions: " << collisionSolver.collisions.size()
-    //               << " capacity: " << collisionSolver.collisions.capacity()
-    //               << std::endl;
-    // }
 }
 
 // 1. Kinematics.
@@ -234,6 +233,7 @@ void World::_doNarrowPhase(){
 
 void World::_doContactManagement(){
 
+    // TODO: implement contact management.
     // std::unordered_set<std::pair<int, int>, PairHash, PairEqual> confirmedContacts;
     // for (const auto& pair : currentPairs) {
     //     confirmedContacts.insert(pair);
@@ -290,7 +290,7 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
     // Scale the correction by penetration depth
     // TODO: compute slop based on scale.
     float slop = 0.001f;      // Small penetration allowed
-    float percent = 0.2f;     // Reduced Baumgarte factor for stacking
+    float percent = 0.2f;
     
     // Only correct if penetration is significant
     float correction = 0.0f;
@@ -305,23 +305,6 @@ void World::__doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObje
     Vec2 pB = objB->getPosition();
     objA->setPosition(pA - correctionVector * imA);
     objB->setPosition(pB + correctionVector * imB);
-    
-    // Apply velocity correction for resting contacts
-    // This prevents objects from vibrating when at rest
-    float restingThreshold = 0.01f;
-    if (std::abs(relVelAlongNormal) < restingThreshold) {
-        // Calculate how much velocity would be needed to correct the penetration
-        float velCorrection = correction / (timeStep * totalInverseMass);
-        
-        // Apply a small damping effect to reduce energy in the system
-        float damping = 0.2f;
-        
-        if (relVelAlongNormal < 0) {
-            Vec2 dampingImpulse = collisionInfo.normal * (-(1.0f + damping) * relVelAlongNormal);
-            objA->setVelocity(vA + dampingImpulse * imA);
-            objB->setVelocity(vB - dampingImpulse * imB);
-        }
-    }
 }
 
 // 4.b. Collision impulse.
