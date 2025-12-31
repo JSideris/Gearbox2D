@@ -260,6 +260,9 @@ class Gb2d{
 		debugFps: 0,
 		ctx: null as unknown as CanvasRenderingContext2D,
 		canvas: null as unknown as HTMLCanvasElement,
+		zoom: 1.0,
+		offsetX: 0,
+		offsetY: 0,
 		enableDebugGraphics: (canvas: HTMLCanvasElement, world: World)=>this.enableDebugGraphics(canvas, world),
 		disableDebugGraphics: ()=>this.disableDebugGraphics(),
 	}
@@ -511,6 +514,10 @@ class Gb2d{
 
 		this.debug.ctx.clearRect(0, 0, this.debug.canvas.width, this.debug.canvas.height);
 		
+		this.debug.ctx.save();
+		this.debug.ctx.translate(this.debug.offsetX, this.debug.offsetY);
+		this.debug.ctx.scale(this.debug.zoom, this.debug.zoom);
+
 		// let cnt = 0;
 		this.debug.debugWorld.iterateObjects((obj)=>{
 			// cnt++;
@@ -529,6 +536,8 @@ class Gb2d{
 			}
 
 		});
+
+		this.debug.ctx.restore();
 
 		// console.log(`Objects: ${cnt}`);
 

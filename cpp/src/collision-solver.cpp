@@ -262,7 +262,6 @@ bool CollisionSolver::_solveAabbCircle() {
     float rC = floatData[_indexB * FDATA_EPO + FDATA_RADIUS];
     float xC = floatData[_indexB * FDATA_EPO + FDATA_X];
     float yC = floatData[_indexB * FDATA_EPO + FDATA_Y];
-    float wC = floatData[_indexB * FDATA_EPO + FDATA_RS]; 
 
     float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
     float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
@@ -522,9 +521,46 @@ bool CollisionSolver::_solveCircleCircle() {
     auto pd2 = pDiff.magnitudeSquared();
 
     if((rA + rB)*(rA + rB) > pd2){
-        auto normal = pDiff.normalize();
-        auto penetrationDepth = rA + rB - pDiff.magnitude();
-        auto contactPoint = pA + normal * rA;
+        float distance = sqrt(pd2);
+        Vec2 normal;
+        
+        if (distance > 0.0001f) {
+            normal = pDiff / distance;
+        } else {
+            // Centers are identical, use a default normal (pointing up)
+            normal = Vec2(0.0f, -1.0f);
+        }
+
+        auto penetrationDepth = rA + rB - distance;
+        
+        // Midpoint of the overlap region for more stable stacking
+        auto contactPoint = pA + normal * (rA - penetrationDepth * 0.5f);
+
+        // Compute relative velocity including rotational effects at contact point
+        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
+                floatData[_indexA * FDATA_EPO + FDATA_VY]);
+        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
+                floatData[_indexB * FDATA_EPO + FDATA_VY]);
+                
+        // Get rotational speeds
+        float wA = floatData[_indexA * FDATA_EPO + FDATA_RS];
+        float wB = floatData[_indexB * FDATA_EPO + FDATA_RS];
+        
+        // Calculate radius vectors (from center to contact point)
+        Vec2 rA_vec = contactPoint - pA;
+        Vec2 rB_vec = contactPoint - pB;
+        
+        // Calculate tangential velocities due to rotation
+        Vec2 tangentialVelocityA(-rA_vec.y * wA, rA_vec.x * wA);
+        Vec2 tangentialVelocityB(-rB_vec.y * wB, rB_vec.x * wB);
+        
+        // Total velocities at contact point
+        Vec2 totalVelocityA = vA + tangentialVelocityA;
+        Vec2 totalVelocityB = vB + tangentialVelocityB;
+        
+        // Store the actual relative velocity at the contact point
+        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
+
         collisions.push_back(CollisionInfo{
             true,               // Collision detected
             contactPoint,       // Contact point
@@ -532,7 +568,7 @@ bool CollisionSolver::_solveCircleCircle() {
             penetrationDepth,   // Penetration depth
             _indexA,            // Object A index
             _indexB,            // Object B index
-            _relativeVelocity,  // Relative velocity
+            relativeVelocity,   // Relative velocity including rotational effects
             0.0f                // Friction coefficient
         });
 
@@ -646,10 +682,23 @@ bool CollisionSolver::_solveBoxBox() {
     // Get the collision normal (ensure it points from A to B)
     Vec2 normal = fromAtoB ? axes[minOverlapAxis] : -axes[minOverlapAxis];
     
-    // Find contact points - simplest approach is to find the deepest penetrating vertex
+    // Find contact points
     Vec2 contacts[2];
+    float depths[2];
     int contactCount = 0;
     
+    // Helper to calculate penetration depth of a point into a box along the collision normal
+    auto getDepth = [&](const Vec2& point, const Vec2 corners[4], const Vec2& n, bool isPointInA) {
+        // Find the "reference" face of the box being penetrated
+        // The depth is the maximum penetration along the normal N
+        float maxD = -FLT_MAX;
+        for (int i = 0; i < 4; i++) {
+            float d = isPointInA ? (point - corners[i]).dot(n) : (corners[i] - point).dot(n);
+            if (d > maxD) maxD = d;
+        }
+        return maxD;
+    };
+
     // Check if vertices from box B are penetrating box A
     for (int i = 0; i < 4; i++) {
         bool inside = true;
@@ -661,8 +710,13 @@ bool CollisionSolver::_solveBoxBox() {
             }
         }
         if (inside) {
-            contacts[contactCount++] = cornersB[i];
-            if (contactCount == 2) break;  // Max 2 contacts
+            float depth = getDepth(cornersB[i], cornersA, normal, false);
+            if (depth > 0) {
+                contacts[contactCount] = cornersB[i];
+                depths[contactCount] = depth;
+                contactCount++;
+                if (contactCount == 2) break;
+            }
         }
     }
     
@@ -678,43 +732,44 @@ bool CollisionSolver::_solveBoxBox() {
                 }
             }
             if (inside) {
-                contacts[contactCount++] = cornersA[i];
-                if (contactCount == 2) break;  // Max 2 contacts
+                float depth = getDepth(cornersA[i], cornersB, normal, true);
+                if (depth > 0) {
+                    contacts[contactCount] = cornersA[i];
+                    depths[contactCount] = depth;
+                    contactCount++;
+                    if (contactCount == 2) break;
+                }
             }
         }
     }
     
-    // If no penetrating vertices were found, use the closest approach
+    // If no penetrating vertices were found, use the closest approach as fallback
     if (contactCount == 0) {
-        // Find edge-edge closest points
+        // ... (closest approach logic stays the same)
         float minDistance = FLT_MAX;
         Vec2 bestContactPoint;
-        
-        // Check each edge pair
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                // Calculate closest points between the two edges
                 Vec2 pointOnEdgeA, pointOnEdgeB;
                 float distanceSq = closestPointsBetweenLines(
                     cornersA[i], cornersA[(i+1)%4],
                     cornersB[j], cornersB[(j+1)%4],
                     pointOnEdgeA, pointOnEdgeB);
-                
                 if (distanceSq < minDistance) {
                     minDistance = distanceSq;
-                    // Use midpoint between closest points as contact
                     bestContactPoint = (pointOnEdgeA + pointOnEdgeB) * 0.5f;
                 }
             }
         }
-        
         contacts[0] = bestContactPoint;
+        depths[0] = minOverlap;
         contactCount = 1;
     }
     
     // Fallback - if all else fails, use center of overlap
     if (contactCount == 0) {
-        contacts[0] = Vec2((xA + xB) / 2, (yA + yB) / 2); // Midpoint between centers
+        contacts[0] = Vec2((xA + xB) / 2, (yA + yB) / 2);
+        depths[0] = minOverlap;
         contactCount = 1;
     }
     
@@ -740,27 +795,16 @@ bool CollisionSolver::_solveBoxBox() {
         // Calculate relative velocity
         Vec2 relVel = vB - vA;
         
-        // Normal component of velocity
-        float normalVel = relVel.dot(normal);
-        
-        // Determine friction based on contact state
-        float friction = 0.2f; // Default friction
-        
-        // Higher friction for resting contacts
-        if (std::abs(normalVel) < 0.1f) {
-            friction = 0.7f;
-        }
-        
         // Add collision to list
         collisions.push_back(CollisionInfo{
             true,                    // Collision detected
             contacts[i],             // Contact point
             normal,                  // Collision normal
-            minOverlap,              // Penetration depth
+            depths[i],               // Individual penetration depth
             _indexA,                 // Object A index
             _indexB,                 // Object B index
             relVel,                  // Relative velocity
-            friction                 // Friction coefficient
+            0.0f                     // Friction placeholder
         });
     }
     
@@ -806,28 +850,85 @@ bool CollisionSolver::_solveCircleBox() {
 
     // Check if the distance squared is less than the circle's radius squared
     if (distanceSquared < rA * rA) {
-        // Compute the penetration depth
         float distance = sqrt(distanceSquared);
-        float penetrationDepth = rA - distance;
+        float penetrationDepth;
+        Vec2 normalLocal;
+        Vec2 contactPointLocal;
 
-        // Compute the collision normal in local space
-        Vec2 normalLocal = (distance == 0) ? Vec2(1.0f, 0.0f) : distanceVecLocal / distance;
+        // Check if the circle's center is inside the box
+        bool isInside = (localCircleCenter.x > -halfW && localCircleCenter.x < halfW &&
+                         localCircleCenter.y > -halfH && localCircleCenter.y < halfH);
 
-        // Rotate the normal back to world space
+        if (isInside || distance < 0.0001f) {
+            // Find distances to each face in local space
+            float dLeft = localCircleCenter.x - (-halfW);
+            float dRight = halfW - localCircleCenter.x;
+            float dTop = localCircleCenter.y - (-halfH);
+            float dBottom = halfH - localCircleCenter.y;
+
+            float minDist = dLeft;
+            normalLocal = Vec2(-1.0f, 0.0f);
+
+            if (dRight < minDist) {
+                minDist = dRight;
+                normalLocal = Vec2(1.0f, 0.0f);
+            }
+            if (dTop < minDist) {
+                minDist = dTop;
+                normalLocal = Vec2(0.0f, -1.0f);
+            }
+            if (dBottom < minDist) {
+                minDist = dBottom;
+                normalLocal = Vec2(0.0f, 1.0f);
+            }
+
+            penetrationDepth = rA + minDist;
+            contactPointLocal = localCircleCenter - normalLocal * rA;
+        } else {
+            // Standard case: circle is outside or just touching
+            normalLocal = distanceVecLocal / distance;
+            penetrationDepth = rA - distance;
+            contactPointLocal = closestPointLocal;
+        }
+
+        // Rotate normal and contact point back to world space
         Vec2 normal = normalLocal.rotate(rotationB);
+        Vec2 contactPoint = contactPointLocal.rotate(rotationB) + boxCenter;
 
-        // Find the closest point in world space
-        Vec2 closestPointWorld = closestPointLocal.rotate(rotationB) + boxCenter;
+        // Compute relative velocity including rotational effects at contact point
+        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
+                floatData[_indexA * FDATA_EPO + FDATA_VY]);
+        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
+                floatData[_indexB * FDATA_EPO + FDATA_VY]);
+                
+        // Get rotational speeds
+        float wA = floatData[_indexA * FDATA_EPO + FDATA_RS];
+        float wB = floatData[_indexB * FDATA_EPO + FDATA_RS];
+        
+        // Calculate radius vectors (from center to contact point)
+        Vec2 rA_vec = contactPoint - circleCenter;
+        Vec2 rB_vec = contactPoint - boxCenter;
+        
+        // Calculate tangential velocities due to rotation
+        Vec2 tangentialVelocityA(-rA_vec.y * wA, rA_vec.x * wA);
+        Vec2 tangentialVelocityB(-rB_vec.y * wB, rB_vec.x * wB);
+        
+        // Total velocities at contact point
+        Vec2 totalVelocityA = vA + tangentialVelocityA;
+        Vec2 totalVelocityB = vB + tangentialVelocityB;
+        
+        // Store the actual relative velocity at the contact point
+        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
 
         // Store the collision info
         collisions.push_back(CollisionInfo{
             true,                      // Collision detected
-            closestPointWorld,          // Contact point
+            contactPoint,              // Contact point
             normal,                    // Collision normal
-            penetrationDepth,           // Penetration depth
+            penetrationDepth,          // Penetration depth
             _indexA,                   // Object A index (Circle)
             _indexB,                   // Object B index (Box)
-            _relativeVelocity,         // Relative velocity (already computed)
+            relativeVelocity,          // Correct relative velocity including rotational effects
             0.0f                       // Friction placeholder (can be computed later)
         });
 

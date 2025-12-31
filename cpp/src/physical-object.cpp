@@ -539,8 +539,6 @@ void PhysicalObject::sleep(){
 }
 
 void PhysicalObject::wakeUp() {
-    // TODO: consider only resetting the timer during kinematics.
-    // sleepTimer = 0.0f;
     if (isSleeping) {
         isSleeping = false;
         bvhNode->wakeUp();
