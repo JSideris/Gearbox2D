@@ -80,7 +80,88 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
         import gb2d from '../dist/js/gb2d.js';
-        import examples from "./examples.js";
+        import { generalExamples } from './general-examples.js';
+        import { optimizationExamples } from './optimization-examples.js';
+        import { loadTestExamples } from './load-test-examples.js';
+        import { issuesExamples } from './issues-examples.js';
+        
+
+        /**
+         * We'll add examples here, grouped by category.
+         * I'm also using this page to plan out which examples to add. Don't remove those comments!
+         */
+        const examples = [
+        { // General
+		name: "General",
+		examples: generalExamples
+            },
+
+            // { // Advanced
+            // 	name: "Advanced",
+            // 	examples: [
+            // 		// Composite
+            // 		// Interactive
+            // 		// Distance Constraint
+            // 		// Spring Constraint
+            // 		// Hinge Constraint
+            // 		// Collision Events
+            // 		// Breakable Constraint
+            // 		// Masking
+            // 	]
+            // },
+
+            // { // Capabilities
+            // 	name: "Capabilities",
+            // 	examples: [
+            // 		// True drag
+            // 		// Buoyancy
+            // 		// Teleporting
+            // 		// Resize
+            // 		// Dynamic Object
+            // 		// Anti-tunneling
+            // 		// Collision Filtering
+            // 		// Multiple worlds.
+            // 		// Collision groups.
+            // 		// Substeps
+            // 	]
+            // },
+
+            { // Optimizations
+                name: "Optimizations",
+                examples: optimizationExamples
+            },
+
+            // { // Applications
+            // 	name: "Applications",
+            // 	examples: [
+            // 		// Pong
+            // 		// Cannon
+            // 		// Brick Breaker
+            // 		// Lunar Lander
+            // 	]
+            // },
+
+            { // Load tests
+                name: "Load Tests",
+                examples: loadTestExamples,
+
+                // TODO:
+                // Rain
+                // Washing Machine
+                // Large stack of sleeping objects
+                // Chaos (rapid creation and removal of objects)
+                // Worse case scenario.
+                    // Many overlapping objects.
+                    // Pathological BVH.
+
+            },
+
+            { // Known Issues
+                name: "Known Issues",
+                examples: issuesExamples
+
+            },
+        ]
 
         let generalSetupTemplate = `
 import gb2d from "gb2d";
@@ -259,6 +340,61 @@ gb2d.init().then(()=>{
             
             // Start animation loop
             animate();
+
+            // Zoom and Pan event listeners
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.05;
+                const mouseX = e.offsetX;
+                const mouseY = e.offsetY;
+
+                // Calculate world coordinates before zoom
+                const worldX = (mouseX - gb2d.debug.offsetX) / gb2d.debug.zoom;
+                const worldY = (mouseY - gb2d.debug.offsetY) / gb2d.debug.zoom;
+
+                const delta = -Math.sign(e.deltaY);
+                const zoomFactor = Math.pow(1 + zoomSpeed, delta);
+                const newZoom = Math.min(Math.max(gb2d.debug.zoom * zoomFactor, 0.1), 10);
+
+                gb2d.debug.zoom = newZoom;
+
+                // Adjust offset to keep mouse position fixed in world space
+                gb2d.debug.offsetX = mouseX - worldX * gb2d.debug.zoom;
+                gb2d.debug.offsetY = mouseY - worldY * gb2d.debug.zoom;
+            }, { passive: false });
+
+            let isPanning = false;
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 2) { // Right mouse button
+                    isPanning = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isPanning) {
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    gb2d.debug.offsetX += dx;
+                    gb2d.debug.offsetY += dy;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                }
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 2) {
+                    isPanning = false;
+                }
+            });
+
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
         });
 
         // Code to load an example
@@ -275,6 +411,11 @@ gb2d.init().then(()=>{
             world.setHasRestitution(true);
             world.setHasFriction(true);
             world.setGravity(0, 0);
+
+            // Reset camera position and zoom
+            gb2d.debug.zoom = 1.0;
+            gb2d.debug.offsetX = 0;
+            gb2d.debug.offsetY = 0;
             
             currentExample = exampleKey;
             const exampleInfo = examplesMap[exampleKey];
