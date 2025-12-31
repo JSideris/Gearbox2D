@@ -1,5 +1,6 @@
 
 import gb2dModule from '../../dist/wasm/gb2d-module.js';
+import { DebugGraphics } from './debug-graphics.js';
 
 const SIZE_I = 4;
 const SIZE_F = 28;
@@ -12,6 +13,24 @@ const HAS_COLLISION_OFFSET = 3;
 const HAS_AABB_COLLISION = 0x1;
 const HAS_PHYSICAL_COLLISION = 0x2;
 const IS_ASLEEP = 0x4;
+
+export const SHAPES = {
+	POINT: 0,
+	CIRCLE: 1,
+	AABB: 2,
+	BOX: 3,
+	ELLIPSE: 4,
+	CAPSULE: 5,
+	POLYGON: 6
+};
+
+export const BODY_TYPES = {
+	RIGID_BODY: 0,
+	SENSOR: 1,
+	FIXED_OBJECT: 2,
+};
+
+export { HAS_AABB_COLLISION, HAS_PHYSICAL_COLLISION, IS_ASLEEP };
 
 const X_OFFSET = 0;
 const Y_OFFSET = 1;
@@ -45,9 +64,7 @@ const NFY_OFFSET = 25;
 const NIX_OFFSET = 26;
 const NIY_OFFSET = 27;
 
-const ANIMSCALE = 100;
-
-class World {
+export class World {
 	world: any;
 	liveFloatData: Float32Array;
 	liveIntData: Int32Array;
@@ -137,7 +154,7 @@ class World {
 // We just need to grab the index given the ID.
 // Thing is, this probably isn't something that needs to happen on each frame, and certainly not on each data read.
 // I bet there's a way to just mark the object as "dirty".
-class PhysicalObject{
+export class PhysicalObject{
 	id: number;
 	liveFData: Float32Array;
 	liveIData: Int32Array;
@@ -177,7 +194,7 @@ class PhysicalObject{
     
     get mass() { return this.liveFData[this.index * SIZE_F + MASS_OFFSET]; }
     set mass(v) { 
-		if(this.type != gb2d.bodyTypes.FIXED_OBJECT){
+		if(this.type != BODY_TYPES.FIXED_OBJECT){
 			this.liveFData[this.index * SIZE_F + MASS_OFFSET] = v; 
 			this.liveFData[this.index * SIZE_F + INV_MASS_OFFSET] = (v != 0) ? (1 / v) : 0; 
 		}
@@ -218,13 +235,6 @@ class PhysicalObject{
     
 	get hasCollisionFlags() { return this.liveIData[this.index * SIZE_I + HAS_COLLISION_OFFSET]; }
 
-	// G_SCALE_OFFSET
-	// RESTITUTION_OFFSET
-	// S_FRICTION_OFFSET
-	// K_FRICTION_OFFSET
-	// DAMPING_OFFSET
-	// ANGULAR_DAMPING_OFFSET
-
 	get gScale() { return this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET]; }
 	set gScale(v) { this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET] = v; }
 
@@ -250,43 +260,12 @@ class PhysicalObject{
 
 /**@type {Gb2d} */
 class Gb2d{
-	lastTick: number;
 	isInitialized: boolean;
-	
-	debug = {
-		debugWorld: null as World,
-		debugFrameTime: 0,
-		animFrame: 0,
-		debugFps: 0,
-		ctx: null as unknown as CanvasRenderingContext2D,
-		canvas: null as unknown as HTMLCanvasElement,
-		zoom: 1.0,
-		offsetX: 0,
-		offsetY: 0,
-		enableDebugGraphics: (canvas: HTMLCanvasElement, world: World)=>this.enableDebugGraphics(canvas, world),
-		disableDebugGraphics: ()=>this.disableDebugGraphics(),
-	}
+	debug = new DebugGraphics();
 
 	// Enums.
-	shapes = {
-		POINT: 0,
-		CIRCLE: 1,
-		AABB: 2,
-		BOX: 3,
-		ELLIPSE: 4,
-		CAPSULE: 5,
-		POLYGON: 6
-	};
-	bodyTypes = {
-		RIGID_BODY: 0,
-		SENSOR: 1,
-		FIXED_OBJECT: 2,
-		// KINEMATIC: 3, // Objects moved programmatically that ignore forces but affect other objects.
-		// SOFT_BODY: 4, // Deformable objects like cloth, jelly, etc.
-		// FLUID: 5, // Liquid or Gas
-		// CHARACTER: 6, // Might not include this.
-		// PARTICLE, // Probably don't need this.
-	}
+	shapes = SHAPES;
+	bodyTypes = BODY_TYPES;
 
 	// Wasm module constructors.
 	private _worldC: any;
@@ -304,8 +283,6 @@ class Gb2d{
 
 	async init(){
 		if(this.isInitialized) return;
-
-		this.lastTick = Date.now();
 
 		let Module = await gb2dModule()
 
@@ -330,220 +307,6 @@ class Gb2d{
 	makeWorld(){
 		this._initCheck();
 		return new World(this._worldC);
-	}
-
-	private enableDebugGraphics(canvas: HTMLCanvasElement, world: World){
-		this._initCheck();
-
-		this.disableDebugGraphics();
-
-		this.debug.canvas = canvas;
-		this.debug.ctx = canvas.getContext('2d');
-		this.debug.debugWorld = world;
-
-		this.debug.animFrame = requestAnimationFrame(()=>this.animate());
-	}
-
-	private disableDebugGraphics(){
-		this.debug.ctx = null;
-		this.debug.debugWorld = null;
-		if(this.debug.animFrame) cancelAnimationFrame(this.debug.animFrame);
-		this.debug.animFrame = null;
-	}
-
-	private drawAabb(obj){
-		// set stroke color to green.
-
-		let x0 = obj.ax1 * ANIMSCALE;
-		let y0 = obj.ay1 * ANIMSCALE;
-		let x1 = obj.ax2 * ANIMSCALE;
-		let y1 = obj.ay2 * ANIMSCALE;
-		// console.log(obj.hasCollisionFlags);
-		if(obj.hasCollisionFlags & IS_ASLEEP){
-			this.debug.ctx.strokeStyle = 'rgba(58, 58, 58, 0.7)';
-			this.debug.ctx.fillStyle = 'rgba(101, 101, 101, 0.1)';
-		}
-		else if(obj.hasCollisionFlags & HAS_PHYSICAL_COLLISION){
-			this.debug.ctx.strokeStyle = 'rgba(255,100,100,0.7)';
-			this.debug.ctx.fillStyle = 'rgba(255,100,100,0.1)';
-		}
-		else if(obj.hasCollisionFlags & HAS_AABB_COLLISION){
-			this.debug.ctx.strokeStyle = 'rgba(100,255,100,0.7)';
-			// fill color too
-			this.debug.ctx.fillStyle = 'rgba(100,255,100,0.1)';
-		}
-		else{
-			this.debug.ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-
-		}
-		this.debug.ctx.beginPath();
-		this.debug.ctx.rect(x0, y0, x1 - x0, y1 - y0);
-		if(obj.hasCollisionFlags) this.debug.ctx.fill();
-		this.debug.ctx.stroke();
-	}
-
-	private drawShape(obj){
-		this.debug.ctx.strokeStyle = 'black';
-		this.debug.ctx.lineWidth = 2;
-		let shape = obj.shape;
-		
-		this.debug.ctx.beginPath();
-		switch(shape){
-			case gb2d.shapes.POINT:{
-				if(this.debug.debugWorld.objectCount > 100){
-					// Draw a simpler point.
-					this.debug.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-					this.debug.ctx.lineTo(obj.x * ANIMSCALE + 1, obj.y * ANIMSCALE);
-				}
-				else{
-					let radius = 2;
-					this.debug.ctx.arc(obj.x * ANIMSCALE, obj.y * ANIMSCALE, radius, 0, 2 * Math.PI);
-				}
-				break;
-			}
-			case gb2d.shapes.CIRCLE:{
-				this.debug.ctx.arc(obj.x * ANIMSCALE, obj.y * ANIMSCALE, obj.radius * ANIMSCALE, 0, 2 * Math.PI);
-				this.debug.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-				this.debug.ctx.lineTo(obj.x * ANIMSCALE + Math.cos(obj.r) * obj.radius * ANIMSCALE, obj.y * ANIMSCALE + Math.sin(obj.r) * obj.radius * ANIMSCALE);
-				break;
-			}
-			case gb2d.shapes.AABB:{
-				let width = obj.width * ANIMSCALE;
-				let height = obj.height * ANIMSCALE;
-				
-				// First draw the solid box (same as BOX case)
-				this.debug.ctx.rect(obj.x * ANIMSCALE - width / 2, obj.y * ANIMSCALE - height / 2, width, height);
-				this.debug.ctx.stroke();
-				
-				// Then draw the dashed notches on top
-				this.debug.ctx.beginPath();
-				this.debug.ctx.save();
-				this.debug.ctx.setLineDash([2, 10]);
-				this.debug.ctx.rect(obj.x * ANIMSCALE - width / 2 + 2, obj.y * ANIMSCALE - height / 2 + 2, width - 4, height - 4);
-				this.debug.ctx.stroke();
-				this.debug.ctx.restore();
-				
-				// Start fresh path for next shape
-				this.debug.ctx.beginPath();
-				break;
-			}
-			case gb2d.shapes.BOX:{
-				let width = obj.width * ANIMSCALE;
-				let height = obj.height * ANIMSCALE;
-				let r = obj.r;
-				this.debug.ctx.save();
-				this.debug.ctx.translate(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-				this.debug.ctx.rotate(r);
-				this.debug.ctx.rect(-width / 2, -height / 2, width, height);
-				this.debug.ctx.restore();
-				break;
-			}
-		}
-	
-		this.debug.ctx.stroke();
-		this.debug.ctx.lineWidth = 1;
-	}
-
-	private drawVectors(obj){
-		{ // Force vector
-			this.debug.ctx.strokeStyle = 'red';
-			this.debug.ctx.beginPath();
-
-			this.debug.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-			this.debug.ctx.lineTo(obj.x * ANIMSCALE + obj.fx * ANIMSCALE / 3, obj.y * ANIMSCALE + obj.fy * ANIMSCALE / 3);
-			this.debug.ctx.stroke();
-
-			// Draw arrowhead
-			let forceScale = ((obj.fx) * (obj.fx) + (obj.fy) * (obj.fy));
-			
-			// console.log(forceScale);
-			
-			if(forceScale > 3){
-				let arrowSize = Math.min(10, Math.sqrt(forceScale) * 10);
-				let angle = Math.atan2(obj.fy, obj.fx);
-				let arrowX = obj.x * ANIMSCALE + obj.fx * ANIMSCALE / 3;
-				let arrowY = obj.y * ANIMSCALE + obj.fy * ANIMSCALE / 3;
-				this.debug.ctx.save();
-				this.debug.ctx.translate(arrowX, arrowY);
-				this.debug.ctx.rotate(angle);
-				this.debug.ctx.beginPath();
-				this.debug.ctx.moveTo(0, 0);
-				this.debug.ctx.lineTo(-arrowSize, -arrowSize / 2);
-				this.debug.ctx.lineTo(-arrowSize, arrowSize / 2);
-				this.debug.ctx.closePath();
-				this.debug.ctx.fillStyle = 'red';
-				this.debug.ctx.fill();
-				this.debug.ctx.restore();
-			}
-		}
-
-		{ // Impulse vector
-			this.debug.ctx.strokeStyle = 'blue';
-			this.debug.ctx.beginPath();
-			this.debug.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-			this.debug.ctx.lineTo(obj.x * ANIMSCALE + obj.ix * 30.0, obj.y * ANIMSCALE + obj.iy * 30.0);
-			this.debug.ctx.stroke();
-
-			// Draw arrowhead
-			let impulseScale = ((obj.ix) * (obj.ix) + (obj.iy) * (obj.iy)) * 100;
-			if(impulseScale > 100){
-				let arrowSize = Math.min(10, Math.sqrt(impulseScale));
-				let angle = Math.atan2(obj.iy, obj.ix);
-				let arrowX = obj.x * ANIMSCALE + obj.ix * 30;
-				let arrowY = obj.y * ANIMSCALE + obj.iy * 30;
-				this.debug.ctx.save();
-				this.debug.ctx.translate(arrowX, arrowY);
-				this.debug.ctx.rotate(angle);
-				this.debug.ctx.beginPath();
-				this.debug.ctx.moveTo(0, 0);
-				this.debug.ctx.lineTo(-arrowSize, -arrowSize / 2);
-				this.debug.ctx.lineTo(-arrowSize, arrowSize / 2);
-				this.debug.ctx.closePath();
-				this.debug.ctx.fillStyle = 'blue';
-				this.debug.ctx.fill();
-				this.debug.ctx.restore();
-			}
-		}
-	}
-
-	private animate(){
-		let now = Date.now();
-		let delta = now - this.lastTick;
-		this.lastTick = now;
-		this.debug.debugFrameTime = delta;
-
-		this.debug.ctx.clearRect(0, 0, this.debug.canvas.width, this.debug.canvas.height);
-		
-		this.debug.ctx.save();
-		this.debug.ctx.translate(this.debug.offsetX, this.debug.offsetY);
-		this.debug.ctx.scale(this.debug.zoom, this.debug.zoom);
-
-		// let cnt = 0;
-		this.debug.debugWorld.iterateObjects((obj)=>{
-			// cnt++;
-
-			// console.log(this.debug.debugWorld.liveFloatData[2]);
-
-			if(this.debug.debugWorld.objectCount < 100){
-				this.drawAabb(obj);
-			}
-
-			this.drawShape(obj);
-	
-			// Skip the rest if there are too many objects.
-			if(this.debug.debugWorld.objectCount <= 100){
-				this.drawVectors(obj);
-			}
-
-		});
-
-		this.debug.ctx.restore();
-
-		// console.log(`Objects: ${cnt}`);
-
-		// let obj = this.debug.debugWorld.getObjectAtIndex(i);
-
-		this.debug.animFrame = requestAnimationFrame(()=>this.animate());
 	}
 }
 
