@@ -5,6 +5,11 @@
 #include "constants.h"
 #include <algorithm>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <stdio.h>
+#endif
+
 using namespace std;
 
 World::World():
@@ -274,6 +279,7 @@ void World::_doResolution(){
         c.normal = collisionInfo.normal;
         c.depth = collisionInfo.penetrationDepth;
         c.preSolve(timeStep, hasRestitution, hasPenetrationResolution, hasFriction);
+
         contactConstraints.push_back(c);
     }
     bool enableNormal = hasRestitution || hasPenetrationResolution;
@@ -311,19 +317,21 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float tanMag = tangentialComponent.magnitude();
     if (tanMag < 0.0001f) {
         friction = 0.0f;
-        return;
+        tangent = Vec2(0.0f, 0.0f);
+        tangentMass = 0.0f;
+    } else {
+        tangent = -tangentialComponent / tanMag;
+        float rtA = rA.x * tangent.y - rA.y * tangent.x;
+        float rtB = rB.x * tangent.y - rB.y * tangent.x;
+        float kTangent = imA + imB + iIA * rtA * rtA + iIB * rtB * rtB;
+        tangentMass = (kTangent > 0.00001f) ? 1.0f / kTangent : 0.0f;
+
+        // Friction
+        float sf = std::min(a->getStaticFriction(), b->getStaticFriction());
+        float kf = std::min(a->getKineticFriction(), b->getKineticFriction());
+        friction = (tanMag < 0.01f) ? sf : kf;
     }
-    tangent = -tangentialComponent / tanMag;
 
-    float rtA = rA.x * tangent.y - rA.y * tangent.x;
-    float rtB = rB.x * tangent.y - rB.y * tangent.x;
-    float kTangent = imA + imB + iIA * rtA * rtA + iIB * rtB * rtB;
-    tangentMass = (kTangent > 0.00001f) ? 1.0f / kTangent : 0.0f;
-
-    // Friction
-    float sf = std::min(a->getStaticFriction(), b->getStaticFriction());
-    float kf = std::min(a->getKineticFriction(), b->getKineticFriction());
-    friction = (tanMag < 0.01f) ? sf : kf;
     if (!enableFriction) friction = 0.0f;
 
     // Bias

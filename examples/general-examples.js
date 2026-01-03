@@ -430,12 +430,12 @@ export const generalExamples = [
                 mass: 0.5
             });
 
-            // Sliding box grinds to a halt.
+            // Sliding box slows down.
             world.makeObject(id++, {
                 x: 0.5,
                 y: 6,
                 vx: 7,
-                kFriction: 0.5,
+                kFriction: 0.53,
                 sFriction: 0.5,
                 shape: gb2d.shapes.BOX,
                 type: gb2d.bodyTypes.RIGID_BODY,

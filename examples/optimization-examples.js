@@ -35,7 +35,7 @@ export const optimizationExamples = [
         },
         // Once collisions are a bit more stable, the number of colliding objects can be doubled.
         onTick: (world, dt)=>{
-            simulationTime += dt;
+            simulationTime += dt*50;
             let numbSeconds = Math.floor(simulationTime / 3);
             if(numbSeconds > nextId){
                 if(nextId < 10){

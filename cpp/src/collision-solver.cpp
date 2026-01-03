@@ -5,8 +5,11 @@
 #include <iostream>
 #include "collision-solver.h"
 #include "constants.h"
-// #include "physical-object.h"
-// #include "vec2.h"
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <stdio.h>
+#endif
 
 using namespace std;
 
@@ -294,68 +297,37 @@ bool CollisionSolver::_solveAabbCircle() {
         bool isCircleInside = (xC >= minX && xC <= maxX && yC >= minY && yC <= maxY);
         
         if (distance < 0.001f || isCircleInside) {
-            // Retrieve both linear and angular velocity for better collision handling
-            Vec2 velocity = Vec2(
-                floatData[_indexB * FDATA_EPO + FDATA_VX],
-                floatData[_indexB * FDATA_EPO + FDATA_VY]
-            );
-            
             // Find distances to each face
             float dLeft = xC - minX;
             float dRight = maxX - xC;
             float dTop = yC - minY;
             float dBottom = maxY - yC;
             
-            // Default to minimum penetration
+            // Default to left face
             float minDist = dLeft;
             normal = Vec2(-1.0f, 0.0f);
+            contactPoint = Vec2(minX, yC);
             
             if (dRight < minDist) {
                 minDist = dRight;
                 normal = Vec2(1.0f, 0.0f);
+                contactPoint = Vec2(maxX, yC);
             }
             
             if (dTop < minDist) {
                 minDist = dTop;
                 normal = Vec2(0.0f, -1.0f);
+                contactPoint = Vec2(xC, minY);
             }
             
             if (dBottom < minDist) {
                 minDist = dBottom;
                 normal = Vec2(0.0f, 1.0f);
+                contactPoint = Vec2(xC, maxY);
             }
             
-            // If velocity magnitude is significant, use it to inform the normal direction
-            if (velocity.magnitudeSquared() > 0.01f) { // Lower threshold for better sensitivity
-                // Dot product to find face most aligned with negative velocity
-                Vec2 normVel = velocity.normalize() * -1.0f;
-                
-                // Candidate normals for each face
-                Vec2 normals[4] = {
-                    Vec2(-1.0f, 0.0f), // Left
-                    Vec2(1.0f, 0.0f),  // Right
-                    Vec2(0.0f, -1.0f), // Top
-                    Vec2(0.0f, 1.0f)   // Bottom
-                };
-                
-                // Find best matching normal based on velocity
-                float maxDot = normals[0].dot(normVel);
-                normal = normals[0];
-                
-                for (int i = 1; i < 4; i++) {
-                    float dotProduct = normals[i].dot(normVel);
-                    if (dotProduct > maxDot) {
-                        maxDot = dotProduct;
-                        normal = normals[i];
-                    }
-                }
-            }
-            
-            // Penetration depth calculation (no arbitrary scaling)
+            // Penetration depth calculation: distance needed to push the circle COMPLETELY out
             penetrationDepth = rC + minDist;
-            
-            // Contact point is where the circle would touch the AABB from outside
-            contactPoint = Vec2(xC, yC) - normal * rC;
         } else {
             // Normal case - circle is outside AABB but penetrating
             normal = distanceVec.normalize() * -1.0f;

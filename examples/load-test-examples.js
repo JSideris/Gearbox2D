@@ -125,7 +125,7 @@ export const loadTestExamples = [
                 restitution: 0.99,
             });
 
-            for(let i = 0; i < 2000; i++){
+            for(let i = 0; i < 1; i++){
 
                 world.makeObject(id++, {
                     x: Math.random() * 8 + 1,

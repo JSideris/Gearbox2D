@@ -1,6 +1,10 @@
 // #include "vec2.h"
 #include "physical-object.h"
-// #include "world.h"
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <stdio.h>
+#endif
 
 #define EXPERIMENTAL_SHRINK_WRAP_AABB_ON_SLEEP
 #define ENABLE_SLEEPING
@@ -375,13 +379,8 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
         // float torque = cpX * y - cpY * x; // this one might be backwards.
         float torque = x * cpY - y * cpX;
 
-        // obj.angularVelocity += torque / objA.momentOfInertia;
-
-        // Temporary approximation for moment of inertia.
-        // TODO: this could be computed per shape!
-        // For instance, I = (1/2) * m * r²
-        float momentOfInertia = world.liveFloatData[index + FDATA_M];
-        world.liveFloatData[index + FDATA_RS] -= torque / momentOfInertia;
+        // Apply angular velocity change using inverse inertia.
+        world.liveFloatData[index + FDATA_RS] -= torque * getInverseInertia();
 
         wakeUp();
     }
@@ -440,17 +439,15 @@ bool PhysicalObject::stepMovement(float dt) {
     // cout << inverseMass << endl;
 
     // Update velocity based on acceleration and time step.
-    _dv = _acceleration * dt * 0.5f;
-    _velocity = _velocity + _dv;
-
-    // ix and iy are for visual debugging.
-    // We can decay them here.
-
-    world.liveFloatData[index + FDATA_IX] *= world.decayMap[99];
-    world.liveFloatData[index + FDATA_IY] *= world.decayMap[99];
+    _velocity = _velocity + _acceleration * dt;
 
     // Update position based on velocity and time step.
     _position = _position + _velocity * dt;
+
+    // ix and iy are for visual debugging.
+    // We can decay them here.
+    world.liveFloatData[index + FDATA_IX] *= world.decayMap[99];
+    world.liveFloatData[index + FDATA_IY] *= world.decayMap[99];
 
     // Apply rotational damping to rotational speed.
     float rs1 = world.liveFloatData[index + FDATA_RS];
@@ -522,6 +519,7 @@ void PhysicalObject::sleep(){
 #endif
     if(!isSleeping && canSleep){
         isSleeping = true;
+        
         world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0x4;
         setVelocityX(0.0f);
         setVelocityY(0.0f);
