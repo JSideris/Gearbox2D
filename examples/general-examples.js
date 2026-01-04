@@ -436,7 +436,7 @@ export const generalExamples = [
                 x: 0.5,
                 y: 6,
                 vx: 7,
-                kFriction: 0.23,
+                kFriction: 1.2,
                 sFriction: 0.5,
                 shape: gb2d.shapes.BOX,
                 type: gb2d.bodyTypes.RIGID_BODY,

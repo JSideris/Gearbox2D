@@ -61,6 +61,7 @@ export const loadTestExamples = [
                     vx: Math.random() * 1.00 - .50,
                     vy: Math.random() * 1.00 - .50,
                     r: Math.PI / 2 * Math.random(),
+                    rs: (Math.random() - 0.5) * 20.00,
                     shape: gb2d.shapes.CIRCLE,
                     type: gb2d.bodyTypes.RIGID_BODY,
                     radius: .05,

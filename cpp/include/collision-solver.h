@@ -34,6 +34,13 @@ public:
     
     bool solve(int indexA, int indexB);
 
+private:
+    int _indexA = 0;
+    int _indexB = 0;
+    Vec2 _relativeVelocity;
+
+    void _swap();
+
     float closestPointsBetweenLines(
         const Vec2& p1, const Vec2& p2,
         const Vec2& p3, const Vec2& p4,
@@ -42,7 +49,6 @@ public:
     // Get the correct solver for the obj types
     bool _solveAabbAabb();
     bool _solveAabbPoint();
-    bool _solveAabbBox();
     bool _solveAabbCircle();
     
     bool _solveCircleCircle();

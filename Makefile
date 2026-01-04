@@ -15,7 +15,7 @@ TARGET = gb2d-module
 TEST_TARGET = runTests
 
 # Source files
-SRC = $(wildcard $(SRC_DIR)/*.cpp)
+SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
 
 # Output files
 OUTPUT_JS = $(BUILD_DIR)/$(TARGET).js
