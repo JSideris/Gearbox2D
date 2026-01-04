@@ -52,6 +52,7 @@ private:
     bool _solveAabbCircle();
     
     bool _solveCircleCircle();
+    bool _solveCirclePoint();
     
     bool _solveBoxBox();
     bool _solveCircleBox();
