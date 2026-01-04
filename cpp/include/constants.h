@@ -30,7 +30,7 @@ enum class ObjectShape {
 #define HAS_AABB_COLLISION 0x1
 #define HAS_PHYSICAL_COLLISION 0x2
 
-#define FDATA_EPO 28 // Number of float data per object.
+#define FDATA_EPO 30 // Number of float data per object.
 
 #define FDATA_X 0 // Position
 #define FDATA_Y 1 // Position
@@ -62,4 +62,6 @@ enum class ObjectShape {
 #define FDATA_NFY 25
 #define FDATA_NIX 26
 #define FDATA_NIY 27
+#define FDATA_IA 28 // Angular impulse accumulator (READ ONLY)
+#define FDATA_NIA 29 // Next Angular Impulse accumulator (for external application)
 // Always increase FDATA_EPO when adding new fields.

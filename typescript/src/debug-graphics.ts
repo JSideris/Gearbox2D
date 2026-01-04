@@ -214,6 +214,35 @@ export class DebugGraphics {
                 this.ctx.restore();
             }
         }
+
+        if (obj.angularImpulse !== 0) {
+            this.ctx.strokeStyle = 'purple';
+            this.ctx.beginPath();
+            let radius = 25;
+            if (obj.shape === SHAPES.CIRCLE) radius = obj.radius * ANIMSCALE + 5;
+            else radius = Math.max(obj.width, obj.height) * ANIMSCALE * 0.7;
+
+            let impulse = obj.angularImpulse;
+            let startAngle = obj.r;
+            let endAngle = obj.r + impulse * 2;
+
+            this.ctx.arc(obj.x * ANIMSCALE, obj.y * ANIMSCALE, radius, startAngle, endAngle, impulse < 0);
+            this.ctx.stroke();
+
+            // Arrow head
+            let arrowSize = 5;
+            this.ctx.save();
+            this.ctx.translate(obj.x * ANIMSCALE + Math.cos(endAngle) * radius, obj.y * ANIMSCALE + Math.sin(endAngle) * radius);
+            this.ctx.rotate(endAngle + (impulse > 0 ? Math.PI / 2 : -Math.PI / 2));
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, 0);
+            this.ctx.lineTo(-arrowSize, -arrowSize);
+            this.ctx.lineTo(arrowSize, -arrowSize);
+            this.ctx.closePath();
+            this.ctx.fillStyle = 'purple';
+            this.ctx.fill();
+            this.ctx.restore();
+        }
     }
 
     private animate() {

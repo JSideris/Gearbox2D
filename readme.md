@@ -252,6 +252,7 @@ const world = gb2d.makeWorld();
 	[ ] Kinematic. Maybe.
 [*] Implement an applyForce on objects.
 [*] Implement an applyImpulse on objects.
+[*] Implement an applyAngularImpulse on objects.
 [*] Determine and apply impulse for rigid body collisions with basic shapes.
 [ ] Determine and apply impulse for convex polygons.
 [ ] Determine and apply impulse for concave polygons (by splitting them up into convex polygons).

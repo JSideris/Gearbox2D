@@ -135,7 +135,7 @@ export const generalExamples = [
     new Example({ // Impulse
         name: "Impulse",
         key: "impulse",
-        description: "Impulses are used to apply a sudden change in momentum to an object. It's similar to a force, but modifies the object's velocity instantaneously, rather than acting as a persistant push. Momentum is defined as the product of velocity and mass. So the change in velocity is the impulse vector divided by the object's mass.\n\nImpulse is used for things like explosions, bullets, and other sudden changes in velocity. This is different from forces, which are typically applied over long periods of time.\n\nIn this example we have a heavy object and a light object, and we apply the same impulses to both on an interval.",
+        description: "Impulses are used to apply a sudden change in momentum to an object. It's similar to a force, but modifies the object's velocity instantaneously, rather than acting as a persistant push.\n\nIn this example we demonstrate both Linear and Angular impulses. The two circles receive vertical linear impulses, while the box receives periodic angular impulses (torque) causing it to spin without moving its center.",
         
         globalLines: [
             "let impulseTimer = 0;",
@@ -143,7 +143,7 @@ export const generalExamples = [
 
         onInit: (world)=>{
 
-            // This small circle will orbit the bigger one.
+            // Linear impulse targets
             world.makeObject(1, {
                 x: 2.50,
                 y: 5.00,
@@ -155,7 +155,7 @@ export const generalExamples = [
             });
 
             world.makeObject(2, {
-                x: 7.50,
+                x: 5.00,
                 y: 5.00,
                 r: Math.PI / 2 * Math.random(),
                 shape: gb2d.shapes.CIRCLE,
@@ -163,24 +163,45 @@ export const generalExamples = [
                 mass: 2,
                 damping: 0.02
             });
+
+            // Angular impulse target
+            world.makeObject(3, {
+                x: 7.50,
+                y: 5.00,
+                shape: gb2d.shapes.BOX,
+                width: 1.0,
+                height: 0.3,
+                mass: 100,
+                damping: 0.05,
+                angularDamping: 0.05
+            });
         },
 
         onTick: (world, dt)=>{
 
             let obj1 = world.objectsById[1];
             let obj2 = world.objectsById[2];
+            let obj3 = world.objectsById[3];
 
             let oldTimer = impulseTimer;
             impulseTimer += dt * 5;
 
             let t1 = Math.floor(oldTimer) ;
             let t2 = Math.floor(impulseTimer);
-            if(t1 != t2 && t2 % 2 == 0){
-                let impulse = (5.00 - obj1.y) * .20;
-                if(impulse < .050 && impulse > -.050) impulse = 2.000;
+            
+            if(t1 != t2){
+                if(t2 % 2 == 0){
+                    let impulse = (5.00 - obj1.y) * .20;
+                    if(impulse < .050 && impulse > -.050) impulse = 2.000;
 
-                obj1.applyImpulse(0, impulse);
-                obj2.applyImpulse(0, impulse);
+                    obj1.applyImpulse(0, impulse);
+                    obj2.applyImpulse(0, impulse);
+                }
+
+                // Apply angular impulse to the box
+                if(t2 % 3 == 0){
+                    obj3.applyAngularImpulse(2.0);
+                }
             }
             
         }

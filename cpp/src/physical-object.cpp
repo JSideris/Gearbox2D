@@ -87,6 +87,8 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(0.0f); // nfy
     world.liveFloatData.push_back(0.0f); // nix
     world.liveFloatData.push_back(0.0f); // niy
+    world.liveFloatData.push_back(0.0f); // ia
+    world.liveFloatData.push_back(0.0f); // nia
 }
 
 // Getters and Setters
@@ -433,6 +435,22 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
 
 }
 
+void PhysicalObject::applyAngularImpulse(float torque){
+    int index = worldIndex * FDATA_EPO;
+    float invI = getInverseInertia();
+    
+    if (invI != 0.0f && type != ObjectType::FIXED_OBJECT && torque != 0.0f) {
+        world.liveFloatData[index + FDATA_IA] += torque;
+
+        float drs = torque * invI;
+        world.liveFloatData[index + FDATA_RS] += drs;
+
+        if (abs(drs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+            wakeUp();
+        }
+    }
+}
+
     // void destroy(bool skipWorldRemove = false){
     //     if(!skipWorldRemove) world.removeObject(id);
     //     delete this;
@@ -457,6 +475,10 @@ bool PhysicalObject::stepMovement(float dt) {
 
     world.liveFloatData[index + FDATA_NIX] = 0.0f;
     world.liveFloatData[index + FDATA_NIY] = 0.0f;
+
+    // Apply the accumulated angular impulse.
+    applyAngularImpulse(world.liveFloatData[index + FDATA_NIA]);
+    world.liveFloatData[index + FDATA_NIA] = 0.0f;
 
     // Set the class's vectors based on the live data.
     _velocity.x = world.liveFloatData[index + FDATA_VX];
@@ -519,6 +541,7 @@ bool PhysicalObject::stepMovement(float dt) {
     // We can decay them here.
     world.liveFloatData[index + FDATA_IX] *= world.decayMap[99];
     world.liveFloatData[index + FDATA_IY] *= world.decayMap[99];
+    world.liveFloatData[index + FDATA_IA] *= world.decayMap[99];
 
     // Apply rotational damping to rotational speed.
     float rs1 = world.liveFloatData[index + FDATA_RS];

@@ -122,6 +122,7 @@ public:
 
     void applyImpulse(const Vec2& impulse, const Vec2& contactPoint);
     void applyImpulse(float x, float y, float cx, float cy);
+    void applyAngularImpulse(float torque);
 
     // Step function to update position and rotation
     bool stepMovement(float dt);

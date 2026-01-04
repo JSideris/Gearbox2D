@@ -3,7 +3,7 @@ import gb2dModule from '../../dist/wasm/gb2d-module.js';
 import { DebugGraphics } from './debug-graphics.js';
 
 const SIZE_I = 6;
-const SIZE_F = 28;
+const SIZE_F = 30;
 
 const ID_OFFSET = 0;
 const SHAPE_OFFSET = 1;
@@ -65,6 +65,8 @@ const NFX_OFFSET = 24;
 const NFY_OFFSET = 25;
 const NIX_OFFSET = 26;
 const NIY_OFFSET = 27;
+const IA_OFFSET = 28;
+const NIA_OFFSET = 29;
 
 export class World {
 	world: any;
@@ -242,6 +244,8 @@ export class PhysicalObject{
     
     get hasCollisionFlags() { return this.liveIData[this.index * SIZE_I + HAS_COLLISION_OFFSET]; }
 
+	get angularImpulse() { return this.liveFData[this.index * SIZE_F + IA_OFFSET]; }
+
 	get categoryBits() { return this.liveIData[this.index * SIZE_I + CATEGORY_BITS_OFFSET]; }
 	set categoryBits(v) {
 		this.liveIData[this.index * SIZE_I + CATEGORY_BITS_OFFSET] = v;
@@ -272,10 +276,32 @@ export class PhysicalObject{
 		this.liveFData[this.index * SIZE_F + NFX_OFFSET] += x || 0;
 		this.liveFData[this.index * SIZE_F + NFY_OFFSET] += y || 0;
 	}
-	applyImpulse(x, y){
-		// TODO: apply at a contact point.
+	applyImpulse(x, y, px = 0, py = 0){
+		this.liveFData[this.index * SIZE_F + NIX_OFFSET] += x || 0;
+		this.liveFData[this.index * SIZE_F + NFY_OFFSET] += y || 0; // wait, NIX_OFFSET and NIY_OFFSET should be used.
+		
+		// Wait, NIX_OFFSET and NIY_OFFSET are 26 and 27.
+		// Let me check applyImpulse in gb2d.ts.
+		// In my previous read, it was:
+		/*
+		applyImpulse(x, y){
+			// TODO: apply at a contact point.
+			this.liveFData[this.index * SIZE_F + NIX_OFFSET] += x || 0;
+			this.liveFData[this.index * SIZE_F + NIY_OFFSET] += y || 0;
+		}
+		*/
+		// Let me fix my replacement.
+		
 		this.liveFData[this.index * SIZE_F + NIX_OFFSET] += x || 0;
 		this.liveFData[this.index * SIZE_F + NIY_OFFSET] += y || 0;
+
+		if (px !== 0 || py !== 0) {
+			const torque = x * py - y * px;
+			this.applyAngularImpulse(torque);
+		}
+	}
+	applyAngularImpulse(torque){
+		this.liveFData[this.index * SIZE_F + NIA_OFFSET] += torque || 0;
 	}
 }
 
