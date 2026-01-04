@@ -4,6 +4,9 @@
 #include "world.h"
 #include "constants.h"
 #include <algorithm>
+#include <fstream>
+#include <chrono>
+#include <sstream>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -21,7 +24,7 @@ World::World():
     liveFloatData.reserve(maxSize * FDATA_EPO);
     liveIntData.reserve(maxSize * LIVE_INT_EPO);
     contactConstraints.reserve(100);
-    velocityIterations = 8;
+    velocityIterations = 20;
 }
 
 World::~World() {
@@ -170,6 +173,7 @@ void World::step() {
     _doKinematics();
     _doBroadPhase();
     _doNarrowPhase();
+    _doContactManagement();
     _doResolution();
     // _doConstraints(); // Coming soon.
     // _doStabilization(); // Optional.
@@ -216,7 +220,7 @@ void World::_doBroadPhase(){
 // 3. Narrow phase collision detection.
 void World::_doNarrowPhase(){
     collisionSolver.clear();
-    // currentPairs.clear();
+    currentPairs.clear();
     
     for (auto& pair : bvh.collisionPairs) {
         PhysicalObject* obj1 = static_cast<PhysicalObject*>(pair.first);
@@ -231,35 +235,40 @@ void World::_doNarrowPhase(){
         liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION 
             | (colliding * HAS_PHYSICAL_COLLISION);
 
-        // if(colliding){
-        //     // Add the pair to the current pairs for contact management
-        //     currentPairs.insert({obj1->worldIndex, obj2->worldIndex});
-        // }
+        if(colliding){
+            // Add the pair to the current pairs for contact management
+            currentPairs.insert({obj1->id, obj2->id});
+        }
     }
 }
 
 void World::_doContactManagement(){
-
-    // TODO: implement contact management.
-    // std::unordered_set<std::pair<int, int>, PairHash, PairEqual> confirmedContacts;
-    // for (const auto& pair : currentPairs) {
-    //     confirmedContacts.insert(pair);
-    // }
+    // Find new contacts (in currentPairs but not in prevPairs)
+    for (const auto& pair : currentPairs) {
+        if (prevPairs.find(pair) == prevPairs.end()) {
+            PhysicalObject* objA = getObject(pair.first);
+            PhysicalObject* objB = getObject(pair.second);
+            if (objA && objB) {
+                objA->addContact(objB);
+                objB->addContact(objA);
+            }
+        }
+    }
     
-    // Find missing pairs
-    // for (const auto& pair : prev_pairs) {
-    //     if (confirmedContacts.find(pair) == confirmedContacts.end()) {
-    //         raiseEvent(pair);
-    //     }
-    // }
+    // Find removed contacts (in prevPairs but not in currentPairs)
+    for (const auto& pair : prevPairs) {
+        if (currentPairs.find(pair) == currentPairs.end()) {
+            PhysicalObject* objA = getObject(pair.first);
+            PhysicalObject* objB = getObject(pair.second);
+            if (objA && objB) {
+                objA->removeContact(objB);
+                objB->removeContact(objA);
+            }
+        }
+    }
     
     // Update for next iteration
-    // prev_pairs = std::move(confirmedContacts);
-
-        // if(colliding){
-        //     obj1->addContact(obj2);
-        //     obj2->addContact(obj1);
-        // }
+    prevPairs = currentPairs;
 }
 
 // 4. Collision resolution.
@@ -338,14 +347,19 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float e = 0.0f;
     if (enableRestitution) {
         e = std::max(a->getRestitution(), b->getRestitution());
-        if (vn > -0.2f) e = 0.0f;
+        if (vn > -0.5f) e = 0.0f; // Increased threshold to settle faster
     }
-    float restitutionBias = e * vn;
-    float positionBias = 0.0f;
-    if (enablePenetration && depth > 0.001f) {
-        positionBias = -0.2f / dt * (depth - 0.001f);
+    bias = e * vn;
+    
+    positionBias = 0.0f;
+    if (enablePenetration && depth > 0.01f) {
+        // High-quality stabilization: resolve penetration without introducing physical bounce
+        positionBias = -0.2f / dt * (depth - 0.01f);
+        
+        // Cap the stabilization velocity to prevent "explosions"
+        float maxStabilizationVelocity = 2.0f; // Limit to 2 units per second
+        if (positionBias < -maxStabilizationVelocity) positionBias = -maxStabilizationVelocity;
     }
-    bias = std::min(restitutionBias, positionBias);
 }
 
 void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
@@ -364,11 +378,13 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
     Vec2 relVel = vb - va;
 
     if (enableNormal) {
+        // 1. Solve for real velocity (restitution)
         float vn = relVel.dot(normal);
         float dLambda = - (vn + bias) * normalMass;
         float old = normalImpulse;
         normalImpulse = std::max(old + dLambda, 0.0f);
         dLambda = normalImpulse - old;
+
         Vec2 impulse = normal * dLambda;
         a->setVelocity(a->getVelocity() - impulse * imA);
         b->setVelocity(b->getVelocity() + impulse * imB);
@@ -376,6 +392,26 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
         float torqueB = rB.x * impulse.y - rB.y * impulse.x;
         a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
         b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
+
+        // 2. Solve for pseudo-velocity (position correction)
+        if (positionBias < 0.0f) {
+            Vec2 tangentialPseudoVelocityA(-rA.y * a->pseudoAngularVelocity, rA.x * a->pseudoAngularVelocity);
+            Vec2 tangentialPseudoVelocityB(-rB.y * b->pseudoAngularVelocity, rB.x * b->pseudoAngularVelocity);
+            Vec2 vpa = a->pseudoVelocity + tangentialPseudoVelocityA;
+            Vec2 vpb = b->pseudoVelocity + tangentialPseudoVelocityB;
+            float vnp = (vpb - vpa).dot(normal);
+            
+            float dLambdaP = -(vnp + positionBias) * normalMass;
+            float oldP = positionImpulse;
+            positionImpulse = std::max(oldP + dLambdaP, 0.0f);
+            dLambdaP = positionImpulse - oldP;
+            
+            Vec2 impulseP = normal * dLambdaP;
+            a->pseudoVelocity = a->pseudoVelocity - impulseP * imA;
+            b->pseudoVelocity = b->pseudoVelocity + impulseP * imB;
+            a->pseudoAngularVelocity += -(rA.x * impulseP.y - rA.y * impulseP.x) * iIA;
+            b->pseudoAngularVelocity += (rB.x * impulseP.y - rB.y * impulseP.x) * iIB;
+        }
     }
 
     if (enableFriction && friction > 0.0f) {

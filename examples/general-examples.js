@@ -207,7 +207,7 @@ export const generalExamples = [
                     r: Math.PI / 2 * Math.random(),
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: 1.00 + Math.random() * 5.00,
-                    vy: -4.00 - Math.random() * 4.00,
+                    vy: -8.00 - Math.random() * 8.00,
                     shape: gb2d.shapes.CIRCLE,
                     type: gb2d.SENSOR,
                     radius: .2 + m * .2,
@@ -285,13 +285,14 @@ export const generalExamples = [
             world.makeObject(5, {
                 x: 5,
                 y: 2,
-                vx: 3, 
+                vx: -3 + Math.random() * 6, 
                 r: Math.PI / 2 * Math.random(),
                 shape: gb2d.shapes.CIRCLE,
                 type: gb2d.bodyTypes.RIGID_BODY,
                 radius: .75,
                 mass: 0.5,
                 linearDamping: 0.0,
+                rs: -2 + Math.random() * 4,
 
                 // The most important part. 100% bouncy.
                 restitution: 1,
@@ -317,7 +318,7 @@ export const generalExamples = [
         },
         // Once collisions are a bit more stable, the number of colliding objects can be doubled.
         onTick: (world, dt)=>{
-            if(Math.random() < 0.05){
+            if(Math.random() < 0.08){
                 let m = .1 + Math.random() * .4;
                 let dir = 1;
                 if(Math.random() < 0.5) dir = -1;
@@ -333,7 +334,7 @@ export const generalExamples = [
                     r: Math.PI / 2 * Math.random(),
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: (2.00 + Math.random() * 5.00) * dir,
-                    vy: -6.00 - Math.random() * 1.00,
+                    vy: -8.00 - Math.random() * 2.00,
                     shape: isBox ? gb2d.shapes.BOX : gb2d.shapes.CIRCLE,
                     type: gb2d.bodyTypes.RIGID_BODY,
                     radius: isBox ? w : r,
@@ -435,7 +436,7 @@ export const generalExamples = [
                 x: 0.5,
                 y: 6,
                 vx: 7,
-                kFriction: 0.53,
+                kFriction: 0.23,
                 sFriction: 0.5,
                 shape: gb2d.shapes.BOX,
                 type: gb2d.bodyTypes.RIGID_BODY,

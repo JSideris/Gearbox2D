@@ -53,6 +53,10 @@ public:
     float sleepErrAccumulatorY = 0.0f;
     float sleepErrAccumulatorR = 0.0f;
     
+    // Pseudo-velocity for split impulses (penetration resolution without bounce)
+    Vec2 pseudoVelocity = Vec2(0.0f, 0.0f);
+    float pseudoAngularVelocity = 0.0f;
+
     PhysicalObject(World& world, int id, emscripten_val options);
 
 

@@ -19,7 +19,9 @@
 // TODO: probably makes more sense to make this configurable.
 // Or compute it based on world scale.
 // TODO: make sure this doesn't get weird with different frame rates.
-#define WAKE_MOVEMENT_THRESHOLD 0.02f
+#define WAKE_MOVEMENT_THRESHOLD 0.05f
+#define SLEEP_VELOCITY_THRESHOLD 0.1f
+#define SLEEP_ANGULAR_VELOCITY_THRESHOLD 0.1f
 
 static Vec2 _dampingForce;
 static Vec2 _acceleration;
@@ -116,18 +118,25 @@ void PhysicalObject::setRotation(float r) {
 float PhysicalObject::getVelocityX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX]; }
 void PhysicalObject::setVelocityX(float vx) { 
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX] = vx; 
-    if(vx) wakeUp();
+    if(abs(vx) > SLEEP_VELOCITY_THRESHOLD) {
+        wakeUp();
+    }
 }
-float PhysicalObject::getVelocityY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY]; }
 void PhysicalObject::setVelocityY(float vy) { 
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY] = vy; 
-    if(vy) wakeUp();
+    if(abs(vy) > SLEEP_VELOCITY_THRESHOLD) {
+        wakeUp();
+    }
 }
+
+float PhysicalObject::getVelocityY() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY]; }
 
 float PhysicalObject::getAngularVelocity() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS]; }
 void PhysicalObject::setAngularVelocity(float rs) { 
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS] = rs;
-    if(rs) wakeUp();
+    if(abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+        wakeUp();
+    }
 }
 
 float PhysicalObject::getMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_M]; }
@@ -350,9 +359,11 @@ void PhysicalObject::applyForce(float x, float y){
     if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT && (x || y)) {
         world.liveFloatData[index + FDATA_FX] += x;
         world.liveFloatData[index + FDATA_FY] += y;
-        // TODO: net forces might cancel out.
-        // Consider removing this.
-        wakeUp();
+        
+        // Only wake up if the force is significant relative to mass.
+        if (abs(x * inverseMass) > SLEEP_VELOCITY_THRESHOLD || abs(y * inverseMass) > SLEEP_VELOCITY_THRESHOLD) {
+            wakeUp();
+        }
     }
 }
 
@@ -372,17 +383,23 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
         world.liveFloatData[index + FDATA_IX] += x;
         world.liveFloatData[index + FDATA_IY] += y;
 
-        world.liveFloatData[index + FDATA_VX] += x * inverseMass;
-        world.liveFloatData[index + FDATA_VY] += y * inverseMass;
+        float dvx = x * inverseMass;
+        float dvy = y * inverseMass;
+
+        world.liveFloatData[index + FDATA_VX] += dvx;
+        world.liveFloatData[index + FDATA_VY] += dvy;
 
         // float torque = contactPoint.cross(impulse);  // 2D cross product gives scalar torque
         // float torque = cpX * y - cpY * x; // this one might be backwards.
         float torque = x * cpY - y * cpX;
+        float drs = -torque * getInverseInertia();
 
         // Apply angular velocity change using inverse inertia.
-        world.liveFloatData[index + FDATA_RS] -= torque * getInverseInertia();
+        world.liveFloatData[index + FDATA_RS] += drs;
 
-        wakeUp();
+        if (abs(dvx) > SLEEP_VELOCITY_THRESHOLD || abs(dvy) > SLEEP_VELOCITY_THRESHOLD || abs(drs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+            wakeUp();
+        }
     }
 
 }
@@ -444,6 +461,31 @@ bool PhysicalObject::stepMovement(float dt) {
     // Update position based on velocity and time step.
     _position = _position + _velocity * dt;
 
+    // Apply pseudo-velocity (split impulses for penetration resolution)
+    _position = _position + pseudoVelocity * dt;
+    float rs_pseudo = pseudoAngularVelocity;
+    world.liveFloatData[index + FDATA_R] += rs_pseudo * dt;
+
+    // Reset pseudo-velocity for the next frame
+    pseudoVelocity = Vec2(0.0f, 0.0f);
+    pseudoAngularVelocity = 0.0f;
+
+    // Help objects settle by zeroing out very small velocities
+    if (abs(_velocity.x) < SLEEP_VELOCITY_THRESHOLD * 0.5f) {
+        _velocity.x *= 0.8f;
+        if (abs(_velocity.x) < 1e-4f) _velocity.x = 0.0f;
+    }
+    if (abs(_velocity.y) < SLEEP_VELOCITY_THRESHOLD * 0.5f) {
+        _velocity.y *= 0.8f;
+        if (abs(_velocity.y) < 1e-4f) _velocity.y = 0.0f;
+    }
+    
+    float rs_val = world.liveFloatData[index + FDATA_RS];
+    if (abs(rs_val) < SLEEP_ANGULAR_VELOCITY_THRESHOLD * 0.5f) {
+        world.liveFloatData[index + FDATA_RS] *= 0.8f;
+        if (abs(world.liveFloatData[index + FDATA_RS]) < 1e-4f) world.liveFloatData[index + FDATA_RS] = 0.0f;
+    }
+
     // ix and iy are for visual debugging.
     // We can decay them here.
     world.liveFloatData[index + FDATA_IX] *= world.decayMap[99];
@@ -492,7 +534,12 @@ bool PhysicalObject::stepMovement(float dt) {
 
     // If moved, compute isWakable based on the amount of movement surpassing a threshold.
     float dErr = sleepErrAccumulatorX * sleepErrAccumulatorX + sleepErrAccumulatorY * sleepErrAccumulatorY;
-    bool isWakable = moved && (
+    
+    // Only accumulate if movement is actually happening above a noise floor.
+    // This prevents micro-jitter from eventually waking the object.
+    bool isMoving = abs(dx) > 1e-4f || abs(dy) > 1e-4f || abs(dr) > 1e-4f;
+    
+    bool isWakable = isMoving && (
         abs(sleepErrAccumulatorR) > WAKE_MOVEMENT_THRESHOLD
         || dErr > WAKE_MOVEMENT_THRESHOLD * WAKE_MOVEMENT_THRESHOLD
     );
@@ -504,6 +551,12 @@ bool PhysicalObject::stepMovement(float dt) {
         sleepErrAccumulatorR = 0.0f;
     }
     else{
+        if (!isMoving) {
+            // Reset accumulators if truly stationary to prevent gradual creep.
+            sleepErrAccumulatorX *= 0.9f;
+            sleepErrAccumulatorY *= 0.9f;
+            sleepErrAccumulatorR *= 0.9f;
+        }
         sleepTimer += dt;
         if(sleepTimer > sleepTimeRequired){
             sleep();

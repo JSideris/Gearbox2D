@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <utility>
+#include <algorithm>
 
 // class CollisionSolver;
 // class PhysicalObject;
@@ -30,12 +32,13 @@ struct ContactConstraint {
     Vec2 tangent;
     float friction;
     float bias;
-    float normalImpulse, frictionImpulse;
+    float positionBias;
+    float normalImpulse, frictionImpulse, positionImpulse;
 
     void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
     void solve(bool enableNormal, bool enableFriction);
 
-    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f) {}
+    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), positionImpulse(0.0f) {}
 };
 
 class World {
@@ -57,7 +60,27 @@ private:
     std::vector<ContactConstraint> contactConstraints;
     int velocityIterations;
 
-    // std::unordered_set<std::pair<int, int>, PairHash, PairEqual> contactPairs;
+    struct PairHash {
+        size_t operator()(const std::pair<int, int>& p) const {
+            int first = p.first;
+            int second = p.second;
+            if (first > second) std::swap(first, second);
+            return std::hash<int>()(first) ^ (std::hash<int>()(second) << 1);
+        }
+    };
+
+    struct PairEqual {
+        bool operator()(const std::pair<int, int>& a, const std::pair<int, int>& b) const {
+            int a1 = a.first, a2 = a.second;
+            int b1 = b.first, b2 = b.second;
+            if (a1 > a2) std::swap(a1, a2);
+            if (b1 > b2) std::swap(b1, b2);
+            return a1 == b1 && a2 == b2;
+        }
+    };
+
+    std::unordered_set<std::pair<int, int>, PairHash, PairEqual> currentPairs;
+    std::unordered_set<std::pair<int, int>, PairHash, PairEqual> prevPairs;
 
 public:
 

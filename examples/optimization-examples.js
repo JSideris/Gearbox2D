@@ -6,7 +6,7 @@ let nextId = 1;
 
 export const optimizationExamples = [
     new Example({
-        name: "* Sleep and Islands",
+        name: "Sleep and Islands",
         key: "sleep-and-islands",
         description: [
             "Sleep works a little differently in Gearbox 2D.",
@@ -42,6 +42,7 @@ export const optimizationExamples = [
                     world.makeObject(nextId++, {
                         x: 5,
                         y: 0,
+                        r: (Math.random() - 0.5) * 0.1, // Add small random rotation
                         width: 6,
                         height: 0.5,
                         vx: 0,
