@@ -23,7 +23,8 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("setCategoryBits", &PhysicalObject::setCategoryBits)
         .function("setMaskBits", &PhysicalObject::setMaskBits)
         .function("getCategoryBits", &PhysicalObject::getCategoryBits)
-        .function("getMaskBits", &PhysicalObject::getMaskBits);
+        .function("getMaskBits", &PhysicalObject::getMaskBits)
+        .function("wakeUp", &PhysicalObject::wakeUp);
 
     emscripten::class_<World>("World")
         .constructor<>()

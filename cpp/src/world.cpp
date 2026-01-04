@@ -193,6 +193,15 @@ void World::_doKinematics(){
     for (auto& object : objectsList) {
         
         if(object->isSleeping){
+            // Check if any external impulses or forces were applied via the live data buffer.
+            int idx = object->worldIndex * FDATA_EPO;
+            if (liveFloatData[idx + FDATA_NIX] != 0.0f || liveFloatData[idx + FDATA_NIY] != 0.0f || liveFloatData[idx + FDATA_NIA] != 0.0f ||
+                liveFloatData[idx + FDATA_NFX] != 0.0f || liveFloatData[idx + FDATA_NFY] != 0.0f) {
+                object->wakeUp();
+            }
+        }
+
+        if(object->isSleeping){
             continue;
         }
         

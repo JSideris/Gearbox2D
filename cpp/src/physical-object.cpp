@@ -410,7 +410,6 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
     float inverseMass = world.liveFloatData[index + FDATA_IM];
     
     if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT) {
-        
         world.liveFloatData[index + FDATA_IX] += x;
         world.liveFloatData[index + FDATA_IY] += y;
 
@@ -644,6 +643,7 @@ void PhysicalObject::sleep(){
 void PhysicalObject::wakeUp() {
     if (isSleeping) {
         isSleeping = false;
+        sleepTimer = 0.0f; // RESET TIMER ON WAKEUP
         bvhNode->wakeUp();
         
         for (auto* contact : contacts) {

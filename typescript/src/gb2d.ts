@@ -120,7 +120,7 @@ export class World {
 		// console.log("MAKE OBJECT");
 
 		let index = this.world.makeObject(id, spec);
-		let obj = new PhysicalObject(index, this.world, this.liveFloatData, this.liveIntData);
+		let obj = new PhysicalObject(index, this, this.liveFloatData, this.liveIntData);
 		if (spec.color) obj.color = spec.color;
 		this.objectsById[id] = obj;
 		return obj;
@@ -184,22 +184,52 @@ export class PhysicalObject{
     // set type(v) { this.liveIData[this.index * SIZE_I + TYPE_OFFSET] = v; }
 
     get x() { return this.liveFData[this.index * SIZE_F + X_OFFSET]; }
-    set x(v) { this.liveFData[this.index * SIZE_F + X_OFFSET] = v; }
+    set x(v) { 
+		if(this.liveFData[this.index * SIZE_F + X_OFFSET] != v){
+			this.liveFData[this.index * SIZE_F + X_OFFSET] = v; 
+			this.wakeUp();
+		}
+	}
     
     get y() { return this.liveFData[this.index * SIZE_F + Y_OFFSET]; }
-    set y(v) { this.liveFData[this.index * SIZE_F + Y_OFFSET] = v; }
+    set y(v) { 
+		if(this.liveFData[this.index * SIZE_F + Y_OFFSET] != v){
+			this.liveFData[this.index * SIZE_F + Y_OFFSET] = v; 
+			this.wakeUp();
+		}
+	}
     
     get r() { return this.liveFData[this.index * SIZE_F + R_OFFSET]; }
-    set r(v) { this.liveFData[this.index * SIZE_F + R_OFFSET] = v; }
+    set r(v) { 
+		if(this.liveFData[this.index * SIZE_F + R_OFFSET] != v){
+			this.liveFData[this.index * SIZE_F + R_OFFSET] = v; 
+			this.wakeUp();
+		}
+	}
     
     get vx() { return this.liveFData[this.index * SIZE_F + VX_OFFSET]; }
-    set vx(v) { this.liveFData[this.index * SIZE_F + VX_OFFSET] = v; }
+    set vx(v) { 
+		if(this.liveFData[this.index * SIZE_F + VX_OFFSET] != v){
+			this.liveFData[this.index * SIZE_F + VX_OFFSET] = v; 
+			this.wakeUp();
+		}
+	}
     
     get vy() { return this.liveFData[this.index * SIZE_F + VY_OFFSET]; }
-    set vy(v) { this.liveFData[this.index * SIZE_F + VY_OFFSET] = v; }
+    set vy(v) { 
+		if(this.liveFData[this.index * SIZE_F + VY_OFFSET] != v){
+			this.liveFData[this.index * SIZE_F + VY_OFFSET] = v; 
+			this.wakeUp();
+		}
+	}
     
     get rs() { return this.liveFData[this.index * SIZE_F + RS_OFFSET]; }
-    set rs(v) { this.liveFData[this.index * SIZE_F + RS_OFFSET] = v; }
+    set rs(v) { 
+		if(this.liveFData[this.index * SIZE_F + RS_OFFSET] != v){
+			this.liveFData[this.index * SIZE_F + RS_OFFSET] = v; 
+			this.wakeUp();
+		}
+	}
     
     get mass() { return this.liveFData[this.index * SIZE_F + MASS_OFFSET]; }
     set mass(v) { 
@@ -244,6 +274,13 @@ export class PhysicalObject{
     
     get hasCollisionFlags() { return this.liveIData[this.index * SIZE_I + HAS_COLLISION_OFFSET]; }
 
+	wakeUp() {
+		const cppObj = this.world.world.getObject(this.id);
+		if (cppObj) {
+			cppObj.wakeUp();
+		}
+	}
+
 	get angularImpulse() { return this.liveFData[this.index * SIZE_F + IA_OFFSET]; }
 
 	get categoryBits() { return this.liveIData[this.index * SIZE_I + CATEGORY_BITS_OFFSET]; }
@@ -273,35 +310,30 @@ export class PhysicalObject{
 	set kineticFriction(v) { this.liveFData[this.index * SIZE_F + K_FRICTION_OFFSET] = v; }
 
 	applyForce(x, y){
-		this.liveFData[this.index * SIZE_F + NFX_OFFSET] += x || 0;
-		this.liveFData[this.index * SIZE_F + NFY_OFFSET] += y || 0;
+		if (x || y) {
+			this.liveFData[this.index * SIZE_F + NFX_OFFSET] += x || 0;
+			this.liveFData[this.index * SIZE_F + NFY_OFFSET] += y || 0;
+			this.wakeUp();
+		}
 	}
 	applyImpulse(x, y, px = 0, py = 0){
-		this.liveFData[this.index * SIZE_F + NIX_OFFSET] += x || 0;
-		this.liveFData[this.index * SIZE_F + NFY_OFFSET] += y || 0; // wait, NIX_OFFSET and NIY_OFFSET should be used.
-		
-		// Wait, NIX_OFFSET and NIY_OFFSET are 26 and 27.
-		// Let me check applyImpulse in gb2d.ts.
-		// In my previous read, it was:
-		/*
-		applyImpulse(x, y){
-			// TODO: apply at a contact point.
+		if (x || y) {
 			this.liveFData[this.index * SIZE_F + NIX_OFFSET] += x || 0;
 			this.liveFData[this.index * SIZE_F + NIY_OFFSET] += y || 0;
-		}
-		*/
-		// Let me fix my replacement.
-		
-		this.liveFData[this.index * SIZE_F + NIX_OFFSET] += x || 0;
-		this.liveFData[this.index * SIZE_F + NIY_OFFSET] += y || 0;
 
-		if (px !== 0 || py !== 0) {
-			const torque = x * py - y * px;
-			this.applyAngularImpulse(torque);
+			if (px !== 0 || py !== 0) {
+				const torque = x * py - y * px;
+				this.applyAngularImpulse(torque);
+			} else {
+				this.wakeUp();
+			}
 		}
 	}
 	applyAngularImpulse(torque){
-		this.liveFData[this.index * SIZE_F + NIA_OFFSET] += torque || 0;
+		if (torque) {
+			this.liveFData[this.index * SIZE_F + NIA_OFFSET] += torque || 0;
+			this.wakeUp();
+		}
 	}
 }
 
