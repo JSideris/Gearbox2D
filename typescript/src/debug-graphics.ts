@@ -3,6 +3,19 @@ import { World, PhysicalObject, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_A
 
 const ANIMSCALE = 100;
 
+export type LabelPosition = 'left' | 'right' | 'above' | 'below' | 'on-top';
+
+export interface DebugLabel {
+    text: string;
+    x?: number; // World coordinates
+    y?: number; // World coordinates
+    objectId?: number; // Pinned to an object
+    position?: LabelPosition;
+    offset?: number; // Distance from object
+    fontSize?: string;
+    color?: string;
+}
+
 export class DebugGraphics {
     debugWorld: World | null = null;
     debugFrameTime: number = 0;
@@ -15,7 +28,24 @@ export class DebugGraphics {
     offsetY: number = 0;
     private lastTick: number = Date.now();
 
+    private labels: DebugLabel[] = [];
+    defaultLabelFontSize: string = '12px Arial';
+    defaultLabelColor: string = 'black';
+    defaultLabelOffset: number = 5;
+
     constructor() {}
+
+    addLabel(label: DebugLabel) {
+        this.labels.push(label);
+    }
+
+    clearLabels() {
+        this.labels = [];
+    }
+
+    removeObjectLabels(objectId: number) {
+        this.labels = this.labels.filter(l => l.objectId !== objectId);
+    }
 
     enableDebugGraphics(canvas: HTMLCanvasElement, world: World) {
         this.disableDebugGraphics();
@@ -212,7 +242,88 @@ export class DebugGraphics {
 
         this.ctx.restore();
 
+        this.drawLabels();
+
         this.animFrame = requestAnimationFrame(() => this.animate());
+    }
+
+    private drawLabels() {
+        if (!this.ctx || !this.debugWorld) return;
+
+        this.ctx.save();
+        this.ctx.translate(this.offsetX, this.offsetY);
+        this.ctx.scale(this.zoom, this.zoom);
+
+        // Filter out labels for removed objects.
+        this.labels = this.labels.filter(label => {
+            if (label.objectId !== undefined) {
+                const obj = this.debugWorld!.getObjectById(label.objectId);
+                if (!obj) return false;
+            }
+            return true;
+        });
+
+        for (const label of this.labels) {
+            let x = 0;
+            let y = 0;
+            let width = 0;
+            let height = 0;
+
+            if (label.objectId !== undefined) {
+                const obj = this.debugWorld.getObjectById(label.objectId);
+                if (obj) {
+                    x = obj.x * ANIMSCALE;
+                    y = obj.y * ANIMSCALE;
+                    if (obj.shape === SHAPES.CIRCLE) {
+                        width = obj.radius * 2 * ANIMSCALE;
+                        height = obj.radius * 2 * ANIMSCALE;
+                    } else {
+                        width = obj.width * ANIMSCALE;
+                        height = obj.height * ANIMSCALE;
+                    }
+                }
+            } else {
+                x = (label.x || 0) * ANIMSCALE;
+                y = (label.y || 0) * ANIMSCALE;
+            }
+
+            this.ctx.font = label.fontSize || this.defaultLabelFontSize;
+            this.ctx.fillStyle = label.color || this.defaultLabelColor;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+
+            const offset = (label.offset !== undefined ? label.offset : this.defaultLabelOffset);
+            const pos = label.position || 'right';
+
+            let lx = x;
+            let ly = y;
+
+            const metrics = this.ctx.measureText(label.text);
+            const textWidth = metrics.width;
+            const textHeight = parseInt(this.ctx.font) || 12;
+
+            switch (pos) {
+                case 'left':
+                    lx = x - width / 2 - textWidth / 2 - offset;
+                    break;
+                case 'right':
+                    lx = x + width / 2 + textWidth / 2 + offset;
+                    break;
+                case 'above':
+                    ly = y - height / 2 - textHeight / 2 - offset;
+                    break;
+                case 'below':
+                    ly = y + height / 2 + textHeight / 2 + offset;
+                    break;
+                case 'on-top':
+                    // lx = x, ly = y (default)
+                    break;
+            }
+
+            this.ctx.fillText(label.text, lx, ly);
+        }
+
+        this.ctx.restore();
     }
 }
 

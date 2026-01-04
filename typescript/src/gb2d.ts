@@ -127,6 +127,9 @@ export class World {
 			return false;
 		}
 		else {
+			// Remove any labels attached to this object.
+			gb2d.debug.removeObjectLabels(id);
+
 			// To delete an object, call world.removeObject. This will return the index.
 			// Then read the index, it will contain the ID of the object from the end of the vector
 			// which replaced the deleted item. 

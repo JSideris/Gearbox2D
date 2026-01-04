@@ -393,6 +393,11 @@ export const generalExamples = [
             world.setGravity(0, 10);
 
             let id = 1;
+            const platformSummaries = [
+                "Counter-clockwise to clockwise roll",
+                "Angular to linear momentum",
+                "Slide to halt"
+            ];
             // Platforms.
             for(; id <= 3; id++){
                 world.makeObject(id, {
@@ -404,10 +409,20 @@ export const generalExamples = [
                     height: 1,
                     mass: 1,
                 });
+
+                gb2d.debug.addLabel({
+                    text: platformSummaries[id - 1],
+                    x: 4.5,
+                    y: 2.5 * id - 1.2,
+                    fontSize: '20px Arial',
+                    color: 'blue',
+                    position: 'above'
+                });
             }
 
             // One more (tilted) platform for static friction.
-            world.makeObject(id++, {
+            const tiltedPlatformId = id++;
+            world.makeObject(tiltedPlatformId, {
                 x: 4.5,
                 y: 9.7,
                 r: 0.1,
@@ -418,8 +433,18 @@ export const generalExamples = [
                 mass: 1,
             });
 
+            gb2d.debug.addLabel({
+                text: "High static vs no static friction",
+                x: 4.5,
+                y: 9.0,
+                fontSize: '20px Arial',
+                color: 'blue',
+                position: 'above'
+            });
+
             // Linear to angular rolling object.
-            world.makeObject(id++, {
+            const rollingObj1Id = id++;
+            world.makeObject(rollingObj1Id, {
                 x: 0,
                 y: 1.0,
                 vx: 5,
@@ -432,8 +457,16 @@ export const generalExamples = [
                 mass: 0.5
             });
 
+            gb2d.debug.addLabel({
+                text: "Reverse",
+                objectId: rollingObj1Id,
+                position: 'above',
+                fontSize: '10px Arial'
+            });
+
             // Angular to linear rolling object.
-            world.makeObject(id++, {
+            const rollingObj2Id = id++;
+            world.makeObject(rollingObj2Id, {
                 x: 0.5,
                 y: 3.5,
                 rs: 15,
@@ -445,8 +478,16 @@ export const generalExamples = [
                 mass: 0.5
             });
 
+            gb2d.debug.addLabel({
+                text: "Accelerate",
+                objectId: rollingObj2Id,
+                position: 'above',
+                fontSize: '10px Arial'
+            });
+
             // Sliding box slows down.
-            world.makeObject(id++, {
+            const slidingBoxId = id++;
+            world.makeObject(slidingBoxId, {
                 x: 0.5,
                 y: 6,
                 vx: 7,
@@ -459,8 +500,16 @@ export const generalExamples = [
                 mass: 0.5
             });
 
+            gb2d.debug.addLabel({
+                text: "Slide",
+                objectId: slidingBoxId,
+                position: 'above',
+                fontSize: '10px Arial'
+            });
+
             // Sliding box stops due to static friction.
-            world.makeObject(id++, {
+            const staticBoxId = id++;
+            world.makeObject(staticBoxId, {
                 x: 0.5,
                 y: 8.0,
                 vx: 0.5,
@@ -473,8 +522,16 @@ export const generalExamples = [
                 mass: 0.5
             });
 
+            gb2d.debug.addLabel({
+                text: "Static",
+                objectId: staticBoxId,
+                position: 'above',
+                fontSize: '10px Arial'
+            });
+
             // Another sliding box but with no static friction.
-            world.makeObject(id++, {
+            const kineticBoxId = id++;
+            world.makeObject(kineticBoxId, {
                 x: 1.6,
                 y: 8.0,
                 vx: 0.5,
@@ -485,6 +542,13 @@ export const generalExamples = [
                 width: 1,
                 height: .5,
                 mass: 0.5
+            });
+
+            gb2d.debug.addLabel({
+                text: "Kinetic",
+                objectId: kineticBoxId,
+                position: 'above',
+                fontSize: '10px Arial'
             });
         },
         onTick: (world, dt)=>{
