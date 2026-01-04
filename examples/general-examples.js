@@ -394,9 +394,9 @@ export const generalExamples = [
 
             let id = 1;
             const platformSummaries = [
-                "Counter-clockwise to clockwise roll",
-                "Angular to linear momentum",
-                "Slide to halt"
+                "Linear to angular momentum transfer.",
+                "Angular to linear momentum transfer.",
+                "Slide to halt."
             ];
             // Platforms.
             for(; id <= 3; id++){
@@ -434,7 +434,7 @@ export const generalExamples = [
             });
 
             gb2d.debug.addLabel({
-                text: "High static vs no static friction",
+                text: "High static vs no static friction.",
                 x: 4.5,
                 y: 9.0,
                 fontSize: '20px Arial',
@@ -448,8 +448,8 @@ export const generalExamples = [
                 x: 0,
                 y: 1.0,
                 vx: 5,
-                rs: -5,
-                kFriction: 0.2,
+                rs: -8,
+                kFriction: 0.8,
                 sFriction: 0.5,
                 shape: gb2d.shapes.CIRCLE,
                 type: gb2d.bodyTypes.RIGID_BODY,
@@ -479,7 +479,7 @@ export const generalExamples = [
             });
 
             gb2d.debug.addLabel({
-                text: "Accelerate",
+                text: "Forward",
                 objectId: rollingObj2Id,
                 position: 'above',
                 fontSize: '10px Arial'
@@ -553,6 +553,98 @@ export const generalExamples = [
         },
         onTick: (world, dt)=>{
 
+        }
+    }),
+
+    new Example({ // Collision Masks
+        name: "Collision Masks",
+        key: "collision-masks",
+        description: [
+            "Collision masks allow you to selectively enable or disable collisions between different groups of objects.",
+            "In this example, there are three types of objects and three platforms:",
+            "1. Blue objects only collide with blue platforms and each other.",
+            "2. Red objects only collide with red platforms and each other.",
+            "3. Green objects collide with everything (including each other).",
+            "Bitmasks are used to implement this logic: Blue (Category 1), Red (Category 2), Green (Category 4). Platforms are configured to collide with their respective categories."
+        ].join("\n\n"),
+        onInit: (world)=>{
+            world.setGravity(0, 10);
+            
+            // Platform Categories: 0x1 (Blue), 0x2 (Red), 0x4 (Green)
+            
+            // Blue Platform (Collides with category 1 and 4)
+            world.makeObject(100, {
+                x: 2.5, y: 8,
+                width: 4, height: 0.5,
+                shape: gb2d.shapes.AABB,
+                type: gb2d.bodyTypes.FIXED_OBJECT,
+                categoryBits: 0x1,
+                maskBits: 0x1 | 0x4
+            });
+            gb2d.debug.addLabel({ text: "Blue & Green Only", x: 2.5, y: 8.5, color: 'blue', position: 'below' });
+
+            // Red Platform (Collides with category 2 and 4)
+            world.makeObject(101, {
+                x: 7.5, y: 8,
+                width: 4, height: 0.5,
+                shape: gb2d.shapes.AABB,
+                type: gb2d.bodyTypes.FIXED_OBJECT,
+                categoryBits: 0x2,
+                maskBits: 0x2 | 0x4
+            });
+            gb2d.debug.addLabel({ text: "Red & Green Only", x: 7.5, y: 8.5, color: 'red', position: 'below' });
+
+            // Universal Platform (Collides with everything: 0x1 | 0x2 | 0x4)
+            world.makeObject(102, {
+                x: 5, y: 4,
+                width: 2, height: 0.5,
+                shape: gb2d.shapes.AABB,
+                type: gb2d.bodyTypes.FIXED_OBJECT,
+                categoryBits: 0x4,
+                maskBits: 0x7 // 1 | 2 | 4
+            });
+            gb2d.debug.addLabel({ text: "All Collide", x: 5, y: 4.5, color: 'green', position: 'below' });
+        },
+        onTick: (world, dt)=>{
+            if(Math.random() < 0.05){
+                const id = nextId++;
+                const type = Math.floor(Math.random() * 3);
+                let color, cat, mask;
+                
+                if(type === 0) { // Blue
+                    color = 'blue'; cat = 0x1; mask = 0x1 | 0x4;
+                } else if(type === 1) { // Red
+                    color = 'red'; cat = 0x2; mask = 0x2 | 0x4;
+                } else { // Green
+                    color = 'green'; cat = 0x4; mask = 0x7;
+                }
+
+                const obj = world.makeObject(id, {
+                    x: 2 + Math.random() * 6,
+                    y: 0,
+                    radius: 0.3,
+                    shape: gb2d.shapes.CIRCLE,
+                    type: gb2d.bodyTypes.RIGID_BODY,
+                    mass: 1,
+                    categoryBits: cat,
+                    maskBits: mask
+                });
+                
+                gb2d.debug.addLabel({
+                    text: `Cat:${cat} Mask:${mask}`,
+                    objectId: id,
+                    color: color,
+                    position: 'above',
+                    fontSize: '10px Arial'
+                });
+            }
+
+            // Cleanup
+            let toRemove = [];
+            world.iterateObjects(o=>{
+                if(o.y > 11) toRemove.push(o);
+            });
+            for(let o of toRemove) world.removeObject(o.id);
         }
     }),
 ];

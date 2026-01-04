@@ -1,10 +1,12 @@
 #pragma once
 
-#define LIVE_INT_EPO 4
+#define LIVE_INT_EPO 6
 #define LIVE_INT_ID 0
 #define LIVE_INT_SHAPE 1
 #define LIVE_INT_TYPE 2
 #define LIVE_INT_HAS_COLLISION 3
+#define LIVE_INT_CATEGORY_BITS 4
+#define LIVE_INT_MASK_BITS 5
 
 // Int flags
 // Shape and Object Type

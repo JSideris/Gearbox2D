@@ -231,9 +231,9 @@ const world = gb2d.makeWorld();
 	[ ] Line-Ellipse.
 	[ ] Line-Line.
 	[*] Point-AABB.
-	[ ] Point-Box.
+	[*] Point-Box.
 	[ ] Point-Capsule.
-	[ ] Point-Circle.
+	[*] Point-Circle.
 	[ ] Point-Concave.
 	[ ] Point-Convex.
 	[ ] Point-Ellipse.

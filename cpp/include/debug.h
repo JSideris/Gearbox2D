@@ -9,6 +9,7 @@
 class MockVal {
 public:
     std::unordered_map<std::string, std::variant<int, float>> properties;
+    std::string lastKey;
 
     bool hasOwnProperty(const std::string& key) const {
         return properties.find(key) != properties.end();
@@ -16,11 +17,14 @@ public:
 
     template<typename T>
     T as() const {
-        return std::get<T>(properties.at("type"));
+        auto it = properties.find(lastKey);
+        if (it == properties.end()) return T();
+        return std::get<T>(it->second);
     }
 
     MockVal& operator[](const std::string& key) {
-        return *this; // For simplicity, return the same object; you can expand this as needed.
+        lastKey = key;
+        return *this;
     }
 };
 
@@ -36,12 +40,19 @@ using emscripten_val = emscripten::val;
 
 // #define DEBUG
 #ifdef DEBUG
-    // #define DEBUG_PRINT(x) do { \
-    //     std::stringstream ss; \
-    //     ss << x; \
-    //     std::cout << ss.str() << std::endl; \
-    // } while(0)
     #define DEBUG_PRINT(x) std::cout << x << std::endl
 #else
     #define DEBUG_PRINT(x)
+#endif
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+extern "C" {
+    void network_log(const char* hypothesisId, const char* location, const char* message, const char* dataJson);
+}
+
+#define AGENT_LOG(h, loc, msg, data) network_log(h, loc, msg, data)
+#else
+#define AGENT_LOG(h, loc, msg, data)
 #endif

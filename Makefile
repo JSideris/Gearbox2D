@@ -4,7 +4,8 @@ INCLUDE_DIR = cpp/include
 TEST_DIR = cpp/tests
 BUILD_DIR = dist/wasm
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
-GTEST_DIR ?= /home/josh/googletest/googletest
+GTEST_DIR ?= /usr/src/googletest/googletest
+GTEST_LIBS = -lgtest -lgtest_main
 
 # Compiler
 EMCC = emcc
@@ -38,13 +39,8 @@ $(OUTPUT_JS): $(SRC)
 test: $(TEST_TARGET)
 
 $(TEST_TARGET): $(SRC) $(TEST_SRC)
-	$(CXX) $(GTEST_FLAGS) -o $(TEST_TARGET) $(SRC) $(TEST_SRC) $(GTEST_DIR)/src/gtest-all.o $(GTEST_DIR)/src/gtest_main.o -I$(INCLUDE_DIR) -L. -pthread
+	$(CXX) $(GTEST_FLAGS) -o $(TEST_TARGET) $(SRC) $(TEST_SRC) -I$(INCLUDE_DIR) -L. -pthread $(GTEST_LIBS)
 	./$(TEST_TARGET)
-
-# Google Test build
-$(GTEST_DIR)/src/gtest-all.o $(GTEST_DIR)/src/gtest_main.o:
-	$(CXX) -isystem $(GTEST_DIR)/include -I$(GTEST_DIR) -pthread -c $(GTEST_DIR)/src/gtest-all.cc -o $(GTEST_DIR)/src/gtest-all.o
-	$(CXX) -isystem $(GTEST_DIR)/include -I$(GTEST_DIR) -pthread -c $(GTEST_DIR)/src/gtest_main.cc -o $(GTEST_DIR)/src/gtest_main.o
 
 # Clean up build files
 clean:

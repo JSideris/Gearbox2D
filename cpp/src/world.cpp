@@ -45,7 +45,13 @@ int World::makeObject(int id, emscripten_val options){
 
     object->recomputeAabb(1);
 
-    auto* bvhNode = bvh.insert(object->aabb, object);
+    CollisionProperties props;
+    props.category = object->categoryBits;
+    props.collidesWith = object->maskBits;
+    props.isRigid = (object->type == ObjectType::RIGID_BODY);
+    props.isSleeping = object->isSleeping;
+
+    auto* bvhNode = bvh.insert(object->aabb, object, props);
     object->bvhNode = bvhNode;
 
     // cout << object->getRadius() << endl;
@@ -226,6 +232,12 @@ void World::_doNarrowPhase(){
         PhysicalObject* obj1 = static_cast<PhysicalObject*>(pair.first);
         PhysicalObject* obj2 = static_cast<PhysicalObject*>(pair.second);
         
+        // #region agent log
+        {
+            std::string data = "{\"id1\":" + std::to_string(obj1->id) + ",\"id2\":" + std::to_string(obj2->id) + "}";
+            AGENT_LOG("D", "world.cpp:228", "Narrow phase pair", data.c_str());
+        }
+        // #endregion
 
         // Perform narrow phase collision detection between obj1 and obj2
         auto colliding = collisionSolver.solve(obj1->worldIndex, obj2->worldIndex);

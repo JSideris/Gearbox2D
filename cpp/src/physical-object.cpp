@@ -43,6 +43,19 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveIntData.push_back((int)type); // type.
     world.liveIntData.push_back(0); // has collision bits.
 
+    categoryBits = options.hasOwnProperty("categoryBits") ? (uint32_t)options["categoryBits"].as<int>() : CATEGORY_DYNAMIC;
+    maskBits = options.hasOwnProperty("maskBits") ? (uint32_t)options["maskBits"].as<int>() : CATEGORY_ALL;
+
+    // #region agent log
+    {
+        std::string data = "{\"id\":" + std::to_string(id) + ",\"cat\":" + std::to_string(categoryBits) + ",\"mask\":" + std::to_string(maskBits) + "}";
+        AGENT_LOG("B", "physical-object.cpp:48", "Object creation bits", data.c_str());
+    }
+    // #endregion
+
+    world.liveIntData.push_back(categoryBits);
+    world.liveIntData.push_back(maskBits);
+
     world.liveFloatData.push_back(options.hasOwnProperty("x") ? options["x"].as<float>() : 0.0f); // x
     world.liveFloatData.push_back(options.hasOwnProperty("y") ? options["y"].as<float>() : 0.0f); // y
     world.liveFloatData.push_back(options.hasOwnProperty("r") ? options["r"].as<float>() : 0.0f); // rotation
@@ -137,6 +150,28 @@ void PhysicalObject::setAngularVelocity(float rs) {
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS] = rs;
     if(abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
         wakeUp();
+    }
+}
+
+uint32_t PhysicalObject::getCategoryBits() const { return world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_CATEGORY_BITS]; }
+void PhysicalObject::setCategoryBits(uint32_t category) {
+    categoryBits = category;
+    world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_CATEGORY_BITS] = category;
+    if (bvhNode) {
+        CollisionProperties props = bvhNode->properties;
+        props.category = category;
+        bvhNode->updateProperties(props);
+    }
+}
+
+uint32_t PhysicalObject::getMaskBits() const { return world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_MASK_BITS]; }
+void PhysicalObject::setMaskBits(uint32_t mask) {
+    maskBits = mask;
+    world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_MASK_BITS] = mask;
+    if (bvhNode) {
+        CollisionProperties props = bvhNode->properties;
+        props.collidesWith = mask;
+        bvhNode->updateProperties(props);
     }
 }
 

@@ -57,6 +57,9 @@ public:
     Vec2 pseudoVelocity = Vec2(0.0f, 0.0f);
     float pseudoAngularVelocity = 0.0f;
 
+    uint32_t categoryBits;
+    uint32_t maskBits;
+
     PhysicalObject(World& world, int id, emscripten_val options);
 
 
@@ -72,6 +75,11 @@ public:
     void setVelocityY(float vy);
     float getAngularVelocity() const;
     void setAngularVelocity(float rs);
+
+    uint32_t getCategoryBits() const;
+    void setCategoryBits(uint32_t category);
+    uint32_t getMaskBits() const;
+    void setMaskBits(uint32_t mask);
 
     float getMass() const;
     void setMass(float m);

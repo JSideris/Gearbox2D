@@ -6,6 +6,8 @@
 #include <memory>
 #include <algorithm>
 #include <limits>
+#include <fstream>
+#include <chrono>
 
 #define MAX_ALLOWED_COLLISIONS 5000
 
@@ -48,7 +50,16 @@ struct CollisionProperties {
         }
         
         // Check collision masks
-        return (category & other.collidesWith) && (other.category & collidesWith);
+        bool result = (category & other.collidesWith) && (other.category & collidesWith);
+
+        // #region agent log
+        if (result || (category != CATEGORY_ALL || other.category != CATEGORY_ALL)) {
+            std::string data = "{\"catA\":" + std::to_string(category) + ",\"maskA\":" + std::to_string(collidesWith) + ",\"catB\":" + std::to_string(other.category) + ",\"maskB\":" + std::to_string(other.collidesWith) + ",\"result\":" + (result ? "true" : "false") + "}";
+            AGENT_LOG("A", "bvh.h:52", "canCollideWith check", data.c_str());
+        }
+        // #endregion
+
+        return result;
     }
 };
 
@@ -476,6 +487,13 @@ public:
     
     // Check if tree is empty
     bool empty() const { return root == nullptr; }
+
+    // Clear the tree
+    void clear() {
+        destroyNode(root);
+        root = nullptr;
+        collisionPairs.clear();
+    }
 };
 
 #endif // BVH_H

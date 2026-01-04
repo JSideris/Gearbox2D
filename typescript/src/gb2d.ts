@@ -2,13 +2,15 @@
 import gb2dModule from '../../dist/wasm/gb2d-module.js';
 import { DebugGraphics } from './debug-graphics.js';
 
-const SIZE_I = 4;
+const SIZE_I = 6;
 const SIZE_F = 28;
 
 const ID_OFFSET = 0;
 const SHAPE_OFFSET = 1;
 const TYPE_OFFSET = 2;
 const HAS_COLLISION_OFFSET = 3;
+const CATEGORY_BITS_OFFSET = 4;
+const MASK_BITS_OFFSET = 5;
 
 const HAS_AABB_COLLISION = 0x1;
 const HAS_PHYSICAL_COLLISION = 0x2;
@@ -127,6 +129,21 @@ export class World {
 			return false;
 		}
 		else {
+			// #region agent log
+			fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'gb2d.ts:130',
+					message: 'Removing object',
+					data: { id: id, objectCount: this.objectCount },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'D'
+				})
+			}).catch(() => {});
+			// #endregion
+
 			// Remove any labels attached to this object.
 			gb2d.debug.removeObjectLabels(id);
 
@@ -136,13 +153,32 @@ export class World {
 			// Then, update the index of the object that replaced the deleted object within our model.
 			delete this.objectsById[id];
 			let deletedIndex = this.world.removeObject(id);
-			// console.debug(`Removing from index ${deletedIndex}.`);
+			
 			let replacedId = this.liveIntData[deletedIndex * SIZE_I + ID_OFFSET];
-			// console.debug(`Replacing with #${replacedId}.`);
+			
+			// #region agent log
+			fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'gb2d.ts:145',
+					message: 'Replaced object info',
+					data: { deletedIndex: deletedIndex, replacedId: replacedId, size_i: SIZE_I },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'D'
+				})
+			}).catch(() => {});
+			// #endregion
+
 			if(replacedId != id){
 				// Happens when we delete the last object in the list.
 				let replacedObj = this.objectsById[replacedId];
-				replacedObj.index = deletedIndex;
+				if (replacedObj) {
+					replacedObj.index = deletedIndex;
+				} else {
+					console.error(`CRASH PREVENTED: replacedObj is undefined for replacedId ${replacedId}`);
+				}
 			}
 			this.objectCount--;
 		}
@@ -171,7 +207,24 @@ export class PhysicalObject{
 		this.world = world;
 	}
 
-    get shape() { return this.liveIData[this.index * SIZE_I + SHAPE_OFFSET]; }
+    get shape() { 
+		const s = this.liveIData[this.index * SIZE_I + SHAPE_OFFSET];
+		if (this.index === 0 && Math.random() < 0.01) { // Log occasionally for the first object
+			fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'gb2d.ts:182',
+					message: 'Shape getter',
+					data: { index: this.index, shape: s, raw: Array.from(this.liveIData.slice(this.index * SIZE_I, (this.index + 1) * SIZE_I)) },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					hypothesisId: 'A'
+				})
+			}).catch(() => {});
+		}
+		return s;
+	}
     set shape(v) { this.liveIData[this.index * SIZE_I + SHAPE_OFFSET] = v; }
 
     get type() { return this.liveIData[this.index * SIZE_I + TYPE_OFFSET]; }
@@ -236,7 +289,21 @@ export class PhysicalObject{
     get ay2() { return this.liveFData[this.index * SIZE_F + AY2_OFFSET]; }
     // set ay2(v) { this.liveFData[this.index * SIZE_F + AY2_OFFSET] = v; }
     
-	get hasCollisionFlags() { return this.liveIData[this.index * SIZE_I + HAS_COLLISION_OFFSET]; }
+    get hasCollisionFlags() { return this.liveIData[this.index * SIZE_I + HAS_COLLISION_OFFSET]; }
+
+	get categoryBits() { return this.liveIData[this.index * SIZE_I + CATEGORY_BITS_OFFSET]; }
+	set categoryBits(v) {
+		this.liveIData[this.index * SIZE_I + CATEGORY_BITS_OFFSET] = v;
+		const cppObj = this.world.world.getObject(this.id);
+		if (cppObj) cppObj.setCategoryBits(v);
+	}
+
+	get maskBits() { return this.liveIData[this.index * SIZE_I + MASK_BITS_OFFSET]; }
+	set maskBits(v) {
+		this.liveIData[this.index * SIZE_I + MASK_BITS_OFFSET] = v;
+		const cppObj = this.world.world.getObject(this.id);
+		if (cppObj) cppObj.setMaskBits(v);
+	}
 
 	get gScale() { return this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET]; }
 	set gScale(v) { this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET] = v; }
