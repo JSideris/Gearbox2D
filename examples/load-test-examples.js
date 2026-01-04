@@ -79,6 +79,7 @@ export const loadTestExamples = [
         key: "fleas",
         description: "2000 bouncy points. Point objects don't collide with each other.",
         onInit: (world)=>{
+            const nFleas = 2000;
 
             world.setGravity(0, 10);
 
@@ -125,7 +126,7 @@ export const loadTestExamples = [
                 restitution: 0.99,
             });
 
-            for(let i = 0; i < 1; i++){
+            for(let i = 0; i < nFleas; i++){
 
                 world.makeObject(id++, {
                     x: Math.random() * 8 + 1,

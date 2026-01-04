@@ -324,6 +324,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     // Tangent
     Vec2 tangentialComponent = relVel - normal * vn;
     float tanMag = tangentialComponent.magnitude();
+    
     if (tanMag < 0.0001f) {
         friction = 0.0f;
         tangent = Vec2(0.0f, 0.0f);
@@ -336,8 +337,8 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         tangentMass = (kTangent > 0.00001f) ? 1.0f / kTangent : 0.0f;
 
         // Friction
-        float sf = std::min(a->getStaticFriction(), b->getStaticFriction());
-        float kf = std::min(a->getKineticFriction(), b->getKineticFriction());
+        float sf = a->getStaticFriction() * b->getStaticFriction();
+        float kf = a->getKineticFriction() * b->getKineticFriction();
         friction = (tanMag < 0.01f) ? sf : kf;
     }
 
@@ -347,7 +348,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float e = 0.0f;
     if (enableRestitution) {
         e = std::max(a->getRestitution(), b->getRestitution());
-        if (vn > -0.5f) e = 0.0f; // Increased threshold to settle faster
+        if (vn > -0.1f) e = 0.0f; // Increased threshold to settle faster
     }
     bias = e * vn;
     
@@ -426,8 +427,9 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
         float maxFriction = friction * normalImpulse;
         float old = frictionImpulse;
         frictionImpulse = std::max(-maxFriction, std::min(old + dLambda, maxFriction));
-        dLambda = frictionImpulse - old;
-        Vec2 impulse = tangent * dLambda;
+        float dLambdaFriction = frictionImpulse - old;
+        
+        Vec2 impulse = tangent * dLambdaFriction;
         a->setVelocity(a->getVelocity() - impulse * imA);
         b->setVelocity(b->getVelocity() + impulse * imB);
         float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);

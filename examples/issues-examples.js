@@ -417,7 +417,7 @@ export const issuesExamples = [
         }
     }),
     new Example({
-        name: "TC-11 (REGRESSION)",
+        name: "TC-11 (SOLVED)",
         key: "tc-11",
         description: "Circles get stuck in other shapes.",
         onInit: (world)=>{
@@ -449,7 +449,7 @@ export const issuesExamples = [
     }),
 
     new Example({
-        name: "TC-12",
+        name: "TC-12 (SOLVED)",
         key: "tc-12",
         description: "The box, under high gravity, sinks through the AABB.",
         onInit: (world)=>{

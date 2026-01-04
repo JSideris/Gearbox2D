@@ -285,7 +285,7 @@ export const generalExamples = [
             world.makeObject(5, {
                 x: 5,
                 y: 2,
-                vx: -3 + Math.random() * 6, 
+                vx: (Math.random() < 0.5 ? -1 : 1) * (1.5 + Math.random() * 1.5), 
                 r: Math.PI / 2 * Math.random(),
                 shape: gb2d.shapes.CIRCLE,
                 type: gb2d.bodyTypes.RIGID_BODY,

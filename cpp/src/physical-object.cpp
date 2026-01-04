@@ -54,8 +54,9 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back((mass > 0.0f) ? 1.0f / mass : 0.0f); // inverse mass
     world.liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
     world.liveFloatData.push_back(options.hasOwnProperty("restitution") ? options["restitution"].as<float>() : 0.2f);
-    world.liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 1.0f);
-    world.liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 1.0f);
+    world.liveFloatData.push_back(options.hasOwnProperty("sFriction") ? options["sFriction"].as<float>() : 0.2f);
+    world.liveFloatData.push_back(options.hasOwnProperty("kFriction") ? options["kFriction"].as<float>() : 0.2f);
+    
     world.liveFloatData.push_back(options.hasOwnProperty("linearDamping") ? options["linearDamping"].as<float>() : 0.05f);
     world.liveFloatData.push_back(options.hasOwnProperty("angularDamping") ? options["angularDamping"].as<float>() : 0.05f);
     world.liveFloatData.push_back(
@@ -470,14 +471,14 @@ bool PhysicalObject::stepMovement(float dt) {
     pseudoVelocity = Vec2(0.0f, 0.0f);
     pseudoAngularVelocity = 0.0f;
 
-    // Help objects settle by zeroing out very small velocities
-    if (abs(_velocity.x) < SLEEP_VELOCITY_THRESHOLD * 0.5f) {
-        _velocity.x *= 0.8f;
-        if (abs(_velocity.x) < 1e-4f) _velocity.x = 0.0f;
+// Help objects settle by zeroing out very small velocities
+    if (abs(_velocity.x) < SLEEP_VELOCITY_THRESHOLD * 0.1f) {
+        _velocity.x *= 0.95f;
+        if (abs(_velocity.x) < 1e-5f) _velocity.x = 0.0f;
     }
-    if (abs(_velocity.y) < SLEEP_VELOCITY_THRESHOLD * 0.5f) {
-        _velocity.y *= 0.8f;
-        if (abs(_velocity.y) < 1e-4f) _velocity.y = 0.0f;
+    if (abs(_velocity.y) < SLEEP_VELOCITY_THRESHOLD * 0.1f) {
+        _velocity.y *= 0.95f;
+        if (abs(_velocity.y) < 1e-5f) _velocity.y = 0.0f;
     }
     
     float rs_val = world.liveFloatData[index + FDATA_RS];
