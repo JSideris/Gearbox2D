@@ -307,8 +307,7 @@ export const generalExamples = [
         name: "Collisions",
         key: "collisions",
         description: [
-            "Collisions on objects are enabled by default. For more realistic collisions, set the mass of objects. Make sure the object type is set to RIGID_BODY.",
-            "Note that while gb2d is in beta, glitches may be observed."
+            "Collisions are enabled for objects whose type is set to RIGID_BODY. In this example we can see collisions between all of the different supported shape types.",
         ].join("\n\n"),
         globalLines: ["let nextId = 1;"],
         onInit: (world)=>{
@@ -326,8 +325,22 @@ export const generalExamples = [
                 let r = .2 + m*m * .8;
                 let h = 0.1 + Math.random() * (r - 0.1);
                 let w = r * r / h;
-                // let isBox = false; //Math.random() < 0.5;
-                let isBox = Math.random() < 0.5;
+                
+                let shapeType = Math.random();
+                let shape;
+                let mass = m;
+
+                if (shapeType < 0.1) {
+                    shape = gb2d.shapes.POINT;
+                    mass = 0.01; // Points have very small mass
+                } else if (shapeType < 0.2) {
+                    shape = gb2d.shapes.AABB;
+                } else if (shapeType < 0.6) {
+                    shape = gb2d.shapes.BOX;
+                } else {
+                    shape = gb2d.shapes.CIRCLE;
+                }
+
                 world.makeObject(nextId++, {
                     x: 5.00 - dir * 5.00,
                     y: 7.50,
@@ -335,12 +348,13 @@ export const generalExamples = [
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: (2.00 + Math.random() * 5.00) * dir,
                     vy: -8.00 - Math.random() * 2.00,
-                    shape: isBox ? gb2d.shapes.BOX : gb2d.shapes.CIRCLE,
+                    shape: shape,
                     type: gb2d.bodyTypes.RIGID_BODY,
-                    radius: isBox ? w : r,
+                    radius: (shape === gb2d.shapes.BOX || shape === gb2d.shapes.AABB) ? w : r,
                     // width: isBox ? r * 2 : 0,
-                    height: isBox ? h : 0,
-                    mass: m, 
+                    height: (shape === gb2d.shapes.BOX || shape === gb2d.shapes.AABB) ? h : 0,
+                    mass: mass, 
+                    linearDamping: 0,
                 });
 
                 // Scan for objects that are out of bounds and remove them.

@@ -66,6 +66,8 @@ bool CollisionSolver::solve(int indexA, int indexB) {
                     return _solveCircleBox();
                 case static_cast<int>(ObjectShape::BOX):
                     return _solveBoxBox();
+                case static_cast<int>(ObjectShape::POINT):
+                    return _solveBoxPoint();
                 default:
                     cerr << "Unsupported collision shape combo." << endl;
                     break;
@@ -97,6 +99,9 @@ bool CollisionSolver::solve(int indexA, int indexB) {
                 case static_cast<int>(ObjectShape::CIRCLE):
                     _swap();
                     return _solveCirclePoint();
+                case static_cast<int>(ObjectShape::BOX):
+                    _swap();
+                    return _solveBoxPoint();
             }
         default: 
             cerr << "Unsupported collision shape combo." << endl;

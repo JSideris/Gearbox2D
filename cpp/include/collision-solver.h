@@ -55,5 +55,6 @@ private:
     bool _solveCirclePoint();
     
     bool _solveBoxBox();
+    bool _solveBoxPoint();
     bool _solveCircleBox();
 };
