@@ -408,6 +408,8 @@ gb2d.init().then(()=>{
 
             world.clear();
             gb2d.debug.clearLabels();
+            gb2d.debug.showForceVectors = true;
+            gb2d.debug.showImpulseVectors = true;
             world.setHasPenetrationResolution(true);
             world.setHasRestitution(true);
             world.setHasFriction(true);

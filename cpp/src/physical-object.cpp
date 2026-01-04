@@ -46,13 +46,6 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     categoryBits = options.hasOwnProperty("categoryBits") ? (uint32_t)options["categoryBits"].as<int>() : CATEGORY_DYNAMIC;
     maskBits = options.hasOwnProperty("maskBits") ? (uint32_t)options["maskBits"].as<int>() : CATEGORY_ALL;
 
-    // #region agent log
-    {
-        std::string data = "{\"id\":" + std::to_string(id) + ",\"cat\":" + std::to_string(categoryBits) + ",\"mask\":" + std::to_string(maskBits) + "}";
-        AGENT_LOG("B", "physical-object.cpp:48", "Object creation bits", data.c_str());
-    }
-    // #endregion
-
     world.liveIntData.push_back(categoryBits);
     world.liveIntData.push_back(maskBits);
 

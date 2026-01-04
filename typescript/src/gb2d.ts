@@ -119,6 +119,7 @@ export class World {
 
 		let index = this.world.makeObject(id, spec);
 		let obj = new PhysicalObject(index, this.world, this.liveFloatData, this.liveIntData);
+		if (spec.color) obj.color = spec.color;
 		this.objectsById[id] = obj;
 		return obj;
 	
@@ -129,21 +130,6 @@ export class World {
 			return false;
 		}
 		else {
-			// #region agent log
-			fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'gb2d.ts:130',
-					message: 'Removing object',
-					data: { id: id, objectCount: this.objectCount },
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'D'
-				})
-			}).catch(() => {});
-			// #endregion
-
 			// Remove any labels attached to this object.
 			gb2d.debug.removeObjectLabels(id);
 
@@ -153,32 +139,13 @@ export class World {
 			// Then, update the index of the object that replaced the deleted object within our model.
 			delete this.objectsById[id];
 			let deletedIndex = this.world.removeObject(id);
-			
+			// console.debug(`Removing from index ${deletedIndex}.`);
 			let replacedId = this.liveIntData[deletedIndex * SIZE_I + ID_OFFSET];
-			
-			// #region agent log
-			fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'gb2d.ts:145',
-					message: 'Replaced object info',
-					data: { deletedIndex: deletedIndex, replacedId: replacedId, size_i: SIZE_I },
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'D'
-				})
-			}).catch(() => {});
-			// #endregion
-
+			// console.debug(`Replacing with #${replacedId}.`);
 			if(replacedId != id){
 				// Happens when we delete the last object in the list.
 				let replacedObj = this.objectsById[replacedId];
-				if (replacedObj) {
-					replacedObj.index = deletedIndex;
-				} else {
-					console.error(`CRASH PREVENTED: replacedObj is undefined for replacedId ${replacedId}`);
-				}
+				replacedObj.index = deletedIndex;
 			}
 			this.objectCount--;
 		}
@@ -199,6 +166,7 @@ export class PhysicalObject{
 	liveIData: Int32Array;
 	index: number;
 	world: World;
+	color?: string;
 	constructor(index: number, world: World, liveFData: Float32Array, liveIData: Int32Array){
 		this.id = liveIData[index * SIZE_I + ID_OFFSET];
 		this.liveFData = liveFData;
@@ -207,24 +175,7 @@ export class PhysicalObject{
 		this.world = world;
 	}
 
-    get shape() { 
-		const s = this.liveIData[this.index * SIZE_I + SHAPE_OFFSET];
-		if (this.index === 0 && Math.random() < 0.01) { // Log occasionally for the first object
-			fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'gb2d.ts:182',
-					message: 'Shape getter',
-					data: { index: this.index, shape: s, raw: Array.from(this.liveIData.slice(this.index * SIZE_I, (this.index + 1) * SIZE_I)) },
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					hypothesisId: 'A'
-				})
-			}).catch(() => {});
-		}
-		return s;
-	}
+    get shape() { return this.liveIData[this.index * SIZE_I + SHAPE_OFFSET]; }
     set shape(v) { this.liveIData[this.index * SIZE_I + SHAPE_OFFSET] = v; }
 
     get type() { return this.liveIData[this.index * SIZE_I + TYPE_OFFSET]; }

@@ -67,3 +67,4 @@ TEST(WorldTest, ObjectRemoval) {
     EXPECT_EQ(world.getObjectAtIndex(0)->getId(), 2);
 }
 
+

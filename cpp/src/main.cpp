@@ -8,21 +8,6 @@
 
 #ifdef __EMSCRIPTEN__
 
-EM_JS(void, network_log, (const char* hypothesisId, const char* location, const char* message, const char* dataJson), {
-    fetch('http://127.0.0.1:7243/ingest/85da54db-cf92-43ad-83ed-b8a8ad84d3c4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            sessionId: 'debug-session',
-            hypothesisId: UTF8ToString(hypothesisId),
-            location: UTF8ToString(location),
-            message: UTF8ToString(message),
-            data: dataJson ? JSON.parse(UTF8ToString(dataJson)) : {},
-            timestamp: Date.now()
-        })
-    }).catch(() => {});
-});
-
 int main() {
     return 0;
 }

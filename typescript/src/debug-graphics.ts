@@ -27,6 +27,8 @@ export class DebugGraphics {
     offsetX: number = 0;
     offsetY: number = 0;
     private lastTick: number = Date.now();
+    showForceVectors: boolean = true;
+    showImpulseVectors: boolean = true;
 
     private labels: DebugLabel[] = [];
     defaultLabelFontSize: string = '12px Arial';
@@ -97,7 +99,7 @@ export class DebugGraphics {
     private drawShape(obj: PhysicalObject) {
         if (!this.ctx) return;
 
-        this.ctx.strokeStyle = 'black';
+        this.ctx.strokeStyle = obj.color || 'black';
         this.ctx.lineWidth = 2;
         let shape = obj.shape;
 
@@ -157,7 +159,7 @@ export class DebugGraphics {
     private drawVectors(obj: PhysicalObject) {
         if (!this.ctx) return;
 
-        { // Force vector
+        if (this.showForceVectors) { // Force vector
             this.ctx.strokeStyle = 'red';
             this.ctx.beginPath();
 
@@ -186,7 +188,7 @@ export class DebugGraphics {
             }
         }
 
-        { // Impulse vector
+        if (this.showImpulseVectors) { // Impulse vector
             this.ctx.strokeStyle = 'blue';
             this.ctx.beginPath();
             this.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);

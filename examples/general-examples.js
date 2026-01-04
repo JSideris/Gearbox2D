@@ -430,7 +430,7 @@ export const generalExamples = [
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 width: 9.0,
                 height: 1,
-                mass: 1,
+                    mass: 1,
             });
 
             gb2d.debug.addLabel({
@@ -569,41 +569,48 @@ export const generalExamples = [
         ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
+            gb2d.debug.showForceVectors = false;
             
             // Platform Categories: 0x1 (Blue), 0x2 (Red), 0x4 (Green)
             
             // Blue Platform (Collides with category 1 and 4)
-            world.makeObject(100, {
+            const bluePlatId = nextId++;
+            world.makeObject(bluePlatId, {
                 x: 2.5, y: 8,
                 width: 4, height: 0.5,
                 shape: gb2d.shapes.AABB,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x1,
-                maskBits: 0x1 | 0x4
+                maskBits: 0x1 | 0x4,
+                color: 'blue'
             });
-            gb2d.debug.addLabel({ text: "Blue & Green Only", x: 2.5, y: 8.5, color: 'blue', position: 'below' });
+            gb2d.debug.addLabel({ text: "Collides with Blue & Green", objectId: bluePlatId, color: 'blue', position: 'below' });
 
             // Red Platform (Collides with category 2 and 4)
-            world.makeObject(101, {
+            const redPlatId = nextId++;
+            world.makeObject(redPlatId, {
                 x: 7.5, y: 8,
                 width: 4, height: 0.5,
                 shape: gb2d.shapes.AABB,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x2,
-                maskBits: 0x2 | 0x4
+                maskBits: 0x2 | 0x4,
+                color: 'red'
             });
-            gb2d.debug.addLabel({ text: "Red & Green Only", x: 7.5, y: 8.5, color: 'red', position: 'below' });
+            gb2d.debug.addLabel({ text: "Collides with Red & Green", objectId: redPlatId, color: 'red', position: 'below' });
 
             // Universal Platform (Collides with everything: 0x1 | 0x2 | 0x4)
-            world.makeObject(102, {
+            const universalPlatId = nextId++;
+            world.makeObject(universalPlatId, {
                 x: 5, y: 4,
                 width: 2, height: 0.5,
                 shape: gb2d.shapes.AABB,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x4,
-                maskBits: 0x7 // 1 | 2 | 4
+                maskBits: 0x7, // 1 | 2 | 4
+                color: 'green'
             });
-            gb2d.debug.addLabel({ text: "All Collide", x: 5, y: 4.5, color: 'green', position: 'below' });
+            gb2d.debug.addLabel({ text: "Collides with All", objectId: universalPlatId, color: 'green', position: 'below' });
         },
         onTick: (world, dt)=>{
             if(Math.random() < 0.05){
@@ -627,11 +634,12 @@ export const generalExamples = [
                     type: gb2d.bodyTypes.RIGID_BODY,
                     mass: 1,
                     categoryBits: cat,
-                    maskBits: mask
+                    maskBits: mask,
+                    color: color
                 });
                 
                 gb2d.debug.addLabel({
-                    text: `Cat:${cat} Mask:${mask}`,
+                    text: `Cat:0x${cat.toString(16)} Mask:0x${mask.toString(16)}`,
                     objectId: id,
                     color: color,
                     position: 'above',
