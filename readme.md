@@ -260,8 +260,8 @@ const world = gb2d.makeWorld();
 
 ## Constraints
 [*] Hinged.
-[ ] Distance.
-[ ] Spring.
+[*] Distance.
+[*] Spring.
 [ ] Gear constraint.
 
 ## Misc

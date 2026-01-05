@@ -83,6 +83,7 @@
         import { generalExamples } from './general-examples.js';
         import { constraintsExamples } from './constraints-examples.js';
         import { distanceExamples } from './distance-examples.js';
+        import { springExamples } from './spring-examples.js';
         import { optimizationExamples } from './optimization-examples.js';
         import { loadTestExamples } from './load-test-examples.js';
         import { issuesExamples } from './issues-examples.js';
@@ -104,6 +105,10 @@
             { // Distance Constraints
                 name: "Distance Constraints",
                 examples: distanceExamples
+            },
+            { // Spring Constraints
+                name: "Spring Constraints",
+                examples: springExamples
             },
             // { // Advanced
             // 	name: "Advanced",
@@ -428,6 +433,7 @@ gb2d.init().then(()=>{
             gb2d.debug.zoom = 1.0;
             gb2d.debug.offsetX = 0;
             gb2d.debug.offsetY = 0;
+            gb2d.debug.showAabbs = true;
             
             currentExample = exampleKey;
             const exampleInfo = examplesMap[exampleKey];

@@ -74,7 +74,7 @@ export class World {
 	liveIntData: Int32Array;
 	objectCount: number;
 	objectsById: Record<number, PhysicalObject>;
-	jointsById: Record<number, HingeJoint | DistanceJoint>;
+	jointsById: Record<number, HingeJoint | DistanceJoint | SpringJoint>;
 	constructor(WorldConstructor){
 		this.world = new WorldConstructor();
 		// this.ids = this.world.getIds();
@@ -215,6 +215,39 @@ export class World {
 
 		this.world.createDistanceJoint(id, bodyA.id, bodyB.id, localAnchorA.x, localAnchorA.y, localAnchorB.x, localAnchorB.y, length);
 		const joint = new DistanceJoint(id, this, bodyA, bodyB, localAnchorA, localAnchorB, length);
+		this.jointsById[id] = joint;
+		return joint;
+	}
+
+	createSpringJoint(id, bodyA, bodyB, options: any = {}) {
+		if (this.jointsById[id]) return null;
+
+		let localAnchorA = { x: 0, y: 0 };
+		let localAnchorB = { x: 0, y: 0 };
+
+		if (options.worldAnchorA && options.worldAnchorB) {
+			localAnchorA = bodyA.worldToLocal(options.worldAnchorA);
+			localAnchorB = bodyB.worldToLocal(options.worldAnchorB);
+		} else if (options.worldAnchor) {
+			localAnchorA = bodyA.worldToLocal(options.worldAnchor);
+			localAnchorB = bodyB.worldToLocal(options.worldAnchor);
+		} else {
+			localAnchorA = options.anchorA || { x: 0, y: 0 };
+			localAnchorB = options.anchorB || { x: 0, y: 0 };
+		}
+
+		let length = options.length;
+		if (length === undefined) {
+			const wA = bodyA.localToWorld(localAnchorA);
+			const wB = bodyB.localToWorld(localAnchorB);
+			length = Math.sqrt(Math.pow(wB.x - wA.x, 2) + Math.pow(wB.y - wA.y, 2));
+		}
+
+		const frequencyHz = options.frequencyHz || 5.0;
+		const dampingRatio = options.dampingRatio !== undefined ? options.dampingRatio : 0.7;
+
+		this.world.createSpringJoint(id, bodyA.id, bodyB.id, localAnchorA.x, localAnchorA.y, localAnchorB.x, localAnchorB.y, length, frequencyHz, dampingRatio);
+		const joint = new SpringJoint(id, this, bodyA, bodyB, localAnchorA, localAnchorB, length, frequencyHz, dampingRatio);
 		this.jointsById[id] = joint;
 		return joint;
 	}
@@ -482,6 +515,43 @@ export class DistanceJoint {
 		this.localAnchorA = localAnchorA;
 		this.localAnchorB = localAnchorB;
 		this.length = length;
+	}
+
+	get reactionForce() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		const f = cppJoint.getReactionForce(60.0);
+		return { x: f.x, y: f.y };
+	}
+
+	get reactionTorque() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getReactionTorque(60.0);
+	}
+}
+
+export class SpringJoint {
+	id: number;
+	world: World;
+	bodyA: PhysicalObject;
+	bodyB: PhysicalObject;
+	localAnchorA: { x: number, y: number };
+	localAnchorB: { x: number, y: number };
+	length: number;
+	frequencyHz: number;
+	dampingRatio: number;
+
+	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number, frequencyHz: number, dampingRatio: number) {
+		this.id = id;
+		this.world = world;
+		this.bodyA = bodyA;
+		this.bodyB = bodyB;
+		this.localAnchorA = localAnchorA;
+		this.localAnchorB = localAnchorB;
+		this.length = length;
+		this.frequencyHz = frequencyHz;
+		this.dampingRatio = dampingRatio;
 	}
 
 	get reactionForce() {

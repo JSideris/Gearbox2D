@@ -6,6 +6,8 @@
 #include <memory>
 #include <algorithm>
 #include <limits>
+#include <fstream>
+#include <chrono>
 
 #define MAX_ALLOWED_COLLISIONS 5000
 

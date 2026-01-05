@@ -8,6 +8,7 @@
 #include "joint.h"
 #include "hinge-joint.h"
 #include "distance-joint.h"
+#include "spring-joint.h"
 
 #ifdef __EMSCRIPTEN__
 
@@ -42,6 +43,7 @@ EMSCRIPTEN_BINDINGS(world) {
 
     emscripten::class_<HingeJoint, emscripten::base<Joint>>("HingeJoint");
     emscripten::class_<DistanceJoint, emscripten::base<Joint>>("DistanceJoint");
+    emscripten::class_<SpringJoint, emscripten::base<Joint>>("SpringJoint");
 
     emscripten::class_<World>("World")
         .constructor<>()
@@ -61,6 +63,7 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("setGravity", &World::setGravity)
         .function("createHingeJoint", &World::createHingeJoint)
         .function("createDistanceJoint", &World::createDistanceJoint)
+        .function("createSpringJoint", &World::createSpringJoint)
         .function("removeJoint", &World::removeJoint)
         .function("getJoint", &World::getJoint, emscripten::allow_raw_pointers())
 

@@ -5,6 +5,7 @@
 #include "constants.h"
 #include "hinge-joint.h"
 #include "distance-joint.h"
+#include "spring-joint.h"
 #include <algorithm>
 #include <fstream>
 #include <chrono>
@@ -303,7 +304,6 @@ void World::_doContactManagement(){
     prevPairs = currentPairs;
 }
 
-// 4. Collision resolution.
 void World::_doResolution(){
     contactConstraints.clear();
     for (auto& collisionInfo : collisionSolver.collisions) {
@@ -313,6 +313,7 @@ void World::_doResolution(){
         if (totalInverseMass == 0.0f) {
             continue;
         }
+
         ContactConstraint c;
         c.a = objA;
         c.b = objB;
@@ -518,6 +519,21 @@ int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX,
     
     jointsMap[id] = std::make_unique<DistanceJoint>(
         id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length
+    );
+    
+    return id;
+}
+
+int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length, float frequencyHz, float dampingRatio) {
+    auto itA = objectsMap.find(bodyAId);
+    auto itB = objectsMap.find(bodyBId);
+    
+    if (itA == objectsMap.end() || itB == objectsMap.end()) {
+        return -1;
+    }
+    
+    jointsMap[id] = std::make_unique<SpringJoint>(
+        id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio
     );
     
     return id;
