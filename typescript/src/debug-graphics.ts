@@ -1,5 +1,5 @@
 
-import { World, PhysicalObject, HingeJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
+import { World, PhysicalObject, HingeJoint, DistanceJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
 
 const ANIMSCALE = 100;
 const MAX_VECTOR_MAGNITUDE = 3.0; // Approximately 3cm when scaled
@@ -284,18 +284,10 @@ export class DebugGraphics {
             if (joint instanceof HingeJoint) {
                 this.drawHingeJoint(joint);
             }
-            // TODO: Hook up DistanceJoint, SpringJoint, and GearJoint once implemented
-            /*
             else if (joint instanceof DistanceJoint) {
                 this.drawDistanceJoint(joint);
             }
-            else if (joint instanceof SpringJoint) {
-                this.drawSpringJoint(joint);
-            }
-            else if (joint instanceof GearJoint) {
-                this.drawGearJoint(joint);
-            }
-            */
+            // TODO: Hook up SpringJoint, and GearJoint once implemented
         }
     }
 
@@ -328,8 +320,10 @@ export class DebugGraphics {
         this.ctx.stroke();
     }
 
-    private drawDistanceJoint(anchorA: { x: number, y: number }, anchorB: { x: number, y: number }) {
+    private drawDistanceJoint(joint: DistanceJoint) {
         if (!this.ctx) return;
+        const anchorA = joint.bodyA.localToWorld(joint.localAnchorA);
+        const anchorB = joint.bodyB.localToWorld(joint.localAnchorB);
         
         // Draw the rod
         this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)';
@@ -344,6 +338,8 @@ export class DebugGraphics {
         this.ctx.fillStyle = 'cyan';
         this.ctx.beginPath();
         this.ctx.arc(anchorA.x * ANIMSCALE, anchorA.y * ANIMSCALE, 3, 0, 2 * Math.PI);
+        this.ctx.fill();
+        this.ctx.beginPath();
         this.ctx.arc(anchorB.x * ANIMSCALE, anchorB.y * ANIMSCALE, 3, 0, 2 * Math.PI);
         this.ctx.fill();
     }

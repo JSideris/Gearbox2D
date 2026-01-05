@@ -4,6 +4,7 @@
 #include "world.h"
 #include "constants.h"
 #include "hinge-joint.h"
+#include "distance-joint.h"
 #include <algorithm>
 #include <fstream>
 #include <chrono>
@@ -502,6 +503,21 @@ int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, fl
     
     jointsMap[id] = std::make_unique<HingeJoint>(
         id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY)
+    );
+    
+    return id;
+}
+
+int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length) {
+    auto itA = objectsMap.find(bodyAId);
+    auto itB = objectsMap.find(bodyBId);
+    
+    if (itA == objectsMap.end() || itB == objectsMap.end()) {
+        return -1;
+    }
+    
+    jointsMap[id] = std::make_unique<DistanceJoint>(
+        id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length
     );
     
     return id;

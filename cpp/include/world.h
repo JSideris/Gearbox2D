@@ -109,6 +109,7 @@ public:
 
     // Joint management
     int createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY);
+    int createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length);
     void removeJoint(int id);
     Joint* getJoint(int id);
 

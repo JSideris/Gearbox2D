@@ -282,11 +282,13 @@ export const constraintsExamples = [
                         kFriction: 0
                     });
                     
-                    // Weld wall to hub using two hinges
+                    // Weld wall to hub using one hinge and one distance joint.
+                    // Using a distance joint instead of a second hinge avoids over-constraining the system,
+                    // which significantly improves stability.
                     const wAnchor1 = wall.localToWorld({ x: 0, y: -wallHeight/2 });
                     const wAnchor2 = wall.localToWorld({ x: 0, y: wallHeight/2 });
                     world.createHingeJoint(nextId++, engineHub, wall, { worldAnchor: wAnchor1 });
-                    world.createHingeJoint(nextId++, engineHub, wall, { worldAnchor: wAnchor2 });
+                    world.createDistanceJoint(nextId++, engineHub, wall, { worldAnchor: wAnchor2 });
                 };
 
                 createWall(-1);
@@ -347,8 +349,8 @@ export const constraintsExamples = [
         onTick: (world, dt) => {
             if (engineHub) {
                 // Apply a gentle impulse to maintain rotation
-                if (Math.abs(engineHub.rs) < 0.2) {
-                    engineHub.applyAngularImpulse(20);
+                if (Math.abs(engineHub.rs) < 0.9) {
+                    engineHub.applyAngularImpulse(5);
                 }
             }
         }

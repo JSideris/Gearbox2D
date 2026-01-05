@@ -7,6 +7,7 @@
 #include "bvh.h"
 #include "joint.h"
 #include "hinge-joint.h"
+#include "distance-joint.h"
 
 #ifdef __EMSCRIPTEN__
 
@@ -40,6 +41,7 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("getReactionTorque", &Joint::getReactionTorque);
 
     emscripten::class_<HingeJoint, emscripten::base<Joint>>("HingeJoint");
+    emscripten::class_<DistanceJoint, emscripten::base<Joint>>("DistanceJoint");
 
     emscripten::class_<World>("World")
         .constructor<>()
@@ -58,6 +60,7 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("setTimeStep", &World::setTimeStep)
         .function("setGravity", &World::setGravity)
         .function("createHingeJoint", &World::createHingeJoint)
+        .function("createDistanceJoint", &World::createDistanceJoint)
         .function("removeJoint", &World::removeJoint)
         .function("getJoint", &World::getJoint, emscripten::allow_raw_pointers())
 
