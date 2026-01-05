@@ -19,9 +19,9 @@
 // TODO: probably makes more sense to make this configurable.
 // Or compute it based on world scale.
 // TODO: make sure this doesn't get weird with different frame rates.
-#define WAKE_MOVEMENT_THRESHOLD 0.05f
-#define SLEEP_VELOCITY_THRESHOLD 0.1f
-#define SLEEP_ANGULAR_VELOCITY_THRESHOLD 0.1f
+#define WAKE_MOVEMENT_THRESHOLD 0.001f
+#define SLEEP_VELOCITY_THRESHOLD 0.005f
+#define SLEEP_ANGULAR_VELOCITY_THRESHOLD 0.005f
 
 static Vec2 _dampingForce;
 static Vec2 _acceleration;
@@ -127,13 +127,15 @@ void PhysicalObject::setRotation(float r) {
 float PhysicalObject::getVelocityX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX]; }
 void PhysicalObject::setVelocityX(float vx) { 
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX] = vx; 
-    if(abs(vx) > SLEEP_VELOCITY_THRESHOLD) {
+    if(isSleeping && abs(vx) > 1e-6f) wakeUp();
+    else if(abs(vx) > SLEEP_VELOCITY_THRESHOLD) {
         wakeUp();
     }
 }
 void PhysicalObject::setVelocityY(float vy) { 
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY] = vy; 
-    if(abs(vy) > SLEEP_VELOCITY_THRESHOLD) {
+    if(isSleeping && abs(vy) > 1e-6f) wakeUp();
+    else if(abs(vy) > SLEEP_VELOCITY_THRESHOLD) {
         wakeUp();
     }
 }
@@ -143,7 +145,8 @@ float PhysicalObject::getVelocityY() const { return world.liveFloatData[worldInd
 float PhysicalObject::getAngularVelocity() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS]; }
 void PhysicalObject::setAngularVelocity(float rs) { 
     world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS] = rs;
-    if(abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+    if(isSleeping && abs(rs) > 1e-6f) wakeUp();
+    else if(abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
         wakeUp();
     }
 }
@@ -595,11 +598,13 @@ bool PhysicalObject::stepMovement(float dt) {
         || dErr > WAKE_MOVEMENT_THRESHOLD * WAKE_MOVEMENT_THRESHOLD
     );
 
-    if(isWakable){
+    if(isWakable || isMoving){
         sleepTimer = 0.0f;
-        sleepErrAccumulatorX = 0.0f;
-        sleepErrAccumulatorY = 0.0f;
-        sleepErrAccumulatorR = 0.0f;
+        if (isWakable) {
+            sleepErrAccumulatorX = 0.0f;
+            sleepErrAccumulatorY = 0.0f;
+            sleepErrAccumulatorR = 0.0f;
+        }
     }
     else{
         if (!isMoving) {
@@ -659,14 +664,10 @@ void PhysicalObject::addContact(PhysicalObject* other) {
         if (contact == other) return;
     }
     
-    bool wasEmpty = contacts.empty();
     contacts.push_back(other);
     
-    // Wake up if this is the first contact
-    // Experiment: Let the kinematics updates do the wakeup. If no movement happens, keep it sleeping.
-    // if (wasEmpty) {
-    //     wakeUp();
-    // }
+    // Wake up if a new contact is added
+    wakeUp();
 }
 
 void PhysicalObject::removeContact(PhysicalObject* other) {
@@ -677,10 +678,9 @@ void PhysicalObject::removeContact(PhysicalObject* other) {
     auto it = std::remove(contacts.begin(), contacts.end(), other);
     contacts.erase(it, contacts.end());
     
-    // Wake up only if a contact was actually removed
-    // Experiment: Let the kinematics updates do the wakeup. If no movement happens, keep it sleeping.
-    // if (contacts.size() < originalSize) {
-    //     wakeUp();
-    // }
+    // Wake up if a contact was removed
+    if (contacts.size() < originalSize) {
+        wakeUp();
+    }
 }
 

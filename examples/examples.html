@@ -81,6 +81,7 @@
     <script type="module">
         import gb2d from '../dist/js/gb2d.js';
         import { generalExamples } from './general-examples.js';
+        import { constraintsExamples } from './constraints-examples.js';
         import { optimizationExamples } from './optimization-examples.js';
         import { loadTestExamples } from './load-test-examples.js';
         import { issuesExamples } from './issues-examples.js';
@@ -95,7 +96,10 @@
 		name: "General",
 		examples: generalExamples
             },
-
+            { // Constraints
+                name: "Constraints",
+                examples: constraintsExamples
+            },
             // { // Advanced
             // 	name: "Advanced",
             // 	examples: [
@@ -408,8 +412,8 @@ gb2d.init().then(()=>{
 
             world.clear();
             gb2d.debug.clearLabels();
-            gb2d.debug.showForceVectors = true;
-            gb2d.debug.showImpulseVectors = true;
+            gb2d.debug.showForceVectors = false;
+            gb2d.debug.showImpulseVectors = false;
             world.setHasPenetrationResolution(true);
             world.setHasRestitution(true);
             world.setHasFriction(true);

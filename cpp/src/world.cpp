@@ -3,6 +3,7 @@
 #include <cmath>
 #include "world.h"
 #include "constants.h"
+#include "hinge-joint.h"
 #include <algorithm>
 #include <fstream>
 #include <chrono>
@@ -24,7 +25,7 @@ World::World():
     liveFloatData.reserve(maxSize * FDATA_EPO);
     liveIntData.reserve(maxSize * LIVE_INT_EPO);
     contactConstraints.reserve(100);
-    velocityIterations = 20;
+    velocityIterations = 50;
 }
 
 World::~World() {
@@ -67,6 +68,17 @@ int World::removeObject(int id) {
 
     if (it != objectsMap.end()) {
         auto object = it->second;
+
+        // Remove any joints associated with this object
+        std::vector<int> jointsToRemove;
+        for (auto& pair : jointsMap) {
+            if (pair.second->isConnectedTo(object)) {
+                jointsToRemove.push_back(pair.first);
+            }
+        }
+        for (int jointId : jointsToRemove) {
+            removeJoint(jointId);
+        }
 
         // Remove the object from the BVH
         // cout << "Remove from BVH???" << endl;
@@ -180,9 +192,13 @@ void World::step() {
     _doBroadPhase();
     _doNarrowPhase();
     _doContactManagement();
+    
+    // Joint pre-solving
+    for (auto& pair : jointsMap) {
+        pair.second->preSolve(timeStep);
+    }
+    
     _doResolution();
-    // _doConstraints(); // Coming soon.
-    // _doStabilization(); // Optional.
 }
 
 // 1. Kinematics.
@@ -310,6 +326,11 @@ void World::_doResolution(){
     for (int iter = 0; iter < velocityIterations; ++iter) {
         for (auto& c : contactConstraints) {
             c.solve(enableNormal, hasFriction);
+        }
+        
+        // Solve joints interleaved with contacts
+        for (auto& pair : jointsMap) {
+            pair.second->solve();
         }
     }
 }
@@ -469,6 +490,33 @@ void World::setTimeStep(float dt) {
     decayMap[5] = pow(1.0f - 0.05f, dt);
     decayMap[2] = pow(1.0f - 0.02f, dt);
     decayMap[1] = pow(1.0f - 0.01f, dt);
+}
+
+int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY) {
+    auto itA = objectsMap.find(bodyAId);
+    auto itB = objectsMap.find(bodyBId);
+    
+    if (itA == objectsMap.end() || itB == objectsMap.end()) {
+        return -1;
+    }
+    
+    jointsMap[id] = std::make_unique<HingeJoint>(
+        id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY)
+    );
+    
+    return id;
+}
+
+void World::removeJoint(int id) {
+    jointsMap.erase(id);
+}
+
+Joint* World::getJoint(int id) {
+    auto it = jointsMap.find(id);
+    if (it != jointsMap.end()) {
+        return it->second.get();
+    }
+    return nullptr;
 }
 
 // Remove all objects from the world and clean them up.

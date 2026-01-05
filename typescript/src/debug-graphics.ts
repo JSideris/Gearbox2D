@@ -1,7 +1,9 @@
 
-import { World, PhysicalObject, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
+import { World, PhysicalObject, HingeJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
 
 const ANIMSCALE = 100;
+const MAX_VECTOR_MAGNITUDE = 3.0; // Approximately 3cm when scaled
+const MAX_ANGULAR_ARC = Math.PI;
 
 export type LabelPosition = 'left' | 'right' | 'above' | 'below' | 'on-top';
 
@@ -29,6 +31,7 @@ export class DebugGraphics {
     private lastTick: number = Date.now();
     showForceVectors: boolean = true;
     showImpulseVectors: boolean = true;
+    showAabbs: boolean = true;
 
     private labels: DebugLabel[] = [];
     defaultLabelFontSize: string = '12px Arial';
@@ -160,20 +163,30 @@ export class DebugGraphics {
         if (!this.ctx) return;
 
         if (this.showForceVectors) { // Force vector
+            let fx = obj.fx;
+            let fy = obj.fy;
+            let magSq = fx * fx + fy * fy;
+            let mag = Math.sqrt(magSq);
+
+            if (mag > MAX_VECTOR_MAGNITUDE) {
+                fx = (fx / mag) * MAX_VECTOR_MAGNITUDE;
+                fy = (fy / mag) * MAX_VECTOR_MAGNITUDE;
+                mag = MAX_VECTOR_MAGNITUDE;
+                magSq = mag * mag;
+            }
+
             this.ctx.strokeStyle = 'red';
             this.ctx.beginPath();
 
             this.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-            this.ctx.lineTo(obj.x * ANIMSCALE + obj.fx * ANIMSCALE / 3, obj.y * ANIMSCALE + obj.fy * ANIMSCALE / 3);
+            this.ctx.lineTo(obj.x * ANIMSCALE + fx * ANIMSCALE / 3, obj.y * ANIMSCALE + fy * ANIMSCALE / 3);
             this.ctx.stroke();
 
-            let forceScale = ((obj.fx) * (obj.fx) + (obj.fy) * (obj.fy));
-
-            if (forceScale > 3) {
-                let arrowSize = Math.min(10, Math.sqrt(forceScale) * 10);
-                let angle = Math.atan2(obj.fy, obj.fx);
-                let arrowX = obj.x * ANIMSCALE + obj.fx * ANIMSCALE / 3;
-                let arrowY = obj.y * ANIMSCALE + obj.fy * ANIMSCALE / 3;
+            if (magSq > 3) {
+                let arrowSize = Math.min(10, mag * 10);
+                let angle = Math.atan2(fy, fx);
+                let arrowX = obj.x * ANIMSCALE + fx * ANIMSCALE / 3;
+                let arrowY = obj.y * ANIMSCALE + fy * ANIMSCALE / 3;
                 this.ctx.save();
                 this.ctx.translate(arrowX, arrowY);
                 this.ctx.rotate(angle);
@@ -189,18 +202,29 @@ export class DebugGraphics {
         }
 
         if (this.showImpulseVectors) { // Impulse vector
+            let ix = obj.ix;
+            let iy = obj.iy;
+            let magSq = ix * ix + iy * iy;
+            let mag = Math.sqrt(magSq);
+
+            if (mag > MAX_VECTOR_MAGNITUDE) {
+                ix = (ix / mag) * MAX_VECTOR_MAGNITUDE;
+                iy = (iy / mag) * MAX_VECTOR_MAGNITUDE;
+                mag = MAX_VECTOR_MAGNITUDE;
+                magSq = mag * mag;
+            }
+
             this.ctx.strokeStyle = 'blue';
             this.ctx.beginPath();
             this.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
-            this.ctx.lineTo(obj.x * ANIMSCALE + obj.ix * 30.0, obj.y * ANIMSCALE + obj.iy * 30.0);
+            this.ctx.lineTo(obj.x * ANIMSCALE + ix * 30.0, obj.y * ANIMSCALE + iy * 30.0);
             this.ctx.stroke();
 
-            let impulseScale = ((obj.ix) * (obj.ix) + (obj.iy) * (obj.iy)) * 100;
-            if (impulseScale > 100) {
-                let arrowSize = Math.min(10, Math.sqrt(impulseScale));
-                let angle = Math.atan2(obj.iy, obj.ix);
-                let arrowX = obj.x * ANIMSCALE + obj.ix * 30;
-                let arrowY = obj.y * ANIMSCALE + obj.iy * 30;
+            if (magSq > 1) { // magSq > 100/100
+                let arrowSize = Math.min(10, mag * 10);
+                let angle = Math.atan2(iy, ix);
+                let arrowX = obj.x * ANIMSCALE + ix * 30;
+                let arrowY = obj.y * ANIMSCALE + iy * 30;
                 this.ctx.save();
                 this.ctx.translate(arrowX, arrowY);
                 this.ctx.rotate(angle);
@@ -223,8 +247,13 @@ export class DebugGraphics {
             else radius = Math.max(obj.width, obj.height) * ANIMSCALE * 0.7;
 
             let impulse = obj.angularImpulse;
+            let arcDistance = impulse * 2;
+            if (Math.abs(arcDistance) > MAX_ANGULAR_ARC) {
+                arcDistance = Math.sign(arcDistance) * MAX_ANGULAR_ARC;
+            }
+
             let startAngle = obj.r;
-            let endAngle = obj.r + impulse * 2;
+            let endAngle = obj.r + arcDistance;
 
             this.ctx.arc(obj.x * ANIMSCALE, obj.y * ANIMSCALE, radius, startAngle, endAngle, impulse < 0);
             this.ctx.stroke();
@@ -245,6 +274,158 @@ export class DebugGraphics {
         }
     }
 
+    private drawJoints() {
+        if (!this.ctx || !this.debugWorld) return;
+
+        for (const id in this.debugWorld.jointsById) {
+            const joint = this.debugWorld.jointsById[id];
+
+            // Currently only HingeJoint is implemented in the engine
+            if (joint instanceof HingeJoint) {
+                this.drawHingeJoint(joint);
+            }
+            // TODO: Hook up DistanceJoint, SpringJoint, and GearJoint once implemented
+            /*
+            else if (joint instanceof DistanceJoint) {
+                this.drawDistanceJoint(joint);
+            }
+            else if (joint instanceof SpringJoint) {
+                this.drawSpringJoint(joint);
+            }
+            else if (joint instanceof GearJoint) {
+                this.drawGearJoint(joint);
+            }
+            */
+        }
+    }
+
+    private drawHingeJoint(joint: HingeJoint) {
+        if (!this.ctx) return;
+        const anchorA = joint.bodyA.localToWorld(joint.localAnchorA);
+        const anchorB = joint.bodyB.localToWorld(joint.localAnchorB);
+
+        // Draw dashed lines from centers to anchor
+        this.ctx.save();
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'; // Gold
+        this.ctx.beginPath();
+        this.ctx.moveTo(joint.bodyA.x * ANIMSCALE, joint.bodyA.y * ANIMSCALE);
+        this.ctx.lineTo(anchorA.x * ANIMSCALE, anchorA.y * ANIMSCALE);
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(joint.bodyB.x * ANIMSCALE, joint.bodyB.y * ANIMSCALE);
+        this.ctx.lineTo(anchorB.x * ANIMSCALE, anchorB.y * ANIMSCALE);
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Draw the pivot point
+        this.ctx.beginPath();
+        this.ctx.arc(anchorA.x * ANIMSCALE, anchorA.y * ANIMSCALE, 4, 0, 2 * Math.PI);
+        this.ctx.strokeStyle = 'black';
+        this.ctx.fillStyle = '#FFD700'; // Gold
+        this.ctx.fill();
+        this.ctx.stroke();
+    }
+
+    private drawDistanceJoint(anchorA: { x: number, y: number }, anchorB: { x: number, y: number }) {
+        if (!this.ctx) return;
+        
+        // Draw the rod
+        this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.moveTo(anchorA.x * ANIMSCALE, anchorA.y * ANIMSCALE);
+        this.ctx.lineTo(anchorB.x * ANIMSCALE, anchorB.y * ANIMSCALE);
+        this.ctx.stroke();
+        this.ctx.lineWidth = 1;
+
+        // Draw anchor points
+        this.ctx.fillStyle = 'cyan';
+        this.ctx.beginPath();
+        this.ctx.arc(anchorA.x * ANIMSCALE, anchorA.y * ANIMSCALE, 3, 0, 2 * Math.PI);
+        this.ctx.arc(anchorB.x * ANIMSCALE, anchorB.y * ANIMSCALE, 3, 0, 2 * Math.PI);
+        this.ctx.fill();
+    }
+
+    private drawSpringJoint(anchorA: { x: number, y: number }, anchorB: { x: number, y: number }) {
+        if (!this.ctx) return;
+
+        const x1 = anchorA.x * ANIMSCALE;
+        const y1 = anchorA.y * ANIMSCALE;
+        const x2 = anchorB.x * ANIMSCALE;
+        const y2 = anchorB.y * ANIMSCALE;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+
+        this.ctx.save();
+        this.ctx.translate(x1, y1);
+        this.ctx.rotate(angle);
+
+        this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, 0);
+
+        const segments = 10;
+        const segmentLength = dist / segments;
+        const amplitude = 5;
+
+        for (let i = 1; i <= segments; i++) {
+            const x = i * segmentLength;
+            const y = (i % 2 === 0) ? amplitude : -amplitude;
+            if (i === segments) {
+                this.ctx.lineTo(x, 0);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+        }
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+
+    private drawGearJoint(objA: PhysicalObject, objB: PhysicalObject) {
+        if (!this.ctx) return;
+
+        const drawCog = (obj: PhysicalObject) => {
+            const x = obj.x * ANIMSCALE;
+            const y = obj.y * ANIMSCALE;
+            const r = 15; // fixed size for cog icon
+            const teeth = 8;
+
+            this.ctx!.save();
+            this.ctx!.translate(x, y);
+            this.ctx!.rotate(obj.r);
+            this.ctx!.strokeStyle = 'rgba(255, 165, 0, 0.8)';
+            this.ctx!.beginPath();
+            this.ctx!.arc(0, 0, r, 0, 2 * Math.PI);
+            
+            for (let i = 0; i < teeth; i++) {
+                const angle = (i / teeth) * 2 * Math.PI;
+                this.ctx!.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                this.ctx!.lineTo(Math.cos(angle) * (r + 5), Math.sin(angle) * (r + 5));
+            }
+            this.ctx!.stroke();
+            this.ctx!.restore();
+        };
+
+        drawCog(objA);
+        drawCog(objB);
+
+        // Dotted connection line
+        this.ctx.save();
+        this.ctx.setLineDash([2, 4]);
+        this.ctx.strokeStyle = 'rgba(255, 165, 0, 0.5)';
+        this.ctx.beginPath();
+        this.ctx.moveTo(objA.x * ANIMSCALE, objA.y * ANIMSCALE);
+        this.ctx.lineTo(objB.x * ANIMSCALE, objB.y * ANIMSCALE);
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+
     private animate() {
         if (!this.ctx || !this.canvas || !this.debugWorld) return;
 
@@ -260,7 +441,7 @@ export class DebugGraphics {
         this.ctx.scale(this.zoom, this.zoom);
 
         this.debugWorld.iterateObjects((obj: PhysicalObject) => {
-            if (this.debugWorld!.objectCount < 100) {
+            if (this.showAabbs && this.debugWorld!.objectCount < 100) {
                 this.drawAabb(obj);
             }
 
@@ -270,6 +451,8 @@ export class DebugGraphics {
                 this.drawVectors(obj);
             }
         });
+
+        this.drawJoints();
 
         this.ctx.restore();
 

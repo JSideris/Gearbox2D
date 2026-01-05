@@ -259,9 +259,9 @@ const world = gb2d.makeWorld();
 [ ] Collision tracking.
 
 ## Constraints
+[*] Hinged.
 [ ] Distance.
 [ ] Spring.
-[ ] Hinged.
 [ ] Gear constraint.
 
 ## Misc
@@ -295,7 +295,7 @@ const world = gb2d.makeWorld();
 [*] Bounding volume hierarchy (BVH).
 [*] BVH sleep biasing.
 [ ] BVH particle biasing.
-[ ] BVH collision mask biasing.
+[*] BVH collision mask biasing.
 [ ] Rebalance BVH.
 [ ] Experimental: Caching previous broad-phase collisions.
 [ ] Experimental: Instead of reinserting on movement, consider tree traversal.
@@ -316,6 +316,8 @@ const world = gb2d.makeWorld();
 [ ] Microscopic scale.
 [ ] Galactic scales.
 [ ] Automatic handling for big world problem.
+[ ] Changing mass dynamically.
+[ ] Changing size dynamically (stretch goal)
 
 ## AI
 [ ] A*.

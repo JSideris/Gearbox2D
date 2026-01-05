@@ -7,6 +7,7 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
+#include <memory>
 
 // class CollisionSolver;
 // class PhysicalObject;
@@ -18,8 +19,10 @@
 #include "physical-object.h"
 #include "impulse-solver.h"
 #include "constants.h"
+#include "joint.h"
 
 class PhysicalObject;  // Forward declaration of PhysicalObject
+class Joint;           // Forward declaration of Joint
 
 struct ContactConstraint {
     PhysicalObject* a;
@@ -46,6 +49,7 @@ private:
 
     std::unordered_map<int, PhysicalObject*> objectsMap;  // Stores objects by their ID
     std::vector<PhysicalObject*> objectsList;             // List for efficient iteration
+    std::unordered_map<int, std::unique_ptr<Joint>> jointsMap; // Stores joints by their ID
 	Bvh bvh;
     CollisionSolver collisionSolver;
     // std::vector<int> ids;
@@ -102,6 +106,11 @@ public:
 
     // Remove an object from the world by its ID
     int removeObject(int id);
+
+    // Joint management
+    int createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY);
+    void removeJoint(int id);
+    Joint* getJoint(int id);
 
     void setTimeStep(float dt);
 

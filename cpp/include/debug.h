@@ -44,15 +44,3 @@ using emscripten_val = emscripten::val;
 #else
     #define DEBUG_PRINT(x)
 #endif
-
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-
-extern "C" {
-    void network_log(const char* hypothesisId, const char* location, const char* message, const char* dataJson);
-}
-
-#define AGENT_LOG(h, loc, msg, data) network_log(h, loc, msg, data)
-#else
-#define AGENT_LOG(h, loc, msg, data)
-#endif

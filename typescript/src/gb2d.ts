@@ -74,6 +74,7 @@ export class World {
 	liveIntData: Int32Array;
 	objectCount: number;
 	objectsById: Record<number, PhysicalObject>;
+	jointsById: Record<number, HingeJoint>;
 	constructor(WorldConstructor){
 		this.world = new WorldConstructor();
 		// this.ids = this.world.getIds();
@@ -84,6 +85,7 @@ export class World {
 		 * @type {Record<number, PhysicalObject>}
 		 */
 		this.objectsById = {}
+		this.jointsById = {}
 		this.objectCount = 0;
 	}
 	// getObjectByIndex(index){
@@ -106,6 +108,7 @@ export class World {
 	}
 	clear(){
 		this.objectsById = {};
+		this.jointsById = {};
 		this.objectCount = 0;
 		return this.world.clear();
 	}
@@ -135,6 +138,15 @@ export class World {
 			// Remove any labels attached to this object.
 			gb2d.debug.removeObjectLabels(id);
 
+			// Remove any associated joints from our local record.
+			// The C++ side will handle the actual removal of the joints.
+			for (let jointId in this.jointsById) {
+				const joint = this.jointsById[jointId];
+				if (joint.bodyA.id === id || joint.bodyB.id === id) {
+					delete this.jointsById[jointId];
+				}
+			}
+
 			// To delete an object, call world.removeObject. This will return the index.
 			// Then read the index, it will contain the ID of the object from the end of the vector
 			// which replaced the deleted item. 
@@ -156,6 +168,35 @@ export class World {
 	setHasPenetrationResolution(value){ this.world.setHasPenetrationResolution(value); }
 	setHasRestitution(value){ this.world.setHasRestitution(value); }
 	setHasFriction(value){ this.world.setHasFriction(value); }
+
+	createHingeJoint(id, bodyA, bodyB, options: any = {}) {
+		if (this.jointsById[id]) return null;
+
+		let localAnchorA = { x: 0, y: 0 };
+		let localAnchorB = { x: 0, y: 0 };
+
+		if (options.worldAnchor) {
+			localAnchorA = bodyA.worldToLocal(options.worldAnchor);
+			localAnchorB = bodyB.worldToLocal(options.worldAnchor);
+		} else {
+			localAnchorA = options.anchorA || { x: 0, y: 0 };
+			localAnchorB = options.anchorB || { x: 0, y: 0 };
+		}
+
+		this.world.createHingeJoint(id, bodyA.id, bodyB.id, localAnchorA.x, localAnchorA.y, localAnchorB.x, localAnchorB.y);
+		const joint = new HingeJoint(id, this, bodyA, bodyB, localAnchorA, localAnchorB);
+		this.jointsById[id] = joint;
+		return joint;
+	}
+
+	removeJoint(id) {
+		this.world.removeJoint(id);
+		delete this.jointsById[id];
+	}
+
+	getJointById(id) {
+		return this.jointsById[id];
+	}
 };
 
 // There's a way to make this work.
@@ -334,6 +375,63 @@ export class PhysicalObject{
 			this.liveFData[this.index * SIZE_F + NIA_OFFSET] += torque || 0;
 			this.wakeUp();
 		}
+	}
+
+	worldToLocal(worldPoint: { x: number, y: number }) {
+		const dx = worldPoint.x - this.x;
+		const dy = worldPoint.y - this.y;
+		const angle = -this.r;
+		const cos = Math.cos(angle);
+		const sin = Math.sin(angle);
+		return {
+			x: dx * cos - dy * sin,
+			y: dx * sin + dy * cos
+		};
+	}
+
+	localToWorld(localPoint: { x: number, y: number }) {
+		const angle = this.r;
+		const cos = Math.cos(angle);
+		const sin = Math.sin(angle);
+		const rx = localPoint.x * cos - localPoint.y * sin;
+		const ry = localPoint.x * sin + localPoint.y * cos;
+		return {
+			x: this.x + rx,
+			y: this.y + ry
+		};
+	}
+}
+
+export class HingeJoint {
+	id: number;
+	world: World;
+	bodyA: PhysicalObject;
+	bodyB: PhysicalObject;
+	localAnchorA: { x: number, y: number };
+	localAnchorB: { x: number, y: number };
+
+	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }) {
+		this.id = id;
+		this.world = world;
+		this.bodyA = bodyA;
+		this.bodyB = bodyB;
+		this.localAnchorA = localAnchorA;
+		this.localAnchorB = localAnchorB;
+	}
+
+	get reactionForce() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		// We need to pass the inverse dt to get the force from the impulse
+		// For now, let's just return the impulse or assume 1/60 step
+		const f = cppJoint.getReactionForce(60.0); 
+		return { x: f.x, y: f.y };
+	}
+
+	get reactionTorque() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getReactionTorque(60.0);
 	}
 }
 

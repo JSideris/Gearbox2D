@@ -5,6 +5,8 @@
 #include "vec2.h"
 #include "aabb.h"
 #include "bvh.h"
+#include "joint.h"
+#include "hinge-joint.h"
 
 #ifdef __EMSCRIPTEN__
 
@@ -16,6 +18,10 @@ int main() {
 EMSCRIPTEN_BINDINGS(general) {
     emscripten::register_vector<float>("vector<float>");
     emscripten::register_vector<int>("vector<int>");
+
+    emscripten::value_object<Vec2>("Vec2")
+        .field("x", &Vec2::x)
+        .field("y", &Vec2::y);
 }
 
 EMSCRIPTEN_BINDINGS(world) {
@@ -24,7 +30,16 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("setMaskBits", &PhysicalObject::setMaskBits)
         .function("getCategoryBits", &PhysicalObject::getCategoryBits)
         .function("getMaskBits", &PhysicalObject::getMaskBits)
-        .function("wakeUp", &PhysicalObject::wakeUp);
+        .function("wakeUp", &PhysicalObject::wakeUp)
+        .function("getX", &PhysicalObject::getX)
+        .function("getY", &PhysicalObject::getY)
+        .function("getRotation", &PhysicalObject::getRotation);
+
+    emscripten::class_<Joint>("Joint")
+        .function("getReactionForce", &Joint::getReactionForce)
+        .function("getReactionTorque", &Joint::getReactionTorque);
+
+    emscripten::class_<HingeJoint, emscripten::base<Joint>>("HingeJoint");
 
     emscripten::class_<World>("World")
         .constructor<>()
@@ -42,6 +57,9 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("getObjectCount", &World::getObjectCount)
         .function("setTimeStep", &World::setTimeStep)
         .function("setGravity", &World::setGravity)
+        .function("createHingeJoint", &World::createHingeJoint)
+        .function("removeJoint", &World::removeJoint)
+        .function("getJoint", &World::getJoint, emscripten::allow_raw_pointers())
 
         // .function("getLiveData", &World::getLiveData, emscripten::allow_raw_pointers())
         // .function("getIds", &World::getIds, emscripten::allow_raw_pointers())
