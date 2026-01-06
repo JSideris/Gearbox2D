@@ -262,7 +262,7 @@ const world = gb2d.makeWorld();
 [*] Hinged.
 [*] Distance.
 [*] Spring.
-[ ] Gear constraint.
+[*] Gear constraint.
 
 ## Misc
 [*] Elasticity (restitution).

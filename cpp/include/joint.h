@@ -20,7 +20,7 @@ public:
     virtual Vec2 getReactionForce(float inv_dt) const = 0;
     virtual float getReactionTorque(float inv_dt) const = 0;
 
-    bool isConnectedTo(PhysicalObject* body) const {
+    virtual bool isConnectedTo(PhysicalObject* body) const {
         return bodyA == body || bodyB == body;
     }
 };

@@ -1,5 +1,5 @@
 
-import { World, PhysicalObject, HingeJoint, DistanceJoint, SpringJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
+import { World, PhysicalObject, HingeJoint, DistanceJoint, SpringJoint, GearJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
 
 const ANIMSCALE = 100;
 const MAX_VECTOR_MAGNITUDE = 3.0; // Approximately 3cm when scaled
@@ -292,7 +292,9 @@ export class DebugGraphics {
                 const anchorB = joint.bodyB.localToWorld(joint.localAnchorB);
                 this.drawSpringJoint(anchorA, anchorB);
             }
-            // TODO: Hook up SpringJoint, and GearJoint once implemented
+            else if (joint instanceof GearJoint) {
+                this.drawGearJoint(joint.joint1.bodyB, joint.joint2.bodyB);
+            }
         }
     }
 

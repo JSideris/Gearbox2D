@@ -6,6 +6,7 @@
 #include "hinge-joint.h"
 #include "distance-joint.h"
 #include "spring-joint.h"
+#include "gear-joint.h"
 #include <algorithm>
 #include <fstream>
 #include <chrono>
@@ -294,6 +295,13 @@ void World::_doContactManagement(){
             PhysicalObject* objA = getObject(pair.first);
             PhysicalObject* objB = getObject(pair.second);
             if (objA && objB) {
+                // If both are sleeping, they might still be touching but the BVH optimization 
+                // skipped them. We should keep the contact alive in our tracking so that 
+                // when one wakes up, it can propagate the wake-up to its neighbor.
+                if (objA->isSleeping && objB->isSleeping) {
+                    currentPairs.insert(pair);
+                    continue;
+                }
                 objA->removeContact(objB);
                 objB->removeContact(objA);
             }
@@ -535,6 +543,26 @@ int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, f
     jointsMap[id] = std::make_unique<SpringJoint>(
         id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio
     );
+    
+    return id;
+}
+
+int World::createGearJoint(int id, int joint1Id, int joint2Id, float ratio) {
+    auto it1 = jointsMap.find(joint1Id);
+    auto it2 = jointsMap.find(joint2Id);
+    
+    if (it1 == jointsMap.end() || it2 == jointsMap.end()) {
+        return -1;
+    }
+    
+    HingeJoint* h1 = dynamic_cast<HingeJoint*>(it1->second.get());
+    HingeJoint* h2 = dynamic_cast<HingeJoint*>(it2->second.get());
+    
+    if (!h1 || !h2) {
+        return -1;
+    }
+    
+    jointsMap[id] = std::make_unique<GearJoint>(id, h1, h2, ratio);
     
     return id;
 }

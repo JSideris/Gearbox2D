@@ -74,7 +74,7 @@ export class World {
 	liveIntData: Int32Array;
 	objectCount: number;
 	objectsById: Record<number, PhysicalObject>;
-	jointsById: Record<number, HingeJoint | DistanceJoint | SpringJoint>;
+	jointsById: Record<number, HingeJoint | DistanceJoint | SpringJoint | GearJoint>;
 	constructor(WorldConstructor){
 		this.world = new WorldConstructor();
 		// this.ids = this.world.getIds();
@@ -142,8 +142,15 @@ export class World {
 			// The C++ side will handle the actual removal of the joints.
 			for (let jointId in this.jointsById) {
 				const joint = this.jointsById[jointId];
-				if (joint.bodyA.id === id || joint.bodyB.id === id) {
-					delete this.jointsById[jointId];
+				if (joint instanceof GearJoint) {
+					if (joint.joint1.bodyA.id === id || joint.joint1.bodyB.id === id ||
+						joint.joint2.bodyA.id === id || joint.joint2.bodyB.id === id) {
+						delete this.jointsById[jointId];
+					}
+				} else {
+					if ((joint as any).bodyA.id === id || (joint as any).bodyB.id === id) {
+						delete this.jointsById[jointId];
+					}
 				}
 			}
 
@@ -248,6 +255,14 @@ export class World {
 
 		this.world.createSpringJoint(id, bodyA.id, bodyB.id, localAnchorA.x, localAnchorA.y, localAnchorB.x, localAnchorB.y, length, frequencyHz, dampingRatio);
 		const joint = new SpringJoint(id, this, bodyA, bodyB, localAnchorA, localAnchorB, length, frequencyHz, dampingRatio);
+		this.jointsById[id] = joint;
+		return joint;
+	}
+
+	createGearJoint(id, joint1, joint2, ratio = 1.0) {
+		if (this.jointsById[id]) return null;
+		this.world.createGearJoint(id, joint1.id, joint2.id, ratio);
+		const joint = new GearJoint(id, this, joint1, joint2, ratio);
 		this.jointsById[id] = joint;
 		return joint;
 	}
@@ -559,6 +574,32 @@ export class SpringJoint {
 		if (!cppJoint) return { x: 0, y: 0 };
 		const f = cppJoint.getReactionForce(60.0);
 		return { x: f.x, y: f.y };
+	}
+
+	get reactionTorque() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getReactionTorque(60.0);
+	}
+}
+
+export class GearJoint {
+	id: number;
+	world: World;
+	joint1: HingeJoint;
+	joint2: HingeJoint;
+	ratio: number;
+
+	constructor(id: number, world: World, joint1: HingeJoint, joint2: HingeJoint, ratio: number) {
+		this.id = id;
+		this.world = world;
+		this.joint1 = joint1;
+		this.joint2 = joint2;
+		this.ratio = ratio;
+	}
+
+	get reactionForce() {
+		return { x: 0, y: 0 };
 	}
 
 	get reactionTorque() {

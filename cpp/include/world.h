@@ -111,6 +111,7 @@ public:
     int createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY);
     int createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length);
     int createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length, float frequencyHz, float dampingRatio);
+    int createGearJoint(int id, int joint1Id, int joint2Id, float ratio);
     void removeJoint(int id);
     Joint* getJoint(int id);
 

@@ -94,3 +94,4 @@ TEST(StabilityTest, JointMovementWakesSleepingObject) {
     EXPECT_FALSE(pendulum->isSleeping);
 }
 
+
