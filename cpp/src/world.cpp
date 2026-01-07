@@ -12,6 +12,8 @@
 #include <chrono>
 #include <sstream>
 
+BvhMetrics g_bvhMetrics;
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <stdio.h>
