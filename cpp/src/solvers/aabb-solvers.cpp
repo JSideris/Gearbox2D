@@ -217,14 +217,16 @@ bool CollisionSolver::_solveAabbPoint() {
     float wA = floatData[_indexA * FDATA_EPO + FDATA_W];
     float hA = floatData[_indexA * FDATA_EPO + FDATA_H];
     
-    // Calculate AABB boundaries
-    float minX = xA - wA/2;
-    float maxX = xA + wA/2;
-    float minY = yA - hA/2;
-    float maxY = yA + hA/2;
-    
+    Vec2 centerA(xA, yA);
+    Vec2 pointP(xP, yP);
+
     // Simple check: is point inside AABB?
-    if (xP >= minX && xP <= maxX && yP >= minY && yP <= maxY) {
+    if (testPointAabb(pointP, centerA, wA, hA)) {
+        // Calculate AABB boundaries for edge distance calculation
+        float minX = xA - wA/2;
+        float maxX = xA + wA/2;
+        float minY = yA - hA/2;
+        float maxY = yA + hA/2;
         
         // Find distances to each edge
         float dLeft = xP - minX;

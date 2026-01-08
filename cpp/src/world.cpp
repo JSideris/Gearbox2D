@@ -19,8 +19,6 @@ BvhMetrics g_bvhMetrics;
 #include <stdio.h>
 #endif
 
-using namespace std;
-
 World::World():
     collisionSolver(liveIntData, liveFloatData){
     // TODO: if we add more than 10k items, there should be some kind of event to warn the client.
@@ -174,6 +172,27 @@ int World::getObjectCount() const {
 void World::setGravity(float x, float y) {
     gravity.x = x;
     gravity.y = y;
+}
+
+std::vector<int> World::queryPoint(float x, float y, uint32_t mask) {
+    std::vector<int> hitIds;
+    // Tiny AABB around the point
+    Aabb pointBox(Vec2(x - 0.001f, y - 0.001f), Vec2(x + 0.001f, y + 0.001f));
+    
+    std::vector<BvhNode*> candidates;
+    bvh.query(pointBox, candidates);
+
+    for (auto node : candidates) {
+        PhysicalObject* obj = static_cast<PhysicalObject*>(node->data);
+        // Broad phase: Check collision mask
+        if (obj->categoryBits & mask) {
+            // Narrow phase: Precise shape check
+            if (obj->testPoint(x, y)) {
+                hitIds.push_back(obj->id);
+            }
+        }
+    }
+    return hitIds;
 }
 
 // Expose the raw pointers

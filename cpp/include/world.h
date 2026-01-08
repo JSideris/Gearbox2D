@@ -123,6 +123,8 @@ public:
 
     void setGravity(float x, float y);
 
+    std::vector<int> queryPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
+
     int findeIndexForObject(int id);
     // Access an object by its ID
     PhysicalObject* getObject(int id) const;

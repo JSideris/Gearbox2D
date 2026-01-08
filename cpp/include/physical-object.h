@@ -114,6 +114,8 @@ public:
     Vec2 getVelocity() const;
     void setVelocity(Vec2 v);
 
+    bool testPoint(float x, float y) const;
+
     bool recomputeAabb(int mode);
 
     // INTERNAL USE ONLY.

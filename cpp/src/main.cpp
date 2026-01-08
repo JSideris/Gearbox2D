@@ -36,7 +36,8 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("wakeUp", &PhysicalObject::wakeUp)
         .function("getX", &PhysicalObject::getX)
         .function("getY", &PhysicalObject::getY)
-        .function("getRotation", &PhysicalObject::getRotation);
+        .function("getRotation", &PhysicalObject::getRotation)
+        .function("testPoint", &PhysicalObject::testPoint);
 
     emscripten::class_<Joint>("Joint")
         .function("getReactionForce", &Joint::getReactionForce)
@@ -86,6 +87,7 @@ EMSCRIPTEN_BINDINGS(world) {
         // .function("getIds", &World::getIds, emscripten::allow_raw_pointers())
 
         .function("step", &World::step)
+        .function("queryPoint", &World::queryPoint)
         .function("clear", &World::clear)
         .function("destroy", &World::destroy)
 

@@ -109,6 +109,15 @@ export class World {
 		// this.liveFloatData[2] += 0.1;
 		return this.world.step();
 	}
+	queryPoint(x: number, y: number, mask: number = 0xFFFFFFFF): number[] {
+		const resultVec = this.world.queryPoint(x, y, mask);
+		const result = [];
+		for (let i = 0; i < resultVec.size(); i++) {
+			result.push(resultVec.get(i));
+		}
+		resultVec.delete();
+		return result;
+	}
 	clear(){
 		this.objectsById = {};
 		this.jointsById = {};
@@ -403,6 +412,10 @@ export class PhysicalObject{
 		}
 	}
 
+	testPoint(x: number, y: number): boolean {
+		return this.world.world.getObject(this.id).testPoint(x, y);
+	}
+
 	get angularImpulse() { return this.liveFData[this.index * SIZE_F + IA_OFFSET]; }
 
 	get categoryBits() { return this.liveIData[this.index * SIZE_I + CATEGORY_BITS_OFFSET]; }
@@ -494,8 +507,6 @@ export class HingeJoint {
 	world: World;
 	bodyA: PhysicalObject;
 	bodyB: PhysicalObject;
-	localAnchorA: { x: number, y: number };
-	localAnchorB: { x: number, y: number };
 
 	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }) {
 		this.id = id;
@@ -549,9 +560,6 @@ export class DistanceJoint {
 	world: World;
 	bodyA: PhysicalObject;
 	bodyB: PhysicalObject;
-	localAnchorA: { x: number, y: number };
-	localAnchorB: { x: number, y: number };
-	length: number;
 
 	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number) {
 		this.id = id;
@@ -615,11 +623,6 @@ export class SpringJoint {
 	world: World;
 	bodyA: PhysicalObject;
 	bodyB: PhysicalObject;
-	localAnchorA: { x: number, y: number };
-	localAnchorB: { x: number, y: number };
-	length: number;
-	frequencyHz: number;
-	dampingRatio: number;
 
 	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number, frequencyHz: number, dampingRatio: number) {
 		this.id = id;
@@ -707,7 +710,6 @@ export class GearJoint {
 	world: World;
 	joint1: HingeJoint;
 	joint2: HingeJoint;
-	ratio: number;
 
 	constructor(id: number, world: World, joint1: HingeJoint, joint2: HingeJoint, ratio: number) {
 		this.id = id;

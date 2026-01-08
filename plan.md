@@ -94,6 +94,9 @@
 [*] Spring.
 [*] Gear constraint.
 
+## Interactions
+[*] Spatial picking (query BVH).
+
 ## Misc
 [*] Elasticity (restitution).
 [*]	Static/dynamic friction.

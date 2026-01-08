@@ -75,3 +75,25 @@ float CollisionSolver::closestPointsBetweenLines(
     return (pointOnLine1 - pointOnLine2).magnitudeSquared();
 }
 
+bool CollisionSolver::testPointCircle(const Vec2& point, const Vec2& center, float radius) {
+    return (point - center).magnitudeSquared() < (radius * radius);
+}
+
+bool CollisionSolver::testPointAabb(const Vec2& point, const Vec2& center, float width, float height) {
+    float minX = center.x - width / 2;
+    float maxX = center.x + width / 2;
+    float minY = center.y - height / 2;
+    float maxY = center.y + height / 2;
+    return (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY);
+}
+
+bool CollisionSolver::testPointBox(const Vec2& point, const Vec2& center, float width, float height, float rotation) {
+    // Rotate point into box's local space
+    Vec2 relPoint = (point - center).rotate(-rotation);
+
+    float halfW = width / 2.0f;
+    float halfH = height / 2.0f;
+
+    return (relPoint.x >= -halfW && relPoint.x <= halfW && relPoint.y >= -halfH && relPoint.y <= halfH);
+}
+

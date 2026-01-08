@@ -2,10 +2,12 @@ import { World } from 'gb2d';
 
 export type OnInitCallback = (world: World) => void;
 export type OnTickCallback = (world: World, dt: number) => void;
+export type OnCleanupCallback = (world: World) => void;
 
 export interface ExampleOptions {
     onInit?: OnInitCallback;
     onTick?: OnTickCallback;
+    onCleanup?: OnCleanupCallback;
     description: string;
     name: string;
     key: string;
@@ -15,6 +17,7 @@ export interface ExampleOptions {
 export default class Example {
     public onInit?: OnInitCallback;
     public onTick?: OnTickCallback;
+    public onCleanup?: OnCleanupCallback;
     public description: string;
     public name: string;
     public key: string;
@@ -23,6 +26,7 @@ export default class Example {
     constructor(options: ExampleOptions) {
         this.onInit = options.onInit;
         this.onTick = options.onTick;
+        this.onCleanup = options.onCleanup;
         this.description = options.description;
         this.name = options.name;
         this.key = options.key;
@@ -35,5 +39,9 @@ export default class Example {
 
     tick(world: World, dt: number): void {
         this.onTick?.(world, dt);
+    }
+
+    cleanup(world: World): void {
+        this.onCleanup?.(world);
     }
 }

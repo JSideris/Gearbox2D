@@ -87,12 +87,9 @@ bool CollisionSolver::_solveCirclePoint() {
     auto pA = Vec2(xA, yA);
     auto pB = Vec2(xB, yB);
 
-    auto pDiff = (pB - pA);
-
-    auto pd2 = pDiff.magnitudeSquared();
-
-    if (rA * rA > pd2) {
-        float distance = sqrt(pd2);
+    if (testPointCircle(pB, pA, rA)) {
+        auto pDiff = (pB - pA);
+        float distance = pDiff.magnitude();
         Vec2 normal;
 
         if (distance > 0.0001f) {

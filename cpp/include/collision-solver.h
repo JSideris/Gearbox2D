@@ -34,6 +34,11 @@ public:
     
     bool solve(int indexA, int indexB);
 
+    // Static point-in-shape tests for reuse
+    static bool testPointCircle(const Vec2& point, const Vec2& center, float radius);
+    static bool testPointAabb(const Vec2& point, const Vec2& center, float width, float height);
+    static bool testPointBox(const Vec2& point, const Vec2& center, float width, float height, float rotation);
+
 private:
     int _indexA = 0;
     int _indexB = 0;

@@ -250,14 +250,13 @@ bool CollisionSolver::_solveBoxPoint() {
     Vec2 boxCenter(xA, yA);
     Vec2 pointPos(xP, yP);
     
-    // Rotate point into box's local space
-    Vec2 relPoint = (pointPos - boxCenter).rotate(-rA);
-
-    float halfW = wA / 2.0f;
-    float halfH = hA / 2.0f;
-
     // Check if point is inside local AABB
-    if (relPoint.x >= -halfW && relPoint.x <= halfW && relPoint.y >= -halfH && relPoint.y <= halfH) {
+    if (testPointBox(pointPos, boxCenter, wA, hA, rA)) {
+        // Rotate point into box's local space for edge distance calculation
+        Vec2 relPoint = (pointPos - boxCenter).rotate(-rA);
+        float halfW = wA / 2.0f;
+        float halfH = hA / 2.0f;
+
         // Find closest edge in local space
         float dLeft = relPoint.x - (-halfW);
         float dRight = halfW - relPoint.x;

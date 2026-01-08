@@ -378,6 +378,14 @@ gb2d.init().then(()=>{
         function loadExample(exampleKey) {
             if (!world || !examplesMap[exampleKey]) return;
 
+            // Cleanup the current example if it exists
+            if (currentExample && examplesMap[currentExample]) {
+                const prevExample = examplesMap[currentExample].example;
+                if (prevExample && typeof prevExample.cleanup === 'function') {
+                    prevExample.cleanup(world);
+                }
+            }
+
             // Update the URL hash without duplicating history
             if (window.location.hash != '#' + exampleKey) {
                 history.pushState(null, '', '#' + exampleKey);

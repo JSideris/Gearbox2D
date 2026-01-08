@@ -684,3 +684,19 @@ void PhysicalObject::removeContact(PhysicalObject* other) {
     }
 }
 
+bool PhysicalObject::testPoint(float x, float y) const {
+    Vec2 p(x, y);
+    Vec2 center(getX(), getY());
+    
+    switch(shape) {
+        case ObjectShape::CIRCLE: 
+            return CollisionSolver::testPointCircle(p, center, getRadius());
+        case ObjectShape::BOX:    
+            return CollisionSolver::testPointBox(p, center, getWidth(), getHeight(), getRotation());
+        case ObjectShape::AABB:   
+            return CollisionSolver::testPointAabb(p, center, getWidth(), getHeight());
+        default: 
+            return false;
+    }
+}
+
