@@ -1,15 +1,14 @@
-
 # GearBox2D - High-Speed 2D Physics Engine
 
-A blazing-fast 2D physics engine written in C++ and compiled to WebAssembly, with a TypeScript interface. Perfect for high-frequency simulations and applications requiring frequent updates.
+A blazing-fast 2D physics engine written in C++ and compiled to WebAssembly, with a TypeScript interface. Optimized for high-frequency simulations and applications requiring frequent updates via direct memory sharing.
 
 ## Prerequisites
 
-Before you can build and run GearBox2D, you'll need to install the following dependencies:
+Before you can build and run GearBox2D, you'll need the following:
 
 ### Required Dependencies
 
-1. **Node.js and npm** (v16 or higher)
+1. **Node.js and npm** (v18 or higher recommended)
    - Download from [nodejs.org](https://nodejs.org/)
    - Verify installation: `node --version` and `npm --version`
 
@@ -25,23 +24,20 @@ Before you can build and run GearBox2D, you'll need to install the following dep
    - Verify installation: `emcc --version`
 
 3. **GNU Make** (for build automation)
-   - **Linux/macOS**: Usually pre-installed, verify with `make --version`. If not installed, use `sudo apt install make`.
-   - **Windows**: Install via WSL, MinGW, or use `nmake` (requires Visual Studio)
+   - **Linux/macOS**: Usually pre-installed. If not, use `sudo apt install make`.
+   - **Windows**: Install via WSL, MinGW, or use `nmake`.
 
-4. **C++ Compiler** (for running tests)
-   - **Linux**: `g++` (usually pre-installed)
-   - **macOS**: Install Xcode Command Line Tools: `xcode-select --install`
-   - **Windows**: Install MinGW or use WSL
+4. **C++ Compiler** (for running native tests)
+   - **Linux**: `g++`
+   - **macOS**: `xcode-select --install`
+   - **Windows**: MinGW or WSL
 
 5. **Google Test** (for C++ unit tests)
-   - Clone to `/home/josh/googletest/googletest` (or update the path in Makefile)
-   ```bash
-   git clone https://github.com/google/googletest.git /home/josh/googletest
-   ```
+   - The `Makefile` expects it at `/usr/src/googletest/googletest` by default. You can override this by setting the `GTEST_DIR` environment variable or editing the `Makefile`.
 
 ### Optional Dependencies
 
-- **Live Server** (for running examples): Install via npm: `npm install -g live-server`
+- **Live Server**: For running examples: `npm install -g live-server` or use `npx http-server`.
 
 ## Installation
 
@@ -85,34 +81,32 @@ npm run test:ts
 
 1. **Start a local server** (required for WASM loading):
    ```bash
-   # Using live-server (if installed globally)
+   # Using live-server
    live-server examples/
-   
-   # Or using Python
-   python -m http.server 8000
    
    # Or using Node.js
    npx http-server examples/
    ```
 
-2. **Open your browser** and navigate to:
-   - `http://localhost:8080` (live-server default)
-   - `http://localhost:8000` (Python default)
-   - Or whatever port your server is using
+2. **Open your browser** and navigate to the provided local URL (usually `http://localhost:8080`).
 
-3. **View the examples** by opening `examples/index.html`
+3. **View the examples** by opening `examples/index.html`.
 
-### Development
+### API Quick Start
 
-```bash
-# Watch TypeScript files for changes
-npm run dev
+The TypeScript interface provides a clean API for creating and managing physics worlds:
 
-# Clean build artifacts
-npm run clean
+```typescript
+import gb2d from './dist/js/gb2d.js';
 
-# Rebuild everything from scratch
-make clean && npm run build
+// Initialize the engine
+await gb2d.init();
+
+// Create a world
+const world = gb2d.makeWorld();
+
+// Add objects and run simulation
+// See examples/ for complete usage examples
 ```
 
 ## Project Structure
@@ -123,211 +117,35 @@ Gearbox2D/
 │   ├── include/           # Header files
 │   ├── src/              # Source files
 │   └── tests/            # C++ unit tests
-├── typescript/           # TypeScript interface
-│   └── src/
+├── typescript/           # TypeScript source
+│   └── src/              # TS interface code
 ├── examples/             # Web examples and demos
+├── studies/              # Performance and optimization studies
 ├── dist/                 # Build output
 │   ├── js/              # Compiled TypeScript
 │   └── wasm/            # WebAssembly modules
 ├── Makefile             # C++ build configuration
 ├── package.json         # Node.js dependencies
+├── plan.md              # Project roadmap and feature status
 └── tsconfig.json        # TypeScript configuration
 ```
 
+## Roadmap
+
+Check the [plan.md](plan.md) file for a detailed list of implemented features and future development goals.
+
+## Physical Object Data
+
+GearBox2D is data-oriented, optimized for high-performance data transfer between JavaScript and WASM. Instead of copying object data on every step, the engine uses **shared memory**.
+
+- **WASM Memory**: Volatile object data (position, velocity, etc.) is stored in contiguous buffers in C++.
+- **TypedArray Views**: The TypeScript interface creates `Float32Array` and `Int32Array` views directly over these WASM memory buffers.
+- **Direct Access**: When you access `object.x` or `object.vx` in TypeScript, you are reading/writing directly to the memory used by the WASM physics core.
+
+This architecture minimizes overhead and allows for thousands of objects to be updated and rendered efficiently.
+
 ## Troubleshooting
 
-### Common Issues
-
-1. **Emscripten not found**: Make sure you've activated the emsdk environment
-2. **Google Test not found**: Verify the path in Makefile matches your installation
-3. **WASM loading errors**: Ensure you're serving files via HTTP/HTTPS, not file://
-4. **Build failures**: Try `make clean && npm run build` to rebuild from scratch
-
-### Platform-Specific Notes
-
-- **Windows**: Consider using WSL for the best development experience
-- **macOS**: You may need to install Xcode Command Line Tools
-- **Linux**: Most dependencies should be available via package managers
-  - **Ubuntu/Debian**: If you get `libatomic.so.1` errors with Emscripten, install: `sudo apt install libatomic1`
-
-## API Documentation
-
-The TypeScript interface provides a clean API for creating and managing physics worlds:
-
-```typescript
-import { Gb2d } from './dist/js/gb2d.js';
-
-// Initialize the engine
-const gb2d = new Gb2d();
-await gb2d.init();
-
-// Create a world
-const world = gb2d.makeWorld();
-
-// Add objects and run simulation
-// See examples/ for complete usage examples
-```
-
-# Plan:
-
-## Shapes, Kinematics, Collisions
-[*] Setup and test Rust w/ web assembly target.
-[*] Define basic starting classes for the physics module.
-	[*] RigidBody.
-	[*] Vec2.
-[*] Contain all objects in a world. Ability to add and remove objects to/from world.
-[*] Add a world tick.
-[ ] Ability to export raw data as a byte array.
-[*] Add debug visuals.
-[*] Add a few different shapes.
-	[*] AABB.
-	[*] Box.
-	[ ] Capsule.
-	[*] Circle.
-	[ ] Concave polygons.
-	[ ] Convex polygons.
-	[ ] Ellipse.
-	[ ] Line.
-	[*] Point.
-[ ] Composite objects.
-[*] Add rotations.
-[*] Compute/track AABB for each object.
-[*] Implement VBH.
-[*] Implement broad phase collision detection using BVH.
-[ ] Implement narrow phase collision detection.
-	[*] AABB-AABB.
-	[*] Box-AABB -> Box-Box.
-	[*] Box-Box.
-	[ ] Capsule-AABB.
-	[ ] Capsule-Box.
-	[ ] Capsule-Capsule.
-	[*] Circle-AABB.
-	[ ] Circle-Box.
-	[ ] Circle-Capsule.
-	[*] Circle-Circle.
-	[ ] Convex-AABB.
-	[ ] Convex-Box.
-	[ ] Convex-Capsule.
-	[ ] Convex-Circle.
-	[ ] Convex-Convex.
-	[ ] Concave-AABB.
-	[ ] Concave-Box.
-	[ ] Concave-Capsule.
-	[ ] Concave-Circle.
-	[ ] Concave-Convex.
-	[ ] Ellipse-AABB.
-	[ ] Ellipse-Box.
-	[ ] Ellipse-Capsule.
-	[ ] Ellipse-Circle.
-	[ ] Ellipse-Concave.
-	[ ] Ellipse-Convex.
-	[ ] Ellipse-Ellipse.
-	[ ] Line-AABB.
-	[ ] Line-Box.
-	[ ] Line-Capsule.
-	[ ] Line-Circle.
-	[ ] Line-Concave.
-	[ ] Line-Convex.
-	[ ] Line-Ellipse.
-	[ ] Line-Line.
-	[*] Point-AABB.
-	[*] Point-Box.
-	[ ] Point-Capsule.
-	[*] Point-Circle.
-	[ ] Point-Concave.
-	[ ] Point-Convex.
-	[ ] Point-Ellipse.
-	[ ] Point-Line.
-	[*] Point-Point.
-	Convave polygons?
-[*] Collision resolvers.
-	[*] Penetration resolution.
-	[*] Collision impulse.
-	[*] Collision friction.
-[ ] Implement collision events.
-[*] Define object types.
-	[*] Sensor.
-	[*] Physical.
-	[*] Fixed.
-	[ ] Kinematic. Maybe.
-[*] Implement an applyForce on objects.
-[*] Implement an applyImpulse on objects.
-[*] Implement an applyAngularImpulse on objects.
-[*] Determine and apply impulse for rigid body collisions with basic shapes.
-[ ] Determine and apply impulse for convex polygons.
-[ ] Determine and apply impulse for concave polygons (by splitting them up into convex polygons).
-[ ] Collision tracking.
-
-## Constraints
-[*] Hinged.
-[*] Distance.
-[*] Spring.
-[*] Gear constraint.
-
-## Misc
-[*] Elasticity (restitution).
-[*]	Static/dynamic friction.
-[ ] Support changing the center of mass.
-[ ] Events.
-
-## Fluid Dynamics
-[ ] Wind.
-[ ] Advanced drag.
-[ ] Under water / liquid.
-	[ ]	 Bouancy.
-
-## Optimizations
-
-### General Optimizations
-[*] Cache inverse mass.
-[ ] Cache inverse inertia.
-[ ] Cache inverse dt.
-[*] Cache exponential decay factor when dt is set.
-[ ] Implement collision masks.
-[ ] Focus areas & resolution.
-
-### Broad Phase Optimizations
-[*] Broad phase using AABBs.
-[*] Do not recompute AABB when no movement happens.
-[ ] Stagger AABB recalculation when movement is slow.
-[*] Speed-dependant bounding area padding.
-[ ] Spin-dependant bounding area padding.
-[*] Bounding volume hierarchy (BVH).
-[*] BVH sleep biasing.
-[ ] BVH particle biasing.
-[*] BVH collision mask biasing.
-[ ] Rebalance BVH.
-[ ] Experimental: Caching previous broad-phase collisions.
-[ ] Experimental: Instead of reinserting on movement, consider tree traversal.
-[ ] Experimental: Consider combining the broad phase with the kinematics phase.
-
-### Sleep Optimizations
-[*] Sleeping objects.
-[ ] Islands.
-[*] Shrinkwrap AABB on sleep.
-[ ] Experimental: Separate vectors for sleeping/awake objects.
-[ ] Experimental: Re-insert into BVH upon sleep.
-[ ] Experimental: Sleep drift (sleeping at terminal velocity).
-
-## Advanced Features
-[ ] Smart anti-tunelling.
-[ ] Advanced drag.
-[ ] Forcefields.
-[ ] Microscopic scale.
-[ ] Galactic scales.
-[ ] Automatic handling for big world problem.
-[ ] Changing mass dynamically.
-[ ] Changing size dynamically (stretch goal)
-
-## AI
-[ ] A*.
-[ ] A* biasing.
-[ ] A* advanced coordination.
-[ ] A* precomputed mesh.
-
-
-# Physical Object Data
-
-Gear2Engine is data-oriented, allowing it to be optimized for data transfer between JavaScript and WASM. Most volatile object data for `PhysicalObject`s is stored in vectors within the `World` object. At the start of a world step, the data is copied into each `PhysicalObject` for easy processing, then the data is copied back into the vectors for transfer back into the main application. 
-
-
+- **Emscripten not found**: Ensure you have run `source ./emsdk_env.sh` in your current terminal session.
+- **WASM loading errors**: Ensure you are serving files via a web server (HTTP/HTTPS), as browsers block WASM loading from `file://` URLs.
+- **Build failures**: Try `npm run clean && npm run build` to rebuild from scratch.

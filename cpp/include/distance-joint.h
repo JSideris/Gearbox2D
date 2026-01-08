@@ -17,6 +17,15 @@ public:
     Vec2 getReactionForce(float inv_dt) const override;
     float getReactionTorque(float inv_dt) const override;
 
+    void setLength(float l) override;
+    float getLength() const override;
+
+    void setLocalAnchorA(Vec2 a) override;
+    Vec2 getLocalAnchorA() const override;
+
+    void setLocalAnchorB(Vec2 b) override;
+    Vec2 getLocalAnchorB() const override;
+
 private:
     float impulse;
     Vec2 u;

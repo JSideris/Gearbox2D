@@ -1,0 +1,28 @@
+BVH Mask Biasing Performance Study Results
+==========================================
+Date: 2026-01-05
+Scenarios: 1000 objects, 10 categories (self-collide only)
+
+Scenario 1: High Density (All objects overlapping at 0,0)
+---------------------------------------------------------
+Weight 0 (SAH only):    1.12 ms (Baseline)
+Weight 5 (Aggressive):  0.09 ms (12.4x speedup)
+Weight 1 (Balanced):    0.09 ms (12.4x speedup)
+
+Scenario 2: Low Density (Objects spread randomly 0-100)
+-------------------------------------------------------
+Weight 0 (SAH only):    0.06 ms (Baseline)
+Weight 5 (Aggressive):  0.10 ms (1.6x slowdown)
+Weight 1 (Balanced):    0.05 ms (1.2x speedup)
+
+Analysis
+--------
+- Aggressive biasing (Weight 5) is fantastic for high-density "collision layers" but hurts 
+  spatially distinct objects by creating loose bounding volumes.
+- Balanced biasing (Weight 1) captures almost all the benefits of layer-clustering 
+  without the spatial penalties. It actually outperformed the baseline even in 
+  the spread scenario by reducing "noisy" branch merges between incompatible layers.
+
+Final Recommendation: Use maskWeight = 1.0f.
+
+

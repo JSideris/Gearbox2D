@@ -100,3 +100,31 @@ TEST_F(HingeJointTest, ReactionForceCalculation) {
     EXPECT_NEAR(reaction.x, 0.0f, 0.1f);
 }
 
+TEST_F(HingeJointTest, UpdateAnchorsAtRuntime) {
+    int idA = 1, idB = 2, jointId = 100;
+    
+    // Fixed object at (0, 0)
+    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    world.makeObject(idA, options);
+    
+    // Rigid body at (2, 0)
+    options.properties["x"] = 2.0f;
+    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+    world.makeObject(idB, options);
+    
+    // Hinge at (1, 0) in world space
+    world.createHingeJoint(jointId, idA, idB, 1.0f, 0.0f, -1.0f, 0.0f);
+    
+    for (int i = 0; i < 30; ++i) world.step();
+    EXPECT_NEAR(world.getObject(idB)->getX(), 2.0f, 0.05f);
+    
+    // Move anchor on B from (-1, 0) to (-2, 0)
+    // This should push B to (3, 0) in world space
+    Joint* joint = world.getJoint(jointId);
+    joint->setLocalAnchorB(Vec2(-2.0f, 0.0f));
+    EXPECT_EQ(joint->getLocalAnchorB().x, -2.0f);
+    
+    for (int i = 0; i < 60; ++i) world.step();
+    EXPECT_NEAR(world.getObject(idB)->getX(), 3.0f, 0.1f);
+}
+

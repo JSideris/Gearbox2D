@@ -73,6 +73,7 @@ export class World {
 	liveFloatData: Float32Array;
 	liveIntData: Int32Array;
 	objectCount: number;
+	stepCount: number = 0;
 	objectsById: Record<number, PhysicalObject>;
 	jointsById: Record<number, HingeJoint | DistanceJoint | SpringJoint | GearJoint>;
 	constructor(WorldConstructor){
@@ -87,6 +88,7 @@ export class World {
 		this.objectsById = {}
 		this.jointsById = {}
 		this.objectCount = 0;
+		this.stepCount = 0;
 	}
 	// getObjectByIndex(index){
 	// 	return new PhysicalObject(index, this, this.liveFloatData, this.liveIntData);
@@ -102,6 +104,7 @@ export class World {
 	}
 
 	step(){
+		this.stepCount++;
 		// console.log("STEP");
 		// this.liveFloatData[2] += 0.1;
 		return this.world.step();
@@ -419,6 +422,12 @@ export class PhysicalObject{
 	get gScale() { return this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET]; }
 	set gScale(v) { this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET] = v; }
 
+	get damping() { return this.liveFData[this.index * SIZE_F + DAMPING_OFFSET]; }
+	set damping(v) { this.liveFData[this.index * SIZE_F + DAMPING_OFFSET] = v; }
+
+	get angularDamping() { return this.liveFData[this.index * SIZE_F + ANGULAR_DAMPING_OFFSET]; }
+	set angularDamping(v) { this.liveFData[this.index * SIZE_F + ANGULAR_DAMPING_OFFSET] = v; }
+
 	get restitution() { return this.liveFData[this.index * SIZE_F + RESTITUTION_OFFSET]; }
 	set restitution(v) { this.liveFData[this.index * SIZE_F + RESTITUTION_OFFSET] = v; }
 	
@@ -511,6 +520,28 @@ export class HingeJoint {
 		if (!cppJoint) return 0;
 		return cppJoint.getReactionTorque(60.0);
 	}
+
+	get localAnchorA() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		return cppJoint.getLocalAnchorA();
+	}
+
+	set localAnchorA(v: { x: number, y: number }) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLocalAnchorA(v);
+	}
+
+	get localAnchorB() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		return cppJoint.getLocalAnchorB();
+	}
+
+	set localAnchorB(v: { x: number, y: number }) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLocalAnchorB(v);
+	}
 }
 
 export class DistanceJoint {
@@ -543,6 +574,39 @@ export class DistanceJoint {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (!cppJoint) return 0;
 		return cppJoint.getReactionTorque(60.0);
+	}
+
+	get length() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getLength();
+	}
+
+	set length(v: number) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLength(v);
+	}
+
+	get localAnchorA() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		return cppJoint.getLocalAnchorA();
+	}
+
+	set localAnchorA(v: { x: number, y: number }) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLocalAnchorA(v);
+	}
+
+	get localAnchorB() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		return cppJoint.getLocalAnchorB();
+	}
+
+	set localAnchorB(v: { x: number, y: number }) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLocalAnchorB(v);
 	}
 }
 
@@ -581,6 +645,61 @@ export class SpringJoint {
 		if (!cppJoint) return 0;
 		return cppJoint.getReactionTorque(60.0);
 	}
+
+	get length() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getLength();
+	}
+
+	set length(v: number) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLength(v);
+	}
+
+	get frequencyHz() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getFrequencyHz();
+	}
+
+	set frequencyHz(v: number) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setFrequencyHz(v);
+	}
+
+	get dampingRatio() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getDampingRatio();
+	}
+
+	set dampingRatio(v: number) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setDampingRatio(v);
+	}
+
+	get localAnchorA() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		return cppJoint.getLocalAnchorA();
+	}
+
+	set localAnchorA(v: { x: number, y: number }) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLocalAnchorA(v);
+	}
+
+	get localAnchorB() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return { x: 0, y: 0 };
+		return cppJoint.getLocalAnchorB();
+	}
+
+	set localAnchorB(v: { x: number, y: number }) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setLocalAnchorB(v);
+	}
 }
 
 export class GearJoint {
@@ -606,6 +725,17 @@ export class GearJoint {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (!cppJoint) return 0;
 		return cppJoint.getReactionTorque(60.0);
+	}
+
+	get ratio() {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (!cppJoint) return 0;
+		return cppJoint.getRatio();
+	}
+
+	set ratio(v: number) {
+		const cppJoint = this.world.world.getJoint(this.id);
+		if (cppJoint) cppJoint.setRatio(v);
 	}
 }
 

@@ -116,3 +116,59 @@ float SpringJoint::getReactionTorque(float inv_dt) const {
     return 0.0f;
 }
 
+void SpringJoint::setLength(float l) {
+    if (length != l) {
+        length = l;
+        bodyA->wakeUp();
+        bodyB->wakeUp();
+    }
+}
+
+float SpringJoint::getLength() const {
+    return length;
+}
+
+void SpringJoint::setFrequencyHz(float f) {
+    if (frequencyHz != f) {
+        frequencyHz = f;
+        bodyA->wakeUp();
+        bodyB->wakeUp();
+    }
+}
+
+float SpringJoint::getFrequencyHz() const {
+    return frequencyHz;
+}
+
+void SpringJoint::setDampingRatio(float d) {
+    if (dampingRatio != d) {
+        dampingRatio = d;
+        bodyA->wakeUp();
+        bodyB->wakeUp();
+    }
+}
+
+float SpringJoint::getDampingRatio() const {
+    return dampingRatio;
+}
+
+void SpringJoint::setLocalAnchorA(Vec2 a) {
+    localAnchorA = a;
+    bodyA->wakeUp();
+    bodyB->wakeUp();
+}
+
+Vec2 SpringJoint::getLocalAnchorA() const {
+    return localAnchorA;
+}
+
+void SpringJoint::setLocalAnchorB(Vec2 b) {
+    localAnchorB = b;
+    bodyA->wakeUp();
+    bodyB->wakeUp();
+}
+
+Vec2 SpringJoint::getLocalAnchorB() const {
+    return localAnchorB;
+}
+

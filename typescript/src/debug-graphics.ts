@@ -293,7 +293,7 @@ export class DebugGraphics {
                 this.drawSpringJoint(anchorA, anchorB);
             }
             else if (joint instanceof GearJoint) {
-                this.drawGearJoint(joint.joint1.bodyB, joint.joint2.bodyB);
+                this.drawGearJoint(joint);
             }
         }
     }
@@ -390,18 +390,19 @@ export class DebugGraphics {
         this.ctx.restore();
     }
 
-    private drawGearJoint(objA: PhysicalObject, objB: PhysicalObject) {
+    private drawGearJoint(joint: GearJoint) {
         if (!this.ctx) return;
 
-        const drawCog = (obj: PhysicalObject) => {
-            const x = obj.x * ANIMSCALE;
-            const y = obj.y * ANIMSCALE;
+        const drawCog = (hinge: HingeJoint) => {
+            const anchor = hinge.bodyB.localToWorld(hinge.localAnchorB);
+            const x = anchor.x * ANIMSCALE;
+            const y = anchor.y * ANIMSCALE;
             const r = 15; // fixed size for cog icon
             const teeth = 8;
 
             this.ctx!.save();
             this.ctx!.translate(x, y);
-            this.ctx!.rotate(obj.r);
+            this.ctx!.rotate(hinge.bodyB.r);
             this.ctx!.strokeStyle = 'rgba(255, 165, 0, 0.8)';
             this.ctx!.beginPath();
             this.ctx!.arc(0, 0, r, 0, 2 * Math.PI);
@@ -413,21 +414,23 @@ export class DebugGraphics {
             }
             this.ctx!.stroke();
             this.ctx!.restore();
+            return { x, y };
         };
 
-        drawCog(objA);
-        drawCog(objB);
+        const pos1 = drawCog(joint.joint1);
+        const pos2 = drawCog(joint.joint2);
 
         // Dotted connection line
         this.ctx.save();
         this.ctx.setLineDash([2, 4]);
         this.ctx.strokeStyle = 'rgba(255, 165, 0, 0.5)';
         this.ctx.beginPath();
-        this.ctx.moveTo(objA.x * ANIMSCALE, objA.y * ANIMSCALE);
-        this.ctx.lineTo(objB.x * ANIMSCALE, objB.y * ANIMSCALE);
+        this.ctx.moveTo(pos1.x, pos1.y);
+        this.ctx.lineTo(pos2.x, pos2.y);
         this.ctx.stroke();
         this.ctx.restore();
     }
+
 
     private animate() {
         if (!this.ctx || !this.canvas || !this.debugWorld) return;

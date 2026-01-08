@@ -102,3 +102,32 @@ TEST_F(DistanceJointTest, ReactionForce) {
     EXPECT_NEAR(reaction.y, 10.0f, 0.5f);
 }
 
+TEST_F(DistanceJointTest, SetLengthAtRuntime) {
+    int idA = 1, idB = 2, jointId = 100;
+    
+    // Fixed object at (0, 0)
+    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    world.makeObject(idA, options);
+    
+    // Rigid body at (5, 0)
+    options.properties["x"] = 5.0f;
+    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+    world.makeObject(idB, options);
+    
+    PhysicalObject* objB = world.getObject(idB);
+    
+    // Distance joint with length 5.0
+    world.createDistanceJoint(jointId, idA, idB, 0.0f, 0.0f, 0.0f, 0.0f, 5.0f);
+    
+    for (int i = 0; i < 60; ++i) world.step();
+    EXPECT_NEAR(objB->getPosition().magnitude(), 5.0f, 0.01f);
+    
+    // Change length to 3.0
+    Joint* joint = world.getJoint(jointId);
+    joint->setLength(3.0f);
+    EXPECT_EQ(joint->getLength(), 3.0f);
+    
+    for (int i = 0; i < 60; ++i) world.step();
+    EXPECT_NEAR(objB->getPosition().magnitude(), 3.0f, 0.05f);
+}
+

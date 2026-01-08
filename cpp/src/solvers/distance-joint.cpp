@@ -88,3 +88,35 @@ float DistanceJoint::getReactionTorque(float inv_dt) const {
     return 0.0f;
 }
 
+void DistanceJoint::setLength(float l) {
+    if (length != l) {
+        length = l;
+        bodyA->wakeUp();
+        bodyB->wakeUp();
+    }
+}
+
+float DistanceJoint::getLength() const {
+    return length;
+}
+
+void DistanceJoint::setLocalAnchorA(Vec2 a) {
+    localAnchorA = a;
+    bodyA->wakeUp();
+    bodyB->wakeUp();
+}
+
+Vec2 DistanceJoint::getLocalAnchorA() const {
+    return localAnchorA;
+}
+
+void DistanceJoint::setLocalAnchorB(Vec2 b) {
+    localAnchorB = b;
+    bodyA->wakeUp();
+    bodyB->wakeUp();
+}
+
+Vec2 DistanceJoint::getLocalAnchorB() const {
+    return localAnchorB;
+}
+

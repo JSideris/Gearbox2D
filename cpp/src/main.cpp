@@ -40,7 +40,19 @@ EMSCRIPTEN_BINDINGS(world) {
 
     emscripten::class_<Joint>("Joint")
         .function("getReactionForce", &Joint::getReactionForce)
-        .function("getReactionTorque", &Joint::getReactionTorque);
+        .function("getReactionTorque", &Joint::getReactionTorque)
+        .function("setLength", &Joint::setLength)
+        .function("getLength", &Joint::getLength)
+        .function("setFrequencyHz", &Joint::setFrequencyHz)
+        .function("getFrequencyHz", &Joint::getFrequencyHz)
+        .function("setDampingRatio", &Joint::setDampingRatio)
+        .function("getDampingRatio", &Joint::getDampingRatio)
+        .function("setRatio", &Joint::setRatio)
+        .function("getRatio", &Joint::getRatio)
+        .function("setLocalAnchorA", &Joint::setLocalAnchorA)
+        .function("getLocalAnchorA", &Joint::getLocalAnchorA)
+        .function("setLocalAnchorB", &Joint::setLocalAnchorB)
+        .function("getLocalAnchorB", &Joint::getLocalAnchorB);
 
     emscripten::class_<HingeJoint, emscripten::base<Joint>>("HingeJoint");
     emscripten::class_<DistanceJoint, emscripten::base<Joint>>("DistanceJoint");

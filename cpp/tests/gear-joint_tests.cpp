@@ -92,3 +92,50 @@ TEST_F(GearJointTest, GearCleanup) {
     EXPECT_EQ(world.getJoint(gearId), nullptr);
 }
 
+TEST_F(GearJointTest, UpdateRatioAtRuntime) {
+    int idStatic = 1, id1 = 2, id2 = 3;
+    int hinge1Id = 101, hinge2Id = 102, gearId = 200;
+    
+    // Static body to anchor both hinges
+    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    world.makeObject(idStatic, options);
+    
+    // First gear body
+    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+    options.properties["x"] = 1.0f;
+    world.makeObject(id1, options);
+    
+    // Second gear body
+    options.properties["x"] = -1.0f;
+    world.makeObject(id2, options);
+    
+    // Hinge for first gear
+    world.createHingeJoint(hinge1Id, idStatic, id1, 1.0f, 0.0f, 0.0f, 0.0f);
+    
+    // Hinge for second gear
+    world.createHingeJoint(hinge2Id, idStatic, id2, -1.0f, 0.0f, 0.0f, 0.0f);
+    
+    // Gear joint with initial ratio 1.0
+    world.createGearJoint(gearId, hinge1Id, hinge2Id, 1.0f);
+    
+    Joint* joint = world.getJoint(gearId);
+    EXPECT_EQ(joint->getRatio(), 1.0f);
+    
+    // Update ratio to 0.5
+    joint->setRatio(0.5f);
+    EXPECT_EQ(joint->getRatio(), 0.5f);
+    
+    PhysicalObject* obj1 = world.getObject(id1);
+    PhysicalObject* obj2 = world.getObject(id2);
+    
+    // Rotate first gear
+    obj1->setAngularVelocity(1.0f);
+    
+    for (int i = 0; i < 60; ++i) {
+        world.step();
+    }
+    
+    // w2 should be approximately -0.5 * w1
+    EXPECT_NEAR(obj2->getAngularVelocity(), -0.5f * obj1->getAngularVelocity(), 0.1f);
+}
+

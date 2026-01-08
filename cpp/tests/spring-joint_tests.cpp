@@ -98,3 +98,30 @@ TEST_F(SpringJointTest, Damping) {
     EXPECT_LT(velMoreDamped, velDamped);
 }
 
+TEST_F(SpringJointTest, UpdateParametersAtRuntime) {
+    world.makeObject(1, createOptions(0, 0, 0.0f));
+    world.getObject(1)->type = ObjectType::FIXED_OBJECT;
+    world.makeObject(2, createOptions(5, 0, 1.0f));
+    
+    world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 5.0f, 5.0f, 0.7f);
+    Joint* joint = world.getJoint(1);
+    
+    // Initial state: at rest
+    for (int i = 0; i < 60; ++i) world.step();
+    EXPECT_NEAR(world.getObject(2)->getX(), 5.0f, 0.05f);
+    
+    // Change length
+    joint->setLength(3.0f);
+    EXPECT_EQ(joint->getLength(), 3.0f);
+    for (int i = 0; i < 120; ++i) world.step();
+    EXPECT_NEAR(world.getObject(2)->getX(), 3.0f, 0.1f);
+    
+    // Change frequency
+    joint->setFrequencyHz(2.0f);
+    EXPECT_EQ(joint->getFrequencyHz(), 2.0f);
+    
+    // Change damping
+    joint->setDampingRatio(0.1f);
+    EXPECT_EQ(joint->getDampingRatio(), 0.1f);
+}
+

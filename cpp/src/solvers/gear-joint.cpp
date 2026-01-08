@@ -84,6 +84,25 @@ float GearJoint::getReactionTorque(float inv_dt) const {
     return impulse * inv_dt;
 }
 
+void GearJoint::setRatio(float r) {
+    if (ratio != r) {
+        float angle1 = joint1->bodyB->getRotation() - joint1->bodyA->getRotation();
+        float angle2 = joint2->bodyB->getRotation() - joint2->bodyA->getRotation();
+        
+        ratio = r;
+        constant = angle2 + ratio * angle1;
+        
+        joint1->bodyA->wakeUp();
+        joint1->bodyB->wakeUp();
+        joint2->bodyA->wakeUp();
+        joint2->bodyB->wakeUp();
+    }
+}
+
+float GearJoint::getRatio() const {
+    return ratio;
+}
+
 bool GearJoint::isConnectedTo(PhysicalObject* body) const {
     return joint1->bodyA == body || joint1->bodyB == body || 
            joint2->bodyA == body || joint2->bodyB == body;

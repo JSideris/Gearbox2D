@@ -63,3 +63,4 @@ TEST(BvhBiasingTest, SpatialPriorityOverMask) {
     EXPECT_TRUE(shareParent(n2_B, n3_A)) << "Spatial fit should win over mask fit at large distances";
 }
 
+

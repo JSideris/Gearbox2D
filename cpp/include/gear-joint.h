@@ -18,6 +18,9 @@ public:
     Vec2 getReactionForce(float inv_dt) const override;
     float getReactionTorque(float inv_dt) const override;
 
+    void setRatio(float r) override;
+    float getRatio() const override;
+
     bool isConnectedTo(PhysicalObject* body) const override;
 
 private:

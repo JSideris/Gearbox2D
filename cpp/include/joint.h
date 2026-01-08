@@ -20,6 +20,24 @@ public:
     virtual Vec2 getReactionForce(float inv_dt) const = 0;
     virtual float getReactionTorque(float inv_dt) const = 0;
 
+    virtual void setLength(float l) {}
+    virtual float getLength() const { return 0.0f; }
+
+    virtual void setFrequencyHz(float f) {}
+    virtual float getFrequencyHz() const { return 0.0f; }
+
+    virtual void setDampingRatio(float d) {}
+    virtual float getDampingRatio() const { return 0.0f; }
+
+    virtual void setRatio(float r) {}
+    virtual float getRatio() const { return 0.0f; }
+
+    virtual void setLocalAnchorA(Vec2 a) {}
+    virtual Vec2 getLocalAnchorA() const { return Vec2(0, 0); }
+
+    virtual void setLocalAnchorB(Vec2 b) {}
+    virtual Vec2 getLocalAnchorB() const { return Vec2(0, 0); }
+
     virtual bool isConnectedTo(PhysicalObject* body) const {
         return bodyA == body || bodyB == body;
     }

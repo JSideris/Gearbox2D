@@ -104,3 +104,23 @@ float HingeJoint::getReactionTorque(float inv_dt) const {
     return 0.0f;
 }
 
+void HingeJoint::setLocalAnchorA(Vec2 a) {
+    localAnchorA = a;
+    bodyA->wakeUp();
+    bodyB->wakeUp();
+}
+
+Vec2 HingeJoint::getLocalAnchorA() const {
+    return localAnchorA;
+}
+
+void HingeJoint::setLocalAnchorB(Vec2 b) {
+    localAnchorB = b;
+    bodyA->wakeUp();
+    bodyB->wakeUp();
+}
+
+Vec2 HingeJoint::getLocalAnchorB() const {
+    return localAnchorB;
+}
+
