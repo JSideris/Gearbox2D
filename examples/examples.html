@@ -442,9 +442,9 @@ gb2d.init().then(()=>{
         function loadExampleFromHash() {
             let hash = window.location.hash.substring(1);
             
-            // Default to "hello-world" if no hash specified
+            // Default to "sandbox" if no hash specified
             if (!hash) {
-                hash = "hello-world";
+                hash = "sandbox";
             }
             
             // Check if the hash is directly in our map
