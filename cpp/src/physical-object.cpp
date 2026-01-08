@@ -92,6 +92,16 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(0.0f); // nia
 }
 
+PhysicalObject::~PhysicalObject() {
+    // Clean up contacts to avoid dangling pointers
+    for (auto* contact : contacts) {
+        // Remove 'this' from the other object's contact list
+        auto it = std::remove(contact->contacts.begin(), contact->contacts.end(), this);
+        contact->contacts.erase(it, contact->contacts.end());
+    }
+    contacts.clear();
+}
+
 // Getters and Setters
 float PhysicalObject::getX() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_X]; }
 void PhysicalObject::setX(float x) { 

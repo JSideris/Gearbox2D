@@ -62,6 +62,7 @@ public:
     bool wantsEvents = false;
 
     PhysicalObject(World& world, int id, emscripten_val options);
+    ~PhysicalObject();
 
 
     float getX() const;
