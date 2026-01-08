@@ -1,4 +1,4 @@
-import Example from '../example.ts';
+import Example from '../example.js';
 import gb2d from 'gb2d';
 
 let nextId = 1;
@@ -23,7 +23,7 @@ export const distanceExamples = [
                 shape: gb2d.shapes.CIRCLE,
                 radius: 0.5,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#ff0000"
+                color: "#ff4444"
             });
 
             // The rotating drum (structure only)

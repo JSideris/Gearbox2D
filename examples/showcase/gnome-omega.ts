@@ -1,4 +1,4 @@
-import Example from '../example.ts';
+import Example from '../example.js';
 import gb2d from 'gb2d';
 
 let nextId = 1;
@@ -42,7 +42,7 @@ export const gnomeOmegaExample = new Example({
             shape: gb2d.shapes.CIRCLE,
             radius: 0.15,
             type: gb2d.bodyTypes.FIXED_OBJECT,
-            color: "#333",
+            color: "#888",
             categoryBits: CAT_FIXED,
             maskBits: 0 // Collide with nothing
         });
@@ -53,7 +53,7 @@ export const gnomeOmegaExample = new Example({
             shape: gb2d.shapes.CIRCLE,
             radius: 0.1,
             type: gb2d.bodyTypes.FIXED_OBJECT,
-            color: "#f00",
+            color: "#ff4444",
             categoryBits: CAT_FIXED,
             maskBits: 0 // Collide with nothing
         });
@@ -64,7 +64,7 @@ export const gnomeOmegaExample = new Example({
             shape: gb2d.shapes.CIRCLE,
             radius: 0.8,
             mass: 50.0, // Increased mass for stability
-            color: "#666",
+            color: "#aaa",
             categoryBits: CAT_HUB,
             maskBits: 0, // Collide with nothing
             restitution: 0
@@ -100,7 +100,7 @@ export const gnomeOmegaExample = new Example({
                     shape: gb2d.shapes.BOX,
                     width: wallWidth, height: wallHeight,
                     mass: 1.0,
-                    color: "#444",
+                    color: "#bbb",
                     categoryBits: CAT_CYLINDER,
                     maskBits: CAT_PISTON, // Only collide with pistons
                     restitution: 0,
@@ -131,7 +131,7 @@ export const gnomeOmegaExample = new Example({
                 shape: gb2d.shapes.BOX,
                 width: 0.7, height: 1.0, // Piston width (0.7) is now less than inner gap (0.8)
                 mass: 0.5,
-                color: "#999",
+                color: "#ddd",
                 categoryBits: CAT_PISTON,
                 maskBits: CAT_CYLINDER, // Only collide with cylinder walls
                 restitution: 0,
@@ -150,7 +150,7 @@ export const gnomeOmegaExample = new Example({
                 shape: gb2d.shapes.BOX,
                 width: 0.15, height: rodLength,
                 mass: 0.2,
-                color: "#bbb",
+                color: "#fff",
                 categoryBits: CAT_ROD,
                 maskBits: 0, // Rods are non-colliding
                 restitution: 0

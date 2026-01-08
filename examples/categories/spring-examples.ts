@@ -1,4 +1,4 @@
-import Example from '../example.ts';
+import Example from '../example.js';
 import gb2d from 'gb2d';
 
 let nextId = 1;
@@ -26,7 +26,7 @@ export const springExamples = [
                 shape: gb2d.shapes.CIRCLE,
                 radius: innerRadius,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#555555",
+                color: "#888888",
                 sFriction: 1.0,
                 kFriction: 1.0
             });
@@ -100,7 +100,7 @@ export const springExamples = [
                 shape: gb2d.shapes.CIRCLE,
                 radius: axelRadius,
                 mass: 2.0, // Heavier axel for more stability
-                color: "#ff5555",
+                color: "#ff8888",
                 sFriction: 0.9,
                 kFriction: 0.9
             });
@@ -120,7 +120,7 @@ export const springExamples = [
                     shape: gb2d.shapes.CIRCLE,
                     radius: 0.2,
                     mass: 0.5,
-                    color: "#5555ff",
+                    color: "#8888ff",
                     sFriction: 0.9,
                     kFriction: 0.9
                 });
@@ -159,7 +159,7 @@ export const springExamples = [
                 width: 15,
                 height: 2,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#888888",
+                color: "#aaaaaa",
                 sFriction: 0.9,
                 kFriction: 0.9
             });
@@ -172,7 +172,7 @@ export const springExamples = [
                 width: 2.0,
                 height: 10,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#888888"
+                color: "#aaaaaa"
             });
             world.makeObject(nextId++, {
                 x: 13.5,
@@ -181,7 +181,7 @@ export const springExamples = [
                 width: 2.0,
                 height: 10,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#888888"
+                color: "#aaaaaa"
             });
 
             world.setGravity(0, 9.81);

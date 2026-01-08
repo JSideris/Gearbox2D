@@ -1,51 +1,39 @@
+import { World } from 'gb2d';
 
+export type OnInitCallback = (world: World) => void;
+export type OnTickCallback = (world: World, dt: number) => void;
 
-export default class Example{
-	/**
-	 * @param {object} options - Constructor options.
-	 * @param {OnInitCallback} [options.onInit] - Optional. Called when the example is initialized.
-	 * @param {OnTickCallback} [options.onTick] - Optional. Called on each simulation tick.
-	 * @param {string} options.description - A description of the example.
-	 * @param {string} options.name - The display name of the example.
-	 * @param {string} options.key - A unique key for the example (e.g., for URLs).
-	 * @param {string[]} [options.globalLines] - Optional. Lines of code to be executed in the global scope for this example.
-	 */
-	constructor({
-		onInit, 
-		onTick, 
-		description, 
-		name, 
-		key, 
-		globalLines
-	}){
-		/** @type {OnInitCallback|undefined} */
-		this.onInit = onInit;
-		/** @type {OnTickCallback|undefined} */
-		this.onTick = onTick;
-		/** @type {string} */
-		this.description = description;
-		/** @type {string} */
-		this.name = name;
-		/** @type {string} */
-		this.key = key;
-		/** @type {string[]} */
-		this.globalLines = globalLines || [];
-	}
+export interface ExampleOptions {
+    onInit?: OnInitCallback;
+    onTick?: OnTickCallback;
+    description: string;
+    name: string;
+    key: string;
+    globalLines?: string[];
+}
 
-	/**
-	 * @function
-	 * @param {gb2d.World} world
-	 */
-	init(world){
-		if(this.onInit) this.onInit(world);
-	}
+export default class Example {
+    public onInit?: OnInitCallback;
+    public onTick?: OnTickCallback;
+    public description: string;
+    public name: string;
+    public key: string;
+    public globalLines: string[];
 
-	/**
-	 * @function
-	 * @param {gb2d.World} world
-	 * @param {number} dt
-	 */
-	tick(world, dt){
-		if(this.onTick) this.onTick(world, dt);
-	}
+    constructor(options: ExampleOptions) {
+        this.onInit = options.onInit;
+        this.onTick = options.onTick;
+        this.description = options.description;
+        this.name = options.name;
+        this.key = options.key;
+        this.globalLines = options.globalLines || [];
+    }
+
+    init(world: World): void {
+        this.onInit?.(world);
+    }
+
+    tick(world: World, dt: number): void {
+        this.onTick?.(world, dt);
+    }
 }

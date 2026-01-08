@@ -1,4 +1,4 @@
-import Example from '../example.ts';
+import Example from '../example.js';
 import gb2d from 'gb2d';
 
 let nextId = 1;
@@ -436,7 +436,7 @@ export const generalExamples = [
                     x: 4.5,
                     y: 2.5 * id - 1.2,
                     fontSize: '20px Arial',
-                    color: 'blue',
+                    color: '#00f2ff',
                     position: 'above'
                 });
             }
@@ -459,7 +459,7 @@ export const generalExamples = [
                 x: 4.5,
                 y: 9.0,
                 fontSize: '20px Arial',
-                color: 'blue',
+                color: '#00f2ff',
                 position: 'above'
             });
 
@@ -603,9 +603,9 @@ export const generalExamples = [
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x1,
                 maskBits: 0x1 | 0x4,
-                color: 'blue'
+                color: '#00f2ff'
             });
-            gb2d.debug.addLabel({ text: "Collides with Blue & Green", objectId: bluePlatId, color: 'blue', position: 'below' });
+            gb2d.debug.addLabel({ text: "Collides with Blue & Green", objectId: bluePlatId, color: '#00f2ff', position: 'below' });
 
             // Red Platform (Collides with category 2 and 4)
             const redPlatId = nextId++;
@@ -616,9 +616,9 @@ export const generalExamples = [
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x2,
                 maskBits: 0x2 | 0x4,
-                color: 'red'
+                color: '#ff4444'
             });
-            gb2d.debug.addLabel({ text: "Collides with Red & Green", objectId: redPlatId, color: 'red', position: 'below' });
+            gb2d.debug.addLabel({ text: "Collides with Red & Green", objectId: redPlatId, color: '#ff4444', position: 'below' });
 
             // Universal Platform (Collides with everything: 0x1 | 0x2 | 0x4)
             const universalPlatId = nextId++;
@@ -629,9 +629,9 @@ export const generalExamples = [
                 type: gb2d.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x4,
                 maskBits: 0x7, // 1 | 2 | 4
-                color: 'green'
+                color: '#44ff44'
             });
-            gb2d.debug.addLabel({ text: "Collides with All", objectId: universalPlatId, color: 'green', position: 'below' });
+            gb2d.debug.addLabel({ text: "Collides with All", objectId: universalPlatId, color: '#44ff44', position: 'below' });
         },
         onTick: (world, dt)=>{
             if(Math.random() < 0.05){
@@ -640,11 +640,11 @@ export const generalExamples = [
                 let color, cat, mask;
                 
                 if(type === 0) { // Blue
-                    color = 'blue'; cat = 0x1; mask = 0x1 | 0x4;
+                    color = '#00f2ff'; cat = 0x1; mask = 0x1 | 0x4;
                 } else if(type === 1) { // Red
-                    color = 'red'; cat = 0x2; mask = 0x2 | 0x4;
+                    color = '#ff4444'; cat = 0x2; mask = 0x2 | 0x4;
                 } else { // Green
-                    color = 'green'; cat = 0x4; mask = 0x7;
+                    color = '#44ff44'; cat = 0x4; mask = 0x7;
                 }
 
                 const obj = world.makeObject(id, {

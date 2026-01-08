@@ -35,7 +35,7 @@ export class DebugGraphics {
 
     private labels: DebugLabel[] = [];
     defaultLabelFontSize: string = '12px Arial';
-    defaultLabelColor: string = 'black';
+    defaultLabelColor: string = '#f1f5f9';
     defaultLabelOffset: number = 5;
 
     constructor() {}
@@ -90,7 +90,7 @@ export class DebugGraphics {
             this.ctx.fillStyle = 'rgba(100,255,100,0.1)';
         }
         else {
-            this.ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         }
 
         this.ctx.beginPath();
@@ -102,7 +102,7 @@ export class DebugGraphics {
     private drawShape(obj: PhysicalObject) {
         if (!this.ctx) return;
 
-        this.ctx.strokeStyle = obj.color || 'black';
+        this.ctx.strokeStyle = obj.color || '#f1f5f9';
         this.ctx.lineWidth = 2;
         let shape = obj.shape;
 
@@ -175,7 +175,7 @@ export class DebugGraphics {
                 magSq = mag * mag;
             }
 
-            this.ctx.strokeStyle = 'red';
+            this.ctx.strokeStyle = '#ff4444';
             this.ctx.beginPath();
 
             this.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
@@ -195,7 +195,7 @@ export class DebugGraphics {
                 this.ctx.lineTo(-arrowSize, -arrowSize / 2);
                 this.ctx.lineTo(-arrowSize, arrowSize / 2);
                 this.ctx.closePath();
-                this.ctx.fillStyle = 'red';
+                this.ctx.fillStyle = '#ff4444';
                 this.ctx.fill();
                 this.ctx.restore();
             }
@@ -214,7 +214,7 @@ export class DebugGraphics {
                 magSq = mag * mag;
             }
 
-            this.ctx.strokeStyle = 'blue';
+            this.ctx.strokeStyle = '#4488ff';
             this.ctx.beginPath();
             this.ctx.moveTo(obj.x * ANIMSCALE, obj.y * ANIMSCALE);
             this.ctx.lineTo(obj.x * ANIMSCALE + ix * 30.0, obj.y * ANIMSCALE + iy * 30.0);
@@ -233,14 +233,14 @@ export class DebugGraphics {
                 this.ctx.lineTo(-arrowSize, -arrowSize / 2);
                 this.ctx.lineTo(-arrowSize, arrowSize / 2);
                 this.ctx.closePath();
-                this.ctx.fillStyle = 'blue';
+                this.ctx.fillStyle = '#4488ff';
                 this.ctx.fill();
                 this.ctx.restore();
             }
         }
 
         if (obj.angularImpulse !== 0) {
-            this.ctx.strokeStyle = 'purple';
+            this.ctx.strokeStyle = '#a855f7';
             this.ctx.beginPath();
             let radius = 25;
             if (obj.shape === SHAPES.CIRCLE) radius = obj.radius * ANIMSCALE + 5;
@@ -268,7 +268,7 @@ export class DebugGraphics {
             this.ctx.lineTo(-arrowSize, -arrowSize);
             this.ctx.lineTo(arrowSize, -arrowSize);
             this.ctx.closePath();
-            this.ctx.fillStyle = 'purple';
+            this.ctx.fillStyle = '#a855f7';
             this.ctx.fill();
             this.ctx.restore();
         }
@@ -321,7 +321,7 @@ export class DebugGraphics {
         // Draw the pivot point
         this.ctx.beginPath();
         this.ctx.arc(anchorA.x * ANIMSCALE, anchorA.y * ANIMSCALE, 4, 0, 2 * Math.PI);
-        this.ctx.strokeStyle = 'black';
+        this.ctx.strokeStyle = '#fff';
         this.ctx.fillStyle = '#FFD700'; // Gold
         this.ctx.fill();
         this.ctx.stroke();

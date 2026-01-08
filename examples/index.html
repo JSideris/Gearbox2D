@@ -5,72 +5,208 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="GearBox2D - High-Speed 2D Physics Engine">
     <title>GearBox2D - High-Speed 2D Physics Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-surface: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --border: #1e293b;
+            --accent-cyan: #00f2ff;
+            --accent-purple: #a855f7;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --shadow-glow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f9f9f9;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            overflow-x: hidden;
         }
+
         header {
-            background-color: #282c34;
+            background: radial-gradient(circle at top right, rgba(168, 85, 247, 0.15), transparent),
+                        radial-gradient(circle at bottom left, rgba(0, 242, 255, 0.15), transparent),
+                        var(--bg-deep);
             color: white;
-            padding: 20px;
+            padding: 100px 20px;
             text-align: center;
+            position: relative;
+            border-bottom: 1px solid var(--border);
         }
+
         h1 {
             margin: 0;
-            font-size: 3em;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4.5em;
+            font-weight: 900;
+            letter-spacing: -2px;
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
         }
+
         h2 {
-            color: #282c34;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
         }
+
+        p {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
         .cta-buttons {
-            margin-top: 20px;
+            margin-top: 40px;
         }
+
         .cta-buttons a {
-            background-color: #255461;
+            display: inline-block;
+            background-color: transparent;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 28px;
             margin: 10px;
             text-decoration: none;
-            border-radius: 5px;
+            border-radius: 4px;
             font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+            border: 1px solid var(--accent-cyan);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
+
         .cta-buttons a:hover {
-            background-color: #21a1f1;
+            background-color: var(--accent-cyan);
+            color: var(--bg-deep);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
         }
+
+        .cta-buttons a.secondary {
+            border-color: var(--accent-purple);
+        }
+
+        .cta-buttons a.secondary:hover {
+            background-color: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: white;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+        }
+
         section {
-            padding: 40px 20px;
+            padding: 80px 20px;
             max-width: 1200px;
             margin: 0 auto;
         }
+
         .features {
-            display: flex;
-            justify-content: space-around;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
         }
+
         .features div {
-            flex: 1;
-            margin: 10px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
         }
+
+        .features div:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-cyan);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .features h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-cyan);
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+
         .demo {
             text-align: center;
+            background: linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-surface) 100%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
         }
+
+        canvas {
+            background-color: #000;
+            border: 1px solid var(--accent-cyan) !important;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+            max-width: 100%;
+        }
+
         .footer {
-            background-color: #282c34;
-            color: white;
-            padding: 20px;
+            background-color: var(--bg-deep);
+            color: var(--text-muted);
+            padding: 60px 20px;
             text-align: center;
+            border-top: 1px solid var(--border);
         }
+
+        .footer a {
+            color: var(--text-main);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            color: var(--accent-cyan);
+        }
+
         .code-snippet {
-            background-color: #f0f0f0;
-            padding: 20px;
-            border-radius: 5px;
-            font-family: monospace;
+            background-color: #0d1117;
+            padding: 30px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            border: 1px solid var(--border);
+            text-align: left;
+            max-width: 600px;
+            margin: 40px auto;
+            position: relative;
+        }
+
+        .code-snippet::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+        }
+
+        pre {
+            margin: 0;
+            color: #c9d1d9;
+        }
+
+        .keyword { color: #ff7b72; }
+        .function { color: #d2a8ff; }
+        .string { color: #a5d6ff; }
+        .comment { color: #8b949e; }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            header { padding: 60px 20px; }
         }
     </style>
 </head>
@@ -81,78 +217,78 @@
     <p>High-Speed 2D Physics Engine powered by WebAssembly</p>
     <div class="cta-buttons">
         <a href="#get-started">Get Started</a>
-        <a href="#examples">View Examples</a>
+        <a href="examples.html" class="secondary">View Examples</a>
         <a href="https://github.com/your-repo-url">GitHub Repo</a>
     </div>
 </header>
 
 <section id="features">
-    <h2>Features</h2>
+    <h2>Advanced Capabilities</h2>
     <div class="features">
         <div>
-            <h3>Blazing Fast Performance</h3>
-            <p>Written in C++ and compiled to WebAssembly, GearBox2D delivers incredible speed with its data-oriented design and shared memory model.</p>
+            <h3>Hyper-Performance</h3>
+            <p>C++ core compiled to WebAssembly. Data-oriented architecture for massive object counts and minimal cache misses.</p>
         </div>
         <div>
-            <h3>Ideal for High-Frequency Updates</h3>
-            <p>Perfect for simulations and applications that require frequent updates, like multiplayer synchronization with remote hosts.</p>
+            <h3>Network Ready</h3>
+            <p>Predictive simulation design makes it perfect for multiplayer rollback and high-frequency state synchronization.</p>
         </div>
         <div>
-            <h3>Ease of Use</h3>
-            <p>GearBox2D is easy to integrate and versatile, making it a great tool for developers of all skill levels.</p>
+            <h3>Modern API</h3>
+            <p>Full TypeScript support with an intuitive interface. Simple to integrate, powerful to extend.</p>
         </div>
         <div>
-            <h3>Work in Progress</h3>
-            <p>GearBox2D is currently in early alpha with limited functionality. Join the community and help shape its future!</p>
+            <h3>Early Access</h3>
+            <p>Under active development. Join the alpha to help define the next generation of web-based physics.</p>
         </div>
     </div>
 </section>
 
 <section id="demo" class="demo">
-    <h2>See GearBox2D in Action</h2>
-    <p>Check out the live demo below:</p>
+    <h2>Live HUD Preview</h2>
+    <p>Real-time physics calculation at sub-millisecond speeds.</p>
     <canvas id="gearbox2d-demo" width="600" height="400" style="border:1px solid #000000;"></canvas>
-    <p><a href="examples.html">More Examples</a></p>
+    <p><a href="examples.html" style="color: var(--accent-cyan); font-family: Orbitron; text-decoration: none; margin-top: 20px; display: inline-block;">EXPLORE FULL SUITE <i class="fas fa-arrow-right"></i></a></p>
 </section>
 
 <section id="get-started">
-    <h2>Getting Started with GearBox2D</h2>
-    <p>Here’s a simple example of how to set up GearBox2D:</p>
+    <h2>Initialize System</h2>
+    <p>Ready to build? The integration is seamless.</p>
     <div class="code-snippet">
-        <pre>
-import { GearBox2D } from 'gearbox2d';
+        <pre><span class="keyword">import</span> { GearBox2D } <span class="keyword">from</span> <span class="string">'gearbox2d'</span>;
 
-const engine = new GearBox2D();
-engine.initialize();
-// Simple simulation setup...
-        </pre>
+<span class="keyword">const</span> engine = <span class="keyword">new</span> <span class="function">GearBox2D</span>();
+<span class="keyword">await</span> engine.<span class="function">initialize</span>();
+
+<span class="comment">// Define your universe</span>
+<span class="keyword">const</span> world = engine.<span class="function">createWorld</span>();</pre>
     </div>
-    <div class="cta-buttons">
-        <a href="https://npmjs.com/package/gearbox2d">See Full Documentation</a>
+    <div class="cta-buttons" style="text-align: center;">
+        <a href="https://npmjs.com/package/gearbox2d" class="secondary">Documentation</a>
         <a href="#">npm install gearbox2d</a>
     </div>
 </section>
 
 <section id="performance">
-    <h2>Why GearBox2D Excels in Performance</h2>
-    <p>Our data-oriented design and C++ to WebAssembly compilation allow GearBox2D to handle more objects and frequent updates with ease.</p>
-    <p>(Performance benchmarks comparison table to be added)</p>
+    <h2>Engine Specs</h2>
+    <p>Optimized for modern browser environments with SharedArrayBuffer and multi-threaded potential.</p>
+    <p style="font-style: italic;">(Benchmarking module loading... comparison data pending next release)</p>
 </section>
 
 <section id="contribute">
-    <h2>Join the Development</h2>
-    <p>GearBox2D is in early alpha. You can help shape its future by contributing on GitHub.</p>
+    <h2>Open Source Core</h2>
+    <p>GearBox2D is community-driven. Explore the source and contribute to the physics revolution.</p>
     <div class="cta-buttons">
-        <a href="https://github.com/your-repo-url">Contribute on GitHub</a>
+        <a href="https://github.com/your-repo-url">Repository</a>
     </div>
 </section>
 
 <footer class="footer">
-    <p>&copy; 2024 GearBox2D. All rights reserved.</p>
+    <p>&copy; 2024 GearBox2D Protocol. All rights reserved.</p>
     <p>
-        <a href="#features" style="color:white;">Features</a> |
-        <a href="https://github.com/your-repo-url" style="color:white;">GitHub Repo</a> |
-        <a href="https://npmjs.com/package/gearbox2d" style="color:white;">npm Package</a>
+        <a href="#features">Features</a> |
+        <a href="https://github.com/your-repo-url">GitHub</a> |
+        <a href="https://npmjs.com/package/gearbox2d">npm</a>
     </p>
 </footer>
 

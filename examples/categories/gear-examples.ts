@@ -1,4 +1,4 @@
-import Example from '../example.ts';
+import Example from '../example.js';
 import gb2d from 'gb2d';
 
 let nextId = 1;
@@ -19,7 +19,7 @@ export const gearExamples = [
                 shape: gb2d.shapes.CIRCLE,
                 radius: 0.1,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#333",
+                color: "#888",
                 maskBits: 0 // Don't collide with gears
             });
 
@@ -79,7 +79,7 @@ export const gearExamples = [
                 width: 6.2,
                 height: 0.2,
                 type: gb2d.bodyTypes.FIXED_OBJECT,
-                color: "#333",
+                color: "#888",
                 maskBits: 0 // Don't collide with gears
             });
 
