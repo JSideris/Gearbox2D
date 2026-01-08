@@ -42,14 +42,7 @@
 	[ ] Convex-Convex.
 	[ ] Concave-AABB.
 	[ ] Concave-Box.
-	[ ] Concave-Capsule.
-	[ ] Concave-Circle.
-	[ ] Concave-Convex.
-	[ ] Ellipse-AABB.
-	[ ] Ellipse-Box.
-	[ ] Ellipse-Capsule.
-	[ ] Ellipse-Circle.
-	[ ] Ellipse-Concave.
+	[ ] Concave-Capsule. 
 	[ ] Ellipse-Convex.
 	[ ] Ellipse-Ellipse.
 	[ ] Line-AABB.
@@ -162,6 +155,7 @@
 [ ] Automatic handling for big world problem.
 [ ] Changing mass dynamically.
 [ ] Changing size dynamically (stretch goal)
+[ ] Snap nodes for complex objects (experimental).
 
 ## AI
 [ ] A*.
