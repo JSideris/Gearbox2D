@@ -1,5 +1,5 @@
-import Example from './example.js';
-import gb2d from '../dist/js/gb2d.js';
+import Example from '../example.js';
+import gb2d from '../../dist/js/gb2d.js';
 
 let impulseTimer = 0;
 let nextId = 1;

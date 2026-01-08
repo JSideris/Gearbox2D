@@ -80,14 +80,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
         import gb2d from '../dist/js/gb2d.js';
-        import { generalExamples } from './general-examples.js';
-        import { constraintsExamples } from './constraints-examples.js';
-        import { distanceExamples } from './distance-examples.js';
-        import { springExamples } from './spring-examples.js';
-        import { optimizationExamples } from './optimization-examples.js';
-        import { loadTestExamples } from './load-test-examples.js';
-        import { issuesExamples } from './issues-examples.js';
-        import { showcaseExamples } from './showcase-examples.js';
+        import { generalExamples } from './categories/general-examples.js';
+        import { hingeExamples } from './categories/hinge-examples.js';
+        import { gearExamples } from './categories/gear-examples.js';
+        import { distanceExamples } from './categories/distance-examples.js';
+        import { springExamples } from './categories/spring-examples.js';
+        import { optimizationExamples } from './categories/optimization-examples.js';
+        import { loadTestExamples } from './categories/load-test-examples.js';
+        import { issuesExamples } from './categories/issues-examples.js';
+        import { showcaseExamples } from './categories/showcase-examples.js';
         
 
         /**
@@ -95,17 +96,21 @@
          * I'm also using this page to plan out which examples to add. Don't remove those comments!
          */
         const examples = [
-        { // General
-		name: "General",
-		examples: generalExamples
-            },
             { // Showcase
                 name: "Showcase",
                 examples: showcaseExamples
             },
-            { // Constraints
-                name: "Constraints",
-                examples: constraintsExamples
+            { // General
+                name: "General",
+                examples: generalExamples
+            },
+            { // Hinge Constraints
+                name: "Hinge Constraints",
+                examples: hingeExamples
+            },
+            { // Gear Constraints
+                name: "Gear Constraints",
+                examples: gearExamples
             },
             { // Distance Constraints
                 name: "Distance Constraints",
@@ -115,64 +120,14 @@
                 name: "Spring Constraints",
                 examples: springExamples
             },
-            // { // Advanced
-            // 	name: "Advanced",
-            // 	examples: [
-            // 		// Composite
-            // 		// Interactive
-            // 		// Distance Constraint
-            // 		// Spring Constraint
-            // 		// Hinge Constraint
-            // 		// Collision Events
-            // 		// Breakable Constraint
-            // 		// Masking
-            // 	]
-            // },
-
-            // { // Capabilities
-            // 	name: "Capabilities",
-            // 	examples: [
-            // 		// True drag
-            // 		// Buoyancy
-            // 		// Teleporting
-            // 		// Resize
-            // 		// Dynamic Object
-            // 		// Anti-tunneling
-            // 		// Collision Filtering
-            // 		// Multiple worlds.
-            // 		// Collision groups.
-            // 		// Substeps
-            // 	]
-            // },
-
             { // Optimizations
                 name: "Optimizations",
                 examples: optimizationExamples
             },
 
-            // { // Applications
-            // 	name: "Applications",
-            // 	examples: [
-            // 		// Pong
-            // 		// Cannon
-            // 		// Brick Breaker
-            // 		// Lunar Lander
-            // 	]
-            // },
-
             { // Load tests
                 name: "Load Tests",
                 examples: loadTestExamples,
-
-                // TODO:
-                // Rain
-                // Washing Machine
-                // Large stack of sleeping objects
-                // Chaos (rapid creation and removal of objects)
-                // Worse case scenario.
-                    // Many overlapping objects.
-                    // Pathological BVH.
-
             },
 
             { // Known Issues

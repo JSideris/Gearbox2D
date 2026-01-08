@@ -1,5 +1,5 @@
-import Example from './example.js';
-import gb2d from '../dist/js/gb2d.js';
+import Example from '../example.js';
+import gb2d from '../../dist/js/gb2d.js';
 
 export const loadTestExamples = [
     new Example({
