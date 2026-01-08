@@ -570,6 +570,10 @@ export const clockworkExample = new Example({
             const angle = (pendulum.r * 180 / Math.PI).toFixed(1);
             gb2d.debug.addLabel({ text: `Pendulum: ${angle}°`, x: 8, y: 8, fontSize: "16px Arial", color: "#cd853f", position: "on-top" });
         }
+    },
+    onCleanup: (world) => {
+        const gui = document.getElementById('clock-tuner-gui');
+        if (gui) gui.remove();
     }
 });
 
