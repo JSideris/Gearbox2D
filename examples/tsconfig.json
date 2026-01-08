@@ -1,0 +1,15 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+      "module": "ESNext",
+      "moduleResolution": "bundler",
+      "noImplicitAny": false,
+      "strict": false,
+      "baseUrl": ".",
+      "rootDir": "..", // Point rootDir to the project root instead of typescript/src
+      "paths": {
+        "gb2d": ["../typescript/src/gb2d.ts"]
+      }
+    },
+    "include": ["**/*", "../typescript/src/**/*"]
+}
