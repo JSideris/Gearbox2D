@@ -8,6 +8,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'examples/index.html'),
         examples: resolve(__dirname, 'examples/examples.html'),
+        docs: resolve(__dirname, 'examples/docs.html'),
       },
     },
     outDir: '../dist/site',
