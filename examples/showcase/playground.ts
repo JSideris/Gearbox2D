@@ -107,8 +107,7 @@ export const playgroundExample = new Example({
             const x = 2 + Math.random() * 6;
             const y = 2 + Math.random() * 5;
             const color = colors[i % colors.length];
-            const shapeType = Math.floor(Math.random() * 3);
-
+            
             const commonProps = {
                 x, y,
                 mass: 1.0,
@@ -117,14 +116,15 @@ export const playgroundExample = new Example({
                 angularDamping: 1.5
             };
 
-            if (shapeType === 0) {
+            const rand = Math.random();
+            if (rand < 0.45) {
                 // Circle
                 world.makeObject(nextId++, {
                     ...commonProps,
                     shape: gb2d.shapes.CIRCLE,
                     radius: 0.3 + Math.random() * 0.4,
                 });
-            } else if (shapeType === 1) {
+            } else if (rand < 0.9) {
                 // Box
                 world.makeObject(nextId++, {
                     ...commonProps,
@@ -134,7 +134,7 @@ export const playgroundExample = new Example({
                     r: Math.random() * Math.PI,
                 });
             } else {
-                // AABB
+                // AABB (less common)
                 world.makeObject(nextId++, {
                     ...commonProps,
                     shape: gb2d.shapes.AABB,
