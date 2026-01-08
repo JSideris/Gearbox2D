@@ -76,6 +76,10 @@ export class World {
 	stepCount: number = 0;
 	objectsById: Record<number, PhysicalObject>;
 	jointsById: Record<number, HingeJoint | DistanceJoint | SpringJoint | GearJoint>;
+
+	onCollisionStart?: (idA: number, idB: number, impulse: number) => void;
+	onCollisionEnd?: (idA: number, idB: number, impulse: number) => void;
+
 	constructor(WorldConstructor){
 		this.world = new WorldConstructor();
 		// this.ids = this.world.getIds();
@@ -107,7 +111,27 @@ export class World {
 		this.stepCount++;
 		// console.log("STEP");
 		// this.liveFloatData[2] += 0.1;
-		return this.world.step();
+		const result = this.world.step();
+		
+		// Handle events
+		const eventCount = this.world.getEventCount();
+		if (eventCount > 0 && (this.onCollisionStart || this.onCollisionEnd)) {
+			const eventData = this.world.getEventData();
+			for (let i = 0; i < eventCount; i++) {
+				const type = eventData[i * 4];
+				const idA = eventData[i * 4 + 1];
+				const idB = eventData[i * 4 + 2];
+				const impulse = eventData[i * 4 + 3];
+
+				if (type === 0 && this.onCollisionStart) {
+					this.onCollisionStart(idA, idB, impulse);
+				} else if (type === 1 && this.onCollisionEnd) {
+					this.onCollisionEnd(idA, idB, impulse);
+				}
+			}
+		}
+
+		return result;
 	}
 	queryPoint(x: number, y: number, mask: number = 0xFFFFFFFF): number[] {
 		const resultVec = this.world.queryPoint(x, y, mask);
@@ -430,6 +454,15 @@ export class PhysicalObject{
 		this.liveIData[this.index * SIZE_I + MASK_BITS_OFFSET] = v;
 		const cppObj = this.world.world.getObject(this.id);
 		if (cppObj) cppObj.setMaskBits(v);
+	}
+
+	get wantsEvents() {
+		const cppObj = this.world.world.getObject(this.id);
+		return cppObj ? cppObj.wantsEvents : false;
+	}
+	set wantsEvents(v: boolean) {
+		const cppObj = this.world.world.getObject(this.id);
+		if (cppObj) cppObj.wantsEvents = v;
 	}
 
 	get gScale() { return this.liveFData[this.index * SIZE_F + G_SCALE_OFFSET]; }

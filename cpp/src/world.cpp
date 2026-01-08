@@ -208,7 +208,22 @@ emscripten_val World::getLiveIntData() {
     size_t size = 10000*LIVE_INT_EPO;
     return emscripten_val(emscripten::typed_memory_view(size * sizeof(int), liveIntData.data()));
 }
+
+emscripten_val World::getEventData() {
+    return emscripten_val(emscripten::typed_memory_view(eventData.size() * sizeof(float), eventData.data()));
+}
 #endif
+
+int World::getEventCount() {
+    return eventData.size() / 4;
+}
+
+void World::_addCollisionEvent(int type, int idA, int idB, float impulse) {
+    eventData.push_back((float)type);
+    eventData.push_back((float)idA);
+    eventData.push_back((float)idB);
+    eventData.push_back(impulse);
+}
 
 void World::step() {
     static int frameCount = 0;
@@ -298,6 +313,8 @@ void World::_doNarrowPhase(){
 }
 
 void World::_doContactManagement(){
+    eventData.clear();
+
     // Find new contacts (in currentPairs but not in prevPairs)
     for (const auto& pair : currentPairs) {
         if (prevPairs.find(pair) == prevPairs.end()) {
@@ -306,6 +323,10 @@ void World::_doContactManagement(){
             if (objA && objB) {
                 objA->addContact(objB);
                 objB->addContact(objA);
+
+                if (objA->wantsEvents || objB->wantsEvents) {
+                    _addCollisionEvent(0, objA->id, objB->id, 0.0f);
+                }
             }
         }
     }
@@ -325,6 +346,10 @@ void World::_doContactManagement(){
                 }
                 objA->removeContact(objB);
                 objB->removeContact(objA);
+
+                if (objA->wantsEvents || objB->wantsEvents) {
+                    _addCollisionEvent(1, objA->id, objB->id, 0.0f);
+                }
             }
         }
     }

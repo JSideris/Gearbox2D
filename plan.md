@@ -101,7 +101,18 @@
 [*] Elasticity (restitution).
 [*]	Static/dynamic friction.
 [ ] Support changing the center of mass.
-[ ] Events.
+
+
+## Events
+[ ] Events buffer.
+[ ] Opt in per object.
+[ ] On collision events.
+	[ ] Return impulse.
+[ ] On collision end events.
+[ ] On sleep events.
+[ ] On wake up.
+[ ] On pre-solve (optional).
+[ ] On post-solve (optional).
 
 ## Fluid Dynamics
 [ ] Wind.

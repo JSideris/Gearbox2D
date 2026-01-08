@@ -59,6 +59,7 @@ public:
 
     uint32_t categoryBits;
     uint32_t maskBits;
+    bool wantsEvents = false;
 
     PhysicalObject(World& world, int id, emscripten_val options);
 

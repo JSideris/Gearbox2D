@@ -4,11 +4,12 @@
 #include <unordered_map>
 #include <string>
 #include <variant>
+#include <cstdint>
 // #include <sstream>
 
 class MockVal {
 public:
-    std::unordered_map<std::string, std::variant<int, float>> properties;
+    std::unordered_map<std::string, std::variant<int, float, bool, uint32_t>> properties;
     std::string lastKey;
 
     bool hasOwnProperty(const std::string& key) const {

@@ -45,6 +45,7 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
 
     categoryBits = options.hasOwnProperty("categoryBits") ? (uint32_t)options["categoryBits"].as<int>() : CATEGORY_DYNAMIC;
     maskBits = options.hasOwnProperty("maskBits") ? (uint32_t)options["maskBits"].as<int>() : CATEGORY_ALL;
+    wantsEvents = options.hasOwnProperty("wantsEvents") ? options["wantsEvents"].as<bool>() : false;
 
     world.liveIntData.push_back(categoryBits);
     world.liveIntData.push_back(maskBits);

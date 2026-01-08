@@ -62,7 +62,10 @@ private:
     bool hasRestitution = true;
     bool hasFriction = true;
     std::vector<ContactConstraint> contactConstraints;
+    std::vector<float> eventData;
     int velocityIterations;
+
+    void _addCollisionEvent(int type, int idA, int idB, float impulse);
 
     struct PairHash {
         size_t operator()(const std::pair<int, int>& p) const {
@@ -136,7 +139,9 @@ public:
 #ifdef EMSCRIPTEN
 	emscripten_val getLiveFloatData();
 	emscripten_val getLiveIntData();
+    emscripten_val getEventData();
 #endif
+    int getEventCount();
 
     // Step function to update all objects in the world
     void step();
