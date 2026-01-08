@@ -1,6 +1,6 @@
 {
   "name": "gearbox-2d",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A 2D physics engine with TypeScript interface and WebAssembly core",
   "main": "dist/js/gb2d.js",
   "types": "dist/js/gb2d.d.ts",
@@ -15,12 +15,19 @@
     "test": "npm run test:cpp && npm run test:ts",
     "examples": "vite",
     "examples:build": "vite build",
-    "start": "vite"
+    "start": "vite",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JSideris/Gearbox2D.git"
   },
   "files": [
     "dist/js",
     "dist/wasm",
-    "README.md"
+    "typescript/src",
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "physics",

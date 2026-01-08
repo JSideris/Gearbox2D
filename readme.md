@@ -41,6 +41,14 @@ Before you can build and run GearBox2D, you'll need the following:
 
 ## Installation
 
+### Via npm
+
+```bash
+npm install gearbox-2d
+```
+
+### From source
+
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/JSideris/Gearbox2D.git
@@ -63,6 +71,23 @@ Before you can build and run GearBox2D, you'll need the following:
    ```
 
 ## Usage
+
+### API Quick Start
+
+The TypeScript interface provides a clean API for creating and managing physics worlds:
+
+```typescript
+import gb2d from 'gearbox-2d';
+
+// Initialize the engine
+await gb2d.init();
+
+// Create a world
+const world = gb2d.makeWorld();
+
+// Add objects and run simulation
+// See examples/ for complete usage examples
+```
 
 ### Running Tests
 
@@ -91,23 +116,6 @@ npm run test:ts
 2. **Open your browser** and navigate to the provided local URL (usually `http://localhost:8080`).
 
 3. **View the examples** by opening `examples/index.html`.
-
-### API Quick Start
-
-The TypeScript interface provides a clean API for creating and managing physics worlds:
-
-```typescript
-import gb2d from './dist/js/gb2d.js';
-
-// Initialize the engine
-await gb2d.init();
-
-// Create a world
-const world = gb2d.makeWorld();
-
-// Add objects and run simulation
-// See examples/ for complete usage examples
-```
 
 ## Project Structure
 
