@@ -1,0 +1,81 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Native Build Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake
+
+      - name: Set up Google Test
+        run: |
+          git clone https://github.com/google/googletest.git /tmp/googletest
+          cd /tmp/googletest
+          mkdir build
+          cd build
+          cmake ..
+          make
+        env:
+          GTEST_DIR: /tmp/googletest/googletest
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Run Native C++ Tests
+        run: make test -B
+        env:
+          GTEST_DIR: /tmp/googletest/googletest
+          GTEST_LIB_DIR: /tmp/googletest/build/lib
+
+      - name: Run TypeScript Tests
+        run: npm run test:ts
+
+      # Only proceed to Build and Deploy if on master branch and not a PR
+      - name: Install Emscripten
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build WASM Core
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: npm run build:cpp
+
+      - name: Build TypeScript Wrapper
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: npm run build:ts
+
+      - name: Build Examples Site
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: npm run examples:build
+
+      - name: Add .nojekyll
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: touch dist/site/.nojekyll
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist/site
+          branch: gh-pages
+

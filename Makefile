@@ -5,6 +5,7 @@ TEST_DIR = cpp/tests
 BUILD_DIR = dist/wasm
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
 GTEST_DIR ?= /usr/src/googletest/googletest
+GTEST_LIB_DIR ?= .
 GTEST_LIBS = -lgtest -lgtest_main
 
 # Compiler
@@ -39,7 +40,7 @@ $(OUTPUT_JS): $(SRC)
 test: $(TEST_TARGET)
 
 $(TEST_TARGET): $(SRC) $(TEST_SRC)
-	$(CXX) $(GTEST_FLAGS) -o $(TEST_TARGET) $(SRC) $(TEST_SRC) -I$(INCLUDE_DIR) -L. -pthread $(GTEST_LIBS)
+	$(CXX) $(GTEST_FLAGS) -o $(TEST_TARGET) $(SRC) $(TEST_SRC) -I$(INCLUDE_DIR) -L$(GTEST_LIB_DIR) -pthread $(GTEST_LIBS)
 	./$(TEST_TARGET)
 
 # Clean up build files
