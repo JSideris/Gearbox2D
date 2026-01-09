@@ -372,23 +372,27 @@ bool CollisionSolver::_solveCircleBox() {
             float dBottom = halfH - localCircleCenter.y;
 
             float minDist = dLeft;
-            normalLocal = Vec2(-1.0f, 0.0f);
+            normalLocal = Vec2(1.0f, 0.0f);
+            contactPointLocal = Vec2(-halfW, localCircleCenter.y);
 
             if (dRight < minDist) {
                 minDist = dRight;
-                normalLocal = Vec2(1.0f, 0.0f);
+                normalLocal = Vec2(-1.0f, 0.0f);
+                contactPointLocal = Vec2(halfW, localCircleCenter.y);
             }
             if (dTop < minDist) {
                 minDist = dTop;
-                normalLocal = Vec2(0.0f, -1.0f);
+                normalLocal = Vec2(0.0f, 1.0f);
+                contactPointLocal = Vec2(localCircleCenter.x, -halfH);
             }
             if (dBottom < minDist) {
                 minDist = dBottom;
-                normalLocal = Vec2(0.0f, 1.0f);
+                normalLocal = Vec2(0.0f, -1.0f);
+                contactPointLocal = Vec2(localCircleCenter.x, halfH);
             }
 
             penetrationDepth = rA + minDist;
-            contactPointLocal = localCircleCenter - normalLocal * rA;
+            // contactPointLocal already set above
         } else {
             // Standard case: circle is outside or just touching
             normalLocal = distanceVecLocal / distance;

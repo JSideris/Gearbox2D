@@ -515,4 +515,39 @@ export const issuesExamples = [
         }
     }),
 
+
+    new Example({
+        name: "TC-13",
+        key: "tc-13",
+        description: [
+            "**Test Case 13**: Stuck objects and overlap logic.",
+            "Ensures that small circles do not get 'embedded' within other shapes when subjected to high-velocity collisions or deep initial overlaps."
+        ].join("\n\n"),
+        onInit: (world)=>{
+
+            let id = 1;
+            world.makeObject(id++, {
+                x: 5,
+                y: 5,
+                shape: gb2d.shapes.BOX,
+                type: gb2d.bodyTypes.FIXED_OBJECT,
+                width: 1,
+                height: 5,
+            });
+
+            // Anohter box but this time a rigid body.
+            world.makeObject(id++, {
+                x: 5.2,
+                y: 5,
+                // vx: -50,
+                shape: gb2d.shapes.CIRCLE,
+                type: gb2d.bodyTypes.RIGID_BODY,
+                radius: 0.1,
+                mass: 0.2,
+                restitution: 0.5,
+            });
+        },
+        onTick: (world, dt)=>{
+        }
+    }),
 ];
