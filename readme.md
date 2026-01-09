@@ -1,6 +1,31 @@
 # GearBox2D - High-Speed 2D Physics Engine
 
-A blazing-fast 2D physics engine written in C++ and compiled to WebAssembly, with a TypeScript interface. Optimized for high-frequency simulations and applications requiring frequent updates via direct memory sharing.
+**⚠️ WORK IN PROGRESS (Alpha)** - *Gearbox2D is currently in active development. APIs are subject to change.*
+
+Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the ground up for the modern browser. Built in C++ and compiled to WebAssembly (WASM), it provides a high-performance core with a developer-friendly TypeScript wrapper.
+
+## The Mission
+
+The web deserves a physics engine that isn't just a port of a desktop library. Gearbox2D is designed to bridge the gap between high-fidelity simulation and web-based interactivity, focusing on:
+
+1.  **Web-First Performance**: Leveraging WASM and shared memory to eliminate the "bridge bottleneck" between JS and native code.
+2.  **Authoritative Synchronization**: Built to be highly stable and deterministic, making it ideal for real-time multiplayer games where state is updated from a remote server.
+3.  **Integrated AI & Robotics**: Beyond just collisions, Gearbox2D includes built-in support for NavMeshes, RVO/ORCA, and pathfinding to power intelligent agents.
+
+## Key Features
+
+- **Data-Oriented Architecture**: Zero-copy memory sharing between WASM and JavaScript. Direct `TypedArray` views provide O(1) access to physical state without serialization overhead.
+- **Real-time Stability**: Designed to handle external state injections (e.g., from a server) gracefully, maintaining simulation stability even with high-frequency position/velocity updates.
+- **AI-Ready Core**: Native implementations of AI navigation tools (NavMeshes, RVO/ORCA) running at native speeds.
+- **Advanced Constraints**: High-performance implementations of Hinge, Distance, Spring, and Gear joints for complex mechanical simulations.
+- **Novel Optimizations**: Includes unique features like BVH Collision Mask Biasing and speed-dependent bounding area padding.
+
+## Use Cases
+
+- **High-Performance Web Games**: From massive fruit-merging games to complex mechanical simulations.
+- **Physics-Based UI**: Advanced, fluid animations and interactive layouts that respond to physical forces.
+- **AI & Robotics Research**: Fast prototyping of multi-agent systems with integrated obstacle avoidance.
+- **Educational Simulations**: Visualizing complex mechanical systems (like clockwork or engines) in the browser.
 
 ## Prerequisites
 

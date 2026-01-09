@@ -1,27 +1,40 @@
 # Introduction
 
-GearBox2D is a blazing-fast 2D physics engine written in C++ and compiled to WebAssembly, with a clean TypeScript interface. It is optimized for high-frequency simulations and applications requiring frequent updates via direct memory sharing.
+**GearBox2D** is a next-generation, web-first 2D physics and AI engine. It is written in C++, compiled to WebAssembly (WASM), and exposed through a high-level TypeScript interface. Unlike traditional ports of physics libraries, GearBox2D is engineered specifically for the performance characteristics and architectural requirements of the modern web.
 
-## Design Philosophy
+## The GearBox2D Mission
 
-GearBox2D is designed with a data-oriented architecture, optimized for high-performance data transfer between JavaScript and WASM. Instead of copying object data on every step, the engine uses **shared memory**.
+Our goal is to provide a unified foundation for high-performance web applications—ranging from complex games to advanced robotics simulations. We believe that physics engines in the browser should not just be "fast enough," but should empower developers to build experiences that were previously only possible in native desktop environments.
 
-- **WASM Memory**: Volatile object data (position, velocity, etc.) is stored in contiguous buffers in C++.
-- **TypedArray Views**: The TypeScript interface creates `Float32Array` and `Int32Array` views directly over these WASM memory buffers.
-- **Direct Access**: When you access `object.x` or `object.vx` in TypeScript, you are reading/writing directly to the memory used by the WASM physics core.
+### Core Pillars:
 
-This architecture minimizes overhead and allows for thousands of objects to be updated and rendered efficiently.
+1.  **Zero-Overhead Interop**: Minimizing the "bridge cost" between JavaScript and the physics core.
+2.  **Authoritative Synchronization**: Native support for real-time state updates from external sources (servers, sensors).
+3.  **Integrated Intelligence**: Built-in AI navigation and obstacle avoidance running at native speeds.
 
-## Project Structure
+## Architecture: Data-Oriented & Web-First
 
-The project is organized into several key directories:
+GearBox2D is designed with a data-oriented architecture (DOA), optimized for modern CPU caches and efficient data transfer between the WASM linear memory and the JavaScript main thread.
 
-- `cpp/`: C++ source code, including headers, implementations, and unit tests.
-- `typescript/`: TypeScript source for the engine's public interface.
-- `examples/`: Web-based examples and demos showcasing engine capabilities.
-- `docs/`: In-depth documentation and guides (where you are now).
-- `studies/`: Performance and optimization studies.
-- `dist/`: Build output for both JavaScript and WebAssembly modules.
+### The Shared Memory Model
+
+Traditional physics engines on the web often suffer from the overhead of copying object data (positions, rotations, velocities) back and forth across the WASM-JS bridge. GearBox2D eliminates this bottleneck:
+
+-   **Native Memory**: All physical state is stored in contiguous, cache-friendly buffers within C++.
+-   **Direct Views**: The TypeScript wrapper creates `Float32Array` and `Int32Array` views that point *directly* to the same memory addresses used by the WASM core.
+-   **O(1) Access**: When you access `object.x` in TypeScript, you are performing a direct memory read from the WASM buffer. There is no serialization, no copying, and zero overhead.
+
+## AI & Robotics Foundations
+
+GearBox2D goes beyond simple collision detection. We are building a suite of integrated AI tools that live inside the physics loop, allowing for high-performance agent behavior:
+
+-   **Precomputed NavMeshes**: Rapid pathfinding through complex environments.
+-   **Local Navigation (RVO/ORCA)**: High-performance, collision-free movement for hundreds of autonomous agents.
+-   **High-Frequency Sensors**: Efficient raycasting and area queries for agent perception.
+
+## Project Status: Alpha (WIP)
+
+GearBox2D is currently in **Alpha**. The core physics solver and joint system are stable, but APIs are evolving quickly as we implement the AI and fluid dynamics modules. We encourage developers to experiment, report issues, and help shape the future of web-based physics.
 
 ## Roadmap
 

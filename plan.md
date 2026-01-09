@@ -161,5 +161,9 @@
 [ ] A*.
 [ ] A* biasing.
 [ ] A* advanced coordination.
-[ ] A* precomputed mesh.
-
+[ ] Precomputed nav mesh.
+[ ] High-performance sensors.
+[ ] Agent steering and movement.
+[ ] Local Navigation & Obsticle Avoidance (RVO/ORCA).
+[ ] Inverse Kinematics.
+[ ] Collision Prediction / Danger Maps (optional)

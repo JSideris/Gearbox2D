@@ -145,6 +145,57 @@ body {
 	border-bottom: 1px solid var(--border);
 }
 
+.header-left {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+}
+
+.home-link {
+	color: var(--accent-cyan);
+	text-decoration: none;
+	font-size: 0.75rem;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 14px;
+	border-radius: 6px;
+	border: 1px solid var(--border);
+	transition: var(--transition);
+	font-family: var(--font-header);
+	text-transform: uppercase;
+	letter-spacing: 1.5px;
+	background: rgba(15, 23, 42, 0.5);
+}
+
+.home-link i {
+	font-size: 1rem;
+}
+
+.home-link:hover {
+	background-color: rgba(0, 242, 255, 0.1);
+	border-color: var(--accent-cyan);
+	box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+	color: var(--accent-cyan);
+	transform: translateX(-3px);
+}
+
+.home-link span {
+	display: inline-block;
+}
+
+@media (max-width: 600px) {
+	.home-link span {
+		display: none;
+	}
+	.home-link {
+		padding: 8px;
+		width: 36px;
+		height: 36px;
+		justify-content: center;
+	}
+}
+
 #main-header h1 {
 	margin: 0;
 	font-family: var(--font-header);
