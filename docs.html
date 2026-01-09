@@ -89,6 +89,40 @@
         #doc-content li {
             margin-bottom: 0.5rem;
         }
+        #doc-content input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.2rem;
+            height: 1.2rem;
+            background: var(--bg-surface);
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            margin-right: 0.8rem;
+            vertical-align: middle;
+            position: relative;
+            top: -1px;
+            cursor: default;
+            transition: var(--transition);
+        }
+        #doc-content input[type="checkbox"]:checked {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+        }
+        #doc-content input[type="checkbox"]:checked::after {
+            content: "\f00c";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            font-size: 0.7rem;
+            color: var(--accent-cyan);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #doc-content input[type="checkbox"]:not(:checked) {
+            opacity: 0.6;
+        }
         #doc-content a {
             color: var(--accent-cyan);
             text-decoration: none;
@@ -103,6 +137,48 @@
             font-style: italic;
             color: var(--text-muted);
         }
+        #doc-content table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 2rem 0;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        #doc-content th {
+            background-color: rgba(30, 41, 59, 0.8);
+            color: var(--accent-cyan);
+            font-family: var(--font-header);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+            font-size: 0.75rem;
+        }
+        #doc-content td {
+            padding: 1rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(15, 23, 42, 0.3);
+            transition: var(--transition);
+            line-height: 1.5;
+        }
+        #doc-content tr:last-child td {
+            border-bottom: none;
+        }
+        #doc-content tr:hover td {
+            background-color: rgba(0, 242, 255, 0.05);
+            color: var(--text-main);
+        }
+        /* Handle text alignment from markdown parser */
+        #doc-content th[align="center"], #doc-content td[align="center"] { text-align: center; }
+        #doc-content th[align="right"], #doc-content td[align="right"] { text-align: right; }
+
         .sidebar-link {
             display: block;
             padding: 8px 20px;
@@ -123,9 +199,10 @@
             border-left: 2px solid var(--accent-cyan);
         }
     </style>
-  <script type="module" crossorigin src="./assets/docs-CvgdQ-mG.js"></script>
+  <script type="module" crossorigin src="./assets/docs-BftIMq9_.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="./assets/examples-styles-B3N1Q73h.css">
+  <link rel="modulepreload" crossorigin href="./assets/markdown-DTfqLWyu.js">
+  <link rel="stylesheet" crossorigin href="./assets/markdown-DTiP7GUX.css">
 </head>
 <body>
     <div id="sidebar">
