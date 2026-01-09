@@ -88,6 +88,7 @@ private:
 
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> currentPairs;
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> prevPairs;
+    std::unordered_map<std::pair<int, int>, float, PairHash, PairEqual> resolvedImpulses;
 
 public:
 

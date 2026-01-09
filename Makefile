@@ -23,7 +23,7 @@ SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
 OUTPUT_JS = $(BUILD_DIR)/$(TARGET).js
 
 # C++ compiler flags
-CXXFLAGS = -O3 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1
+CXXFLAGS = -O3 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker'
 GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -pthread
 
 # Default target to build the project

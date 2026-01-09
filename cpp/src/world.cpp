@@ -230,7 +230,6 @@ void World::step() {
     _doKinematics();
     _doBroadPhase();
     _doNarrowPhase();
-    _doContactManagement();
     
     // Joint pre-solving
     for (auto& pair : jointsMap) {
@@ -238,6 +237,10 @@ void World::step() {
     }
     
     _doResolution();
+
+    // Contact management is done after resolution so that collision events 
+    // can include the final resolved impulses.
+    _doContactManagement();
 }
 
 // 1. Kinematics.
@@ -325,7 +328,12 @@ void World::_doContactManagement(){
                 objB->addContact(objA);
 
                 if (objA->wantsEvents || objB->wantsEvents) {
-                    _addCollisionEvent(0, objA->id, objB->id, 0.0f);
+                    float impulse = 0.0f;
+                    auto it = resolvedImpulses.find(pair);
+                    if (it != resolvedImpulses.end()) {
+                        impulse = it->second;
+                    }
+                    _addCollisionEvent(0, objA->id, objB->id, impulse);
                 }
             }
         }
@@ -388,6 +396,12 @@ void World::_doResolution(){
         for (auto& pair : jointsMap) {
             pair.second->solve();
         }
+    }
+
+    // Capture the final impulses for use in events
+    resolvedImpulses.clear();
+    for (auto& c : contactConstraints) {
+        resolvedImpulses[{c.a->id, c.b->id}] = c.normalImpulse;
     }
 }
 

@@ -40,7 +40,10 @@ async function build() {
             platform: 'browser',
             external: ['module'],
             define: {
-                '__WASM_BASE64__': JSON.stringify(wasmBase64)
+                '__WASM_BASE64__': JSON.stringify(wasmBase64),
+                // Silence warnings about import.meta.url in IIFE format.
+                // Since we provide the WASM binary directly, this isn't needed at runtime.
+                'import.meta.url': 'undefined'
             },
             // Loader for any other assets if needed
             loader: {

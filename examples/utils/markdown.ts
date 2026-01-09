@@ -208,7 +208,8 @@ export default class MarkdownParser {
             }
 
             // If it starts with a block-level tag, don't wrap in <p>
-            if (/^<(h[1-6]|ul|ol|li|hr|code|pre|blockquote|table)/i.test(block)) {
+            // We use \/? to match both opening and closing tags (like </ul>)
+            if (/^<\/?(h[1-6]|ul|ol|li|hr|code|pre|blockquote|table|thead|tbody|tr|th|td)/i.test(block)) {
                 return block;
             }
             return `<p>${block.replace(/\n/g, "<br />")}</p>`;
