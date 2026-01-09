@@ -91,6 +91,22 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(0.0f); // ia
     world.liveFloatData.push_back(0.0f); // nia
     world.liveFloatData.push_back(0.0f); // inv_inertia
+
+    // Precompute max extent for AABB padding.
+    float valW = options.hasOwnProperty("radius") ? options["radius"].as<float>() : (options.hasOwnProperty("width") ? options["width"].as<float>() : 0.0f);
+    float valH = options.hasOwnProperty("height") ? options["height"].as<float>() : 0.0f;
+    float maxExtent = 0.0f;
+    if (shape == ObjectShape::CIRCLE) {
+        maxExtent = valW;
+    } else if (shape == ObjectShape::BOX || shape == ObjectShape::AABB) {
+        maxExtent = 0.5f * std::sqrt(valW * valW + valH * valH);
+    } else if (shape == ObjectShape::ELLIPSE) {
+        maxExtent = std::max(valW, valH) * 0.5f;
+    } else if (shape == ObjectShape::CAPSULE) {
+        // Capsule width is the diameter of the end caps, height is total length.
+        maxExtent = valH * 0.5f; 
+    }
+    world.liveFloatData.push_back(maxExtent); 
 }
 
 PhysicalObject::~PhysicalObject() {
@@ -372,9 +388,19 @@ bool PhysicalObject::recomputeAabb(int mode){
 
         float vx = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX];
         float vy = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY];
+        float rs = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS];
+        float maxExtent = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_MAX_EXTENT];
         
-        Vec2 paddingA = Vec2(std::min(vx * paddingAmount, 0.0f), std::min(vy * paddingAmount, 0.0f));
-        Vec2 paddingB = Vec2(std::max(vx * paddingAmount, 0.0f), std::max(vy * paddingAmount, 0.0f));
+        float rotationalPadding = std::abs(rs) * maxExtent;
+
+        Vec2 paddingA = Vec2(
+            std::min((vx - rotationalPadding) * paddingAmount, 0.0f), 
+            std::min((vy - rotationalPadding) * paddingAmount, 0.0f)
+        );
+        Vec2 paddingB = Vec2(
+            std::max((vx + rotationalPadding) * paddingAmount, 0.0f), 
+            std::max((vy + rotationalPadding) * paddingAmount, 0.0f)
+        );
 
         // Calculate the maximum padding required in either direction.
         // float paddingX = std::max(

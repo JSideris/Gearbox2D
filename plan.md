@@ -141,7 +141,7 @@
 
 ### Sleep Optimizations
 - [x] Sleeping objects.
-- [ ] Islands.
+- [X] Islands.
 - [x] Shrinkwrap AABB on sleep.
 - [ ] Experimental: Separate vectors for sleeping/awake objects.
 - [ ] Experimental: Re-insert into BVH upon sleep.
@@ -171,3 +171,6 @@
 - [ ] Local Navigation & Obsticle Avoidance (RVO/ORCA).
 - [ ] Inverse Kinematics.
 - [ ] Collision Prediction / Danger Maps (optional)
+
+## Known Issues
+- Piles of objects don't go to sleep as easily as they should (regression).

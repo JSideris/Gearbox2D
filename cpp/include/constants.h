@@ -38,7 +38,7 @@ enum class EventType {
     WAKE = 3
 };
 
-#define FDATA_EPO 31 // Number of float data per object.
+#define FDATA_EPO 32 // Number of float data per object.
 
 #define FDATA_X 0 // Position
 #define FDATA_Y 1 // Position
@@ -61,8 +61,7 @@ enum class EventType {
 #define FDATA_FY 17 // Force accumulator (READ ONLY)
 #define FDATA_IX 18 // Impulse accumulator X (READ ONLY)
 #define FDATA_IY 19 // Impulse accumulator Y (READ ONLY)
-// AABB Info
-#define FDATA_AX1 20
+#define FDATA_AX1 20 // AABB Info
 #define FDATA_AY1 21
 #define FDATA_AX2 22
 #define FDATA_AY2 23
@@ -73,4 +72,5 @@ enum class EventType {
 #define FDATA_IA 28 // Angular impulse accumulator (READ ONLY)
 #define FDATA_NIA 29 // Next Angular Impulse accumulator (for external application)
 #define FDATA_INV_INERTIA 30 // Cached inverse inertia (READ ONLY)
+#define FDATA_MAX_EXTENT 31 // Max distance from center for AABB padding
 // Always increase FDATA_EPO when adding new fields.
