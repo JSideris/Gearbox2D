@@ -158,13 +158,13 @@
     <script type="module">
         import MarkdownParser from './utils/markdown.ts';
         
-        // Use Vite's raw loader to get the todo list
-        const todoMarkdown = import.meta.glob('../docs/todo.md', { query: '?raw', eager: true })['../docs/todo.md'].default;
+        // Use Vite's raw loader to get the documentation structure
+        const structureMarkdown = import.meta.glob('../docs/structure.md', { query: '?raw', eager: true })['../docs/structure.md'].default;
         
         // Use Vite's raw loader to get all doc files
         const docFiles = import.meta.glob('../docs/*.md', { query: '?raw', eager: true });
 
-        function parseTodo(content) {
+        function parseStructure(content) {
             const lines = content.split('\n');
             const categories = [];
             let currentCategory = null;
@@ -190,7 +190,7 @@
             return categories;
         }
 
-        const categories = parseTodo(todoMarkdown);
+        const categories = parseStructure(structureMarkdown);
         const docsList = document.getElementById('docs-list');
         const docTitle = document.getElementById('doc-title');
         const docContent = document.getElementById('doc-content');
