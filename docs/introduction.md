@@ -44,4 +44,8 @@ The engine is under active development. Key focus areas include:
 - Implementing Continuous Collision Detection (CCD).
 - Integrating fluid dynamics and AI pathfinding.
 
-Check the `plan.md` file in the repository for a detailed list of implemented features and future development goals.
+Check the [plan.md](https://github.com/JSideris/Gearbox2D/blob/master/plan.md) file in the repository for a detailed list of implemented features and future development goals.
+
+## Getting Started
+
+Ready to try it out? Head over to the [Installation Guide](installation.md) or dive straight into [Your First Simulation](first-simulation.md).

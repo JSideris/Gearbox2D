@@ -1,9 +1,10 @@
 # Documentation Plan: GearBox2D
 
-## 1. Introduction & Setup
+## 1. Getting Started
 - `introduction.md`: Project overview and design philosophy.
-- `setup.md`: Installation and build instructions.
+- `installation.md`: How to install via NPM or CDN.
 - `first-simulation.md`: A basic "Hello World" example.
+- `development.md`: Build instructions for engine contributors.
 
 ## 2. Core Architecture
 - `architecture-wasm-memory.md`: Deep dive into WASM/Shared Memory.

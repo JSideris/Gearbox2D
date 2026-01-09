@@ -1,10 +1,10 @@
-# Setup & Installation
+# Development & Contributing
 
-Follow these instructions to get GearBox2D up and running on your local machine.
+Follow these instructions to build GearBox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](installation.md).
 
 ## Prerequisites
 
-Before you can build and run GearBox2D, you'll need the following dependencies installed.
+To build GearBox2D, you'll need the following dependencies installed.
 
 ### Required Dependencies
 
@@ -39,7 +39,7 @@ Before you can build and run GearBox2D, you'll need the following dependencies i
 
 - **Live Server**: For running examples: `npm install -g live-server` or use `npx http-server`.
 
-## Installation
+## Building from Source
 
 1.  **Clone the repository**:
     ```bash
@@ -52,20 +52,18 @@ Before you can build and run GearBox2D, you'll need the following dependencies i
     npm install
     ```
 
-## Building the Project
+3.  **Build the Project**:
+    You can build the entire project or individual components:
+    ```bash
+    # Build everything (C++ to WASM + TypeScript + Standalone)
+    npm run build
 
-You can build the entire project or individual components using the following commands:
+    # Build WebAssembly module only
+    npm run build:cpp
 
-```bash
-# Build everything (C++ to WASM + TypeScript)
-npm run build
-
-# Build WebAssembly module only
-npm run build:cpp
-
-# Build TypeScript interface only
-npm run build:ts
-```
+    # Build TypeScript interface only
+    npm run build:ts
+    ```
 
 ## Running Tests
 
@@ -82,23 +80,9 @@ npm run test:cpp
 npm run test:ts
 ```
 
-## Running Examples
-
-1.  **Start a local server** (required for WASM loading):
-    ```bash
-    # Using live-server
-    live-server examples/
-    
-    # Or using Node.js
-    npx http-server examples/
-    ```
-
-2.  **Open your browser** and navigate to the provided local URL (usually `http://localhost:8080`).
-
-3.  **View the examples** by opening `examples/index.html`.
-
 ## Troubleshooting
 
 - **Emscripten not found**: Ensure you have run `source ./emsdk_env.sh` in your current terminal session.
 - **WASM loading errors**: Ensure you are serving files via a web server (HTTP/HTTPS), as browsers block WASM loading from `file://` URLs.
 - **Build failures**: Try `npm run clean && npm run build` to rebuild from scratch.
+
