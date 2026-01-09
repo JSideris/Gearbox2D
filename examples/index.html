@@ -276,6 +276,205 @@
     <p><a href="examples.html" style="color: var(--accent-cyan); font-family: Orbitron; text-decoration: none; margin-top: 20px; display: inline-block;">EXPLORE FULL SUITE <i class="fas fa-arrow-right"></i></a></p>
 </section>
 
+<script type="module">
+    import gb2d from 'gb2d';
+
+    async function initDemo() {
+        // 1. Initialize the engine
+        await gb2d.init();
+
+        const canvas = document.getElementById('gearbox2d-demo');
+        const world = gb2d.makeWorld();
+        
+        // Setup initial world state
+        world.setGravity(0, 9.8);
+        world.setHasRestitution(true);
+        world.setHasFriction(true);
+        world.setHasPenetrationResolution(true);
+
+        // Enable debug graphics
+        gb2d.debug.enableDebugGraphics(canvas, world);
+        gb2d.debug.showAabbs = false;
+        gb2d.debug.zoom = 0.6; // Zoom out to see more
+        gb2d.debug.offsetX = canvas.width / 2;
+        gb2d.debug.offsetY = 50;
+
+        let nextId = 1;
+
+        // 2. Static Environment
+        // Floor
+        world.makeObject(nextId++, {
+            x: 0, y: 5.5,
+            width: 20, height: 1,
+            shape: gb2d.shapes.BOX,
+            type: gb2d.bodyTypes.FIXED_OBJECT,
+            color: "#1e293b"
+        });
+
+        // Collision categories
+        const gearCategory = 0x0002;
+        const objectCategory = 0x0001;
+
+        // 3. Central Rotating Gear
+        const gearHub = world.makeObject(nextId++, {
+            x: 0, y: 2.5,
+            shape: gb2d.shapes.CIRCLE,
+            radius: 0.1,
+            type: gb2d.bodyTypes.FIXED_OBJECT,
+            color: "transparent",
+            maskBits: 0
+        });
+
+        const gearCross1 = world.makeObject(nextId++, {
+            x: 0, y: 2.5,
+            width: 3.0, height: 0.4,
+            shape: gb2d.shapes.BOX,
+            mass: 2.0,
+            color: "#a855f7",
+            categoryBits: gearCategory,
+            maskBits: objectCategory
+        });
+
+        const gearCross2 = world.makeObject(nextId++, {
+            x: 0, y: 2.5,
+            width: 0.4, height: 3.0,
+            shape: gb2d.shapes.BOX,
+            mass: 2.0,
+            color: "#a855f7",
+            categoryBits: gearCategory,
+            maskBits: objectCategory
+        });
+
+        // Hinge them together at the hub
+        const hinge1 = world.createHingeJoint(nextId++, gearHub, gearCross1, { worldAnchor: { x: 0, y: 2.5 } });
+        const hinge2 = world.createHingeJoint(nextId++, gearHub, gearCross2, { worldAnchor: { x: 0, y: 2.5 } });
+        
+        // Link their rotations so they behave as one body
+        world.createGearJoint(nextId++, hinge1, hinge2, 1.0);
+
+        // 4. Interaction State
+        let frameCount = 0;
+        let mouseAnchor = null;
+        let dragJoint = null;
+
+        const screenToWorld = (x, y) => {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (x - rect.left - gb2d.debug.offsetX) / (gb2d.debug.zoom * 100),
+                y: (y - rect.top - gb2d.debug.offsetY) / (gb2d.debug.zoom * 100)
+            };
+        };
+
+        // 5. Interactivity
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = screenToWorld(e.clientX, e.clientY);
+            
+            if (e.button === 0) { // Left Click: Spawn burst
+                for (let i = 0; i < 5; i++) {
+                    world.makeObject(nextId++, {
+                        x: pos.x + (Math.random() - 0.5) * 0.2,
+                        y: pos.y + (Math.random() - 0.5) * 0.2,
+                        shape: Math.random() > 0.5 ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                        radius: 0.15,
+                        width: 0.3, height: 0.3,
+                        mass: 0.5,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        restitution: 0.6,
+                        categoryBits: objectCategory,
+                        maskBits: objectCategory | gearCategory
+                    });
+                }
+            } else if (e.button === 2) { // Right Click: Drag (Pull)
+                const hits = world.queryPoint(pos.x, pos.y);
+                if (hits.length > 0) {
+                    const target = world.getObjectById(hits[0]);
+                    if (target && target.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+                        mouseAnchor = world.makeObject(999999, {
+                            x: pos.x, y: pos.y,
+                            type: gb2d.bodyTypes.FIXED_OBJECT,
+                            shape: gb2d.shapes.CIRCLE,
+                            radius: 0.05,
+                            color: "transparent",
+                            maskBits: 0
+                        });
+                        dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
+                            worldAnchor: pos,
+                            frequencyHz: 5.0,
+                            dampingRatio: 1.0,
+                            length: 0
+                        });
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (mouseAnchor) {
+                const pos = screenToWorld(e.clientX, e.clientY);
+                mouseAnchor.x = pos.x;
+                mouseAnchor.y = pos.y;
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (dragJoint) { world.removeJoint(dragJoint.id); dragJoint = null; }
+            if (mouseAnchor) { world.removeObject(mouseAnchor.id); mouseAnchor = null; }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // 6. Simulation Loop
+        function loop() {
+            frameCount++;
+            
+            // Step physics
+            world.step();
+
+            // Rotate the gear (apply torque) - keep it at a reasonable speed
+            const targetSpeed = 1.5;
+            if (gearCross1.rs < targetSpeed) {
+                gearCross1.applyAngularImpulse(0.1);
+            }
+
+            // Fountain logic
+            if (frameCount % 40 === 0 && world.objectCount < 40) {
+                world.makeObject(nextId++, {
+                    x: (Math.random() - 0.5) * 3,
+                    y: -2,
+                    shape: Math.random() > 0.5 ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                    radius: 0.2,
+                    width: 0.4, height: 0.4,
+                    mass: 1.0,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    vx: (Math.random() - 0.5) * 1,
+                    categoryBits: objectCategory,
+                    maskBits: objectCategory | gearCategory
+                });
+            }
+
+            // Cleanup objects that fall off
+            const toRemove = [];
+            world.iterateObjects(obj => {
+                if (obj.y > 7 && obj.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+                    toRemove.push(obj.id);
+                }
+            });
+            toRemove.forEach(id => world.removeObject(id));
+
+            // Visual labels
+            gb2d.debug.clearLabels();
+            gb2d.debug.addLabel({ text: "GEARBOX2D CORE", x: 0, y: -2.5, fontSize: "20px Orbitron", color: "var(--accent-cyan)" });
+            gb2d.debug.addLabel({ text: "Interactive WASM Physics", x: 0, y: -2.0, fontSize: "14px Inter", color: "var(--text-muted)" });
+
+            requestAnimationFrame(loop);
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    initDemo().catch(console.error);
+</script>
+
 <section id="get-started">
     <h2>Initialize System</h2>
     <p>Ready to build? The integration is seamless.</p>
