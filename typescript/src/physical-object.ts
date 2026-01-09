@@ -10,6 +10,7 @@ import {
     AX2_OFFSET, AY2_OFFSET, HAS_COLLISION_OFFSET, 
     CATEGORY_BITS_OFFSET, MASK_BITS_OFFSET, IA_OFFSET, 
     NFX_OFFSET, NFY_OFFSET, NIX_OFFSET, NIY_OFFSET, NIA_OFFSET,
+    INV_INERTIA_OFFSET, MAX_EXTENT_OFFSET,
     BODY_TYPES
 } from './constants.js';
 import type { World } from './world.js';
@@ -96,6 +97,9 @@ export class PhysicalObject {
 	}
 
 	get inverseInertia() { return this.liveFData[this.index * SIZE_F + INV_INERTIA_OFFSET]; }
+    
+    get maxExtent() { return this.liveFData[this.index * SIZE_F + MAX_EXTENT_OFFSET]; }
+    set maxExtent(v) { this.liveFData[this.index * SIZE_F + MAX_EXTENT_OFFSET] = v; }
     
     get fx() { return this.liveFData[this.index * SIZE_F + FX_OFFSET]; }
     // set fx(v) { this.liveFData[this.index * SIZE_F + FX_OFFSET] = v; }

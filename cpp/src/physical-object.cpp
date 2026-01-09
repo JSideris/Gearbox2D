@@ -389,17 +389,18 @@ bool PhysicalObject::recomputeAabb(int mode){
         float vx = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VX];
         float vy = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_VY];
         float rs = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_RS];
-        float maxExtent = world.liveFloatData[worldIndex * FDATA_EPO + FDATA_MAX_EXTENT];
         
-        float rotationalPadding = std::abs(rs) * maxExtent;
+        float hx = (newX2 - newX1) * 0.5f;
+        float hy = (newY2 - newY1) * 0.5f;
+        float absRs = std::abs(rs);
 
         Vec2 paddingA = Vec2(
-            std::min((vx - rotationalPadding) * paddingAmount, 0.0f), 
-            std::min((vy - rotationalPadding) * paddingAmount, 0.0f)
+            std::min((vx - absRs * hy) * paddingAmount, 0.0f), 
+            std::min((vy - absRs * hx) * paddingAmount, 0.0f)
         );
         Vec2 paddingB = Vec2(
-            std::max((vx + rotationalPadding) * paddingAmount, 0.0f), 
-            std::max((vy + rotationalPadding) * paddingAmount, 0.0f)
+            std::max((vx + absRs * hy) * paddingAmount, 0.0f), 
+            std::max((vy + absRs * hx) * paddingAmount, 0.0f)
         );
 
         // Calculate the maximum padding required in either direction.
