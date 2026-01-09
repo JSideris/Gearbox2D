@@ -27,10 +27,10 @@ export class Gb2d {
 		if(!this.isInitialized) throw new Error("Engine is not initialized. Call and await init() first.");
 	}
 
-	async init(){
+	async init(options: { wasmBinary?: Uint8Array } = {}){
 		if(this.isInitialized) return;
 
-		let Module = await gb2dModule()
+		let Module = await gb2dModule(options)
 
 		const {
 			// ObjectShape,
