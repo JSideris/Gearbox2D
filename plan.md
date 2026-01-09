@@ -72,7 +72,7 @@
 	- [x] Sensor.
 	- [x] Physical.
 	- [x] Fixed.
-	- [ ] Kinematic. Maybe.
+	- [X] Kinematic.
 - [x] Implement an applyForce on objects.
 - [x] Implement an applyImpulse on objects.
 - [x] Implement an applyAngularImpulse on objects.
@@ -103,8 +103,8 @@
 - [X] On collision events.
 	- [ ] Return impulse.
 - [X] On collision end events.
-- [ ] On sleep events.
-- [ ] On wake up.
+- [X] On sleep events.
+- [X] On wake up.
 - [ ] On pre-solve (optional).
 - [ ] On post-solve (optional).
 

@@ -639,6 +639,10 @@ void PhysicalObject::sleep(){
 #endif
     if(!isSleeping && canSleep){
         isSleeping = true;
+
+        if (wantsEvents) {
+            world.addEvent((int)EventType::SLEEP, id, 0, 0.0f);
+        }
         
         world.liveIntData[worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0x4;
         setVelocityX(0.0f);
@@ -659,6 +663,11 @@ void PhysicalObject::sleep(){
 void PhysicalObject::wakeUp() {
     if (isSleeping) {
         isSleeping = false;
+
+        if (wantsEvents) {
+            world.addEvent((int)EventType::WAKE, id, 0, 0.0f);
+        }
+
         sleepTimer = 0.0f; // RESET TIMER ON WAKEUP
         bvhNode->wakeUp();
         

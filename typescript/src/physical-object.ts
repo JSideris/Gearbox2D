@@ -22,6 +22,9 @@ export class PhysicalObject {
 	world: World;
 	color?: string;
 
+	onSleep?: () => void;
+	onWake?: () => void;
+
 	constructor(index: number, world: World, liveFData: Float32Array, liveIData: Int32Array){
 		this.id = liveIData[index * SIZE_I + ID_OFFSET];
 		this.liveFData = liveFData;

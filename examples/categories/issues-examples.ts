@@ -517,7 +517,7 @@ export const issuesExamples = [
 
 
     new Example({
-        name: "TC-13",
+        name: "TC-13 (SOLVED)",
         key: "tc-13",
         description: [
             "**Test Case 13**: Stuck objects and overlap logic.",

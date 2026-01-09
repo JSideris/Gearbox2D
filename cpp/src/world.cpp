@@ -218,7 +218,7 @@ int World::getEventCount() {
     return eventData.size() / 4;
 }
 
-void World::_addCollisionEvent(int type, int idA, int idB, float impulse) {
+void World::addEvent(int type, int idA, int idB, float impulse) {
     eventData.push_back((float)type);
     eventData.push_back((float)idA);
     eventData.push_back((float)idB);
@@ -226,6 +226,7 @@ void World::_addCollisionEvent(int type, int idA, int idB, float impulse) {
 }
 
 void World::step() {
+    eventData.clear();
     static int frameCount = 0;
     _doKinematics();
     _doBroadPhase();
@@ -316,8 +317,6 @@ void World::_doNarrowPhase(){
 }
 
 void World::_doContactManagement(){
-    eventData.clear();
-
     // Find new contacts (in currentPairs but not in prevPairs)
     for (const auto& pair : currentPairs) {
         if (prevPairs.find(pair) == prevPairs.end()) {
@@ -333,7 +332,7 @@ void World::_doContactManagement(){
                     if (it != resolvedImpulses.end()) {
                         impulse = it->second;
                     }
-                    _addCollisionEvent(0, objA->id, objB->id, impulse);
+                    addEvent((int)EventType::COLLISION_START, objA->id, objB->id, impulse);
                 }
             }
         }
@@ -356,7 +355,7 @@ void World::_doContactManagement(){
                 objB->removeContact(objA);
 
                 if (objA->wantsEvents || objB->wantsEvents) {
-                    _addCollisionEvent(1, objA->id, objB->id, 0.0f);
+                    addEvent((int)EventType::COLLISION_END, objA->id, objB->id, 0.0f);
                 }
             }
         }

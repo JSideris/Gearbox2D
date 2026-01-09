@@ -31,6 +31,13 @@ enum class ObjectShape {
 #define HAS_AABB_COLLISION 0x1
 #define HAS_PHYSICAL_COLLISION 0x2
 
+enum class EventType {
+    COLLISION_START = 0,
+    COLLISION_END = 1,
+    SLEEP = 2,
+    WAKE = 3
+};
+
 #define FDATA_EPO 30 // Number of float data per object.
 
 #define FDATA_X 0 // Position

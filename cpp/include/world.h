@@ -65,8 +65,6 @@ private:
     std::vector<float> eventData;
     int velocityIterations;
 
-    void _addCollisionEvent(int type, int idA, int idB, float impulse);
-
     struct PairHash {
         size_t operator()(const std::pair<int, int>& p) const {
             int first = p.first;
@@ -91,6 +89,7 @@ private:
     std::unordered_map<std::pair<int, int>, float, PairHash, PairEqual> resolvedImpulses;
 
 public:
+    void addEvent(int type, int idA, int idB, float impulse);
 
 	std::vector<float> liveFloatData;  // x1, y1, r1, xs1, ys1, rs1, mass, fx, fy, ix, iy  x2, ...
 	std::vector<int> liveIntData;  // id, shape, type, hasaabbcollision

@@ -13,6 +13,13 @@ export const HAS_AABB_COLLISION = 0x1;
 export const HAS_PHYSICAL_COLLISION = 0x2;
 export const IS_ASLEEP = 0x4;
 
+export const EVENT_TYPES = {
+	COLLISION_START: 0,
+	COLLISION_END: 1,
+	SLEEP: 2,
+	WAKE: 3
+};
+
 export const SHAPES = {
 	POINT: 0,
 	CIRCLE: 1,

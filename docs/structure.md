@@ -34,7 +34,9 @@
 - `collision-broad-phase.md`: Broad Phase
 - `collision-narrow-phase.md`: Narrow Phase
 - `collision-filtering.md`: Collision Filtering
-- `collision-events.md`: Collision Events
+
+## Events
+- `events.md`: Physical Object Events
 
 ## Spatial Queries & Interaction
 - `interaction-queries.md`: Spatial Queries

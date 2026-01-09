@@ -1,7 +1,7 @@
 
 import { PhysicalObject } from './physical-object.js';
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from './joints.js';
-import { SIZE_I, ID_OFFSET } from './constants.js';
+import { SIZE_I, ID_OFFSET, EVENT_TYPES } from './constants.js';
 // We'll import gb2d from engine.js to access debug graphics
 import gb2d from './engine.js';
 
@@ -16,6 +16,8 @@ export class World {
 
 	onCollisionStart?: (idA: number, idB: number, impulse: number) => void;
 	onCollisionEnd?: (idA: number, idB: number, impulse: number) => void;
+	onSleep?: (id: number) => void;
+	onWake?: (id: number) => void;
 
 	constructor(WorldConstructor){
 		this.world = new WorldConstructor();
@@ -52,7 +54,7 @@ export class World {
 		
 		// Handle events
 		const eventCount = this.world.getEventCount();
-		if (eventCount > 0 && (this.onCollisionStart || this.onCollisionEnd)) {
+		if (eventCount > 0) {
 			const eventData = this.world.getEventData();
 			for (let i = 0; i < eventCount; i++) {
 				const type = eventData[i * 4];
@@ -60,10 +62,18 @@ export class World {
 				const idB = eventData[i * 4 + 2];
 				const impulse = eventData[i * 4 + 3];
 
-				if (type === 0 && this.onCollisionStart) {
+				if (type === EVENT_TYPES.COLLISION_START && this.onCollisionStart) {
 					this.onCollisionStart(idA, idB, impulse);
-				} else if (type === 1 && this.onCollisionEnd) {
+				} else if (type === EVENT_TYPES.COLLISION_END && this.onCollisionEnd) {
 					this.onCollisionEnd(idA, idB, impulse);
+				} else if (type === EVENT_TYPES.SLEEP) {
+					if (this.onSleep) this.onSleep(idA);
+					const obj = this.objectsById[idA];
+					if (obj && obj.onSleep) obj.onSleep();
+				} else if (type === EVENT_TYPES.WAKE) {
+					if (this.onWake) this.onWake(idA);
+					const obj = this.objectsById[idA];
+					if (obj && obj.onWake) obj.onWake();
 				}
 			}
 		}
