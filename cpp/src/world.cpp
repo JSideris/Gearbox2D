@@ -43,6 +43,7 @@ int World::makeObject(int id, emscripten_val options){
     auto object = new PhysicalObject(*this, id, options);
 
     object->worldIndex = currentSize;
+    object->updateInverseInertia();
 
     objectsMap[id] = object;
     objectsList.push_back(object);

@@ -136,6 +136,8 @@ public:
     void addContact(PhysicalObject* other);
     void removeContact(PhysicalObject* other);
     // void wakeConnectedObjects(std::unordered_set<PhysicalObject*>& visited);
+
+    void updateInverseInertia();
 };
 
 

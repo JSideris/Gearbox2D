@@ -90,6 +90,7 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(0.0f); // niy
     world.liveFloatData.push_back(0.0f); // ia
     world.liveFloatData.push_back(0.0f); // nia
+    world.liveFloatData.push_back(0.0f); // inv_inertia
 }
 
 PhysicalObject::~PhysicalObject() {
@@ -193,34 +194,45 @@ void PhysicalObject::setMass(float m) {
     else{
         world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM] = 0.0f;
     }
+    updateInverseInertia();
 }
 
 float PhysicalObject::getInverseMass() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_IM]; }
 // No setter for inverse mass, it is calculated from mass.
 
 float PhysicalObject::getInverseInertia() const {
+    return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_INV_INERTIA];
+}
+
+void PhysicalObject::updateInverseInertia() {
     float imass = getInverseMass();
+    float invI = 0.0f;
     
     // Fixed or kinematic objects have zero inverse inertia
-    if (imass == 0.0f || type == ObjectType::FIXED_OBJECT || type == ObjectType::KINEMATIC_OBJECT) {
-        return 0.0f;
+    if (imass != 0.0f && type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT) {
+        // Calculate inverse inertia based on shape
+        if (shape == ObjectShape::CIRCLE) {
+            float radius = getRadius();
+            // For circle: I = (1/2) * m * r^2, so I^-1 = 2 / (m * r^2) = 2 * imass / r^2
+            if (radius > 0.0f) {
+                invI = 2.0f * imass / (radius * radius);
+            }
+        } 
+        else if (shape == ObjectShape::AABB || shape == ObjectShape::BOX) {
+            float width = getWidth();
+            float height = getHeight();
+            // For rectangle: I = (1/12) * m * (w^2 + h^2), so I^-1 = 12 / (m * (w^2 + h^2)) = 12 * imass / (w^2 + h^2)
+            float den = width * width + height * height;
+            if (den > 0.0f) {
+                invI = 12.0f * imass / den;
+            }
+        } else {
+            // Default case
+            invI = imass;
+        }
     }
     
-    // Calculate inverse inertia based on shape
-    if (shape == ObjectShape::CIRCLE) {
-        float radius = getRadius();
-        // For circle: I = (1/2) * m * r^2, so I^-1 = 2 / (m * r^2) = 2 * imass / r^2
-        return 2.0f * imass / (radius * radius);
-    } 
-    else if (shape == ObjectShape::AABB || shape == ObjectShape::BOX) {
-        float width = getWidth();
-        float height = getHeight();
-        // For rectangle: I = (1/12) * m * (w^2 + h^2), so I^-1 = 12 / (m * (w^2 + h^2)) = 12 * imass / (w^2 + h^2)
-        return 12.0f * imass / (width * width + height * height);
-    }
-    
-    // Default case (shouldn't reach here if all shapes are handled)
-    return imass;
+    world.liveFloatData[worldIndex * FDATA_EPO + FDATA_INV_INERTIA] = invI;
 }
 
 float PhysicalObject::getDamping() const { return world.liveFloatData[worldIndex * FDATA_EPO + FDATA_DAMPING]; }

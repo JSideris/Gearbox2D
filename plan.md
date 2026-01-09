@@ -118,7 +118,7 @@
 
 ### General Optimizations
 - [x] Cache inverse mass.
-- [ ] Cache inverse inertia.
+- [x] Cache inverse inertia.
 - [ ] Cache inverse dt.
 - [x] Cache exponential decay factor when dt is set.
 - [x] Implement collision masks.
@@ -146,6 +146,9 @@
 - [ ] Experimental: Separate vectors for sleeping/awake objects.
 - [ ] Experimental: Re-insert into BVH upon sleep.
 - [ ] Experimental: Sleep drift (sleeping at terminal velocity).
+
+### SIMD
+- [ ] ???
 
 ## Advanced Features
 - [ ] Smart anti-tunelling.

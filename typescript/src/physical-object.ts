@@ -94,6 +94,8 @@ export class PhysicalObject {
 			this.liveFData[this.index * SIZE_F + INV_MASS_OFFSET] = (v != 0) ? (1 / v) : 0; 
 		}
 	}
+
+	get inverseInertia() { return this.liveFData[this.index * SIZE_F + INV_INERTIA_OFFSET]; }
     
     get fx() { return this.liveFData[this.index * SIZE_F + FX_OFFSET]; }
     // set fx(v) { this.liveFData[this.index * SIZE_F + FX_OFFSET] = v; }

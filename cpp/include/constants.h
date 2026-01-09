@@ -38,7 +38,7 @@ enum class EventType {
     WAKE = 3
 };
 
-#define FDATA_EPO 30 // Number of float data per object.
+#define FDATA_EPO 31 // Number of float data per object.
 
 #define FDATA_X 0 // Position
 #define FDATA_Y 1 // Position
@@ -72,4 +72,5 @@ enum class EventType {
 #define FDATA_NIY 27
 #define FDATA_IA 28 // Angular impulse accumulator (READ ONLY)
 #define FDATA_NIA 29 // Next Angular Impulse accumulator (for external application)
+#define FDATA_INV_INERTIA 30 // Cached inverse inertia (READ ONLY)
 // Always increase FDATA_EPO when adding new fields.
