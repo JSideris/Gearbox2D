@@ -6,7 +6,11 @@ export const loadTestExamples = [
         name: "Circles",
         // name: "Particles",
         key: "particles",
-        description: "A load test featuring 2,000 circles. Note that the major bottleneck is canvas graphics.",
+        description: [
+            "A **Load Test** featuring 2,000 `CIRCLE` objects with full collision resolution.",
+            "This demo helps visualize the performance of the **BVH (Bounding Volume Hierarchy)** and the narrow-phase collision solver.",
+            "**Note**: In many environments, the primary bottleneck will be the Canvas 2D rendering rather than the physics simulation."
+        ].join("\n\n"),
         // description: "A load test featuring 1,000 particles. Particles don't collide, but are inserted into the BVH. AABBs are hidden to prevent graphics from becomming a bottleneck.",
         onInit: (world)=>{
 
@@ -78,7 +82,10 @@ export const loadTestExamples = [
     new Example({
         name: "Fleas",
         key: "fleas",
-        description: "2000 bouncy points. Point objects don't collide with each other.",
+        description: [
+            "A stress test with 2,000 bouncy `POINT` objects.",
+            "Point objects have zero radius and don't collide with each other, but they do collide with other shapes (like the `AABB` walls in this demo). This allows for extremely high-density simulations."
+        ].join("\n\n"),
         onInit: (world)=>{
             const nFleas = 2000;
 

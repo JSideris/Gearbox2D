@@ -9,7 +9,10 @@ export const issuesExamples = [
         name: "TC-1 (SOLVED)",
         key: "tc-1",
         hidden: true,
-        description: "Boxes colliding with other boxes go crazy.",
+        description: [
+            "**Test Case 1**: Verifies stability during box-on-box collisions.",
+            "Previously, boxes would exhibit 'jitter' or 'explosive' behavior when colliding at certain angles."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
 
@@ -58,7 +61,10 @@ export const issuesExamples = [
         name: "TC-2 (SOLVED)",
         key: "tc-2",
         hidden: true,
-        description: "Boxes warp right through AABBs.",
+        description: [
+            "**Test Case 2**: Ensures `BOX` shapes do not tunnel through `AABB` shapes.",
+            "This test case was used to refine the overlap detection and penetration resolution logic for different boundary types."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
 
@@ -103,7 +109,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-3 (SOLVED)",
         key: "tc-3",
-        description: "This isn't bad, but could be made better. The moving object loses all of its x momentum after the collision. In an actual collision of this type, one might expect the collision to apply a bunch of angular momentum and for the moving object to continue moving.",
+        description: [
+            "**Test Case 3**: Momentum preservation and angular transfer.",
+            "Previously, objects would lose too much linear momentum during eccentric collisions. The solver now correctly calculates the balance between linear and angular velocity transfer."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 0);
 
@@ -140,7 +149,10 @@ export const issuesExamples = [
         name: "TC-4 (SOLVED)",
         key: "tc-4",
         hidden: true,
-        description: "The collision in this test is somewhat puzzling since hte object seems to receive angular velocity in the wrong direction.",
+        description: [
+            "**Test Case 4**: Correctness of angular velocity direction.",
+            "Ensures that objects receive torque in the physically correct direction based on the contact point and normal."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 0);
 
@@ -177,7 +189,10 @@ export const issuesExamples = [
         name: "TC-5 (SOLVED)",
         key: "tc-5",
         hidden: true,
-        description: "Even the slightest rs for the moving circle causes a dramatic difference in the resulting collision response. If commenting out rs, the collision is completely linear in the diagonal direction. If setting rs to 10, the collision is the nearly identical to an rs of 0.01.\n\nThere's another weird thing going on here. Notice how both circles end up spinning in the same direction. That's noh how physics works.",
+        description: [
+            "**Test Case 5**: Sensitivity to initial rotation.",
+            "Fixes an issue where even tiny angular velocities (`rs`) caused disproportionate collision responses. Also verifies that rotating objects transfer angular momentum in opposing directions."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 0);
 
@@ -212,7 +227,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-6 (SOLVED)",
         key: "tc-6",
-        description: "Incorrect response impulse applied during certain box-box collisions. Likely due to an error in the contact point calculation. Reccomend doing an edge clipping technique.",
+        description: [
+            "**Test Case 6**: Contact point calculation accuracy.",
+            "Uses edge-clipping techniques to ensure stable and accurate impulse application during complex box-box collisions."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
             world.setHasFriction(false);
@@ -246,7 +264,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-7 (SOLVED)",
         key: "tc-7",
-        description: "Friction applies an incorrect vector to certain collisions. Likely due to an incorrect normal vector. Problem doesn't happen when restitution is off, so this could be a symptom of TC-6.",
+        description: [
+            "**Test Case 7**: Friction normal vector correctness.",
+            "Ensures that friction impulses are applied exactly tangent to the contact normal, even when restitution is high."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
             // world.setHasRestitution(false);
@@ -284,7 +305,8 @@ export const issuesExamples = [
         name: "TC-8 (SOLVED)",
         key: "tc-8",
         description: [
-            "Circle collisions sometimes glitch."
+            "**Test Case 8**: Stability of high-frequency circle collisions.",
+            "Verifies that multiple circles colliding in quick succession do not cause simulation instability or tunneling."
         ].join("\n\n"),
         globalLines: ["let nextId = 1;"],
         onInit: (world)=>{
@@ -351,7 +373,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-9 (SOLVED)",
         key: "tc-9",
-        description: "A small box resting on a long fixed box.",
+        description: [
+            "**Test Case 9**: Resting stability.",
+            "A small box resting on a larger fixed box to verify that gravity and normal impulses reach equilibrium without constant jitter."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 1);
             // world.setHasRestitution(false);
@@ -385,7 +410,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-10 (SOLVED)",
         key: "tc-10",
-        description: "A circle falling on a platform. Collision resolution is crazy.",
+        description: [
+            "**Test Case 10**: Circle-AABB penetration resolution.",
+            "Fixes extreme responses when a circle falls directly onto a large axis-aligned platform."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 3);
             // world.setHasRestitution(false);
@@ -419,7 +447,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-11 (SOLVED)",
         key: "tc-11",
-        description: "Circles get stuck in other shapes.",
+        description: [
+            "**Test Case 11**: Stuck objects and overlap logic.",
+            "Ensures that small circles do not get 'embedded' within other shapes when subjected to high-velocity collisions or deep initial overlaps."
+        ].join("\n\n"),
         onInit: (world)=>{
 
             let id = 1;
@@ -451,7 +482,10 @@ export const issuesExamples = [
     new Example({
         name: "TC-12 (SOLVED)",
         key: "tc-12",
-        description: "The box, under high gravity, sinks through the AABB.",
+        description: [
+            "**Test Case 12**: Sinking prevention under high gravity.",
+            "Verifies that boxes maintain their position on top of other objects even when high downward forces are applied, ensuring the penetration resolution is sufficient."
+        ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
             // world.setHasRestitution(false);

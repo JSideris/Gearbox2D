@@ -86,7 +86,7 @@ export class PhysicalObject {
     
     get mass() { return this.liveFData[this.index * SIZE_F + MASS_OFFSET]; }
     set mass(v) { 
-		if(this.type != BODY_TYPES.FIXED_OBJECT){
+		if(this.type != BODY_TYPES.FIXED_OBJECT && this.type != BODY_TYPES.KINEMATIC_OBJECT){
 			this.liveFData[this.index * SIZE_F + MASS_OFFSET] = v; 
 			this.liveFData[this.index * SIZE_F + INV_MASS_OFFSET] = (v != 0) ? (1 / v) : 0; 
 		}

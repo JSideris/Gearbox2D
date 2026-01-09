@@ -9,8 +9,9 @@ export const optimizationExamples = [
         name: "Sleep and Islands",
         key: "sleep-and-islands",
         description: [
-            "Sleep works a little differently in Gearbox 2D.",
-            "Sleep is based on movement, and is computed during the kinematics step. Objects wake up during collisions or forces. Each object tracks its own list of contacts, and wakes up its neighbours whet it wakes up. This gives us islands without having to rebuild an island data structure each tick like other engines."
+            "**Sleep** optimization in **Gearbox2D** uses a movement-based heuristic computed during the kinematics step.",
+            "Instead of rebuilding a complex global island data structure each tick, each object tracks its own local contacts. When an object wakes up (due to a force or collision), it automatically wakes its neighbors.",
+            "This provides the performance benefits of **Islands** with significantly lower overhead."
         ].join("\n\n"),
         globalLines: [
             "let simulationTime = 0;",
@@ -62,7 +63,8 @@ export const optimizationExamples = [
         name: "Shrink Wrap",
         key: "shrink-wrap",
         description: [
-            "Objects that are put to sleep get shrink wrapped AABBs providing a slight performance boost.",
+            "Objects that are put to **Sleep** have their **AABBs** 'shrink-wrapped' to their exact shape bounds.",
+            "This provides a slight performance boost during broad-phase collision detection by reducing false positives in the BVH tree for stationary objects."
         ].join("\n\n"),
         globalLines: [
         ],

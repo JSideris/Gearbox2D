@@ -72,17 +72,16 @@ export const motorcycleExample = new Example({
     name: "Motorcycle Trials",
     key: "motorcycle",
     description: [
-        "A physically-driven motorcycle with multi-joint suspension and a gear-driven engine.",
-        "Controls:",
-        "- D / A: Throttle / Reverse",
-        "- W / S: Lean Balance",
-        "- R: Reset Simulation",
-        "",
-        "Technical Features:",
-        "- Engine-to-wheel torque transfer via GearJoints.",
-        "- Network of SpringJoints for front/rear suspension.",
-        "- Procedural terrain generation with optimized collision masks (terrain-terrain collisions disabled)."
-    ].join("\n"),
+        "A physically-driven motorcycle featuring multi-joint suspension and a gear-driven powertrain.",
+        "### Controls",
+        "- **D / A**: Throttle / Reverse",
+        "- **W / S**: Lean / Balance",
+        "- **R**: Reset Simulation",
+        "### Technical Features",
+        "- **Power Transfer**: Engine-to-wheel torque transfer using `GearJoint` constraints.",
+        "- **Suspension**: A network of `SpringJoint` constraints for authentic front/rear suspension travel.",
+        "- **Procedural Terrain**: Dynamic generation with optimized **Collision Masks** (terrain-terrain collisions are disabled for performance)."
+    ].join("\n\n"),
     onInit: (world) => {
         world.clear();
         gb2d.debug.showAabbs = false;

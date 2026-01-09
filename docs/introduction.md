@@ -34,4 +34,5 @@ GearBox2D has been in development since 2023 and was first published to npm in J
 
 ## Quick Start
 1.  **[Installation Guide](#installation)** - Get the engine running in your project.
-2.  **[Your First Simulation](#first-simulation)** - Build a basic world in minutes.
+2.  **[Core Concepts](#core-concepts)** - Learn about the World, Ticks, and Forces.
+3.  **[Your First Simulation](#first-simulation)** - Build a basic world in minutes.

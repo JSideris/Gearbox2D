@@ -15,7 +15,10 @@ export const constraintsExamples = [
     new Example({ // Simple Hinge
         name: "Simple Hinge",
         key: "simple-hinge",
-        description: "A single BOX object attached to a FIXED_OBJECT by a hinge constraint. The box will swing like a pendulum.",
+        description: [
+            "A single `BOX` object attached to a `FIXED_OBJECT` by a **Hinge Joint** constraint.",
+            "The hinge allows rotation around a single point while preventing all linear relative motion. In this case, it creates a simple gravity-driven pendulum."
+        ].join("\n\n"),
         onInit: (world) => {
             nextId = 1;
             const anchor = world.makeObject(nextId++, {
@@ -49,7 +52,12 @@ export const constraintsExamples = [
     new Example({ // Breakable Joint
         name: "Breakable Joint",
         key: "breakable-joint",
-        description: "A ball is suspended by a hinge. Its mass increases over time until the hinge snaps. It then falls onto a spring bridge which also eventually breaks.",
+        description: [
+            "This demo showcases **Joint Reaction Forces** and dynamic joint removal.",
+            "1. A ball is suspended by a **Hinge Joint**. Its mass increases until the reaction force exceeds a threshold, snapping the joint.",
+            "2. The ball falls onto a bridge made of `SpringJoint` segments, which also have breaking thresholds.",
+            "You can visualize the stress on the joints by enabling **Force Vectors** in the debug settings."
+        ].join("\n\n"),
         onInit: (world) => {
             nextId = 1;
             gb2d.debug.showAabbs = false;
@@ -188,7 +196,11 @@ export const constraintsExamples = [
     new Example({ // Gear Train
         name: "Gear Train",
         key: "gear-train",
-        description: "A sequence of gears connected together. Each gear's motion is constrained by the previous one. A drive gear at the start applies a constant low torque.",
+        description: [
+            "A sequence of gears connected using the `GearJoint` constraint.",
+            "Each gear's motion is constrained by the previous one based on a **gear ratio** (calculated here by the relative radii).",
+            "A drive gear at the start receives a constant low torque, which is then propagated through the entire train with mechanical advantage."
+        ].join("\n\n"),
         onInit: (world) => {
             nextId = 1;
             const startX = 2;
@@ -248,7 +260,10 @@ export const constraintsExamples = [
     new Example({ // Distance Ropes
         name: "Distance Ropes",
         key: "distance-ropes",
-        description: "A rotating drum with multiple triple-link chains hanging from its outer edge.",
+        description: [
+            "Demonstrates the `DistanceJoint`, which maintains a fixed distance between two points on two different bodies.",
+            "A rotating drum has multiple triple-link chains hanging from it. Each link is connected by a `DistanceJoint` with a specified length, simulating a non-stretchy rope or chain."
+        ].join("\n\n"),
         onInit: (world) => {
             gb2d.debug.showAabbs = false;
             nextId = 1;
@@ -404,7 +419,10 @@ export const constraintsExamples = [
     new Example({ // Spring Belt
         name: "Spring Belt",
         key: "spring-belt",
-        description: "A chain of shapes connected by stretchy springs, forming a belt around a rotating high-friction pulley.",
+        description: [
+            "A chain of shapes connected by `SpringJoint` constraints, forming a belt around a rotating high-friction pulley.",
+            "The `SpringJoint` acts like a dampened harmonic oscillator, pulling objects together with a force proportional to their distance and frequency. The belt stretches and contracts as it interacts with the central rotor."
+        ].join("\n\n"),
         onInit: (world) => {
             gb2d.debug.showAabbs = false;
             nextId = 1;
@@ -497,7 +515,11 @@ export const constraintsExamples = [
     new Example({ // Soft Body Ball
         name: "Soft Body Ball",
         key: "soft-body",
-        description: "A collection of circles connected by springs to form a squishy, deformable ball. Watch it move as persistent random impulses are applied to its core!",
+        description: [
+            "A collection of `CIRCLE` objects connected by a network of `SpringJoint` constraints to form a squishy, deformable ball.",
+            "The ball features a central core (axel) connected to an outer ring of nodes. This setup simulates **Soft Body Dynamics** using a mass-spring system.",
+            "Persistent random impulses are applied to the core to keep the ball moving and demonstrate its elasticity."
+        ].join("\n\n"),
         onInit: (world) => {
             gb2d.debug.showAabbs = false;
             nextId = 1;

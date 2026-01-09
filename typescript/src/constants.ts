@@ -27,6 +27,7 @@ export const BODY_TYPES = {
 	RIGID_BODY: 0,
 	SENSOR: 1,
 	FIXED_OBJECT: 2,
+	KINEMATIC_OBJECT: 3,
 };
 
 export const X_OFFSET = 0;

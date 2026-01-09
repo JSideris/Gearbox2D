@@ -52,12 +52,12 @@ export const fruitMergeExample = new Example({
     name: "Fruit Merge",
     key: "fruit-merge",
     description: [
-        "A physics-based fruit merging game.",
-        "Drop fruits into the bucket. Identical fruits merge into the next larger fruit.",
-        "Controls:",
-        "- Move Mouse: Position fruit",
-        "- Click: Drop fruit",
-        "Game Over if any fruit falls out of the world."
+        "A physics-based arcade game demonstrating dynamic object spawning and collision events.",
+        "Drop fruits into the bucket. Identical fruits will **merge** into the next larger fruit tier on contact.",
+        "### Controls",
+        "- **Mouse Move**: Position the preview fruit",
+        "- **Click**: Drop fruit",
+        "**Game Over** occurs if any fruit falls out of the world boundaries."
     ].join("\n\n"),
     onInit: (world) => {
         world.clear();

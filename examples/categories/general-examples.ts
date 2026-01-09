@@ -74,11 +74,11 @@ export const generalExamples = [
         name: "Interactive Sandbox",
         key: "sandbox",
         description: [
-            "Welcome to Gearbox2D! This is an interactive playground featuring various shapes and physics properties. Click and drag objects to interact with them.",
-            "Features:",
-            "- Point Query: The engine detects which object is under the mouse using BVH and precise shape tests.",
-            "- Mouse Joint: Uses a Spring Joint to pull objects toward the mouse cursor.",
-            "- Collision Filtering: The mouse 'anchor' object is a sensor that doesn't collide with other objects."
+            "Welcome to **Gearbox2D**! This is an interactive playground featuring various shapes and physics properties. Click and drag objects to interact with them.",
+            "### Features",
+            "- **Point Query**: The engine detects which object is under the mouse using **BVH** and precise shape tests.",
+            "- **Mouse Joint**: Uses a `SpringJoint` to pull objects toward the mouse cursor.",
+            "- **Collision Filtering**: The mouse 'anchor' object is a sensor that doesn't collide with other objects."
         ].join("\n\n"),
         onInit: (world) => {
             world.clear();
@@ -175,7 +175,11 @@ export const generalExamples = [
     new Example({ // Force
         name: "Force",
         key: "force",
-        description: "Forces are used to apply acceleration to objects which scale inversely with the object's mass. All forces applied to an object are accumulated and applied in the next world step where they are reset. Persistant forces must be reapplied on each fixed update.\n\nIt's important to note that the change in velocity will be a function of the force vector, the object's mass, and the time step. If you need a specific instantaneous change in velocity, use an impulse instead.",
+        description: [
+            "**Forces** are used to apply acceleration to objects which scale inversely with the object's mass. All forces applied to an object are accumulated and applied in the next world step where they are reset.",
+            "Persistent forces must be reapplied on each fixed update (every `tick`).",
+            "It's important to note that the change in velocity will be a function of the **force vector**, the object's **mass**, and the **time step**. If you need a specific instantaneous change in velocity, use an **Impulse** instead."
+        ].join("\n\n"),
         onInit: (world)=>{
 
             // This small circle will orbit the bigger one.
@@ -231,7 +235,12 @@ export const generalExamples = [
     new Example({ // Impulse
         name: "Impulse",
         key: "impulse",
-        description: "Impulses are used to apply a sudden change in momentum to an object. It's similar to a force, but modifies the object's velocity instantaneously, rather than acting as a persistant push.\n\nIn this example we demonstrate both Linear and Angular impulses. The two circles receive vertical linear impulses, while the box receives periodic angular impulses (torque) causing it to spin without moving its center.",
+        description: [
+            "**Impulses** are used to apply a sudden change in momentum to an object. It's similar to a force, but modifies the object's velocity **instantaneously**, rather than acting as a persistent push.",
+            "In this example we demonstrate both **Linear** and **Angular** impulses.",
+            "- The two circles receive vertical linear impulses.",
+            "- The box receives periodic angular impulses (torque) causing it to spin without moving its center."
+        ].join("\n\n"),
         
         globalLines: [
             "let impulseTimer = 0;",
@@ -306,7 +315,10 @@ export const generalExamples = [
     new Example({ // Gravity
         name: "Gravity",
         key: "gravity",
-        description: "Gravity is a 2D acceleration vector that can be set on World objects. Gravity is automatically applied as a force to all objects in the world.\n\nOne of the cool things about this example in particular is that you can also see the influence of damping on the net force.",
+        description: [
+            "**Gravity** is a 2D acceleration vector that can be set on `World` objects. Gravity is automatically applied as a force to all objects in the world.",
+            "In this example, you can see the influence of **damping** on the net force vectors as objects fall through the sensor zone."
+        ].join("\n\n"),
         globalLines: ["let nextId = 1;"],
         onInit: (world)=>{
             // Mind you that while we like to think of things in terms of SI units, the scale is arbitrary.
@@ -358,7 +370,10 @@ export const generalExamples = [
     new Example({ // Bounce
         name: "Bounce",
         key: "bounce",
-        description: "",
+        description: [
+            "This example demonstrates **Restitution** (bounciness).",
+            "The central ball is configured with `restitution: 1.0`, meaning it loses no energy during collisions with the fixed walls, creating a perfectly elastic bounce."
+        ].join("\n\n"),
         onInit: (world)=>{
             // Gravity
             world.setGravity(0, 10);
@@ -424,7 +439,12 @@ export const generalExamples = [
         name: "Collisions",
         key: "collisions",
         description: [
-            "Collisions are enabled for objects whose type is set to RIGID_BODY. In this example we can see collisions between all of the different supported shape types.",
+            "Collisions are enabled for objects whose type is set to `RIGID_BODY`.",
+            "In this example we can see collisions between all of the different supported shape types:",
+            "- **CIRCLE**: Optimized circular collisions.",
+            "- **BOX**: Oriented bounding boxes with full rotation support.",
+            "- **AABB**: Axis-aligned bounding boxes.",
+            "- **POINT**: Zero-radius points that collide with larger shapes."
         ].join("\n\n"),
         globalLines: ["let nextId = 1;"],
         onInit: (world)=>{
@@ -499,11 +519,13 @@ export const generalExamples = [
         name: "Friction",
         key: "friction",
         description: [
-            "Friction is applied as the last step of collision resolution. It deals with static and dynamic friction, applied as impulses at the point of contact, given the relative tangential velocity at that point. Take note of the blue impulse vector on the platforms wich are present when dynamic friction is being applied.",
-            "Line 1: A circle spinning counterclockwise angular momentum switches to clockwise due to friction, then continues to roll.",
-            "Line 2: A spinning circle with no linear momentum transfers momentum from angular to lienar due to friciton, then continues to roll.",
-            "Line 3: A box slides across the platform and grinds to a halt due to friction.",
-            "Line 4: Two boxes slide down a ramp. The left box has a high static friction, and eventually stops. The right box has no static friction and continues to slide as dynamic friction and gravitational forces dominate.",
+            "**Friction** is applied as the last step of collision resolution. It handles both **static** and **dynamic** friction, applied as impulses at the point of contact.",
+            "Take note of the blue impulse vectors on the platforms which are present when dynamic friction is being applied.",
+            "### Scenarios",
+            "1. **Reverse Roll**: A circle spinning counter-clockwise transfers its angular momentum to linear momentum upon contact.",
+            "2. **Forward Roll**: A spinning circle with no linear momentum begins rolling forward due to friction.",
+            "3. **Slide**: A box slides across the platform and grinds to a halt.",
+            "4. **Static vs Kinetic**: Two boxes slide down a ramp. The left box has high static friction and stops; the right has no static friction and keeps sliding."
         ].join("\n\n"),
         onInit: (world)=>{
 
@@ -677,12 +699,12 @@ export const generalExamples = [
         name: "Collision Masks",
         key: "collision-masks",
         description: [
-            "Collision masks allow you to selectively enable or disable collisions between different groups of objects.",
-            "In this example, there are three types of objects and three platforms:",
-            "1. Blue objects only collide with blue platforms and each other.",
-            "2. Red objects only collide with red platforms and each other.",
-            "3. Green objects collide with everything (including each other).",
-            "Bitmasks are used to implement this logic: Blue (Category 1), Red (Category 2), Green (Category 4). Platforms are configured to collide with their respective categories."
+            "**Collision masks** allow you to selectively enable or disable collisions between different groups of objects using bitwise logic.",
+            "In this example:",
+            "- **Blue objects**: Only collide with blue platforms and other blue objects.",
+            "- **Red objects**: Only collide with red platforms and other red objects.",
+            "- **Green objects**: Collide with **everything**.",
+            "This is implemented using `categoryBits` and `maskBits` properties."
         ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
@@ -770,6 +792,144 @@ export const generalExamples = [
                 if(o.y > 11) toRemove.push(o);
             });
             for(let o of toRemove) world.removeObject(o.id);
+        }
+    }),
+
+    new Example({ // Object Types
+        name: "Object Types",
+        key: "object-types",
+        description: [
+            "This example showcases the four fundamental object types in **Gearbox2D** and how they interact:",
+            "1. **Fixed Objects** (Gray): Immovable platforms with infinite mass. They form the static environment.",
+            "2. **Kinematic Objects** (Purple): Move via velocity but are unaffected by forces. They can 'push' other objects but are never pushed back.",
+            "3. **Rigid Bodies** (Colorful): Fully dynamic objects affected by gravity, forces, and collisions.",
+            "4. **Sensors** (Green Zone): Detect overlaps without causing a physical response. Here, a sensor acts as a **Recycling Zone** to remove objects."
+        ].join("\n\n"),
+        onInit: (world) => {
+            world.clear();
+            world.setGravity(0, 10);
+            nextId = 1;
+
+            // 1. Fixed Objects: The Foundation
+            // Ground
+            world.makeObject(nextId++, {
+                x: 5, y: 9.7,
+                width: 8, height: 0.6,
+                shape: gb2d.shapes.BOX,
+                type: gb2d.bodyTypes.FIXED_OBJECT,
+                color: "#444"
+            });
+            
+            // Side barriers
+            world.makeObject(nextId++, { x: 1, y: 7, width: 0.2, height: 6, shape: gb2d.shapes.BOX, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#444" });
+            world.makeObject(nextId++, { x: 9, y: 7, width: 0.2, height: 6, shape: gb2d.shapes.BOX, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#444" });
+
+            // 2. Kinematic Objects: The Machinery
+            // A rotating center piece
+            const rotor = world.makeObject(nextId++, {
+                x: 5, y: 4,
+                width: 3.5, height: 0.3,
+                shape: gb2d.shapes.BOX,
+                type: gb2d.bodyTypes.KINEMATIC_OBJECT,
+                color: "#a0f",
+                rs: 1.5 // Radians per second
+            });
+            gb2d.debug.addLabel({ text: "Kinematic Rotor", objectId: rotor.id, position: "above", color: "#a0f" });
+
+            // A moving side platform
+            const elevator = world.makeObject(nextId++, {
+                x: 2.5, y: 7,
+                width: 1.5, height: 0.3,
+                shape: gb2d.shapes.BOX,
+                type: gb2d.bodyTypes.KINEMATIC_OBJECT,
+                color: "#a0f",
+                vx: 1.0
+            });
+            (world as any).elevator = elevator;
+            gb2d.debug.addLabel({ text: "Kinematic Elevator", objectId: elevator.id, position: "above", color: "#a0f" });
+
+            // 4. Sensor: The Recycling Zone
+            const recycler = world.makeObject(nextId++, {
+                x: 5, y: 8.8,
+                width: 4, height: 1.2,
+                shape: gb2d.shapes.BOX,
+                type: gb2d.bodyTypes.SENSOR,
+                color: "rgba(0, 255, 100, 0.15)",
+                wantsEvents: true
+            });
+            gb2d.debug.addLabel({ text: "Sensor Recycler", objectId: recycler.id, position: "on-top", color: "#4f4" });
+
+            // Store the recycler ID to identify it in collisions
+            (world as any).recyclerId = recycler.id;
+            (world as any).toRemove = new Set();
+
+            world.onCollisionStart = (idA, idB) => {
+                const rid = (world as any).recyclerId;
+                const otherId = idA === rid ? idB : (idB === rid ? idA : null);
+                
+                if (otherId !== null) {
+                    const other = world.getObjectById(otherId);
+                    if (other && other.type === gb2d.bodyTypes.RIGID_BODY) {
+                        (world as any).toRemove.add(otherId);
+                        // Visual cue: change color before removal
+                        other.color = "#4f4";
+                    }
+                }
+            };
+        },
+        onTick: (world, dt) => {
+            // Update Kinematic behavior
+            const elevator = (world as any).elevator;
+            if (elevator) {
+                if (elevator.x > 7.5) elevator.vx = -1.5;
+                if (elevator.x < 2.5) elevator.vx = 1.5;
+            }
+
+            // 3. Spawn Rigid Bodies (Dynamic)
+            if (world.stepCount % 20 === 0) {
+                const colors = ["#ff4444", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
+                const isCircle = Math.random() > 0.5;
+                const x = 3 + Math.random() * 4;
+                
+                world.makeObject(nextId++, {
+                    x, y: 0.5,
+                    shape: isCircle ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                    radius: 0.25,
+                    width: 0.5, height: 0.5,
+                    mass: 0.5 + Math.random() * 1.0,
+                    type: gb2d.bodyTypes.RIGID_BODY,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    restitution: 0.3
+                });
+            }
+
+            // Cleanup recycled objects
+            const toRemove = (world as any).toRemove;
+            if (toRemove && toRemove.size > 0) {
+                for (const id of toRemove) {
+                    if (world.getObjectById(id)) {
+                        world.removeObject(id);
+                    }
+                }
+                toRemove.clear();
+            }
+
+            // Global bounds cleanup
+            let outOfBounds = [];
+            world.iterateObjects(obj => {
+                if (obj.y > 11 || obj.y < -5 || obj.x > 11 || obj.x < -1) {
+                    if (obj.type === gb2d.bodyTypes.RIGID_BODY) {
+                        outOfBounds.push(obj.id);
+                    }
+                }
+            });
+            for (const id of outOfBounds) world.removeObject(id);
+        },
+        onCleanup: (world) => {
+            world.onCollisionStart = undefined;
+            delete (world as any).elevator;
+            delete (world as any).recyclerId;
+            delete (world as any).toRemove;
         }
     }),
 ];

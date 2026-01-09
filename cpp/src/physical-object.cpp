@@ -56,7 +56,7 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
     world.liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
     world.liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
-    float mass = type != ObjectType::FIXED_OBJECT && options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f;
+    float mass = type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT && options.hasOwnProperty("mass") ? options["mass"].as<float>() : 0.0f;
     world.liveFloatData.push_back(mass); // mass
     world.liveFloatData.push_back((mass > 0.0f) ? 1.0f / mass : 0.0f); // inverse mass
     world.liveFloatData.push_back(options.hasOwnProperty("gscale") ? options["gscale"].as<float>() : 1.0f);
@@ -201,8 +201,8 @@ float PhysicalObject::getInverseMass() const { return world.liveFloatData[worldI
 float PhysicalObject::getInverseInertia() const {
     float imass = getInverseMass();
     
-    // Fixed objects have zero inverse inertia
-    if (imass == 0.0f) {
+    // Fixed or kinematic objects have zero inverse inertia
+    if (imass == 0.0f || type == ObjectType::FIXED_OBJECT || type == ObjectType::KINEMATIC_OBJECT) {
         return 0.0f;
     }
     
@@ -401,7 +401,7 @@ void PhysicalObject::applyForce(float x, float y){
     int index = worldIndex * FDATA_EPO;
     float inverseMass = world.liveFloatData[index + FDATA_IM];
     
-    if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT && (x || y)) {
+    if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT && (x || y)) {
         world.liveFloatData[index + FDATA_FX] += x;
         world.liveFloatData[index + FDATA_FY] += y;
         
@@ -423,7 +423,7 @@ void PhysicalObject::applyImpulse(float x, float y, float cpX, float cpY){
     
     float inverseMass = world.liveFloatData[index + FDATA_IM];
     
-    if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT) {
+    if (inverseMass != 0.0f && inverseMass != INFINITY && type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT) {
         world.liveFloatData[index + FDATA_IX] += x;
         world.liveFloatData[index + FDATA_IY] += y;
 
@@ -452,7 +452,7 @@ void PhysicalObject::applyAngularImpulse(float torque){
     int index = worldIndex * FDATA_EPO;
     float invI = getInverseInertia();
     
-    if (invI != 0.0f && type != ObjectType::FIXED_OBJECT && torque != 0.0f) {
+    if (invI != 0.0f && type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT && torque != 0.0f) {
         world.liveFloatData[index + FDATA_IA] += torque;
 
         float drs = torque * invI;
@@ -508,7 +508,7 @@ bool PhysicalObject::stepMovement(float dt) {
     applyForce(_dampingForce.x, _dampingForce.y);
 
     // Calculate acceleration based on force and mass.
-    if (_inverseMass == 0.0f || _inverseMass == INFINITY || type == ObjectType::FIXED_OBJECT) {
+    if (_inverseMass == 0.0f || _inverseMass == INFINITY || type == ObjectType::FIXED_OBJECT || type == ObjectType::KINEMATIC_OBJECT) {
         _acceleration.x = 0.0f;
         _acceleration.y = 0.0f;
     } else {

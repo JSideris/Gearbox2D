@@ -307,6 +307,50 @@ body {
 	flex-shrink: 0;
 }
 
+#description p {
+	margin-bottom: 16px;
+}
+
+#description p:last-child {
+	margin-bottom: 0;
+}
+
+#description ul, #description ol {
+	margin-bottom: 16px;
+	padding-left: 24px;
+}
+
+#description li {
+	margin-bottom: 8px;
+}
+
+#description li:last-child {
+	margin-bottom: 0;
+}
+
+#description h1, #description h2, #description h3, #description h4, #description h5, #description h6 {
+	color: var(--text-main);
+	margin: 24px 0 12px 0;
+	font-family: var(--font-header);
+}
+
+#description h1:first-child, #description h2:first-child, #description h3:first-child {
+	margin-top: 0;
+}
+
+#description code {
+	background-color: rgba(255, 255, 255, 0.1);
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+	color: var(--accent-cyan);
+}
+
+#description strong {
+	color: var(--text-main);
+}
+
 /* Code Viewer */
 #code-container {
 	max-width: 1000px;

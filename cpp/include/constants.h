@@ -13,7 +13,8 @@
 enum class ObjectType {
     RIGID_BODY,
     SENSOR,
-    FIXED_OBJECT
+    FIXED_OBJECT,
+    KINEMATIC_OBJECT
 };
 
 enum class ObjectShape {

@@ -67,25 +67,110 @@ export default class MarkdownParser {
         // Remove nested blockquotes created by the line-by-line replace
         html = html.replace(/<blockquote>\n<blockquote>(.*)<\/blockquote>\n<\/blockquote>/g, "<blockquote>$1</blockquote>");
 
-        // Unordered Lists (- or *)
-        // Capture the start of a list item and any subsequent indented lines
-        html = html.replace(/^[\-\*] (.*(?:\n[ \t]+.*)*)/gm, (match, content) => {
-            return `<li>${content.trim()}</li>`;
-        });
-        html = html.replace(/(<li>[\s\S]*?<\/li>(\s*<li>[\s\S]*?<\/li>)*)/g, (match) => {
-            if (match.includes('<ul>') || match.includes('<ol>')) return match;
-            return `<ul>\n${match}\n</ul>`;
+        // Tables
+        // Matches header, separator, and data rows
+        html = html.replace(/^(\|.*\|)\n[ \t]*(\|[ \t]*:?---*:?[ \t]*(?:\|[ \t]*:?---*:?[ \t]*)*\|)[ \t]*\n((?:\|.*\|(?:\n|$))*)/gm, (match, header, separator, rows) => {
+            const getCells = (row: string) => {
+                const cells = row.trim().split('|');
+                // Remove empty strings at start and end if they exist (due to leading/trailing pipes)
+                if (cells[0] === "") cells.shift();
+                if (cells[cells.length - 1] === "") cells.pop();
+                return cells.map(c => c.trim());
+            };
+
+            const headerCells = getCells(header);
+            const sepCells = getCells(separator);
+            const alignments = sepCells.map(c => {
+                if (c.startsWith(":") && c.endsWith(":")) return "center";
+                if (c.endsWith(":")) return "right";
+                if (c.startsWith(":")) return "left";
+                return "";
+            });
+
+            let tableHtml = "<table><thead><tr>";
+            headerCells.forEach((cell, i) => {
+                const align = alignments[i] ? ` align="${alignments[i]}"` : "";
+                tableHtml += `<th${align}>${cell}</th>`;
+            });
+            tableHtml += "</tr></thead><tbody>";
+
+            const rowLines = rows.trim().split("\n");
+            rowLines.forEach(rowLine => {
+                if (!rowLine.trim()) return;
+                const cells = getCells(rowLine);
+                tableHtml += "<tr>";
+                headerCells.forEach((_, i) => {
+                    const align = alignments[i] ? ` align="${alignments[i]}"` : "";
+                    tableHtml += `<td${align}>${cells[i] || ""}</td>`;
+                });
+                tableHtml += "</tr>";
+            });
+
+            tableHtml += "</tbody></table>";
+            return tableHtml;
         });
 
-        // Ordered Lists (1. )
-        html = html.replace(/^\d+\. (.*(?:\n[ \t]+.*)*)/gm, (match, content) => {
-            return `<li>${content.trim()}</li>`;
-        });
-        // Re-wrapping <li> in <ol> if it wasn't already wrapped in <ul>
-        html = html.replace(/(?<!<ul>\n)(<li>[\s\S]*?<\/li>(\s*<li>[\s\S]*?<\/li>)*)/g, (match) => {
-            if (match.includes('<ul>') || match.includes('<ol>')) return match;
-            return `<ol>\n${match}\n</ol>`;
-        });
+        // 1. Task List Checkboxes
+        html = html.replace(/^([ \t]*[\-\*\d\.]+[ \t]+)\[ \] /gm, "$1<input type=\"checkbox\" disabled /> ");
+        html = html.replace(/^([ \t]*[\-\*\d\.]+[ \t]+)\[[xX]\] /gm, "$1<input type=\"checkbox\" checked disabled /> ");
+
+        // 2. List Items (single line)
+        // Mark them so we can wrap them later
+        html = html.replace(/^([ \t]*)[\-\*] (.*)/gm, "$1<li data-list=\"ul\">$2</li>");
+        html = html.replace(/^([ \t]*)\d+\. (.*)/gm, "$1<li data-list=\"ol\">$2</li>");
+
+        // 3. List Wrapping
+        // We process the lines to handle nesting and proper UL/OL wrapping
+        const lines = html.split('\n');
+        const processedLines: string[] = [];
+        const listStack: { indent: number, type: string }[] = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const liMatch = line.match(/^([ \t]*)<li data-list="(ul|ol)">(.*)<\/li>/);
+
+            if (liMatch) {
+                const indent = liMatch[1].replace(/\t/g, '    ').length;
+                const type = liMatch[2];
+                const content = liMatch[3];
+
+                // Close nested lists that have higher indentation
+                while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
+                    const closed = listStack.pop()!;
+                    processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
+                }
+
+                // Open new nested list or switch type
+                if (listStack.length === 0 || listStack[listStack.length - 1].indent < indent) {
+                    listStack.push({ indent, type });
+                    processedLines.push(`${' '.repeat(indent)}<${type}>`);
+                } else if (listStack[listStack.length - 1].type !== type) {
+                    // Switch type at same indent level
+                    const closed = listStack.pop()!;
+                    processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
+                    listStack.push({ indent, type });
+                    processedLines.push(`${' '.repeat(indent)}<${type}>`);
+                }
+
+                processedLines.push(`${' '.repeat(indent)}<li>${content}</li>`);
+            } else if (line.trim() === "" && listStack.length > 0) {
+                // Keep empty lines between list items without closing the list
+                processedLines.push(line);
+            } else {
+                // Not a list item, close all open lists
+                while (listStack.length > 0) {
+                    const closed = listStack.pop()!;
+                    processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
+                }
+                processedLines.push(line);
+            }
+        }
+        // Close any remaining lists
+        while (listStack.length > 0) {
+            const closed = listStack.pop()!;
+            processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
+        }
+        html = processedLines.join('\n');
 
         // 2. Inline Elements
 
@@ -123,7 +208,7 @@ export default class MarkdownParser {
             }
 
             // If it starts with a block-level tag, don't wrap in <p>
-            if (/^<(h[1-6]|ul|ol|li|hr|code|pre|blockquote)/i.test(block)) {
+            if (/^<(h[1-6]|ul|ol|li|hr|code|pre|blockquote|table)/i.test(block)) {
                 return block;
             }
             return `<p>${block.replace(/\n/g, "<br />")}</p>`;

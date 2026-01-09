@@ -11,13 +11,13 @@ export const clockworkExample = new Example({
     name: "Mechanical Clockwork",
     key: "clockwork",
     description: [
-        "A physically regulated mechanical clock. This version uses a Grashof-compliant Crank-Rocker mechanism to ensure continuous rotation.",
-        "Features:",
-        "- Regulated Motion: A 2.0m pendulum defines a 9-second period in low gravity (1.0 m/s²).",
-        "- Grashof Linkage: Precision geometry allows the drive gear to complete full 360° rotations.",
-        "- Mainspring Power: A tensioned spring drives the escapement, which is physically limited by the pendulum.",
-        "- Multi-stage Reduction: 7 gears step down the escapement's motion to hours and minutes.",
-        "- Sync: The hands and gear train initialize to your local time."
+        "A physically regulated mechanical clock. This version uses a **Grashof-compliant Crank-Rocker** mechanism to ensure continuous rotation.",
+        "### Features",
+        "- **Regulated Motion**: A 2.0m pendulum defines a 9-second period in low gravity (1.0 m/s²).",
+        "- **Grashof Linkage**: Precision geometry allows the drive gear to complete full 360° rotations.",
+        "- **Mainspring Power**: A tensioned `SpringJoint` drives the escapement, physically limited by the pendulum.",
+        "- **Multi-stage Reduction**: 7 `GearJoint` stages step down the escapement's motion to hours and minutes.",
+        "- **Real-time Sync**: The hands and gear train initialize to your local system time."
     ].join("\n\n"),
     onInit: (world) => {
         world.clear();

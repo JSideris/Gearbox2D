@@ -117,9 +117,14 @@ start().catch(console.error);
 
 ## Key Concepts
 
--   **Meters, not Pixels**: GearBox2D calculates everything in meters. In the example above, we scaled our canvas by 50x so that a 1-meter box appears 50 pixels wide.
--   **Static vs. Dynamic**: By default, objects are "physical" (dynamic) and respond to gravity. Setting `type: gb2d.bodyTypes.FIXED_OBJECT` makes them immovable.
--   **Direct Memory Access**: When you access `box.x` or `box.y` in your loop, you are reading directly from the WASM memory buffer—no expensive copying required!
+To build more complex simulations, it is important to understand how the engine handles time and forces.
+
+-   **Meters, not Pixels**: GearBox2D calculates everything in meters. 
+-   **The World**: The container for all your physics objects.
+-   **Steps and Ticks**: How time progresses in the simulation.
+-   **Forces vs. Impulses**: The different ways to move objects.
+
+For a deep dive into these topics, see the **[Core Concepts](#core-concepts)** guide.
 
 ## Running the Example
 

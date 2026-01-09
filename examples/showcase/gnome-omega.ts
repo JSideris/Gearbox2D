@@ -8,14 +8,14 @@ export const gnomeOmegaExample = new Example({
     name: "Gnome Omega Engine",
     key: "gnome-omega",
     description: [
-        "A simulation of a Gnome Omega rotary engine. This is a type of radial engine where the crankshaft is stationary and the entire cylinder block rotates around it.",
-        "Features:",
-        "- Stationary Crankshaft (fixed red point offset from center)",
-        "- Rotating Crankcase (the grey hub)",
-        "- 7 Cylinders with walls 'welded' to the hub using multiple hinges",
-        "- Pistons and Connecting Rods connected via Hinge Joints",
-        "- Collision Masks ensuring pistons only collide with their own cylinder walls.",
-        "Click 'Reset' if the simulation becomes unstable."
+        "A detailed simulation of a **Gnome Omega** rotary engine. In this classic radial design, the crankshaft remains stationary while the entire cylinder block rotates around it.",
+        "### Features",
+        "- **Stationary Crankshaft**: A fixed pivot point (red) offset from the center.",
+        "- **Rotating Crankcase**: The main grey hub that carries the cylinders.",
+        "- **Weld Constraints**: Cylinders are 'welded' to the hub using a combination of `HingeJoint` and `DistanceJoint` for maximum stability.",
+        "- **Reciprocating Motion**: Pistons and connecting rods are synchronized via `HingeJoint` constraints.",
+        "- **Collision Masks**: Bitwise filtering ensures pistons only interact with their respective cylinder walls.",
+        "Click **Reset** if the simulation becomes unstable due to extreme angular velocities."
     ].join("\n\n"),
     onInit: (world) => {
         world.clear();
