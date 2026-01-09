@@ -149,6 +149,11 @@ export const generalExamples = [
             // Event listeners
             canvas = document.getElementById("debug-canvas") as HTMLCanvasElement;
             
+            // Remove existing listeners if they exist (prevents leakage on restart/re-init)
+            if ((world as any)._mouseDownHandler) canvas.removeEventListener('mousedown', (world as any)._mouseDownHandler);
+            if ((world as any)._mouseMoveHandler) window.removeEventListener('mousemove', (world as any)._mouseMoveHandler);
+            if ((world as any)._mouseUpHandler) window.removeEventListener('mouseup', (world as any)._mouseUpHandler);
+
             // We need to store bound versions to remove them later
             (world as any)._mouseDownHandler = (e: MouseEvent) => onMouseDown(e, world);
             (world as any)._mouseMoveHandler = (e: MouseEvent) => onMouseMove(e);
@@ -163,6 +168,9 @@ export const generalExamples = [
                 canvas.removeEventListener('mousedown', (world as any)._mouseDownHandler);
                 window.removeEventListener('mousemove', (world as any)._mouseMoveHandler);
                 window.removeEventListener('mouseup', (world as any)._mouseUpHandler);
+                delete (world as any)._mouseDownHandler;
+                delete (world as any)._mouseMoveHandler;
+                delete (world as any)._mouseUpHandler;
             }
         },
         onTick: (world, dt) => {

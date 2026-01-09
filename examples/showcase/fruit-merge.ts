@@ -181,6 +181,10 @@ export const fruitMergeExample = new Example({
         // Mouse Handlers
         canvas = document.getElementById("debug-canvas") as HTMLCanvasElement;
         
+        // Remove existing listeners if they exist (prevents leakage on restart)
+        if ((world as any)._onMouseMove) canvas.removeEventListener('mousemove', (world as any)._onMouseMove);
+        if ((world as any)._onClick) canvas.removeEventListener('click', (world as any)._onClick);
+
         const onMouseMove = (e: MouseEvent) => {
             if (gameState.isGameOver) return;
             const rect = canvas!.getBoundingClientRect();
@@ -259,6 +263,8 @@ export const fruitMergeExample = new Example({
         if (canvas) {
             canvas.removeEventListener('mousemove', (world as any)._onMouseMove);
             canvas.removeEventListener('click', (world as any)._onClick);
+            delete (world as any)._onMouseMove;
+            delete (world as any)._onClick;
         }
     }
 });

@@ -228,14 +228,27 @@ export const motorcycleExample = new Example({
         // Input listeners
         const onKeyDown = (e) => keys[e.code] = true;
         const onKeyUp = (e) => keys[e.code] = false;
-        window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('keyup', onKeyUp);
 
         // Mouse interaction
         canvas = document.getElementById("debug-canvas");
         const mouseDownHandler = (e) => onMouseDown(e, world);
         const mouseMoveHandler = (e) => onMouseMove(e);
         const mouseUpHandler = (e) => onMouseUp(e, world);
+
+        // Remove existing listeners if they exist (prevents leakage on restart)
+        const oldListeners = (world as any)._motorcycleListeners;
+        if (oldListeners) {
+            window.removeEventListener('keydown', oldListeners.onKeyDown);
+            window.removeEventListener('keyup', oldListeners.onKeyUp);
+            if (canvas) {
+                canvas.removeEventListener('mousedown', oldListeners.mouseDownHandler);
+            }
+            window.removeEventListener('mousemove', oldListeners.mouseMoveHandler);
+            window.removeEventListener('mouseup', oldListeners.mouseUpHandler);
+        }
+
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
 
         canvas.addEventListener('mousedown', mouseDownHandler);
         window.addEventListener('mousemove', mouseMoveHandler);

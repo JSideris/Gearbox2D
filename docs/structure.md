@@ -13,8 +13,9 @@
 - `architecture-world.md`: World Management
 - `architecture-coordinates.md`: Coordinates & Units
 
-## Physical Objects (Rigid Bodies)
+## Physical Objects
 - `objects-body-types.md`: Body Types
+- `objects-lifecycle.md`: Object Lifecycle
 - `objects-properties.md`: Body Properties
 - `objects-state.md`: Body State
 

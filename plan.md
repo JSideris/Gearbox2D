@@ -79,7 +79,7 @@
 - [x] Determine and apply impulse for rigid body collisions with basic shapes.
 - [ ] Determine and apply impulse for convex polygons.
 - [ ] Determine and apply impulse for concave polygons (by splitting them up into convex polygons).
-- [ ] Collision tracking.
+- [X] Collision tracking.
 
 ## Constraints
 - [x] Hinged.
@@ -94,6 +94,7 @@
 - [x] Elasticity (restitution).
 - [x] Static/dynamic friction.
 - [ ] Support changing the center of mass.
+- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization.
 
 
 ## Events
