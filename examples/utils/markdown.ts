@@ -45,6 +45,9 @@ export default class MarkdownParser {
             return `${indent}:::CB-ID-${index}:::`;
         });
 
+        // Escape HTML tags in the remaining markdown to prevent unintended rendering
+        html = this.escapeHtml(html);
+
         // 1. Block Elements
         
         // Horizontal Rules
@@ -95,7 +98,14 @@ export default class MarkdownParser {
         html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
         // Links ([text](url))
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+            // Convert relative .md links to hashes for our docs viewer
+            if (url.endsWith('.md') && !url.startsWith('http') && !url.startsWith('//') && !url.startsWith('/')) {
+                const hash = url.replace('.md', '');
+                return `<a href="#${hash}">${text}</a>`;
+            }
+            return `<a href="${url}">${text}</a>`;
+        });
 
         // Inline Code (`code`)
         html = html.replace(/`(.*?)`/g, "<code>$1</code>");

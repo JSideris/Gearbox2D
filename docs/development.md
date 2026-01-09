@@ -1,6 +1,6 @@
 # Development & Contributing
 
-Follow these instructions to build GearBox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](installation.md).
+Follow these instructions to build GearBox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
 
 ## Prerequisites
 

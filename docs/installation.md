@@ -73,5 +73,5 @@ npx http-server .
 
 ## Next Steps
 
-Once you have the engine installed, check out [Your First Simulation](first-simulation.md) to build a falling box demo.
+Once you have the engine installed, check out [Your First Simulation](#first-simulation) to build a falling box demo.
 

@@ -4,7 +4,7 @@ This guide will walk you through creating a simple physics simulation: a box fal
 
 ## 1. Basic HTML Template
 
-Create an `index.html` file. We will use a `<canvas>` element to render our simulation. For this example, we'll use the built-in `debug` graphics for simplicity.
+Create an `index.html` file. We will use a `<canvas>` element to render our simulation.
 
 ```html
 <!DOCTYPE html>
@@ -18,7 +18,13 @@ Create an `index.html` file. We will use a `<canvas>` element to render our simu
 </head>
 <body>
     <canvas id="canvas"></canvas>
-    <script type="module" src="main.js"></script>
+
+    <!-- OPTION A: Using the Standalone CDN (Easiest for this guide) -->
+    <script src="https://unpkg.com/gearbox-2d/dist/standalone/gb2d.js"></script>
+    <script src="main.js"></script>
+
+    <!-- OPTION B: Using NPM/Bundlers (Vite, Webpack, etc.) -->
+    <!-- <script type="module" src="main.js"></script> -->
 </body>
 </html>
 ```
@@ -28,10 +34,16 @@ Create an `index.html` file. We will use a `<canvas>` element to render our simu
 Create a `main.js` file. This script initializes the engine, sets up the world, and runs the simulation loop.
 
 ```javascript
-import gb2d from 'gearbox-2d'; // Or use the CDN URL
+/**
+ * 1. ACCESS THE ENGINE
+ * 
+ * If you used the CDN script tag in index.html, 'gb2d' is already 
+ * available globally. If you are using NPM/Vite, uncomment the line below:
+ */
+// import gb2d from 'gearbox-2d';
 
 async function start() {
-    // 1. Initialize the engine
+    // 2. Initialize the engine
     await gb2d.init();
 
     // 2. Create the physics world
@@ -111,7 +123,11 @@ start().catch(console.error);
 
 ## Running the Example
 
-Remember to serve these files using a web server:
+### If using the Standalone CDN
+You can simply open `index.html` in your browser! Because the WASM core is inlined in the standalone build, it doesn't suffer from the usual `file://` protocol restrictions.
+
+### If using NPM/Bundlers
+You must serve your files using a web server to allow the browser to load the `.wasm` file:
 
 ```bash
 npx http-server .

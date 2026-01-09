@@ -97,11 +97,11 @@
 
 
 ## Events
-- [ ] Events buffer.
-- [ ] Opt in per object.
-- [ ] On collision events.
+- [X] Events buffer.
+- [X] Opt in per object.
+- [X] On collision events.
 	- [ ] Return impulse.
-- [ ] On collision end events.
+- [X] On collision end events.
 - [ ] On sleep events.
 - [ ] On wake up.
 - [ ] On pre-solve (optional).
