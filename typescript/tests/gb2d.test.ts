@@ -3,7 +3,7 @@ jest.mock('../../dist/wasm/gb2d-module.js', () => ({
   default: jest.fn(),
 }));
 
-import { SHAPES, BODY_TYPES } from '../src/gb2d';
+import { SHAPES, BODY_TYPES } from '../src/constants';
 
 describe('Gb2d constants', () => {
   test('SHAPES should be defined correctly', () => {
