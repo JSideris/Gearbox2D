@@ -53,13 +53,17 @@ export const clockworkExample = new Example({
         };
 
         // --- GUI & TUNER ---
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const existingGui = document.getElementById('clock-tuner-gui');
         if (existingGui) existingGui.remove();
 
         const gui = document.createElement('div');
         gui.id = 'clock-tuner-gui';
         gui.style = `position:fixed;top:20px;right:20px;width:280px;background:rgba(0,0,0,0.85);color:#0f0;padding:15px;border-radius:8px;font-family:monospace;z-index:1000;box-shadow:0 4px 15px rgba(0,0,0,0.5);font-size:12px;border:1px solid #333;`;
-        document.body.appendChild(gui);
+        
+        if (isLocal) {
+            document.body.appendChild(gui);
+        }
 
         const scoreDisplay = document.createElement('div');
         scoreDisplay.style = `margin:15px 0;padding:10px;border:1px solid #0f0;text-align:center;font-size:16px;font-weight:bold;`;
