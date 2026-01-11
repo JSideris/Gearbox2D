@@ -154,6 +154,30 @@
             max-width: 100%;
         }
 
+        #hero-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.5;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        header .container {
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        header .container * {
+            pointer-events: auto;
+        }
+
         .footer {
             background-color: var(--bg-deep);
             color: var(--text-muted);
@@ -209,20 +233,23 @@
             header { padding: 60px 20px; }
         }
     </style>
-  <script type="module" crossorigin src="./assets/main-C5SFMbsz.js"></script>
+  <script type="module" crossorigin src="./assets/main-B8WFDZfc.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/world-BwhgQR7J.js">
+  <link rel="modulepreload" crossorigin href="./assets/world-CP3nBmQP.js">
 </head>
 <body>
 
 <header>
-    <div style="position: absolute; top: 10px; left: 10px; background: #ff4444; color: white; padding: 4px 12px; font-family: Orbitron; font-size: 10px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">ALPHA / WIP</div>
-    <h1>GearBox2D</h1>
-    <p>Web-First Physics & AI Engine powered by WebAssembly</p>
-    <div class="cta-buttons">
-        <a href="docs.html">API Documentation</a>
-        <a href="examples.html" class="secondary">View Examples</a>
-        <a href="https://github.com/JSideris/Gearbox2D">GitHub Repo</a>
+    <canvas id="hero-canvas"></canvas>
+    <div class="container">
+        <div style="position: absolute; top: 10px; left: 10px; background: #ff4444; color: white; padding: 4px 12px; font-family: Orbitron; font-size: 10px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">ALPHA / WIP</div>
+        <h1>GearBox2D</h1>
+        <p>Web-First Physics & AI Engine powered by WebAssembly</p>
+        <div class="cta-buttons">
+            <a href="docs.html">API Documentation</a>
+            <a href="examples.html" class="secondary">View Examples</a>
+            <a href="https://github.com/JSideris/Gearbox2D">GitHub Repo</a>
+        </div>
     </div>
 </header>
 
@@ -259,7 +286,7 @@
 <section id="get-started">
     <h2>Ready to build?</h2>
     <div class="code-snippet">
-        <pre><span class="keyword">import</span> { GearBox2D } <span class="keyword">from</span> <span class="string">'gearbox2d'</span>;
+        <pre><span class="keyword">import</span> { GearBox2D } <span class="keyword">from</span> <span class="string">'gearbox-2d'</span>;
 
 <span class="keyword">const</span> engine = <span class="keyword">new</span> <span class="function">GearBox2D</span>();
 <span class="keyword">await</span> engine.<span class="function">initialize</span>();
@@ -269,7 +296,7 @@
     </div>
     <div class="cta-buttons" style="text-align: center;">
         <a href="docs.html#api-reference" class="secondary">View API Reference</a>
-        <a href="docs.html#installation">npm install gearbox2d</a>
+        <a href="docs.html#installation">npm install gearbox-2d</a>
     </div>
 </section>
 
