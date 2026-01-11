@@ -9,17 +9,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-  <script type="module" crossorigin src="./assets/examples-DvD6MZHJ.js"></script>
+  <script type="module" crossorigin src="./assets/examples-Co6T7DMe.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/markdown-DTfqLWyu.js">
-  <link rel="modulepreload" crossorigin href="./assets/world-CP3nBmQP.js">
-  <link rel="stylesheet" crossorigin href="./assets/markdown-DTiP7GUX.css">
+  <link rel="modulepreload" crossorigin href="./assets/markdown-tUR2hliS.js">
+  <link rel="modulepreload" crossorigin href="./assets/world-BAe1p98x.js">
+  <link rel="stylesheet" crossorigin href="./assets/markdown-DGfjjK-Z.css">
 </head>
 <body>
     <div id="sidebar">
         <div id="sidebar-header">
-            <h2>Examples</h2>
-            <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            <h2 id="sidebar-title">Examples</h2>
+            <div id="sidebar-actions">
+                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+                <button id="reset-button-mobile" class="sidebar-icon-button" title="Reset"><i class="fas fa-redo-alt"></i></button>
+                <button id="info-toggle-mobile" class="sidebar-icon-button" title="Information"><i class="fas fa-info-circle"></i></button>
+                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
         </div>
         <ul id="examples-list">
             <!-- Examples will be dynamically generated from the examples.js data -->
@@ -35,10 +40,16 @@
                 </a>
                 <h1 id="example-name">Loading example...</h1>
             </div>
-            <button id="reset-button" title="Reset current example">
-                <i class="fas fa-redo-alt"></i>
-                Reset Example
-            </button>
+            <div class="header-right">
+                <button id="info-toggle" title="Show Information">
+                    <i class="fas fa-info-circle"></i>
+                    <span class="button-text">Info</span>
+                </button>
+                <button id="reset-button" title="Reset current example">
+                    <i class="fas fa-redo-alt"></i>
+                    <span class="button-text">Reset Example</span>
+                </button>
+            </div>
         </div>
         
         <div id="content">
@@ -65,9 +76,15 @@
                 
                 <div id="code-section" style="display: none;">
                     <div id="code-tabs">
-                        <button class="code-tab" data-panel="general">Setup</button>
-                        <button class="code-tab active" data-panel="init">Init</button>
-                        <button class="code-tab" data-panel="tick">Tick</button>
+                        <div class="code-tabs-left">
+                            <button class="code-tab" data-panel="general">Setup</button>
+                            <button class="code-tab active" data-panel="init">Init</button>
+                            <button class="code-tab" data-panel="tick">Tick</button>
+                        </div>
+                        <button id="copy-code" title="Copy code to clipboard">
+                            <i class="fas fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
                     </div>
                     
                     <div class="code-panel" id="general-panel">

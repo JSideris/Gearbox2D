@@ -9,206 +9,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-    <style>
-        #doc-content {
-            max-width: 800px;
-            width: 100%;
-            margin: 0 auto;
-            color: var(--text-main);
-            line-height: 1.6;
-        }
-        #doc-content h1 {
-            font-family: var(--font-header);
-            color: var(--accent-cyan);
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.5rem;
-        }
-        #doc-content h2 {
-            font-family: var(--font-header);
-            color: var(--accent-purple);
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-        }
-        #doc-content h3 {
-            color: var(--accent-cyan);
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-        }
-        #doc-content p {
-            margin-bottom: 1rem;
-            color: var(--text-muted);
-        }
-        #doc-content code {
-            font-family: var(--font-mono);
-            background-color: rgba(30, 41, 59, 0.5);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-size: 0.85em;
-            color: var(--accent-cyan);
-        }
-        #doc-content pre {
-            background-color: #0d1117;
-            padding: 1.25rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            overflow-x: auto;
-            margin: 1.5rem 0;
-            position: relative;
-        }
-        #doc-content pre code {
-            background-color: transparent;
-            padding: 0;
-            color: #c9d1d9;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            border-radius: 0;
-        }
-        /* Add a small indicator for the language if available */
-        #doc-content pre[data-lang]::before {
-            content: attr(data-lang);
-            position: absolute;
-            top: 0;
-            right: 0;
-            padding: 4px 8px;
-            font-size: 0.6rem;
-            font-family: var(--font-header);
-            color: var(--text-muted);
-            text-transform: uppercase;
-            background: var(--bg-surface);
-            border-bottom-left-radius: 4px;
-            border-left: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-            opacity: 0.5;
-        }
-        #doc-content ul, #doc-content ol {
-            margin-bottom: 1rem;
-            padding-left: 1.5rem;
-            color: var(--text-muted);
-        }
-        #doc-content li {
-            margin-bottom: 0.5rem;
-        }
-        #doc-content input[type="checkbox"] {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 1.2rem;
-            height: 1.2rem;
-            background: var(--bg-surface);
-            border: 2px solid var(--border);
-            border-radius: 4px;
-            margin-right: 0.8rem;
-            vertical-align: middle;
-            position: relative;
-            top: -1px;
-            cursor: default;
-            transition: var(--transition);
-        }
-        #doc-content input[type="checkbox"]:checked {
-            background: rgba(0, 242, 255, 0.1);
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
-        }
-        #doc-content input[type="checkbox"]:checked::after {
-            content: "\f00c";
-            font-family: "Font Awesome 6 Free";
-            font-weight: 900;
-            font-size: 0.7rem;
-            color: var(--accent-cyan);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        #doc-content input[type="checkbox"]:not(:checked) {
-            opacity: 0.6;
-        }
-        #doc-content a {
-            color: var(--accent-cyan);
-            text-decoration: none;
-        }
-        #doc-content a:hover {
-            text-decoration: underline;
-        }
-        #doc-content blockquote {
-            border-left: 4px solid var(--accent-purple);
-            padding-left: 1rem;
-            margin: 1rem 0;
-            font-style: italic;
-            color: var(--text-muted);
-        }
-        #doc-content table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin: 2rem 0;
-            font-size: 0.9rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        }
-        #doc-content th {
-            background-color: rgba(30, 41, 59, 0.8);
-            color: var(--accent-cyan);
-            font-family: var(--font-header);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 2px solid var(--border);
-            font-size: 0.75rem;
-        }
-        #doc-content td {
-            padding: 1rem;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border);
-            background-color: rgba(15, 23, 42, 0.3);
-            transition: var(--transition);
-            line-height: 1.5;
-        }
-        #doc-content tr:last-child td {
-            border-bottom: none;
-        }
-        #doc-content tr:hover td {
-            background-color: rgba(0, 242, 255, 0.05);
-            color: var(--text-main);
-        }
-        /* Handle text alignment from markdown parser */
-        #doc-content th[align="center"], #doc-content td[align="center"] { text-align: center; }
-        #doc-content th[align="right"], #doc-content td[align="right"] { text-align: right; }
-
-        .sidebar-link {
-            display: block;
-            padding: 8px 20px;
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: var(--transition);
-            border-left: 2px solid transparent;
-            cursor: pointer;
-        }
-        .sidebar-link:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-        }
-        .sidebar-link.active {
-            background: linear-gradient(to right, rgba(0, 242, 255, 0.1), transparent);
-            color: var(--accent-cyan);
-            border-left: 2px solid var(--accent-cyan);
-        }
-    </style>
-  <script type="module" crossorigin src="./assets/docs-C1elWpQ3.js"></script>
+  <script type="module" crossorigin src="./assets/docs-QyaffYuW.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/markdown-DTfqLWyu.js">
-  <link rel="stylesheet" crossorigin href="./assets/markdown-DTiP7GUX.css">
+  <link rel="modulepreload" crossorigin href="./assets/markdown-tUR2hliS.js">
+  <link rel="stylesheet" crossorigin href="./assets/markdown-DGfjjK-Z.css">
+  <link rel="stylesheet" crossorigin href="./assets/docs-DyZDjSnf.css">
 </head>
 <body>
     <div id="sidebar">
         <div id="sidebar-header">
-            <h2>Documentation</h2>
-            <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            <h2 id="sidebar-title">Documentation</h2>
+            <div id="sidebar-actions">
+                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
         </div>
         <ul id="docs-list">
             <!-- Documentation categories and pages will be dynamically generated -->
@@ -236,4 +50,3 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 </body>
 </html>
-

@@ -21,6 +21,21 @@
             --shadow-glow: 0 0 20px rgba(0, 242, 255, 0.2);
         }
 
+        .alpha-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #ff4444;
+            color: white;
+            padding: 4px 12px;
+            font-family: Orbitron;
+            font-size: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -231,18 +246,25 @@
         @media (max-width: 768px) {
             h1 { font-size: 2.5em; }
             header { padding: 60px 20px; }
+            
+            /* Move ALPHA/WIP badge up on mobile portrait to avoid overlap */
+            @media (orientation: portrait) {
+                .alpha-badge {
+                    top: -30px;
+                }
+            }
         }
     </style>
-  <script type="module" crossorigin src="./assets/main-B8WFDZfc.js"></script>
+  <script type="module" crossorigin src="./assets/main-DyaEDNCQ.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/world-CP3nBmQP.js">
+  <link rel="modulepreload" crossorigin href="./assets/world-BAe1p98x.js">
 </head>
 <body>
 
 <header>
     <canvas id="hero-canvas"></canvas>
     <div class="container">
-        <div style="position: absolute; top: 10px; left: 10px; background: #ff4444; color: white; padding: 4px 12px; font-family: Orbitron; font-size: 10px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">ALPHA / WIP</div>
+        <div class="alpha-badge">ALPHA / WIP</div>
         <h1>GearBox2D</h1>
         <p>Web-First Physics & AI Engine powered by WebAssembly</p>
         <div class="cta-buttons">
