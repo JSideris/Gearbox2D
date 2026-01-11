@@ -21,6 +21,21 @@
             --shadow-glow: 0 0 20px rgba(0, 242, 255, 0.2);
         }
 
+        .alpha-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #ff4444;
+            color: white;
+            padding: 4px 12px;
+            font-family: Orbitron;
+            font-size: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -231,6 +246,13 @@
         @media (max-width: 768px) {
             h1 { font-size: 2.5em; }
             header { padding: 60px 20px; }
+            
+            /* Move ALPHA/WIP badge up on mobile portrait to avoid overlap */
+            @media (orientation: portrait) {
+                .alpha-badge {
+                    top: -30px;
+                }
+            }
         }
     </style>
 </head>
@@ -239,7 +261,7 @@
 <header>
     <canvas id="hero-canvas"></canvas>
     <div class="container">
-        <div style="position: absolute; top: 10px; left: 10px; background: #ff4444; color: white; padding: 4px 12px; font-family: Orbitron; font-size: 10px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">ALPHA / WIP</div>
+        <div class="alpha-badge">ALPHA / WIP</div>
         <h1>GearBox2D</h1>
         <p>Web-First Physics & AI Engine powered by WebAssembly</p>
         <div class="cta-buttons">
@@ -507,60 +529,114 @@
         };
 
         // 5. Interactivity
+        const spawnBurst = (pos) => {
+            for (let i = 0; i < 5; i++) {
+                world.makeObject(nextId++, {
+                    x: pos.x + (Math.random() - 0.5) * 0.2,
+                    y: pos.y + (Math.random() - 0.5) * 0.2,
+                    shape: Math.random() > 0.5 ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                    radius: 0.15,
+                    width: 0.3, height: 0.3,
+                    mass: 0.5,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    restitution: 0.6,
+                    categoryBits: objectCategory,
+                    maskBits: objectCategory | gearCategory
+                });
+            }
+        };
+
+        const startDragging = (pos) => {
+            const hits = world.queryPoint(pos.x, pos.y);
+            if (hits.length > 0) {
+                const target = world.getObjectById(hits[0]);
+                if (target && target.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+                    mouseAnchor = world.makeObject(999999, {
+                        x: pos.x, y: pos.y,
+                        type: gb2d.bodyTypes.FIXED_OBJECT,
+                        shape: gb2d.shapes.CIRCLE,
+                        radius: 0.05,
+                        color: "transparent",
+                        maskBits: 0
+                    });
+                    dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
+                        worldAnchor: pos,
+                        frequencyHz: 5.0,
+                        dampingRatio: 1.0,
+                        length: 0
+                    });
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        const moveDragging = (pos) => {
+            if (mouseAnchor) {
+                mouseAnchor.x = pos.x;
+                mouseAnchor.y = pos.y;
+            }
+        };
+
+        const stopDragging = () => {
+            if (dragJoint) { world.removeJoint(dragJoint.id); dragJoint = null; }
+            if (mouseAnchor) { world.removeObject(mouseAnchor.id); mouseAnchor = null; }
+        };
+
         canvas.addEventListener('mousedown', (e) => {
             const pos = screenToWorld(e.clientX, e.clientY);
-            
             if (e.button === 0) { // Left Click: Spawn burst
-                for (let i = 0; i < 5; i++) {
-                    world.makeObject(nextId++, {
-                        x: pos.x + (Math.random() - 0.5) * 0.2,
-                        y: pos.y + (Math.random() - 0.5) * 0.2,
-                        shape: Math.random() > 0.5 ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
-                        radius: 0.15,
-                        width: 0.3, height: 0.3,
-                        mass: 0.5,
-                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-                        restitution: 0.6,
-                        categoryBits: objectCategory,
-                        maskBits: objectCategory | gearCategory
-                    });
-                }
+                spawnBurst(pos);
             } else if (e.button === 2) { // Right Click: Drag (Pull)
-                const hits = world.queryPoint(pos.x, pos.y);
-                if (hits.length > 0) {
-                    const target = world.getObjectById(hits[0]);
-                    if (target && target.type !== gb2d.bodyTypes.FIXED_OBJECT) {
-                        mouseAnchor = world.makeObject(999999, {
-                            x: pos.x, y: pos.y,
-                            type: gb2d.bodyTypes.FIXED_OBJECT,
-                            shape: gb2d.shapes.CIRCLE,
-                            radius: 0.05,
-                            color: "transparent",
-                            maskBits: 0
-                        });
-                        dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
-                            worldAnchor: pos,
-                            frequencyHz: 5.0,
-                            dampingRatio: 1.0,
-                            length: 0
-                        });
-                    }
-                }
+                startDragging(pos);
             }
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (mouseAnchor) {
-                const pos = screenToWorld(e.clientX, e.clientY);
-                mouseAnchor.x = pos.x;
-                mouseAnchor.y = pos.y;
-            }
+            const pos = screenToWorld(e.clientX, e.clientY);
+            moveDragging(pos);
         });
 
         window.addEventListener('mouseup', (e) => {
-            if (dragJoint) { world.removeJoint(dragJoint.id); dragJoint = null; }
-            if (mouseAnchor) { world.removeObject(mouseAnchor.id); mouseAnchor = null; }
+            stopDragging();
         });
+
+        // Touch Interactivity
+        let touchStartTime = 0;
+        let touchStartPos = null;
+        let isTouchDragging = false;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = screenToWorld(touch.clientX, touch.clientY);
+            touchStartTime = performance.now();
+            touchStartPos = pos;
+            
+            if (startDragging(pos)) {
+                isTouchDragging = true;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = screenToWorld(touch.clientX, touch.clientY);
+            moveDragging(pos);
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const duration = performance.now() - touchStartTime;
+            
+            if (!isTouchDragging && duration < 250) {
+                // It was a tap
+                spawnBurst(touchStartPos);
+            }
+            
+            stopDragging();
+            isTouchDragging = false;
+        }, { passive: false });
 
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 

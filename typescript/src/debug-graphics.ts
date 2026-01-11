@@ -34,6 +34,7 @@ export class DebugGraphics {
     showAabbs: boolean = true;
 
     private labels: DebugLabel[] = [];
+    private resizeObserver: ResizeObserver | null = null;
     defaultLabelFontSize: string = '12px Arial';
     defaultLabelColor: string = '#f1f5f9';
     defaultLabelOffset: number = 5;
@@ -59,6 +60,15 @@ export class DebugGraphics {
         this.ctx = canvas.getContext('2d');
         this.debugWorld = world;
 
+        // Initialize size immediately
+        this.syncSize();
+
+        // Use ResizeObserver to keep canvas buffer size in sync with CSS display size
+        this.resizeObserver = new ResizeObserver(() => {
+            this.syncSize();
+        });
+        this.resizeObserver.observe(canvas);
+
         this.animFrame = requestAnimationFrame(() => this.animate());
     }
 
@@ -67,6 +77,42 @@ export class DebugGraphics {
         this.debugWorld = null;
         if (this.animFrame) cancelAnimationFrame(this.animFrame);
         this.animFrame = null;
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+    }
+
+    syncSize() {
+        if (!this.canvas) return;
+        const width = this.canvas.clientWidth;
+        const height = this.canvas.clientHeight;
+        
+        if (width > 0 && height > 0 && (this.canvas.width !== width || this.canvas.height !== height)) {
+            const oldWidth = this.canvas.width;
+            const oldHeight = this.canvas.height;
+            
+            // Maintain centering during resize
+            if (oldWidth > 0 && oldHeight > 0) {
+                const centerX = (oldWidth / 2 - this.offsetX) / (ANIMSCALE * this.zoom);
+                const centerY = (oldHeight / 2 - this.offsetY) / (ANIMSCALE * this.zoom);
+                
+                this.canvas.width = width;
+                this.canvas.height = height;
+                
+                this.offsetX = width / 2 - (centerX * ANIMSCALE * this.zoom);
+                this.offsetY = height / 2 - (centerY * ANIMSCALE * this.zoom);
+            } else {
+                this.canvas.width = width;
+                this.canvas.height = height;
+            }
+        }
+    }
+
+    centerCamera(worldX: number, worldY: number) {
+        if (!this.canvas) return;
+        this.offsetX = (this.canvas.width / 2) - (worldX * ANIMSCALE * this.zoom);
+        this.offsetY = (this.canvas.height / 2) - (worldY * ANIMSCALE * this.zoom);
     }
 
     private drawAabb(obj: PhysicalObject) {

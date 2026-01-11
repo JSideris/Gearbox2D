@@ -14,8 +14,13 @@
 <body>
     <div id="sidebar">
         <div id="sidebar-header">
-            <h2>Examples</h2>
-            <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            <h2 id="sidebar-title">Examples</h2>
+            <div id="sidebar-actions">
+                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+                <button id="reset-button-mobile" class="sidebar-icon-button" title="Reset"><i class="fas fa-redo-alt"></i></button>
+                <button id="info-toggle-mobile" class="sidebar-icon-button" title="Information"><i class="fas fa-info-circle"></i></button>
+                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
         </div>
         <ul id="examples-list">
             <!-- Examples will be dynamically generated from the examples.js data -->
@@ -31,10 +36,16 @@
                 </a>
                 <h1 id="example-name">Loading example...</h1>
             </div>
-            <button id="reset-button" title="Reset current example">
-                <i class="fas fa-redo-alt"></i>
-                Reset Example
-            </button>
+            <div class="header-right">
+                <button id="info-toggle" title="Show Information">
+                    <i class="fas fa-info-circle"></i>
+                    <span class="button-text">Info</span>
+                </button>
+                <button id="reset-button" title="Reset current example">
+                    <i class="fas fa-redo-alt"></i>
+                    <span class="button-text">Reset Example</span>
+                </button>
+            </div>
         </div>
         
         <div id="content">
@@ -156,6 +167,8 @@ gb2d.init().then(()=>{
 })
 `.trim();
 
+        const isMobileLayout = () => window.innerWidth <= 768;
+
         // Create data-driven map for faster lookups
         let examplesMap = {};
         let currentExample = null;
@@ -210,7 +223,7 @@ gb2d.init().then(()=>{
                     loadExample(exampleKey, 'push');
                     
                     // Auto-collapse sidebar on mobile
-                    if (window.innerWidth <= 768) {
+                    if (isMobileLayout()) {
                         sidebar.classList.add('collapsed');
                     }
                 });
@@ -234,6 +247,9 @@ gb2d.init().then(()=>{
         let sidebarToggle = document.getElementById("sidebar-toggle");
         let sidebar = document.getElementById("sidebar");
         let resetButton = document.getElementById("reset-button");
+        let resetButtonMobile = document.getElementById("reset-button-mobile");
+        let infoToggle = document.getElementById("info-toggle");
+        let infoToggleMobile = document.getElementById("info-toggle-mobile");
         
         h1.innerHTML = "Loading example...";
 
@@ -306,14 +322,48 @@ gb2d.init().then(()=>{
             loadExampleFromHash(true);
             
             // Add event listener for the reset button
-            resetButton.addEventListener("click", () => {
+            const handleReset = () => {
                 if (currentExample) {
                     loadExample(currentExample, 'none');
                 }
-            });
+            };
+            resetButton.addEventListener("click", handleReset);
+            resetButtonMobile.addEventListener("click", handleReset);
+            
+            // Info toggle logic
+            const toggleInfo = () => {
+                document.body.classList.toggle('info-mode');
+                const isInfoMode = document.body.classList.contains('info-mode');
+                
+                // Update button icons and text
+                const iconClass = isInfoMode ? 'fa-th-large' : 'fa-info-circle';
+                const buttonText = isInfoMode ? 'Show Canvas' : 'Info';
+                
+                [infoToggle, infoToggleMobile].forEach(btn => {
+                    const icon = btn.querySelector('i');
+                    const span = btn.querySelector('.button-text');
+                    
+                    if (icon) icon.className = `fas ${iconClass}`;
+                    if (span) span.textContent = buttonText;
+                    btn.title = isInfoMode ? "Show Canvas" : "Show Information";
+                });
+                
+                // Re-run camera center if we just showed it
+                if (!isInfoMode) {
+                    gb2d.debug.centerCamera(5, 5);
+                }
+            };
+            
+            infoToggle.addEventListener("click", toggleInfo);
+            infoToggleMobile.addEventListener("click", toggleInfo);
             
             // Start animation loop
             animate();
+
+            // Auto-collapse sidebar on mobile on initial load
+            if (isMobileLayout()) {
+                sidebar.classList.add('collapsed');
+            }
 
             // Zoom and Pan event listeners
             canvas.addEventListener('wheel', (e) => {
@@ -369,6 +419,92 @@ gb2d.init().then(()=>{
             canvas.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
             });
+
+            // Touch events for mobile zooming and panning
+            let lastTouchDistance = 0;
+            let isPinching = false;
+            let lastTouchX = 0;
+            let lastTouchY = 0;
+
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                    isPinching = false;
+                } else if (e.touches.length === 2) {
+                    isPinching = true;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 0) return;
+                
+                // Always prevent default to stop scrolling while interacting with canvas
+                e.preventDefault();
+
+                if (e.touches.length === 1 && !isPinching) {
+                    const touchX = e.touches[0].clientX;
+                    const touchY = e.touches[0].clientY;
+                    const dx = touchX - lastTouchX;
+                    const dy = touchY - lastTouchY;
+
+                    gb2d.debug.offsetX += dx;
+                    gb2d.debug.offsetY += dy;
+
+                    lastTouchX = touchX;
+                    lastTouchY = touchY;
+                } else if (e.touches.length === 2) {
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const dx = touch1.clientX - touch2.clientX;
+                    const dy = touch1.clientY - touch2.clientY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (lastTouchDistance > 0) {
+                        const zoomFactor = distance / lastTouchDistance;
+                        const newZoom = Math.min(Math.max(gb2d.debug.zoom * zoomFactor, 0.1), 10);
+
+                        // Midpoint in screen coordinates
+                        const midX = (touch1.clientX + touch2.clientX) / 2;
+                        const midY = (touch1.clientY + touch2.clientY) / 2;
+                        
+                        // Adjust for canvas position
+                        const rect = canvas.getBoundingClientRect();
+                        const canvasMidX = midX - rect.left;
+                        const canvasMidY = midY - rect.top;
+
+                        // Calculate world coordinates before zoom
+                        const worldX = (canvasMidX - gb2d.debug.offsetX) / gb2d.debug.zoom;
+                        const worldY = (canvasMidY - gb2d.debug.offsetY) / gb2d.debug.zoom;
+
+                        gb2d.debug.zoom = newZoom;
+
+                        // Adjust offset to keep midpoint fixed in world space
+                        gb2d.debug.offsetX = canvasMidX - worldX * gb2d.debug.zoom;
+                        gb2d.debug.offsetY = canvasMidY - worldY * gb2d.debug.zoom;
+                    }
+                    lastTouchDistance = distance;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    isPinching = false;
+                    lastTouchDistance = 0;
+                }
+                if (e.touches.length === 1) {
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchcancel', (e) => {
+                isPinching = false;
+                lastTouchDistance = 0;
+            }, { passive: false });
         });
 
         // Code to load an example
@@ -402,10 +538,9 @@ gb2d.init().then(()=>{
             world.setHasFriction(true);
             world.setGravity(0, 0);
 
-            // Reset camera position and zoom
+            // Reset camera position and zoom (center at 5,5 world coordinates)
             gb2d.debug.zoom = 1.0;
-            gb2d.debug.offsetX = 0;
-            gb2d.debug.offsetY = 0;
+            gb2d.debug.centerCamera(5, 5);
             gb2d.debug.showAabbs = true;
             
             currentExample = exampleKey;
@@ -596,6 +731,27 @@ gb2d.init().then(()=>{
         // Sidebar toggle for mobile
         sidebarToggle.addEventListener("click", () => {
             sidebar.classList.toggle("collapsed");
+        });
+
+        // Resize handler to reset info mode if switching to desktop
+        window.addEventListener('resize', () => {
+            if (!isMobileLayout()) {
+                document.body.classList.remove('info-mode');
+            }
+            
+            // Auto-collapse sidebar if shrinking to mobile
+            if (isMobileLayout() && !sidebar.classList.contains('collapsed')) {
+                sidebar.classList.add('collapsed');
+            }
+        });
+
+        // Close sidebar on click outside on mobile
+        window.addEventListener('click', (e) => {
+            if (isMobileLayout() && !sidebar.classList.contains('collapsed')) {
+                if (!sidebar.contains(e.target) && e.target !== sidebarToggle) {
+                    sidebar.classList.add('collapsed');
+                }
+            }
         });
 
         // Copy to clipboard
