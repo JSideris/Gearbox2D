@@ -405,9 +405,42 @@ body {
 
 #code-tabs {
 	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	background-color: rgba(30, 41, 59, 0.5);
 	border-left: 1px solid var(--border);
 	border-right: 1px solid var(--border);
+}
+
+.code-tabs-left {
+	display: flex;
+}
+
+#copy-code {
+	margin-right: 15px;
+	background: none;
+	border: 1px solid var(--border);
+	color: var(--text-muted);
+	padding: 6px 12px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-family: var(--font-header);
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	transition: var(--transition);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+#copy-code:hover {
+	border-color: var(--accent-cyan);
+	color: var(--accent-cyan);
+}
+
+#copy-code.success {
+	color: #44ff44;
+	border-color: #44ff44;
 }
 
 .code-tab {
@@ -460,6 +493,8 @@ body {
 	color: #c9d1d9;
 	overflow-x: auto;
 	line-height: 1.6;
+	tab-size: 4;
+	-moz-tab-size: 4;
 }
 
 /* Reset Button */

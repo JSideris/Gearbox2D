@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import rawExamplesPlugin from './scripts/vite-plugin-raw-examples.js';
 
 export default defineConfig({
   root: 'examples',
   base: './',
+  plugins: [rawExamplesPlugin()],
   build: {
     rollupOptions: {
       input: {

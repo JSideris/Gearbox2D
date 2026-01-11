@@ -61,9 +61,15 @@
                 
                 <div id="code-section" style="display: none;">
                     <div id="code-tabs">
-                        <button class="code-tab" data-panel="general">Setup</button>
-                        <button class="code-tab active" data-panel="init">Init</button>
-                        <button class="code-tab" data-panel="tick">Tick</button>
+                        <div class="code-tabs-left">
+                            <button class="code-tab" data-panel="general">Setup</button>
+                            <button class="code-tab active" data-panel="init">Init</button>
+                            <button class="code-tab" data-panel="tick">Tick</button>
+                        </div>
+                        <button id="copy-code" title="Copy code to clipboard">
+                            <i class="fas fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
                     </div>
                     
                     <div class="code-panel" id="general-panel">
@@ -415,14 +421,69 @@ gb2d.init().then(()=>{
                 console.error("Example onInit method not found:", exampleObj);
             }
 
+            // Function to format and dedent example code
+            function formatExampleCode(source, functionName) {
+                if (!source) return `function ${functionName}${functionName === 'tick' ? '(dt)' : '()'} {}`;
+                
+                // Normalize tabs to 4 spaces
+                let code = source.split("\t").join("    ");
+                
+                // Replace signature to look like a standard function for the display
+                const signatures = [
+                    /^\(world\)\s*=>\s*\{/,
+                    /^\(world,\s*dt\)\s*=>\s*\{/,
+                    /^function\s*\(world\)\s*\{/,
+                    /^function\s*\(world,\s*dt\)\s*\{/,
+                    /^function\s+init\s*\(world\)\s*\{/,
+                    /^function\s+tick\s*\(world,\s*dt\)\s*\{/
+                ];
+                
+                let processed = false;
+                let trimmedCode = code.trim();
+                for (const sig of signatures) {
+                    if (sig.test(trimmedCode)) {
+                        code = trimmedCode.replace(sig, `function ${functionName}${functionName === 'tick' ? '(dt)' : '()'} {`);
+                        processed = true;
+                        break;
+                    }
+                }
+                
+                if (!processed) {
+                    // Fallback for other arrow function shapes
+                    code = trimmedCode.replace(/^.*?=>\s*\{/, `function ${functionName}${functionName === 'tick' ? '(dt)' : '()'} {`);
+                }
+
+                let lines = code.split("\n");
+                if (lines.length <= 1) return code;
+
+                // Find the minimum indentation of non-empty lines (excluding the first line)
+                let minIndent = Infinity;
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line.trim().length === 0) continue;
+                    const indent = line.search(/\S/);
+                    if (indent !== -1 && indent < minIndent) {
+                        minIndent = indent;
+                    }
+                }
+                
+                if (minIndent === Infinity) minIndent = 0;
+
+                // Strip the common indentation from all lines except the first
+                return lines.map((line, i) => {
+                    if (i === 0) return line; // Already trimmed/processed
+                    return line.substring(Math.min(line.length, minIndent));
+                }).join("\n");
+            }
+
             // Display the init and tick code
             let globalLines = (exampleObj.globalLines?.join("\n") ?? "");
-            let initCode = ("        " + (exampleObj.onInit?.toString()?.split("\t").join("    ").split("(world)=>{").join("function init(){") || 'function init(){}')).split("\n").map(l => l.substring(8)).join("\n");
-            let tickCode = ("        " + (exampleObj.onTick?.toString()?.split("\t").join("    ").split("(world, dt)=>{").join("function tick(dt){") || 'function tick(dt){}')).split("\n").map(l => l.substring(8)).join("\n");
+            let initCodeSource = exampleObj.onInitRaw || exampleObj.onInit?.toString() || '';
+            let tickCodeSource = exampleObj.onTickRaw || exampleObj.onTick?.toString() || '';
 
             generalCodePre.textContent = (generalSetupTemplate.split("{{GLOBAL}}").join(globalLines));
-            initCodePre.textContent = initCode.trim();
-            tickCodePre.textContent = tickCode.trim();
+            initCodePre.textContent = formatExampleCode(initCodeSource, "init");
+            tickCodePre.textContent = formatExampleCode(tickCodeSource, "tick");
 
             // Apply syntax highlighting
             applyHighlighting();
@@ -535,6 +596,31 @@ gb2d.init().then(()=>{
         // Sidebar toggle for mobile
         sidebarToggle.addEventListener("click", () => {
             sidebar.classList.toggle("collapsed");
+        });
+
+        // Copy to clipboard
+        const copyButton = document.getElementById("copy-code");
+        copyButton.addEventListener("click", () => {
+            const activePanel = document.querySelector(".code-panel.active");
+            const codeToCopy = activePanel.querySelector("pre").textContent;
+            
+            navigator.clipboard.writeText(codeToCopy).then(() => {
+                const span = copyButton.querySelector("span");
+                const icon = copyButton.querySelector("i");
+                const originalText = span.textContent;
+                
+                copyButton.classList.add("success");
+                span.textContent = "Copied!";
+                icon.classList.remove("fa-copy");
+                icon.classList.add("fa-check");
+                
+                setTimeout(() => {
+                    copyButton.classList.remove("success");
+                    span.textContent = originalText;
+                    icon.classList.remove("fa-check");
+                    icon.classList.add("fa-copy");
+                }, 2000);
+            });
         });
 
         // Handle history navigation
