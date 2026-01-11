@@ -488,17 +488,24 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
         // 1. Solve for real velocity (restitution)
         float vn = relVel.dot(normal);
         float dLambda = - (vn + bias) * normalMass;
-        float old = normalImpulse;
-        normalImpulse = std::max(old + dLambda, 0.0f);
-        dLambda = normalImpulse - old;
+        
+        if (std::isfinite(dLambda)) {
+            float old = normalImpulse;
+            normalImpulse = std::max(old + dLambda, 0.0f);
+            dLambda = normalImpulse - old;
 
-        Vec2 impulse = normal * dLambda;
-        a->setVelocity(a->getVelocity() - impulse * imA);
-        b->setVelocity(b->getVelocity() + impulse * imB);
-        float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
-        float torqueB = rB.x * impulse.y - rB.y * impulse.x;
-        a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
-        b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
+            Vec2 impulse = normal * dLambda;
+            if (imA > 0.0f) {
+                a->setVelocity(a->getVelocity() - impulse * imA);
+                float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
+                a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
+            }
+            if (imB > 0.0f) {
+                b->setVelocity(b->getVelocity() + impulse * imB);
+                float torqueB = rB.x * impulse.y - rB.y * impulse.x;
+                b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
+            }
+        }
 
         // 2. Solve for pseudo-velocity (position correction)
         if (positionBias < 0.0f) {
@@ -509,15 +516,21 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
             float vnp = (vpb - vpa).dot(normal);
             
             float dLambdaP = -(vnp + positionBias) * normalMass;
-            float oldP = positionImpulse;
-            positionImpulse = std::max(oldP + dLambdaP, 0.0f);
-            dLambdaP = positionImpulse - oldP;
-            
-            Vec2 impulseP = normal * dLambdaP;
-            a->pseudoVelocity = a->pseudoVelocity - impulseP * imA;
-            b->pseudoVelocity = b->pseudoVelocity + impulseP * imB;
-            a->pseudoAngularVelocity += -(rA.x * impulseP.y - rA.y * impulseP.x) * iIA;
-            b->pseudoAngularVelocity += (rB.x * impulseP.y - rB.y * impulseP.x) * iIB;
+            if (std::isfinite(dLambdaP)) {
+                float oldP = positionImpulse;
+                positionImpulse = std::max(oldP + dLambdaP, 0.0f);
+                dLambdaP = positionImpulse - oldP;
+                
+                Vec2 impulseP = normal * dLambdaP;
+                if (imA > 0.0f) {
+                    a->pseudoVelocity = a->pseudoVelocity - impulseP * imA;
+                    a->pseudoAngularVelocity += -(rA.x * impulseP.y - rA.y * impulseP.x) * iIA;
+                }
+                if (imB > 0.0f) {
+                    b->pseudoVelocity = b->pseudoVelocity + impulseP * imB;
+                    b->pseudoAngularVelocity += (rB.x * impulseP.y - rB.y * impulseP.x) * iIB;
+                }
+            }
         }
     }
 
@@ -530,18 +543,25 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
         relVel = vb - va;
         float vt = relVel.dot(tangent);
         float dLambda = - vt * tangentMass;
-        float maxFriction = friction * normalImpulse;
-        float old = frictionImpulse;
-        frictionImpulse = std::max(-maxFriction, std::min(old + dLambda, maxFriction));
-        float dLambdaFriction = frictionImpulse - old;
         
-        Vec2 impulse = tangent * dLambdaFriction;
-        a->setVelocity(a->getVelocity() - impulse * imA);
-        b->setVelocity(b->getVelocity() + impulse * imB);
-        float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
-        float torqueB = rB.x * impulse.y - rB.y * impulse.x;
-        a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
-        b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
+        if (std::isfinite(dLambda)) {
+            float maxFriction = friction * normalImpulse;
+            float old = frictionImpulse;
+            frictionImpulse = std::max(-maxFriction, std::min(old + dLambda, maxFriction));
+            float dLambdaFriction = frictionImpulse - old;
+            
+            Vec2 impulse = tangent * dLambdaFriction;
+            if (imA > 0.0f) {
+                a->setVelocity(a->getVelocity() - impulse * imA);
+                float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
+                a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
+            }
+            if (imB > 0.0f) {
+                b->setVelocity(b->getVelocity() + impulse * imB);
+                float torqueB = rB.x * impulse.y - rB.y * impulse.x;
+                b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
+            }
+        }
     }
 }
 

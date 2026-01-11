@@ -136,6 +136,4 @@ You must serve your files using a web server to allow the browser to load the `.
 
 ```bash
 npx http-server .
-```
-
-Open your browser to `http://localhost:8080`, and you should see a red box fall and bounce on the floor!
+```Open your browser to `http://localhost:8080`, and you should see a red box fall and bounce on the floor!

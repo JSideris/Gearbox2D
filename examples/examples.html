@@ -201,7 +201,7 @@ gb2d.init().then(()=>{
                     });
                     item.classList.add("selected");
                     const exampleKey = item.getAttribute("data-example");
-                    loadExample(exampleKey);
+                    loadExample(exampleKey, 'push');
                     
                     // Auto-collapse sidebar on mobile
                     if (window.innerWidth <= 768) {
@@ -297,12 +297,12 @@ gb2d.init().then(()=>{
             populateSidebar();
             
             // Check if we need to load an example from the hash
-            loadExampleFromHash();
+            loadExampleFromHash(true);
             
             // Add event listener for the reset button
             resetButton.addEventListener("click", () => {
                 if (currentExample) {
-                    loadExample(currentExample);
+                    loadExample(currentExample, 'none');
                 }
             });
             
@@ -366,7 +366,7 @@ gb2d.init().then(()=>{
         });
 
         // Code to load an example
-        function loadExample(exampleKey) {
+        function loadExample(exampleKey, historyMode = 'push') {
             if (!world || !examplesMap[exampleKey]) return;
 
             // Cleanup the current example if it exists
@@ -377,9 +377,14 @@ gb2d.init().then(()=>{
                 }
             }
 
-            // Update the URL hash without duplicating history
-            if (window.location.hash != '#' + exampleKey) {
-                history.pushState(null, '', '#' + exampleKey);
+            // Update the URL hash based on historyMode
+            const targetHash = '#' + exampleKey;
+            if (window.location.hash !== targetHash) {
+                if (historyMode === 'push') {
+                    history.pushState(null, '', targetHash);
+                } else if (historyMode === 'replace') {
+                    history.replaceState(null, '', targetHash);
+                }
             }
 
             world.clear();
@@ -430,8 +435,9 @@ gb2d.init().then(()=>{
         }
 
         // Load example from URL hash
-        function loadExampleFromHash() {
+        function loadExampleFromHash(isInitialLoad = false) {
             let hash = window.location.hash.substring(1);
+            const wasEmpty = !hash;
             
             // Default to "sandbox" if no hash specified
             if (!hash) {
@@ -482,7 +488,7 @@ gb2d.init().then(()=>{
             }
             
             // Load the example
-            loadExample(hash);
+            loadExample(hash, (wasEmpty && isInitialLoad) ? 'replace' : 'none');
         }
 
         // Event listeners for code tabs and toggle
@@ -533,7 +539,7 @@ gb2d.init().then(()=>{
 
         // Handle history navigation
         window.addEventListener('popstate', function(event) {
-            loadExampleFromHash();
+            loadExampleFromHash(false);
         });
     </script>
 </body>

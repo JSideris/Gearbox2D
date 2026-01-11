@@ -50,9 +50,13 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveIntData.push_back(categoryBits);
     world.liveIntData.push_back(maskBits);
 
-    world.liveFloatData.push_back(options.hasOwnProperty("x") ? options["x"].as<float>() : 0.0f); // x
-    world.liveFloatData.push_back(options.hasOwnProperty("y") ? options["y"].as<float>() : 0.0f); // y
-    world.liveFloatData.push_back(options.hasOwnProperty("r") ? options["r"].as<float>() : 0.0f); // rotation
+    lastX = options.hasOwnProperty("x") ? options["x"].as<float>() : 0.0f;
+    lastY = options.hasOwnProperty("y") ? options["y"].as<float>() : 0.0f;
+    lastR = options.hasOwnProperty("r") ? options["r"].as<float>() : 0.0f;
+
+    world.liveFloatData.push_back(lastX); // x
+    world.liveFloatData.push_back(lastY); // y
+    world.liveFloatData.push_back(lastR); // rotation
     world.liveFloatData.push_back(options.hasOwnProperty("vx") ? options["vx"].as<float>() : 0.0f); // vx
     world.liveFloatData.push_back(options.hasOwnProperty("vy") ? options["vy"].as<float>() : 0.0f); // vy
     world.liveFloatData.push_back(options.hasOwnProperty("rs") ? options["rs"].as<float>() : 0.0f); // rs
@@ -597,7 +601,9 @@ bool PhysicalObject::stepMovement(float dt) {
 
     // Apply rotational damping to rotational speed.
     float rs1 = world.liveFloatData[index + FDATA_RS];
-    world.liveFloatData[index + FDATA_RS] *= (1.0f - getRotationalDamping() * dt);
+    if (type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT) {
+        world.liveFloatData[index + FDATA_RS] *= (1.0f - getRotationalDamping() * dt);
+    }
     float rs2 = world.liveFloatData[index + FDATA_RS];
 
     // Update rotation based on rotational speed and time step.
@@ -610,6 +616,26 @@ bool PhysicalObject::stepMovement(float dt) {
     // No more damping. We will use a damping force.
     // The existing damping var will represent the damping coefficient.
     // velocity = velocity * (1.0f - damping * dt);
+
+    // Safety: Guard against NaN or Infinity values to prevent simulation "explosions"
+    if (!std::isfinite(_position.x) || !std::isfinite(_position.y) || !std::isfinite(world.liveFloatData[index + FDATA_R])) {
+        // Reset to last known good state
+        _position.x = lastX;
+        _position.y = lastY;
+        world.liveFloatData[index + FDATA_R] = lastR;
+        _velocity = Vec2(0.0f, 0.0f);
+        world.liveFloatData[index + FDATA_RS] = 0.0f;
+    }
+
+    // Safety: Clamp extreme velocities that are likely numerical errors
+    float maxVelocity = 1000.0f;
+    if (_velocity.magnitudeSquared() > maxVelocity * maxVelocity) {
+        _velocity = _velocity.normalize() * maxVelocity;
+    }
+    float maxRS = 500.0f;
+    if (std::abs(world.liveFloatData[index + FDATA_RS]) > maxRS) {
+        world.liveFloatData[index + FDATA_RS] = (world.liveFloatData[index + FDATA_RS] > 0 ? 1 : -1) * maxRS;
+    }
 
     // Reassign the values to the live data.
     world.liveFloatData[index + FDATA_X] = _position.x;

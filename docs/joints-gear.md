@@ -48,8 +48,6 @@ const hinge1 = world.createHingeJoint(10, staticBody, gear1, { worldAnchor: { x:
 
 // Small gear
 const gear2 = world.makeObject(2, { x: 7, y: 5 });
-const hinge2 = world.createHingeJoint(11, staticBody, gear2, { worldAnchor: { x: 7, y: 5 } });
-
-// Link them with a 2:1 ratio
+const hinge2 = world.createHingeJoint(11, staticBody, gear2, { worldAnchor: { x: 7, y: 5 } });// Link them with a 2:1 ratio
 world.createGearJoint(101, hinge1, hinge2, 2.0);
 ```

@@ -53,6 +53,13 @@ void HingeJoint::preSolve(float dt) {
     float beta = 0.2f; // Softness factor
     bias = C * (beta / dt);
 
+    // Safety: Clamp the stabilization velocity to prevent numerical explosions
+    float maxStabilizationVelocity = 10.0f;
+    float biasMag = bias.magnitude();
+    if (biasMag > maxStabilizationVelocity) {
+        bias = bias * (maxStabilizationVelocity / biasMag);
+    }
+
     // Warm starting: Apply previous impulse
     bodyA->setVelocity(bodyA->getVelocity() - impulse * imA);
     bodyA->setAngularVelocity(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
@@ -85,14 +92,20 @@ void HingeJoint::solve() {
         -(massMatrix[1][0] * jBias.x + massMatrix[1][1] * jBias.y)
     );
 
-    impulse = impulse + lambda;
+    if (std::isfinite(lambda.x) && std::isfinite(lambda.y)) {
+        impulse = impulse + lambda;
 
-    // Apply impulse to bodies
-    bodyA->setVelocity(bodyA->getVelocity() - lambda * imA);
-    bodyA->setAngularVelocity(bodyA->getAngularVelocity() - rA.cross(lambda) * iIA);
-    
-    bodyB->setVelocity(bodyB->getVelocity() + lambda * imB);
-    bodyB->setAngularVelocity(bodyB->getAngularVelocity() + rB.cross(lambda) * iIB);
+        // Apply impulse to bodies
+        if (imA > 0.0f) {
+            bodyA->setVelocity(bodyA->getVelocity() - lambda * imA);
+            bodyA->setAngularVelocity(bodyA->getAngularVelocity() - rA.cross(lambda) * iIA);
+        }
+        
+        if (imB > 0.0f) {
+            bodyB->setVelocity(bodyB->getVelocity() + lambda * imB);
+            bodyB->setAngularVelocity(bodyB->getAngularVelocity() + rB.cross(lambda) * iIB);
+        }
+    }
 }
 
 Vec2 HingeJoint::getReactionForce(float inv_dt) const {

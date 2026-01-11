@@ -70,14 +70,21 @@ void DistanceJoint::solve() {
     float Cdot = Cdot_vec.dot(u);
 
     float lambda = -mass * (Cdot + bias);
-    impulse += lambda;
+    
+    if (std::isfinite(lambda)) {
+        impulse += lambda;
 
-    Vec2 P = u * lambda;
-    bodyA->setVelocity(bodyA->getVelocity() - P * imA);
-    bodyA->setAngularVelocity(bodyA->getAngularVelocity() - rA.cross(P) * iIA);
+        Vec2 P = u * lambda;
+        if (imA > 0.0f) {
+            bodyA->setVelocity(bodyA->getVelocity() - P * imA);
+            bodyA->setAngularVelocity(bodyA->getAngularVelocity() - rA.cross(P) * iIA);
+        }
 
-    bodyB->setVelocity(bodyB->getVelocity() + P * imB);
-    bodyB->setAngularVelocity(bodyB->getAngularVelocity() + rB.cross(P) * iIB);
+        if (imB > 0.0f) {
+            bodyB->setVelocity(bodyB->getVelocity() + P * imB);
+            bodyB->setAngularVelocity(bodyB->getAngularVelocity() + rB.cross(P) * iIB);
+        }
+    }
 }
 
 Vec2 DistanceJoint::getReactionForce(float inv_dt) const {

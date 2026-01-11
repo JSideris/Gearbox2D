@@ -204,8 +204,6 @@ const uiWorld = gb2d.makeWorld();
 
 // These worlds are completely isolated
 gameWorld.setGravity(0, 9.81);
-uiWorld.setGravity(0, 0);
-
-gameWorld.step();
+uiWorld.setGravity(0, 0);gameWorld.step();
 uiWorld.step();
 ```

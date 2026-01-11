@@ -46,9 +46,7 @@ TEST(KinematicObjectTest, MovementByVelocity) {
     EXPECT_NEAR(obj->getX(), 10.0f * dt, 1e-5f);
     EXPECT_NEAR(obj->getY(), 5.0f * dt, 1e-5f);
     
-    // Velocity should remain constant (no gravity, no damping for kinematic objects currently same as fixed)
-    // Actually, fixed objects in this engine DO have damping applied if not specifically excluded.
-    // Let's check stepMovement again.
+    // Velocity should remain constant
     
     // Step world again
     world.step();
@@ -86,3 +84,21 @@ TEST(KinematicObjectTest, IgnoresImpulses) {
     EXPECT_FLOAT_EQ(obj->getVelocityY(), 0.0f);
 }
 
+TEST(KinematicObjectTest, RotationalStability) {
+    World world;
+    emscripten_val options = createKinematicOptions(0.0f, 0.0f);
+    options.properties["angularDamping"] = 0.5f; // High damping
+    int index = world.makeObject(1, options);
+    PhysicalObject* obj = world.getObjectAtIndex(index);
+    
+    float initialRS = 10.0f;
+    obj->setAngularVelocity(initialRS);
+    
+    // Step world several times
+    for(int i = 0; i < 10; ++i) {
+        world.step();
+    }
+    
+    // Rotational speed should remain exactly the same for kinematic objects
+    EXPECT_FLOAT_EQ(obj->getAngularVelocity(), initialRS);
+}

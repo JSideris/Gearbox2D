@@ -94,5 +94,43 @@ TEST(StabilityTest, JointMovementWakesSleepingObject) {
     EXPECT_FALSE(pendulum->isSleeping);
 }
 
+TEST(StabilityTest, NaNRecovery) {
+    World world;
+    world.setGravity(0.0f, 0.0f);
+    world.setTimeStep(1.0f / 60.0f);
+    
+    int id = world.makeObject(1, createTestOptions(10.0f, 10.0f, 1.0f));
+    PhysicalObject* obj = world.getObjectAtIndex(id);
+    
+    // Simulate a NaN explosion (e.g. from an invalid joint or contact)
+    obj->setVelocityX(std::numeric_limits<float>::quiet_NaN());
+    
+    // Before stepping, lastX/lastY are 10.0f.
+    // The step will catch the NaN in _velocity and reset the object.
+    world.step();
+    
+    EXPECT_TRUE(std::isfinite(obj->getX()));
+    EXPECT_TRUE(std::isfinite(obj->getY()));
+    EXPECT_TRUE(std::isfinite(obj->getVelocityX()));
+    EXPECT_EQ(obj->getVelocityX(), 0.0f);
+    EXPECT_EQ(obj->getX(), 10.0f);
+}
+
+TEST(StabilityTest, VelocityClamping) {
+    World world;
+    world.setGravity(0.0f, 0.0f);
+    world.setTimeStep(1.0f / 60.0f);
+    
+    int id = world.makeObject(1, createTestOptions(0.0f, 0.0f, 1.0f));
+    PhysicalObject* obj = world.getObjectAtIndex(id);
+    
+    // Set a velocity way beyond the cap (1000.0f)
+    obj->setVelocityX(5000.0f);
+    
+    world.step();
+    
+    EXPECT_LE(obj->getVelocityX(), 1000.1f);
+}
+
 
 

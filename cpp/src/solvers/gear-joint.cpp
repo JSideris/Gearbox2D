@@ -47,6 +47,11 @@ void GearJoint::preSolve(float dt) {
     float beta = 0.2f;
     bias = (beta / dt) * C;
 
+    // Safety: Clamp the stabilization rotation speed to prevent numerical explosions
+    float maxStabilizationRS = 5.0f;
+    if (bias > maxStabilizationRS) bias = maxStabilizationRS;
+    if (bias < -maxStabilizationRS) bias = -maxStabilizationRS;
+
     // Warm starting
     joint1->bodyA->setAngularVelocity(joint1->bodyA->getAngularVelocity() + J1 * iIA1 * impulse);
     joint1->bodyB->setAngularVelocity(joint1->bodyB->getAngularVelocity() + J2 * iIB1 * impulse);
@@ -63,17 +68,20 @@ void GearJoint::solve() {
     float Cdot = J1 * wA1 + J2 * wB1 + J3 * wA2 + J4 * wB2;
 
     float lambda = -mass * (Cdot + bias);
-    impulse += lambda;
+    
+    if (std::isfinite(lambda)) {
+        impulse += lambda;
 
-    float iIA1 = joint1->bodyA->getInverseInertia();
-    float iIB1 = joint1->bodyB->getInverseInertia();
-    float iIA2 = joint2->bodyA->getInverseInertia();
-    float iIB2 = joint2->bodyB->getInverseInertia();
+        float iIA1 = joint1->bodyA->getInverseInertia();
+        float iIB1 = joint1->bodyB->getInverseInertia();
+        float iIA2 = joint2->bodyA->getInverseInertia();
+        float iIB2 = joint2->bodyB->getInverseInertia();
 
-    joint1->bodyA->setAngularVelocity(joint1->bodyA->getAngularVelocity() + J1 * iIA1 * lambda);
-    joint1->bodyB->setAngularVelocity(joint1->bodyB->getAngularVelocity() + J2 * iIB1 * lambda);
-    joint2->bodyA->setAngularVelocity(joint2->bodyA->getAngularVelocity() + J3 * iIA2 * lambda);
-    joint2->bodyB->setAngularVelocity(joint2->bodyB->getAngularVelocity() + J4 * iIB2 * lambda);
+        if (iIA1 > 0.0f) joint1->bodyA->setAngularVelocity(joint1->bodyA->getAngularVelocity() + J1 * iIA1 * lambda);
+        if (iIB1 > 0.0f) joint1->bodyB->setAngularVelocity(joint1->bodyB->getAngularVelocity() + J2 * iIB1 * lambda);
+        if (iIA2 > 0.0f) joint2->bodyA->setAngularVelocity(joint2->bodyA->getAngularVelocity() + J3 * iIA2 * lambda);
+        if (iIB2 > 0.0f) joint2->bodyB->setAngularVelocity(joint2->bodyB->getAngularVelocity() + J4 * iIB2 * lambda);
+    }
 }
 
 Vec2 GearJoint::getReactionForce(float inv_dt) const {

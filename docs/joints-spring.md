@@ -45,9 +45,7 @@ In addition to the [common joint properties](./joints-overview.md#common-propert
 
 ```javascript
 const chassis = world.makeObject(1, { x: 10, y: 5 });
-const wheel = world.makeObject(2, { x: 10, y: 6 });
-
-// Soft suspension
+const wheel = world.makeObject(2, { x: 10, y: 6 });// Soft suspension
 world.createSpringJoint(101, chassis, wheel, {
     anchorA: { x: 0, y: 1 },
     frequencyHz: 3.0,

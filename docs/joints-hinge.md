@@ -47,9 +47,7 @@ const anchor = world.makeObject(1, {
 const weight = world.makeObject(2, {
     x: 15, y: 2,
     width: 1, height: 1
-});
-
-// 3. Connect them with a hinge at the anchor's position
+});// 3. Connect them with a hinge at the anchor's position
 world.createHingeJoint(101, anchor, weight, {
     worldAnchor: { x: 10, y: 2 }
 });

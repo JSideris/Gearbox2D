@@ -51,9 +51,7 @@ world.makeObject(nextId++, {
 ### Sensor
 `gb2d.bodyTypes.SENSOR`
 
-Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks. Note that sensors still require collision categories and masks to be configured to interact with specific groups.
-
-```typescript
+Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks. Note that sensors still require collision categories and masks to be configured to interact with specific groups.```typescript
 world.makeObject(nextId++, {
     x: 5, y: 5,
     shape: gb2d.shapes.CIRCLE,

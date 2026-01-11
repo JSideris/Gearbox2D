@@ -154,6 +154,30 @@
             max-width: 100%;
         }
 
+        #hero-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.5;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        header .container {
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        header .container * {
+            pointer-events: auto;
+        }
+
         .footer {
             background-color: var(--bg-deep);
             color: var(--text-muted);
@@ -213,13 +237,16 @@
 <body>
 
 <header>
-    <div style="position: absolute; top: 10px; left: 10px; background: #ff4444; color: white; padding: 4px 12px; font-family: Orbitron; font-size: 10px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">ALPHA / WIP</div>
-    <h1>GearBox2D</h1>
-    <p>Web-First Physics & AI Engine powered by WebAssembly</p>
-    <div class="cta-buttons">
-        <a href="docs.html">API Documentation</a>
-        <a href="examples.html" class="secondary">View Examples</a>
-        <a href="https://github.com/JSideris/Gearbox2D">GitHub Repo</a>
+    <canvas id="hero-canvas"></canvas>
+    <div class="container">
+        <div style="position: absolute; top: 10px; left: 10px; background: #ff4444; color: white; padding: 4px 12px; font-family: Orbitron; font-size: 10px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">ALPHA / WIP</div>
+        <h1>GearBox2D</h1>
+        <p>Web-First Physics & AI Engine powered by WebAssembly</p>
+        <div class="cta-buttons">
+            <a href="docs.html">API Documentation</a>
+            <a href="examples.html" class="secondary">View Examples</a>
+            <a href="https://github.com/JSideris/Gearbox2D">GitHub Repo</a>
+        </div>
     </div>
 </header>
 
@@ -253,7 +280,145 @@
 </section>
 
 <script type="module">
-    import gb2d from 'gb2d';
+    import gb2d, { DebugGraphics } from 'gb2d';
+
+    async function initHero() {
+        await gb2d.init();
+        const canvas = document.getElementById('hero-canvas');
+        const world = gb2d.makeWorld();
+        const debug = new DebugGraphics();
+
+        function resize() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            debug.offsetX = canvas.width / 2;
+            debug.offsetY = canvas.height / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        debug.enableDebugGraphics(canvas, world);
+        debug.showAabbs = false;
+        debug.showForceVectors = false;
+        debug.showImpulseVectors = false;
+        debug.zoom = 0.4;
+
+        world.setGravity(0, 0);
+
+        let nextId = 10000; // Keep separate from main demo
+        const white = "#ffffff";
+
+        // Collision categories
+        const CAT_PISTON = 0x0001;
+        const CAT_WALL = 0x0002;
+        const CAT_GEAR = 0x0004;
+
+        // 1. Drive Wheel (Kinematic)
+        const wheel = world.makeObject(nextId++, {
+            x: -7, y: 0,
+            shape: gb2d.shapes.CIRCLE,
+            radius: 6.0,
+            type: gb2d.bodyTypes.KINEMATIC_OBJECT,
+            color: white,
+            categoryBits: CAT_GEAR,
+            maskBits: 0 // No collision
+        });
+        wheel.rs = 0.4; // Slightly slower
+
+        // Hubs for Gear Joint (fixed points for hinges)
+        const wheelHub = world.makeObject(nextId++, {
+            x: -7, y: 0,
+            type: gb2d.bodyTypes.FIXED_OBJECT,
+            shape: gb2d.shapes.CIRCLE,
+            radius: 0.1,
+            color: "transparent",
+            maskBits: 0
+        });
+
+        const smallWheelX = -7 - 1.414 * 1.5;
+        const smallWheelY = -1.414 * 1.5;
+        const smallWheelHub = world.makeObject(nextId++, {
+            x: smallWheelX, y: smallWheelY,
+            type: gb2d.bodyTypes.FIXED_OBJECT,
+            shape: gb2d.shapes.CIRCLE,
+            radius: 0.1,
+            color: "transparent",
+            maskBits: 0
+        });
+
+        // Small Wheel
+        const smallWheel = world.makeObject(nextId++, {
+            x: smallWheelX, y: smallWheelY,
+            shape: gb2d.shapes.CIRCLE,
+            radius: 2.8,
+            mass: 1.0,
+            color: white,
+            r: 0.8, // Non-zero initial rotation
+            categoryBits: CAT_GEAR,
+            maskBits: 0 // No collision
+        });
+
+        // Hinges
+        const hinge1 = world.createHingeJoint(nextId++, wheelHub, wheel, { worldAnchor: { x: -7, y: 0 } });
+        const hinge2 = world.createHingeJoint(nextId++, smallWheelHub, smallWheel, { worldAnchor: { x: smallWheelX, y: smallWheelY } });
+
+        // Gear Joint: ratio = radius1 / radius2 = 6.0 / 2.0 = 3.0
+        world.createGearJoint(nextId++, hinge1, hinge2, -3.0);
+
+        // 2. Crank Pin (Attached to wheel)
+        // We'll use a local anchor on the wheel
+        
+        // 3. Piston
+        const piston = world.makeObject(nextId++, {
+            x: 5.5, y: 0,
+            width: 2.5, height: 1.8,
+            shape: gb2d.shapes.BOX,
+            mass: 2.0,
+            color: white,
+            categoryBits: CAT_PISTON,
+            maskBits: CAT_WALL // Only collide with walls
+        });
+
+        // 4. Connecting Rod
+        const rod = world.makeObject(nextId++, {
+            x: 0, y: 0,
+            width: 10.0, height: 0.4,
+            shape: gb2d.shapes.BOX,
+            mass: 1.0,
+            color: white,
+            maskBits: 0 // No collision
+        });
+
+        // Joints
+        world.createHingeJoint(nextId++, wheel, rod, {
+            anchorA: { x: 2.5, y: 0 }, // Crank offset (approx 40% of radius)
+            anchorB: { x: -5.0, y: 0 } // Rod end
+        });
+
+        world.createHingeJoint(nextId++, rod, piston, {
+            anchorA: { x: 5.0, y: 0 }, // Rod other end
+            anchorB: { x: 0, y: 0 } // Piston center
+        });
+
+        // 5. Cylinder Walls (to guide the piston)
+        const wallOptions = {
+            shape: gb2d.shapes.BOX,
+            width: 15, height: 0.8,
+            type: gb2d.bodyTypes.FIXED_OBJECT,
+            color: white,
+            categoryBits: CAT_WALL,
+            maskBits: CAT_PISTON // Only collide with piston
+        };
+
+        world.makeObject(nextId++, { ...wallOptions, x: 3, y: -1.35 }); // Top wall
+        world.makeObject(nextId++, { ...wallOptions, x: 3, y: 1.35 });  // Bottom wall
+
+        function loop() {
+            world.step();
+            requestAnimationFrame(loop);
+        }
+        loop();
+    }
 
     async function initDemo() {
         // 1. Initialize the engine
@@ -448,13 +613,14 @@
         requestAnimationFrame(loop);
     }
 
+    initHero().catch(console.error);
     initDemo().catch(console.error);
 </script>
 
 <section id="get-started">
     <h2>Ready to build?</h2>
     <div class="code-snippet">
-        <pre><span class="keyword">import</span> { GearBox2D } <span class="keyword">from</span> <span class="string">'gearbox2d'</span>;
+        <pre><span class="keyword">import</span> { GearBox2D } <span class="keyword">from</span> <span class="string">'gearbox-2d'</span>;
 
 <span class="keyword">const</span> engine = <span class="keyword">new</span> <span class="function">GearBox2D</span>();
 <span class="keyword">await</span> engine.<span class="function">initialize</span>();
@@ -464,7 +630,7 @@
     </div>
     <div class="cta-buttons" style="text-align: center;">
         <a href="docs.html#api-reference" class="secondary">View API Reference</a>
-        <a href="docs.html#installation">npm install gearbox2d</a>
+        <a href="docs.html#installation">npm install gearbox-2d</a>
     </div>
 </section>
 

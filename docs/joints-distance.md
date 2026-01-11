@@ -39,9 +39,7 @@ In addition to the [common joint properties](./joints-overview.md#common-propert
 
 ```javascript
 const ball1 = world.makeObject(1, { x: 5, y: 5 });
-const ball2 = world.makeObject(2, { x: 10, y: 5 });
-
-// Connect with a 5m rigid rod
+const ball2 = world.makeObject(2, { x: 10, y: 5 });// Connect with a 5m rigid rod
 world.createDistanceJoint(101, ball1, ball2, {
     length: 5
 });

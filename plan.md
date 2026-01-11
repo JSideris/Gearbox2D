@@ -101,7 +101,7 @@
 - [X] Events buffer.
 - [X] Opt in per object.
 - [X] On collision events.
-	- [ ] Return impulse.
+	- [X] Return impulse.
 - [X] On collision end events.
 - [X] On sleep events.
 - [X] On wake up.
