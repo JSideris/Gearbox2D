@@ -45,7 +45,7 @@ jobs:
       - name: Create WASM placeholder for tests
         run: |
           mkdir -p dist/wasm
-          touch dist/wasm/gb2d-module.js
+          touch dist/wasm/gearbox-module.js
 
       - name: Run Native C++ Tests
         run: make test -B

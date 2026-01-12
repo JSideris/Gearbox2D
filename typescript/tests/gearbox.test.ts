@@ -1,7 +1,7 @@
 jest.mock('../../dist/wasm/gearbox-module.js', () => ({
   __esModule: true,
   default: jest.fn(),
-}));
+}), { virtual: true });
 
 import { SHAPES, BODY_TYPES } from '../src/constants';
 
