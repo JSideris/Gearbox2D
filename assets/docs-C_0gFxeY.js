@@ -1,4 +1,4 @@
-import"./modulepreload-polyfill-B5Qt9EMX.js";import{M as b}from"./markdown-tUR2hliS.js";const y="# Documentation Structure: GearBox2D\n\n## Getting Started\n- `introduction.md`: Introduction\n- `installation.md`: Setup\n- `core-concepts.md`: Core Concepts\n- `first-simulation.md`: First Simulation\n- `development.md`: Engine Development\n- `plan.md`: Project Roadmap\n\n## Core Architecture\n- `architecture-wasm-memory.md`: WASM & Shared Memory\n- `architecture-world.md`: World Management\n- `architecture-coordinates.md`: Coordinates & Units\n\n## Physical Objects\n- `objects-body-types.md`: Body Types\n- `objects-lifecycle.md`: Object Lifecycle\n- `objects-properties.md`: Body Properties\n- `objects-state.md`: Body State\n\n## Shapes & Geometry\n- `shapes-current.md`: Supported Shapes\n- `shapes-planned.md`: Planned Shapes\n\n## Constraints & Joints\n- `joints-overview.md`: Joints Overview\n- `joints-hinge.md`: Hinge Joints\n- `joints-distance.md`: Distance Joints\n- `joints-spring.md`: Spring Joints\n- `joints-gear.md`: Gear Joints\n\n## Collision System\n- `collision-broad-phase.md`: Broad Phase\n- `collision-narrow-phase.md`: Narrow Phase\n- `collision-filtering.md`: Collision Filtering\n\n## Events\n- `events.md`: Physical Object Events\n\n## Spatial Queries & Interaction\n- `interaction-queries.md`: Spatial Queries\n\n## Graphics & Debugging\n- `graphics-debug.md`: Debug Graphics\n\n## Performance & Optimization\n- `performance-tips.md`: Performance Tips\n- `performance-optimizations.md`: Optimizations\n\n## Advanced & Planned Features\n- `planned-fluid-dynamics.md`: Fluid Dynamics (Planned)\n- `planned-ai-pathfinding.md`: AI Pathfinding (Planned)\n- `planned-ccd.md`: Continuous Collision Detection (Planned)\n\n## API Reference\n- `api-reference.md`: API Reference\n\n",p=Object.freeze(Object.defineProperty({__proto__:null,default:y},Symbol.toStringTag,{value:"Module"})),f=`# API Reference
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{M as b}from"./markdown-tUR2hliS.js";const y="# Documentation Structure: Gearbox2D\n\n## Getting Started\n- `introduction.md`: Introduction\n- `installation.md`: Setup\n- `core-concepts.md`: Core Concepts\n- `first-simulation.md`: First Simulation\n- `development.md`: Engine Development\n- `plan.md`: Project Roadmap\n\n## Core Architecture\n- `architecture-wasm-memory.md`: WASM & Shared Memory\n- `architecture-world.md`: World Management\n- `architecture-coordinates.md`: Coordinates & Units\n\n## Physical Objects\n- `objects-body-types.md`: Body Types\n- `objects-lifecycle.md`: Object Lifecycle\n- `objects-properties.md`: Body Properties\n- `objects-state.md`: Body State\n\n## Shapes & Geometry\n- `shapes-current.md`: Supported Shapes\n- `shapes-planned.md`: Planned Shapes\n\n## Constraints & Joints\n- `joints-overview.md`: Joints Overview\n- `joints-hinge.md`: Hinge Joints\n- `joints-distance.md`: Distance Joints\n- `joints-spring.md`: Spring Joints\n- `joints-gear.md`: Gear Joints\n\n## Collision System\n- `collision-broad-phase.md`: Broad Phase\n- `collision-narrow-phase.md`: Narrow Phase\n- `collision-filtering.md`: Collision Filtering\n\n## Events\n- `events.md`: Physical Object Events\n\n## Spatial Queries & Interaction\n- `interaction-queries.md`: Spatial Queries\n\n## Graphics & Debugging\n- `graphics-debug.md`: Debug Graphics\n\n## Performance & Optimization\n- `performance-tips.md`: Performance Tips\n- `performance-optimizations.md`: Optimizations\n\n## Advanced & Planned Features\n- `planned-fluid-dynamics.md`: Fluid Dynamics (Planned)\n- `planned-ai-pathfinding.md`: AI Pathfinding (Planned)\n- `planned-ccd.md`: Continuous Collision Detection (Planned)\n\n## API Reference\n- `api-reference.md`: API Reference\n\n",p=Object.freeze(Object.defineProperty({__proto__:null,default:y},Symbol.toStringTag,{value:"Module"})),f=`# API Reference
 TODO
 
 `,v=Object.freeze(Object.defineProperty({__proto__:null,default:f},Symbol.toStringTag,{value:"Module"})),w=`# Coordinate System
@@ -7,7 +7,7 @@ TODO
 `,j=Object.freeze(Object.defineProperty({__proto__:null,default:w},Symbol.toStringTag,{value:"Module"})),_=`# WASM & Shared Memory
 TODO
 
-`,S=Object.freeze(Object.defineProperty({__proto__:null,default:_},Symbol.toStringTag,{value:"Module"})),x=`# World Object
+`,x=Object.freeze(Object.defineProperty({__proto__:null,default:_},Symbol.toStringTag,{value:"Module"})),S=`# World Object
 
 The \`World\` object is the central container for all physical entities in Gearbox2D. It manages the lifecycle of physical objects and joints, orchestrates the simulation steps, and handles global physics settings like gravity and collision resolution.
 
@@ -25,16 +25,16 @@ Key responsibilities include:
 
 ### Creating a World
 
-A \`World\` instance is created via the main \`gb2d\` engine object. This ensures the underlying WebAssembly module is initialized before the world is constructed.
+A \`World\` instance is created via the main \`gearbox\` engine object. This ensures the underlying WebAssembly module is initialized before the world is constructed.
 
 \`\`\`typescript
-import gb2d from 'gearbox2d';
+import gearbox from 'gearbox2d';
 
 // Ensure the engine is initialized first
-await gb2d.init();
+await gearbox.init();
 
 // Create a new world instance
-const world = gb2d.makeWorld();
+const world = gearbox.makeWorld();
 \`\`\`
 
 ### Stepping the Simulation
@@ -119,8 +119,8 @@ Objects are created with a unique ID and a specification object.
 
 \`\`\`typescript
 const obj = world.makeObject(101, {
-    shape: gb2d.shapes.CIRCLE,
-    type: gb2d.bodyTypes.RIGID_BODY,
+    shape: gearbox.shapes.CIRCLE,
+    type: gearbox.bodyTypes.RIGID_BODY,
     x: 0,
     y: 0,
     radius: 1,
@@ -208,15 +208,15 @@ This is useful for scenarios like:
 - **Multi-room environments**: Managing different rooms or levels that don't interact with each other physically.
 
 \`\`\`typescript
-const gameWorld = gb2d.makeWorld();
-const uiWorld = gb2d.makeWorld();
+const gameWorld = gearbox.makeWorld();
+const uiWorld = gearbox.makeWorld();
 
 // These worlds are completely isolated
 gameWorld.setGravity(0, 9.81);
 uiWorld.setGravity(0, 0);gameWorld.step();
 uiWorld.step();
 \`\`\`
-`,A=Object.freeze(Object.defineProperty({__proto__:null,default:x},Symbol.toStringTag,{value:"Module"})),O=`# Broad Phase
+`,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),O=`# Broad Phase
 TODO
 
 `,T=Object.freeze(Object.defineProperty({__proto__:null,default:O},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
@@ -225,15 +225,15 @@ TODO
 `,B=Object.freeze(Object.defineProperty({__proto__:null,default:C},Symbol.toStringTag,{value:"Module"})),P=`# Narrow Phase
 TODO
 
-`,I=Object.freeze(Object.defineProperty({__proto__:null,default:P},Symbol.toStringTag,{value:"Module"})),k=`# Core Concepts
+`,k=Object.freeze(Object.defineProperty({__proto__:null,default:P},Symbol.toStringTag,{value:"Module"})),I=`# Core Concepts
 
-Understanding these three fundamental concepts will help you build stable and predictable simulations in GearBox2D.
+Understanding these three fundamental concepts will help you build stable and predictable simulations in Gearbox2D.
 
 ## 1. The World
 The \`World\` is the heart of your simulation. It is the container for all physical objects, joints, and global settings like gravity.
 
 \`\`\`javascript
-const world = gb2d.makeWorld();
+const world = gearbox.makeWorld();
 world.setGravity(0, 9.8); // Set gravity to 9.8 m/s² downwards
 \`\`\`
 
@@ -251,7 +251,7 @@ world.step(1/60);
 \`\`\`
 
 ### The Importance of a Fixed Timestep
-For the most stable results, you should ideally step the world at a **fixed frequency** (like 60Hz). While GearBox2D can handle variable time steps (e.g., using your game loop's \`dt\`), huge spikes in time can cause objects to tunnel through walls or joints to explode.
+For the most stable results, you should ideally step the world at a **fixed frequency** (like 60Hz). While Gearbox2D can handle variable time steps (e.g., using your game loop's \`dt\`), huge spikes in time can cause objects to tunnel through walls or joints to explode.
 
 **Pro-tip:** If your game's frame rate drops, it's better to run multiple small physics steps than one giant one.
 
@@ -279,13 +279,13 @@ An **Impulse** is an instantaneous change in momentum. Think of it like a hammer
 ### Angular Impulses
 If you want to spin an object instantly without hitting a specific point, use \`applyAngularImpulse(torque)\`.
 
-`,D=Object.freeze(Object.defineProperty({__proto__:null,default:k},Symbol.toStringTag,{value:"Module"})),W=`# Development & Contributing
+`,D=Object.freeze(Object.defineProperty({__proto__:null,default:I},Symbol.toStringTag,{value:"Module"})),W=`# Development & Contributing
 
-Follow these instructions to build GearBox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
+Follow these instructions to build Gearbox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
 
 ## Prerequisites
 
-To build GearBox2D, you'll need the following dependencies installed.
+To build Gearbox2D, you'll need the following dependencies installed.
 
 ### Required Dependencies
 
@@ -348,7 +348,7 @@ To build GearBox2D, you'll need the following dependencies installed.
 
 ## Running Tests
 
-GearBox2D includes both C++ and TypeScript test suites:
+Gearbox2D includes both C++ and TypeScript test suites:
 
 \`\`\`bash
 # Run all tests
@@ -377,7 +377,7 @@ To improve performance, events are opt-in per object. You must set \`wantsEvents
 
 \`\`\`typescript
 const obj = world.makeObject({
-  shape: gb2d.SHAPES.CIRCLE,
+  shape: gearbox.SHAPES.CIRCLE,
   radius: 1,
   wantsEvents: true // Enable events for this object
 });
@@ -450,7 +450,7 @@ Create an \`index.html\` file. We will use a \`<canvas>\` element to render our 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GearBox2D Hello World</title>
+    <title>Gearbox2D Hello World</title>
     <style>
         body { margin: 0; overflow: hidden; background: #1a1a1a; }
         canvas { display: block; width: 100vw; height: 100vh; }
@@ -460,7 +460,7 @@ Create an \`index.html\` file. We will use a \`<canvas>\` element to render our 
     <canvas id="canvas"></canvas>
 
     <!-- OPTION A: Using the Standalone CDN (Easiest for this guide) -->
-    <script src="https://unpkg.com/gearbox-2d/dist/standalone/gb2d.js"><\/script>
+    <script src="https://unpkg.com/gearbox2d/dist/standalone/gearbox.js"><\/script>
     <script src="main.js"><\/script>
 
     <!-- OPTION B: Using NPM/Bundlers (Vite, Webpack, etc.) -->
@@ -477,17 +477,17 @@ Create a \`main.js\` file. This script initializes the engine, sets up the world
 /**
  * 1. ACCESS THE ENGINE
  * 
- * If you used the CDN script tag in index.html, 'gb2d' is already 
+ * If you used the CDN script tag in index.html, 'gearbox2d' is already 
  * available globally. If you are using NPM/Vite, uncomment the line below:
  */
-// import gb2d from 'gearbox-2d';
+// import gearbox from 'gearbox2d';
 
 async function start() {
     // 2. Initialize the engine
-    await gb2d.init();
+    await gearbox.init();
 
     // 2. Create the physics world
-    const world = gb2d.makeWorld();
+    const world = gearbox.makeWorld();
     world.setGravity(0, 9.8); // 9.8 m/s² downwards
 
     // 3. Create a static floor
@@ -497,8 +497,8 @@ async function start() {
         y: 9,
         width: 10,
         height: 1,
-        shape: gb2d.shapes.BOX,
-        type: gb2d.bodyTypes.FIXED_OBJECT,
+        shape: gearbox.shapes.BOX,
+        type: gearbox.bodyTypes.FIXED_OBJECT,
         color: "#444"
     });
 
@@ -509,7 +509,7 @@ async function start() {
         y: 2,
         width: 1,
         height: 1,
-        shape: gb2d.shapes.BOX,
+        shape: gearbox.shapes.BOX,
         color: "#ff4444"
     });
 
@@ -543,7 +543,7 @@ async function start() {
         // We scale the context so 1 meter = 50 pixels
         ctx.save();
         ctx.scale(50, 50); 
-        gb2d.debug.drawWorld(ctx, world);
+        gearbox.debug.drawWorld(ctx, world);
         ctx.restore();
 
         requestAnimationFrame(loop);
@@ -559,7 +559,7 @@ start().catch(console.error);
 
 To build more complex simulations, it is important to understand how the engine handles time and forces.
 
--   **Meters, not Pixels**: GearBox2D calculates everything in meters. 
+-   **Meters, not Pixels**: Gearbox2D calculates everything in meters. 
 -   **The World**: The container for all your physics objects.
 -   **Steps and Ticks**: How time progresses in the simulation.
 -   **Forces vs. Impulses**: The different ways to move objects.
@@ -577,32 +577,32 @@ You must serve your files using a web server to allow the browser to load the \`
 \`\`\`bash
 npx http-server .
 \`\`\`Open your browser to \`http://localhost:8080\`, and you should see a red box fall and bounce on the floor!
-`,z=Object.freeze(Object.defineProperty({__proto__:null,default:R},Symbol.toStringTag,{value:"Module"})),H=`# Debug Graphics
+`,z=Object.freeze(Object.defineProperty({__proto__:null,default:R},Symbol.toStringTag,{value:"Module"})),F=`# Debug Graphics
 TODO
 
-`,F=Object.freeze(Object.defineProperty({__proto__:null,default:H},Symbol.toStringTag,{value:"Module"})),G=`# Installation
+`,H=Object.freeze(Object.defineProperty({__proto__:null,default:F},Symbol.toStringTag,{value:"Module"})),G=`# Installation
 
-GearBox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
+Gearbox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
 
 ## 1. Using NPM (Recommended)
 
 If you are using a modern build tool (Vite, Webpack, esbuild, etc.), install the package via npm:
 
 \`\`\`bash
-npm install gearbox-2d
+npm install gearbox2d
 \`\`\`
 
 ### Basic Usage with a Bundler
 
 \`\`\`typescript
-import gb2d from 'gearbox-2d';
+import gearbox from 'gearbox2d';
 
 async function startPhysics() {
     // 1. Initialize the WASM core
-    await gb2d.init();
+    await gearbox.init();
 
     // 2. Create your physics world
-    const world = gb2d.makeWorld();
+    const world = gearbox.makeWorld();
     
     // ... setup simulation ...
 }
@@ -618,15 +618,15 @@ For simple projects, prototyping, or environments without a build step, use the 
 
 \`\`\`html
 <!-- 1. Include the engine via CDN -->
-<script src="https://unpkg.com/gearbox-2d/dist/standalone/gb2d.js"><\/script>
+<script src="https://unpkg.com/gearbox2d/dist/standalone/gearbox.js"><\/script>
 
 <script>
   async function init() {
     // 2. Initialize the engine (it already has the WASM inside!)
-    await gb2d.init();
+    await gearbox.init();
     
     // 3. Create your physics world
-    const world = gb2d.makeWorld();
+    const world = gearbox.makeWorld();
     console.log("Physics World Created:", world);
   }
 
@@ -639,7 +639,7 @@ For simple projects, prototyping, or environments without a build step, use the 
 ## 3. WebAssembly & Local Servers
 
 **Standalone/CDN Users:** 
-If you are using the \`dist/standalone/gb2d.js\` file, you can likely run your project by simply opening an \`.html\` file from your file explorer, because the WASM is inlined.
+If you are using the \`dist/standalone/gearbox.js\` file, you can likely run your project by simply opening an \`.html\` file from your file explorer, because the WASM is inlined.
 
 **NPM/Standard Users:**
 If you are using the standard build (npm package), you **must** serve your project via a local web server because browsers block the loading of external \`.wasm\` files over the \`file://\` protocol.
@@ -662,11 +662,11 @@ TODO
 
 `,V=Object.freeze(Object.defineProperty({__proto__:null,default:q},Symbol.toStringTag,{value:"Module"})),N=`# Introduction
 
-**GearBox2D** is a high-performance 2D physics and AI engine written in C++, compiled to WebAssembly, and designed for the modern web. 
+**Gearbox2D** is a high-performance 2D physics and AI engine written in C++, compiled to WebAssembly, and designed for the modern web. 
 
-Unlike traditional ports of physics libraries, GearBox2D is engineered specifically for the performance characteristics and architectural requirements of the browser, eliminating the performance bottlenecks of the JS-WASM bridge.
+Unlike traditional ports of physics libraries, Gearbox2D is engineered specifically for the performance characteristics and architectural requirements of the browser, eliminating the performance bottlenecks of the JS-WASM bridge.
 
-## Why GearBox2D?
+## Why Gearbox2D?
 
 *   **Zero-Copy Interop**: Access physical state (position, rotation) with O(1) overhead. The TypeScript wrapper reads directly from WASM memory buffers.
 *   **Integrated Intelligence**: Pathfinding, RVO/ORCA obstacle avoidance, and high-frequency sensors run natively inside the physics loop.
@@ -689,7 +689,7 @@ Unlike traditional ports of physics libraries, GearBox2D is engineered specifica
 
 ## Unique Innovations
 
-GearBox2D introduces several architectural advancements designed for modern, large-scale web applications:
+Gearbox2D introduces several architectural advancements designed for modern, large-scale web applications:
 
 *   **Novel BVH Biasing**: Our spatial partitioning engine uses **Collision Mask Biasing** and **Sleep Biasing** to dynamically restructure the Bounding Volume Hierarchy. This significantly reduces intersection tests in complex scenes where many objects occupy the same space but belong to different collision layers.
 *   **Physics-Native AI Suite**: A* pathfinding, NavMeshes, and RVO/ORCA local navigation are integrated directly into the physics loop. This allows agents to navigate complex environments with full awareness of physical constraints and dynamic obstacles at native speeds.
@@ -698,7 +698,7 @@ GearBox2D introduces several architectural advancements designed for modern, lar
 *   **Speed-Adaptive Bounding**: Bounding volume padding that scales with velocity and angular momentum, preventing "tunneling" for high-speed objects while keeping the broad-phase tight for slow-moving ones.
 
 ## Project Status
-GearBox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
+Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
 
 [View the Development Roadmap →](https://github.com/JSideris/Gearbox2D/blob/master/plan.md)
 
@@ -803,7 +803,7 @@ A common use for a hinge joint is creating a pendulum by connecting a dynamic ob
 // 1. Create a static anchor
 const anchor = world.makeObject(1, {
     x: 10, y: 2,
-    type: gb2d.bodyTypes.FIXED_OBJECT
+    type: gearbox.bodyTypes.FIXED_OBJECT
 });
 
 // 2. Create a dynamic weight
@@ -880,22 +880,22 @@ In Gearbox2D, every physical object has a body type that determines how it inter
 ## Available Body Types
 
 ### Rigid Body (Dynamic)
-\`gb2d.bodyTypes.RIGID_BODY\`
+\`gearbox.bodyTypes.RIGID_BODY\`
 
 Dynamic bodies are fully simulated by the physics engine. They are affected by gravity, external forces, impulses, and collisions with other objects. This is the default type for most interactive objects like players, boxes, or debris.
 
 \`\`\`typescript
 world.makeObject(nextId++, {
     x: 5, y: 5,
-    shape: gb2d.shapes.CIRCLE,
+    shape: gearbox.shapes.CIRCLE,
     radius: 0.5,
     mass: 1.0,
-    type: gb2d.bodyTypes.RIGID_BODY
+    type: gearbox.bodyTypes.RIGID_BODY
 });
 \`\`\`
 
 ### Fixed Object (Static)
-\`gb2d.bodyTypes.FIXED_OBJECT\`
+\`gearbox.bodyTypes.FIXED_OBJECT\`
 
 Fixed objects have infinite mass and are immovable by the physics simulation. They do not respond to forces or impulses. They are typically used for static environment elements like ground, walls, or platforms. While they can be moved manually by setting their position, they do not have velocity-based movement.
 
@@ -903,13 +903,13 @@ Fixed objects have infinite mass and are immovable by the physics simulation. Th
 world.makeObject(nextId++, {
     x: 5, y: 9,
     width: 10, height: 1,
-    shape: gb2d.shapes.AABB,
-    type: gb2d.bodyTypes.FIXED_OBJECT
+    shape: gearbox.shapes.AABB,
+    type: gearbox.bodyTypes.FIXED_OBJECT
 });
 \`\`\`
 
 ### Kinematic Object
-\`gb2d.bodyTypes.KINEMATIC_OBJECT\`
+\`gearbox.bodyTypes.KINEMATIC_OBJECT\`
 
 Kinematic objects are a hybrid between dynamic and fixed objects. Like fixed objects, they have infinite mass and are unaffected by forces or collisions. However, they can have velocity and will move based on that velocity. This makes them ideal for moving platforms, elevators, or character-controlled objects that should "push" other objects without being pushed back.
 
@@ -918,24 +918,24 @@ world.makeObject(nextId++, {
     x: 2, y: 5,
     vx: 2.0, // Moves horizontally
     width: 2, height: 0.5,
-    shape: gb2d.shapes.BOX,
-    type: gb2d.bodyTypes.KINEMATIC_OBJECT
+    shape: gearbox.shapes.BOX,
+    type: gearbox.bodyTypes.KINEMATIC_OBJECT
 });
 \`\`\`
 
 ### Sensor
-\`gb2d.bodyTypes.SENSOR\`
+\`gearbox.bodyTypes.SENSOR\`
 
 Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks. Note that sensors still require collision categories and masks to be configured to interact with specific groups.\`\`\`typescript
 world.makeObject(nextId++, {
     x: 5, y: 5,
-    shape: gb2d.shapes.CIRCLE,
+    shape: gearbox.shapes.CIRCLE,
     radius: 2.0,
-    type: gb2d.bodyTypes.SENSOR,
+    type: gearbox.bodyTypes.SENSOR,
     wantsEvents: true // Opt-in to collision events
 });
 \`\`\`
-`,se=Object.freeze(Object.defineProperty({__proto__:null,default:ie},Symbol.toStringTag,{value:"Module"})),ae=`# Physical Object Lifecycle
+`,ae=Object.freeze(Object.defineProperty({__proto__:null,default:ie},Symbol.toStringTag,{value:"Module"})),se=`# Physical Object Lifecycle
 
 Understanding the lifecycle of a \`PhysicalObject\` is crucial for efficient simulation management. This page covers how objects are created, updated during the simulation loop, transitioned into sleep states, and eventually removed.
 
@@ -947,9 +947,9 @@ Physical objects are instantiated using the \`world.makeObject()\` method. This 
 const obj = world.makeObject(id, {
     x: 10,
     y: 20,
-    shape: gb2d.shapes.CIRCLE,
+    shape: gearbox.shapes.CIRCLE,
     radius: 1,
-    type: gb2d.bodyTypes.RIGID_BODY,
+    type: gearbox.bodyTypes.RIGID_BODY,
     mass: 1.0,
     // ... other properties
 });
@@ -1013,7 +1013,7 @@ During removal, the engine:
 
 > **Note**: After calling \`removeObject()\`, the JavaScript \`PhysicalObject\` wrapper becomes invalid and should no longer be used.
 
-`,re=Object.freeze(Object.defineProperty({__proto__:null,default:ae},Symbol.toStringTag,{value:"Module"})),le=`# Object Properties
+`,re=Object.freeze(Object.defineProperty({__proto__:null,default:se},Symbol.toStringTag,{value:"Module"})),le=`# Object Properties
 TODO
 
 `,ce=Object.freeze(Object.defineProperty({__proto__:null,default:le},Symbol.toStringTag,{value:"Module"})),de=`# State Management
@@ -1037,10 +1037,10 @@ TODO
 `,je=Object.freeze(Object.defineProperty({__proto__:null,default:we},Symbol.toStringTag,{value:"Module"})),_e=`# Supported Shapes
 TODO
 
-`,Se=Object.freeze(Object.defineProperty({__proto__:null,default:_e},Symbol.toStringTag,{value:"Module"})),xe=`# Planned Shapes
+`,xe=Object.freeze(Object.defineProperty({__proto__:null,default:_e},Symbol.toStringTag,{value:"Module"})),Se=`# Planned Shapes
 TODO
 
-`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:xe},Symbol.toStringTag,{value:"Module"})),Oe=`# Plan:
+`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Oe=`# Plan:
 
 ## Shapes, Kinematics, Collisions
 - [x] Setup and test Rust w/ web assembly target.
@@ -1215,5 +1215,9 @@ TODO
 - [ ] Collision Prediction / Danger Maps (optional)
 
 ## Known Issues
-- Piles of objects don't go to sleep as easily as they should (regression).`,Te=Object.freeze(Object.defineProperty({__proto__:null,default:Oe},Symbol.toStringTag,{value:"Module"})),Ce=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":j,"../docs/architecture-wasm-memory.md":S,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":T,"../docs/collision-filtering.md":B,"../docs/collision-narrow-phase.md":I,"../docs/core-concepts.md":D,"../docs/development.md":E,"../docs/events.md":J,"../docs/first-simulation.md":z,"../docs/graphics-debug.md":F,"../docs/installation.md":L,"../docs/interaction-queries.md":V,"../docs/introduction.md":U,"../docs/joints-distance.md":$,"../docs/joints-gear.md":K,"../docs/joints-hinge.md":Z,"../docs/joints-overview.md":ne,"../docs/joints-spring.md":oe,"../docs/objects-body-types.md":se,"../docs/objects-lifecycle.md":re,"../docs/objects-properties.md":ce,"../docs/objects-state.md":pe,"../docs/performance-optimizations.md":ue,"../docs/performance-tips.md":ge,"../docs/planned-ai-pathfinding.md":ye,"../docs/planned-ccd.md":ve,"../docs/planned-fluid-dynamics.md":je,"../docs/shapes-current.md":Se,"../docs/shapes-planned.md":Ae,"../docs/structure.md":p,"../plan.md":Te});function Be(n){const o=n.split(`
-`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const a=t.match(/- `([^`]+\.md)`:\s*(.*)/);a&&e&&e.pages.push({file:a[1],title:a[2].trim().replace(/\.$/,"")})}return i}const h=Be(Ce),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function Ie(){h.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&s.classList.add("collapsed")})})}async function u(){const n=window.location.hash.substring(1),o=n?`${n}.md`:h[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=b.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,a=Array.from(e.classList).find(g=>g.startsWith("language-"));a&&t.setAttribute("data-lang",a.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",u);Ie();u();const r=()=>window.innerWidth<=768,s=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{s.classList.toggle("collapsed")});r()&&s.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!s.classList.contains("collapsed")&&s.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!s.classList.contains("collapsed")&&!s.contains(n.target)&&!m.contains(n.target)&&s.classList.add("collapsed")});
+- Piles of objects don't go to sleep as easily as they should (regression).
+- FPS slowdown in fleas, likely caused by BVH becomming un-optimized.
+- Fleas example sometimes shows instances of objects escaping the scene.
+- Sliding objects never come to rest.
+- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.`,Te=Object.freeze(Object.defineProperty({__proto__:null,default:Oe},Symbol.toStringTag,{value:"Module"})),Ce=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":j,"../docs/architecture-wasm-memory.md":x,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":T,"../docs/collision-filtering.md":B,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":E,"../docs/events.md":J,"../docs/first-simulation.md":z,"../docs/graphics-debug.md":H,"../docs/installation.md":L,"../docs/interaction-queries.md":V,"../docs/introduction.md":U,"../docs/joints-distance.md":$,"../docs/joints-gear.md":K,"../docs/joints-hinge.md":Z,"../docs/joints-overview.md":ne,"../docs/joints-spring.md":oe,"../docs/objects-body-types.md":ae,"../docs/objects-lifecycle.md":re,"../docs/objects-properties.md":ce,"../docs/objects-state.md":pe,"../docs/performance-optimizations.md":ue,"../docs/performance-tips.md":ge,"../docs/planned-ai-pathfinding.md":ye,"../docs/planned-ccd.md":ve,"../docs/planned-fluid-dynamics.md":je,"../docs/shapes-current.md":xe,"../docs/shapes-planned.md":Ae,"../docs/structure.md":p,"../plan.md":Te});function Be(n){const o=n.split(`
+`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const h=Be(Ce),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function ke(){h.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function u(){const n=window.location.hash.substring(1),o=n?`${n}.md`:h[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=b.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(g=>g.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",u);ke();u();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!m.contains(n.target)&&a.classList.add("collapsed")});
