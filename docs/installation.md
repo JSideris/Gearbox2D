@@ -1,26 +1,26 @@
 # Installation
 
-GearBox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
+Gearbox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
 
 ## 1. Using NPM (Recommended)
 
 If you are using a modern build tool (Vite, Webpack, esbuild, etc.), install the package via npm:
 
 ```bash
-npm install gearbox-2d
+npm install gearbox2d
 ```
 
 ### Basic Usage with a Bundler
 
 ```typescript
-import gb2d from 'gearbox-2d';
+import gearbox from 'gearbox2d';
 
 async function startPhysics() {
     // 1. Initialize the WASM core
-    await gb2d.init();
+    await gearbox.init();
 
     // 2. Create your physics world
-    const world = gb2d.makeWorld();
+    const world = gearbox.makeWorld();
     
     // ... setup simulation ...
 }
@@ -36,15 +36,15 @@ For simple projects, prototyping, or environments without a build step, use the 
 
 ```html
 <!-- 1. Include the engine via CDN -->
-<script src="https://unpkg.com/gearbox-2d/dist/standalone/gb2d.js"></script>
+<script src="https://unpkg.com/gearbox2d/dist/standalone/gearbox.js"></script>
 
 <script>
   async function init() {
     // 2. Initialize the engine (it already has the WASM inside!)
-    await gb2d.init();
+    await gearbox.init();
     
     // 3. Create your physics world
-    const world = gb2d.makeWorld();
+    const world = gearbox.makeWorld();
     console.log("Physics World Created:", world);
   }
 
@@ -57,7 +57,7 @@ For simple projects, prototyping, or environments without a build step, use the 
 ## 3. WebAssembly & Local Servers
 
 **Standalone/CDN Users:** 
-If you are using the `dist/standalone/gb2d.js` file, you can likely run your project by simply opening an `.html` file from your file explorer, because the WASM is inlined.
+If you are using the `dist/standalone/gearbox.js` file, you can likely run your project by simply opening an `.html` file from your file explorer, because the WASM is inlined.
 
 **NPM/Standard Users:**
 If you are using the standard build (npm package), you **must** serve your project via a local web server because browsers block the loading of external `.wasm` files over the `file://` protocol.

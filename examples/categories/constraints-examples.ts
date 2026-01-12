@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let nextId = 1;
 let bridgeJoints = [];
@@ -24,17 +24,17 @@ export const constraintsExamples = [
             const anchor = world.makeObject(nextId++, {
                 x: 5,
                 y: 3,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 1,
                 height: 1,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ff4444"
             });
 
             const pendulum = world.makeObject(nextId++, {
                 x: 8,
                 y: 3,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 4,
                 height: 0.5,
                 mass: 0.1,
@@ -60,7 +60,7 @@ export const constraintsExamples = [
         ].join("\n\n"),
         onInit: (world) => {
             nextId = 1;
-            gb2d.debug.showAabbs = false;
+            gearbox.debug.showAabbs = false;
             bridgeJoints = [];
             breakableJoint = null;
             massObject = null;
@@ -69,16 +69,16 @@ export const constraintsExamples = [
             const anchor = world.makeObject(nextId++, {
                 x: 5,
                 y: 1,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: 0.2,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ff4444"
             });
 
             massObject = world.makeObject(nextId++, {
                 x: 5,
                 y: 2.5,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: 0.4,
                 mass: 0.05,
                 color: "#888888"
@@ -99,20 +99,20 @@ export const constraintsExamples = [
             const bridgeAnchorLeft = world.makeObject(nextId++, {
                 x: startX - segmentWidth / 2,
                 y: bridgeY,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: segmentWidth,
                 height: 0.5,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa"
             });
 
             const bridgeAnchorRight = world.makeObject(nextId++, {
                 x: endX + segmentWidth / 2,
                 y: bridgeY,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: segmentWidth,
                 height: 0.5,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa"
             });
 
@@ -121,7 +121,7 @@ export const constraintsExamples = [
                 const segmentBody = world.makeObject(nextId++, {
                     x: startX + i * segmentWidth + segmentWidth / 2,
                     y: bridgeY,
-                    shape: gb2d.shapes.BOX,
+                    shape: gearbox.shapes.BOX,
                     width: segmentWidth * 0.9,
                     height: segmentHeight,
                     mass: 0.2, // Slightly heavier for stability
@@ -147,7 +147,7 @@ export const constraintsExamples = [
             bridgeJoints.push(lastSj);
 
             world.setGravity(0, 10);
-            gb2d.debug.showForceVectors = true;
+            gearbox.debug.showForceVectors = true;
             
             // Apply a side force to make it swing
             massObject.applyImpulse(0.2, 0);
@@ -157,8 +157,8 @@ export const constraintsExamples = [
             if (massObject) {
                 massObject.mass += dt * 3.0; // Increase mass over time
                 
-                gb2d.debug.removeObjectLabels(massObject.id);
-                gb2d.debug.addLabel({
+                gearbox.debug.removeObjectLabels(massObject.id);
+                gearbox.debug.addLabel({
                     text: `Mass: ${massObject.mass.toFixed(2)}kg`,
                     objectId: massObject.id,
                     position: 'above',
@@ -210,10 +210,10 @@ export const constraintsExamples = [
             
             const staticBody = world.makeObject(nextId++, {
                 x: 5, y: 5,
-                shape: gb2d.shapes.AABB,
+                shape: gearbox.shapes.AABB,
                 width: 6.2,
                 height: 0.2,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#888",
                 maskBits: 0 // Don't collide with gears
             });
@@ -226,7 +226,7 @@ export const constraintsExamples = [
                 const gear = world.makeObject(nextId++, {
                     x: startX + i * spacing,
                     y: y,
-                    shape: gb2d.shapes.CIRCLE,
+                    shape: gearbox.shapes.CIRCLE,
                     radius: size,
                     mass: size,
                     color: `hsl(${i * 60}, 70%, 60%)`
@@ -265,7 +265,7 @@ export const constraintsExamples = [
             "A rotating drum has multiple triple-link chains hanging from it. Each link is connected by a `DistanceJoint` with a specified length, simulating a non-stretchy rope or chain."
         ].join("\n\n"),
         onInit: (world) => {
-            gb2d.debug.showAabbs = false;
+            gearbox.debug.showAabbs = false;
             nextId = 1;
             const cx = 5;
             const cy = 5;
@@ -275,9 +275,9 @@ export const constraintsExamples = [
             const hub = world.makeObject(nextId++, {
                 x: cx,
                 y: cy,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: 0.5,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ff4444"
             });
 
@@ -285,7 +285,7 @@ export const constraintsExamples = [
             drum = world.makeObject(nextId++, {
                 x: cx,
                 y: cy,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: drumRadius,
                 mass: 100,
                 color: "rgba(255, 255, 255, 0.05)",
@@ -320,7 +320,7 @@ export const constraintsExamples = [
                 const shape1 = world.makeObject(nextId++, {
                     x: shape1X,
                     y: shape1Y,
-                    shape: i % 2 === 0 ? gb2d.shapes.BOX : gb2d.shapes.CIRCLE,
+                    shape: i % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.5,
                     height: 0.5,
                     radius: 0.25,
@@ -342,7 +342,7 @@ export const constraintsExamples = [
                 const shape2 = world.makeObject(nextId++, {
                     x: shape2X,
                     y: shape2Y,
-                    shape: (i + 1) % 2 === 0 ? gb2d.shapes.BOX : gb2d.shapes.CIRCLE,
+                    shape: (i + 1) % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.5,
                     height: 0.5,
                     radius: 0.25,
@@ -363,7 +363,7 @@ export const constraintsExamples = [
                 const shape3 = world.makeObject(nextId++, {
                     x: shape3X,
                     y: shape3Y,
-                    shape: (i + 2) % 2 === 0 ? gb2d.shapes.BOX : gb2d.shapes.CIRCLE,
+                    shape: (i + 2) % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.5,
                     height: 0.5,
                     radius: 0.25,
@@ -424,7 +424,7 @@ export const constraintsExamples = [
             "The `SpringJoint` acts like a dampened harmonic oscillator, pulling objects together with a force proportional to their distance and frequency. The belt stretches and contracts as it interacts with the central rotor."
         ].join("\n\n"),
         onInit: (world) => {
-            gb2d.debug.showAabbs = false;
+            gearbox.debug.showAabbs = false;
             nextId = 1;
             const cx = 5;
             const cy = 3;
@@ -435,9 +435,9 @@ export const constraintsExamples = [
             const hub = world.makeObject(nextId++, {
                 x: cx,
                 y: cy,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: 0.1,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#666666",
                 maskBits: 0
             });
@@ -447,9 +447,9 @@ export const constraintsExamples = [
                 x: cx,
                 y: cy,
                 rs: 2.5,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: innerRadius,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 mass: 10,
                 color: "#888888",
                 sFriction: 1.0,
@@ -471,7 +471,7 @@ export const constraintsExamples = [
                 const shape = world.makeObject(nextId++, {
                     x: sx,
                     y: sy,
-                    shape: i % 2 === 0 ? gb2d.shapes.BOX : gb2d.shapes.CIRCLE,
+                    shape: i % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.6,
                     height: 0.6,
                     radius: 0.3,
@@ -521,7 +521,7 @@ export const constraintsExamples = [
             "Persistent random impulses are applied to the core to keep the ball moving and demonstrate its elasticity."
         ].join("\n\n"),
         onInit: (world) => {
-            gb2d.debug.showAabbs = false;
+            gearbox.debug.showAabbs = false;
             nextId = 1;
             const cx = 5;
             const cy = 3;
@@ -534,7 +534,7 @@ export const constraintsExamples = [
             const center = world.makeObject(nextId++, {
                 x: cx,
                 y: cy,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: axelRadius,
                 mass: 2.0, // Heavier axel for more stability
                 color: "#ff8888",
@@ -554,7 +554,7 @@ export const constraintsExamples = [
                 const p = world.makeObject(nextId++, {
                     x: px,
                     y: py,
-                    shape: gb2d.shapes.CIRCLE,
+                    shape: gearbox.shapes.CIRCLE,
                     radius: 0.2,
                     mass: 0.5,
                     color: "#8888ff",
@@ -592,10 +592,10 @@ export const constraintsExamples = [
             world.makeObject(nextId++, {
                 x: 5,
                 y: 10,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 15,
                 height: 2,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa",
                 sFriction: 0.9,
                 kFriction: 0.9
@@ -605,19 +605,19 @@ export const constraintsExamples = [
             world.makeObject(nextId++, {
                 x: -3.5,
                 y: 4.25,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 2.0,
                 height: 10,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa"
             });
             world.makeObject(nextId++, {
                 x: 13.5,
                 y: 4.25,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 2.0,
                 height: 10,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa"
             });
 

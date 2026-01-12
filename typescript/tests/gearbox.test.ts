@@ -1,11 +1,11 @@
-jest.mock('../../dist/wasm/gb2d-module.js', () => ({
+jest.mock('../../dist/wasm/gearbox-module.js', () => ({
   __esModule: true,
   default: jest.fn(),
 }));
 
 import { SHAPES, BODY_TYPES } from '../src/constants';
 
-describe('Gb2d constants', () => {
+describe('Gearbox constants', () => {
   test('SHAPES should be defined correctly', () => {
     expect(SHAPES.CIRCLE).toBe(1);
     expect(SHAPES.BOX).toBe(3);

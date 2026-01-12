@@ -1,10 +1,10 @@
 # Development & Contributing
 
-Follow these instructions to build GearBox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
+Follow these instructions to build Gearbox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
 
 ## Prerequisites
 
-To build GearBox2D, you'll need the following dependencies installed.
+To build Gearbox2D, you'll need the following dependencies installed.
 
 ### Required Dependencies
 
@@ -67,7 +67,7 @@ To build GearBox2D, you'll need the following dependencies installed.
 
 ## Running Tests
 
-GearBox2D includes both C++ and TypeScript test suites:
+Gearbox2D includes both C++ and TypeScript test suites:
 
 ```bash
 # Run all tests

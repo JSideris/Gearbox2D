@@ -1,4 +1,4 @@
-# Documentation Structure: GearBox2D
+# Documentation Structure: Gearbox2D
 
 ## Getting Started
 - `introduction.md`: Introduction

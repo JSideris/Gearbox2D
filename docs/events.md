@@ -8,7 +8,7 @@ To improve performance, events are opt-in per object. You must set `wantsEvents:
 
 ```typescript
 const obj = world.makeObject({
-  shape: gb2d.SHAPES.CIRCLE,
+  shape: gearbox.SHAPES.CIRCLE,
   radius: 1,
   wantsEvents: true // Enable events for this object
 });

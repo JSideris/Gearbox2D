@@ -10,7 +10,7 @@ Create an `index.html` file. We will use a `<canvas>` element to render our simu
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GearBox2D Hello World</title>
+    <title>Gearbox2D Hello World</title>
     <style>
         body { margin: 0; overflow: hidden; background: #1a1a1a; }
         canvas { display: block; width: 100vw; height: 100vh; }
@@ -20,7 +20,7 @@ Create an `index.html` file. We will use a `<canvas>` element to render our simu
     <canvas id="canvas"></canvas>
 
     <!-- OPTION A: Using the Standalone CDN (Easiest for this guide) -->
-    <script src="https://unpkg.com/gearbox-2d/dist/standalone/gb2d.js"></script>
+    <script src="https://unpkg.com/gearbox2d/dist/standalone/gearbox.js"></script>
     <script src="main.js"></script>
 
     <!-- OPTION B: Using NPM/Bundlers (Vite, Webpack, etc.) -->
@@ -37,17 +37,17 @@ Create a `main.js` file. This script initializes the engine, sets up the world, 
 /**
  * 1. ACCESS THE ENGINE
  * 
- * If you used the CDN script tag in index.html, 'gb2d' is already 
+ * If you used the CDN script tag in index.html, 'gearbox2d' is already 
  * available globally. If you are using NPM/Vite, uncomment the line below:
  */
-// import gb2d from 'gearbox-2d';
+// import gearbox from 'gearbox2d';
 
 async function start() {
     // 2. Initialize the engine
-    await gb2d.init();
+    await gearbox.init();
 
     // 2. Create the physics world
-    const world = gb2d.makeWorld();
+    const world = gearbox.makeWorld();
     world.setGravity(0, 9.8); // 9.8 m/s² downwards
 
     // 3. Create a static floor
@@ -57,8 +57,8 @@ async function start() {
         y: 9,
         width: 10,
         height: 1,
-        shape: gb2d.shapes.BOX,
-        type: gb2d.bodyTypes.FIXED_OBJECT,
+        shape: gearbox.shapes.BOX,
+        type: gearbox.bodyTypes.FIXED_OBJECT,
         color: "#444"
     });
 
@@ -69,7 +69,7 @@ async function start() {
         y: 2,
         width: 1,
         height: 1,
-        shape: gb2d.shapes.BOX,
+        shape: gearbox.shapes.BOX,
         color: "#ff4444"
     });
 
@@ -103,7 +103,7 @@ async function start() {
         // We scale the context so 1 meter = 50 pixels
         ctx.save();
         ctx.scale(50, 50); 
-        gb2d.debug.drawWorld(ctx, world);
+        gearbox.debug.drawWorld(ctx, world);
         ctx.restore();
 
         requestAnimationFrame(loop);
@@ -119,7 +119,7 @@ start().catch(console.error);
 
 To build more complex simulations, it is important to understand how the engine handles time and forces.
 
--   **Meters, not Pixels**: GearBox2D calculates everything in meters. 
+-   **Meters, not Pixels**: Gearbox2D calculates everything in meters. 
 -   **The World**: The container for all your physics objects.
 -   **Steps and Ticks**: How time progresses in the simulation.
 -   **Forces vs. Impulses**: The different ways to move objects.

@@ -1,10 +1,10 @@
 
-import gb2d from './engine.js';
+import gearbox from './engine.js';
 
 /**
  * Standalone CDN entry point.
  * This file is bundled by esbuild with the WASM inlined as a Base64 string.
- * It attaches the gb2d engine to the global window object.
+ * It attaches the gearbox engine to the global window object.
  */
 
 // @ts-ignore
@@ -18,13 +18,13 @@ if (inlinedWasmBase64) {
         bytes[i] = binaryString.charCodeAt(i);
     }
 
-    const originalInit = gb2d.init.bind(gb2d);
-    gb2d.init = async (options: { wasmBinary?: Uint8Array } = {}) => {
+    const originalInit = gearbox.init.bind(gearbox);
+    gearbox.init = async (options: { wasmBinary?: Uint8Array } = {}) => {
         return originalInit({ wasmBinary: bytes, ...options });
     };
 }
 
-(window as any).gb2d = gb2d;
+(window as any).gearbox = gearbox;
 
-export default gb2d;
+export default gearbox;
 

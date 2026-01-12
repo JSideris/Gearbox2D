@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 export const loadTestExamples = [
     new Example({
@@ -22,8 +22,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 0,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: length,
                 height: thickness,
                 restitution: 0.99,
@@ -32,8 +32,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 10,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: length,
                 height: thickness,
                 restitution: 0.99,
@@ -41,8 +41,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 0,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: thickness,
                 height: length,
                 restitution: 0.99,
@@ -50,8 +50,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 10,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: thickness,
                 height: length,
                 restitution: 0.99,
@@ -66,8 +66,8 @@ export const loadTestExamples = [
                     vy: Math.random() * 1.00 - .50,
                     r: Math.PI / 2 * Math.random(),
                     rs: (Math.random() - 0.5) * 20.00,
-                    shape: gb2d.shapes.CIRCLE,
-                    type: gb2d.bodyTypes.RIGID_BODY,
+                    shape: gearbox.shapes.CIRCLE,
+                    type: gearbox.bodyTypes.RIGID_BODY,
                     radius: .05,
                     mass: 0.5,
                     linearDamping: 0.0,
@@ -99,8 +99,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 0,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: length,
                 height: thickness,
                 restitution: 0.99,
@@ -109,8 +109,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 10,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: length,
                 height: thickness,
                 restitution: 0.99,
@@ -118,8 +118,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 0,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: thickness,
                 height: length,
                 restitution: 0.99,
@@ -127,8 +127,8 @@ export const loadTestExamples = [
             world.makeObject(id++, {
                 x: 10,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: thickness,
                 height: length,
                 restitution: 0.99,
@@ -142,8 +142,8 @@ export const loadTestExamples = [
                     vx: Math.random() * 10.00 - 5.0,
                     // vy: Math.random() * 1.00 - .50,
                     r: Math.PI / 2 * Math.random(),
-                    shape: gb2d.shapes.POINT,
-                    type: gb2d.bodyTypes.RIGID_BODY,
+                    shape: gearbox.shapes.POINT,
+                    type: gearbox.bodyTypes.RIGID_BODY,
                     radius: .05,
                     mass: 2,
                     linearDamping: 0.0,

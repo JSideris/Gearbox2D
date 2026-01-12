@@ -6,5 +6,5 @@ export * from './world.js';
 export * from './engine.js';
 export * from './debug-graphics.js';
 
-import gb2d from './engine.js';
-export default gb2d;
+import gearbox from './engine.js';
+export default gearbox;

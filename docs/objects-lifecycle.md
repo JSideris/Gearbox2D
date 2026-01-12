@@ -10,9 +10,9 @@ Physical objects are instantiated using the `world.makeObject()` method. This me
 const obj = world.makeObject(id, {
     x: 10,
     y: 20,
-    shape: gb2d.shapes.CIRCLE,
+    shape: gearbox.shapes.CIRCLE,
     radius: 1,
-    type: gb2d.bodyTypes.RIGID_BODY,
+    type: gearbox.bodyTypes.RIGID_BODY,
     mass: 1.0,
     // ... other properties
 });

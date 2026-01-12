@@ -22,7 +22,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'gb2d': resolve(__dirname, 'typescript/src/gb2d.ts'),
+      'gearbox2d': resolve(__dirname, 'typescript/src/gearbox.ts'),
     },
   },
 });

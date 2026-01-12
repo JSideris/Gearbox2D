@@ -7,9 +7,9 @@ async function build() {
     console.log('Building standalone CDN bundle...');
 
     // Paths
-    const wasmPath = path.resolve(__dirname, '../dist/wasm/gb2d-module.wasm');
+    const wasmPath = path.resolve(__dirname, '../dist/wasm/gearbox-module.wasm');
     const entryPath = path.resolve(__dirname, '../typescript/src/cdn.ts');
-    const outputPath = path.resolve(__dirname, '../dist/standalone/gb2d.js');
+    const outputPath = path.resolve(__dirname, '../dist/standalone/gearbox.js');
 
     // Ensure output directory exists
     const outputDir = path.dirname(outputPath);
@@ -34,7 +34,7 @@ async function build() {
             bundle: true,
             outfile: outputPath,
             format: 'iife',
-            globalName: 'gb2dStandalone',
+            globalName: 'gearboxStandalone',
             minify: true,
             sourcemap: true,
             platform: 'browser',

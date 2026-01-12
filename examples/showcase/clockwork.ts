@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let nextId = 1;
 let secondHand = null;
@@ -21,7 +21,7 @@ export const clockworkExample = new Example({
     ].join("\n\n"),
     onInit: (world) => {
         world.clear();
-        gb2d.debug.showAabbs = false;
+        gearbox.debug.showAabbs = false;
         nextId = 1;
 
         const cx = 5;
@@ -145,21 +145,21 @@ export const clockworkExample = new Example({
         const pendulumLength = g * Math.pow(targetPeriod / (2 * Math.PI), 2);
         const rockerPinDist = pendulumLength - p.rockerLength;
 
-        const pendCenter = world.makeObject(nextId++, { x: cx, y: pendPivotY, shape: gb2d.shapes.CIRCLE, radius: 0.1, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#888", categoryBits: CAT_STATIC, maskBits: 0 });
-        const escCenter = world.makeObject(nextId++, { x: cx, y: escapementY, shape: gb2d.shapes.CIRCLE, radius: 0.1, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#888", categoryBits: CAT_STATIC, maskBits: 0 });
-        const center = world.makeObject(nextId++, { x: cx, y: cy, shape: gb2d.shapes.CIRCLE, radius: 0.1, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#888", categoryBits: CAT_STATIC, maskBits: 0 });
+        const pendCenter = world.makeObject(nextId++, { x: cx, y: pendPivotY, shape: gearbox.shapes.CIRCLE, radius: 0.1, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#888", categoryBits: CAT_STATIC, maskBits: 0 });
+        const escCenter = world.makeObject(nextId++, { x: cx, y: escapementY, shape: gearbox.shapes.CIRCLE, radius: 0.1, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#888", categoryBits: CAT_STATIC, maskBits: 0 });
+        const center = world.makeObject(nextId++, { x: cx, y: cy, shape: gearbox.shapes.CIRCLE, radius: 0.1, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#888", categoryBits: CAT_STATIC, maskBits: 0 });
 
         const initialPendAngle = 0.5;
         pendulum = world.makeObject(nextId++, {
             x: cx + Math.sin(initialPendAngle) * pendulumLength,
             y: pendPivotY + Math.cos(initialPendAngle) * pendulumLength,
             r: -initialPendAngle,
-            shape: gb2d.shapes.CIRCLE, radius: 0.4, mass: 50.0, color: "#cd853f", categoryBits: CAT_MECH, maskBits: 0
+            shape: gearbox.shapes.CIRCLE, radius: 0.4, mass: 50.0, color: "#cd853f", categoryBits: CAT_MECH, maskBits: 0
         });
         pendulum.angularDamping = 0.01;
         world.createHingeJoint(nextId++, pendCenter, pendulum, { worldAnchor: { x: cx, y: pendPivotY }, anchorB: { x: 0, y: -pendulumLength } });
 
-        const fastGear = world.makeObject(nextId++, { x: cx, y: escapementY, r: 0, shape: gb2d.shapes.CIRCLE, radius: 0.5, mass: 0.5, color: "#aaa", categoryBits: CAT_GEAR, maskBits: 0 });
+        const fastGear = world.makeObject(nextId++, { x: cx, y: escapementY, r: 0, shape: gearbox.shapes.CIRCLE, radius: 0.5, mass: 0.5, color: "#aaa", categoryBits: CAT_GEAR, maskBits: 0 });
         fastGear.angularDamping = 0.05; 
         const fastHinge = world.createHingeJoint(nextId++, escCenter, fastGear, { worldAnchor: { x: cx, y: escapementY } });
 
@@ -170,7 +170,7 @@ export const clockworkExample = new Example({
 
         const conRodJoint = world.createDistanceJoint(nextId++, fastGear, pendulum, { anchorA: crankPinLocal, anchorB: pendPinLocal, length: conRodLen });
 
-        const springAnchor = world.makeObject(nextId++, { x: p.springX, y: escapementY - 1.0, shape: gb2d.shapes.CIRCLE, radius: 0.05, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#ff4444", categoryBits: CAT_STATIC, maskBits: 0 });
+        const springAnchor = world.makeObject(nextId++, { x: p.springX, y: escapementY - 1.0, shape: gearbox.shapes.CIRCLE, radius: 0.05, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#ff4444", categoryBits: CAT_STATIC, maskBits: 0 });
         const springJoint = world.createSpringJoint(nextId++, springAnchor, fastGear, { anchorB: { x: 0.5, y: 0 }, frequencyHz: p.springFreq, dampingRatio: 0.2, length: 1.2 });
 
         const updateSimulation = () => {
@@ -223,9 +223,9 @@ export const clockworkExample = new Example({
         const inter1Y = escapementY + 0.5;
         const inter1Center = world.makeObject(nextId++, {
             x: inter1X, y: inter1Y,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#888",
             categoryBits: CAT_STATIC,
             maskBits: 0
@@ -233,7 +233,7 @@ export const clockworkExample = new Example({
 
         const inter1Gear = world.makeObject(nextId++, {
             x: inter1X, y: inter1Y,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 1.0,
             mass: 0.2,
             r: 0, 
@@ -251,7 +251,7 @@ export const clockworkExample = new Example({
         const secHandAngle = (seconds / 60) * Math.PI * 2;
         const secondGearObj = world.makeObject(nextId++, {
             x: cx, y: cy,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.6,
             mass: 0.2,
             r: secHandAngle,
@@ -283,10 +283,10 @@ export const clockworkExample = new Example({
                 x: cx + Math.cos(angle) * (r1 + r2) / 2,
                 y: cy + Math.sin(angle) * (r1 + r2) / 2,
                 r: angle + Math.PI / 2,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: i % 3 === 0 ? 0.2 : 0.1,
                 height: 0.4,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#999",
                 categoryBits: CAT_STATIC,
                 maskBits: 0
@@ -297,7 +297,7 @@ export const clockworkExample = new Example({
             x: cx + Math.sin(secHandAngle) * (secLen / 2 - 0.2),
             y: cy - Math.cos(secHandAngle) * (secLen / 2 - 0.2),
             r: secHandAngle,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 0.05, height: secLen,
             mass: 0.1,
             color: "#ff4444",
@@ -314,16 +314,16 @@ export const clockworkExample = new Example({
         const inter2Y = cy - 1.5;
         const inter2Center = world.makeObject(nextId++, {
             x: inter2X, y: inter2Y,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#888",
             categoryBits: CAT_STATIC,
             maskBits: 0
         });
         const inter2Gear = world.makeObject(nextId++, {
             x: inter2X, y: inter2Y,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 1.0,
             mass: 0.2,
             r: 0,
@@ -339,7 +339,7 @@ export const clockworkExample = new Example({
 
         const minuteGear = world.makeObject(nextId++, {
             x: cx, y: cy,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.8,
             mass: 0.2,
             r: minHandAngle,
@@ -357,7 +357,7 @@ export const clockworkExample = new Example({
             x: cx + Math.sin(minHandAngle) * (minLen / 2 - 0.3),
             y: cy - Math.cos(minHandAngle) * (minLen / 2 - 0.3),
             r: minHandAngle,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 0.12, height: minLen,
             mass: 0.2,
             color: "#4444ff",
@@ -374,16 +374,16 @@ export const clockworkExample = new Example({
         const inter3Y = cy - 1.0;
         const inter3Center = world.makeObject(nextId++, {
             x: inter3X, y: inter3Y,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#888",
             categoryBits: CAT_STATIC,
             maskBits: 0
         });
         const inter3Gear = world.makeObject(nextId++, {
             x: inter3X, y: inter3Y,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 1.0,
             mass: 0.2,
             r: 0,
@@ -399,7 +399,7 @@ export const clockworkExample = new Example({
 
         const hourGear = world.makeObject(nextId++, {
             x: cx, y: cy,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 1.1,
             mass: 0.2,
             r: hourHandAngle,
@@ -417,7 +417,7 @@ export const clockworkExample = new Example({
             x: cx + Math.sin(hourHandAngle) * (hourLen / 2 - 0.4),
             y: cy - Math.cos(hourHandAngle) * (hourLen / 2 - 0.4),
             r: hourHandAngle,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 0.18, height: hourLen,
             mass: 0.3,
             color: "#cc8844",
@@ -567,12 +567,12 @@ export const clockworkExample = new Example({
 
         const now = new Date();
         const timeString = now.toLocaleTimeString();
-        gb2d.debug.clearLabels();
-        gb2d.debug.addLabel({ text: "Mechanical Clockwork", x: 5, y: 0.5, fontSize: "28px Arial", color: "#bbb", position: "on-top" });
-        gb2d.debug.addLabel({ text: timeString, x: 5, y: 9.5, fontSize: "36px Arial", color: "#fff", position: "on-top" });
+        gearbox.debug.clearLabels();
+        gearbox.debug.addLabel({ text: "Mechanical Clockwork", x: 5, y: 0.5, fontSize: "28px Arial", color: "#bbb", position: "on-top" });
+        gearbox.debug.addLabel({ text: timeString, x: 5, y: 9.5, fontSize: "36px Arial", color: "#fff", position: "on-top" });
         if (pendulum) {
             const angle = (pendulum.r * 180 / Math.PI).toFixed(1);
-            gb2d.debug.addLabel({ text: `Pendulum: ${angle}°`, x: 8, y: 8, fontSize: "16px Arial", color: "#cd853f", position: "on-top" });
+            gearbox.debug.addLabel({ text: `Pendulum: ${angle}°`, x: 8, y: 8, fontSize: "16px Arial", color: "#cd853f", position: "on-top" });
         }
     },
     onCleanup: (world) => {

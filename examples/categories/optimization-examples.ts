@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let simulationTime = 0;
 let nextId = 1;
@@ -29,8 +29,8 @@ export const optimizationExamples = [
                 height: 1,
                 vx: 0.0,
                 vy: 0.0,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 mass: 2, 
             });
         },
@@ -49,8 +49,8 @@ export const optimizationExamples = [
                         height: 0.5,
                         vx: 0,
                         vy: 0,
-                        shape: gb2d.shapes.BOX,
-                        type: gb2d.bodyTypes.RIGID_BODY,
+                        shape: gearbox.shapes.BOX,
+                        type: gearbox.bodyTypes.RIGID_BODY,
                         mass: 0.2, 
                         sFriction: 10,
                         kFriction: 10,
@@ -76,8 +76,8 @@ export const optimizationExamples = [
                 radius: 1,
                 vx: -5.0,
                 vy: -5.0,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 mass: 0.2, 
                 restitution: 0,
             });
@@ -87,8 +87,8 @@ export const optimizationExamples = [
                 radius: 1,
                 vx: 5.0,
                 vy: 5.0,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 mass: 0.2, 
                 restitution: 0,
             });

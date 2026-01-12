@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="GearBox2D - High-Speed 2D Physics Engine">
-    <title>GearBox2D - High-Speed 2D Physics Engine</title>
+    <meta name="description" content="Gearbox2D - High-Speed 2D Physics Engine">
+    <title>Gearbox2D - High-Speed 2D Physics Engine</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -262,7 +262,7 @@
     <canvas id="hero-canvas"></canvas>
     <div class="container">
         <div class="alpha-badge">ALPHA / WIP</div>
-        <h1>GearBox2D</h1>
+        <h1>Gearbox2D</h1>
         <p>Web-First Physics & AI Engine powered by WebAssembly</p>
         <div class="cta-buttons">
             <a href="docs.html">API Documentation</a>
@@ -302,12 +302,12 @@
 </section>
 
 <script type="module">
-    import gb2d, { DebugGraphics } from 'gb2d';
+    import gearbox, { DebugGraphics } from 'gearbox2d';
 
     async function initHero() {
-        await gb2d.init();
+        await gearbox.init();
         const canvas = document.getElementById('hero-canvas');
-        const world = gb2d.makeWorld();
+        const world = gearbox.makeWorld();
         const debug = new DebugGraphics();
 
         function resize() {
@@ -338,9 +338,9 @@
         // 1. Drive Wheel (Kinematic)
         const wheel = world.makeObject(nextId++, {
             x: -7, y: 0,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 6.0,
-            type: gb2d.bodyTypes.KINEMATIC_OBJECT,
+            type: gearbox.bodyTypes.KINEMATIC_OBJECT,
             color: white,
             categoryBits: CAT_GEAR,
             maskBits: 0 // No collision
@@ -350,8 +350,8 @@
         // Hubs for Gear Joint (fixed points for hinges)
         const wheelHub = world.makeObject(nextId++, {
             x: -7, y: 0,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
-            shape: gb2d.shapes.CIRCLE,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
             color: "transparent",
             maskBits: 0
@@ -361,8 +361,8 @@
         const smallWheelY = -1.414 * 1.5;
         const smallWheelHub = world.makeObject(nextId++, {
             x: smallWheelX, y: smallWheelY,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
-            shape: gb2d.shapes.CIRCLE,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
             color: "transparent",
             maskBits: 0
@@ -371,7 +371,7 @@
         // Small Wheel
         const smallWheel = world.makeObject(nextId++, {
             x: smallWheelX, y: smallWheelY,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 2.8,
             mass: 1.0,
             color: white,
@@ -394,7 +394,7 @@
         const piston = world.makeObject(nextId++, {
             x: 5.5, y: 0,
             width: 2.5, height: 1.8,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             mass: 2.0,
             color: white,
             categoryBits: CAT_PISTON,
@@ -405,7 +405,7 @@
         const rod = world.makeObject(nextId++, {
             x: 0, y: 0,
             width: 10.0, height: 0.4,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             mass: 1.0,
             color: white,
             maskBits: 0 // No collision
@@ -424,9 +424,9 @@
 
         // 5. Cylinder Walls (to guide the piston)
         const wallOptions = {
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 15, height: 0.8,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: white,
             categoryBits: CAT_WALL,
             maskBits: CAT_PISTON // Only collide with piston
@@ -444,10 +444,10 @@
 
     async function initDemo() {
         // 1. Initialize the engine
-        await gb2d.init();
+        await gearbox.init();
 
         const canvas = document.getElementById('gearbox2d-demo');
-        const world = gb2d.makeWorld();
+        const world = gearbox.makeWorld();
         
         // Setup initial world state
         world.setGravity(0, 9.8);
@@ -456,11 +456,11 @@
         world.setHasPenetrationResolution(true);
 
         // Enable debug graphics
-        gb2d.debug.enableDebugGraphics(canvas, world);
-        gb2d.debug.showAabbs = false;
-        gb2d.debug.zoom = 0.6; // Zoom out to see more
-        gb2d.debug.offsetX = canvas.width / 2;
-        gb2d.debug.offsetY = 50;
+        gearbox.debug.enableDebugGraphics(canvas, world);
+        gearbox.debug.showAabbs = false;
+        gearbox.debug.zoom = 0.6; // Zoom out to see more
+        gearbox.debug.offsetX = canvas.width / 2;
+        gearbox.debug.offsetY = 50;
 
         let nextId = 1;
 
@@ -469,8 +469,8 @@
         world.makeObject(nextId++, {
             x: 0, y: 5.5,
             width: 20, height: 1,
-            shape: gb2d.shapes.BOX,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            shape: gearbox.shapes.BOX,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#1e293b"
         });
 
@@ -481,9 +481,9 @@
         // 3. Central Rotating Gear
         const gearHub = world.makeObject(nextId++, {
             x: 0, y: 2.5,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "transparent",
             maskBits: 0
         });
@@ -491,7 +491,7 @@
         const gearCross1 = world.makeObject(nextId++, {
             x: 0, y: 2.5,
             width: 3.0, height: 0.4,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             mass: 2.0,
             color: "#a855f7",
             categoryBits: gearCategory,
@@ -501,7 +501,7 @@
         const gearCross2 = world.makeObject(nextId++, {
             x: 0, y: 2.5,
             width: 0.4, height: 3.0,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             mass: 2.0,
             color: "#a855f7",
             categoryBits: gearCategory,
@@ -523,8 +523,8 @@
         const screenToWorld = (x, y) => {
             const rect = canvas.getBoundingClientRect();
             return {
-                x: (x - rect.left - gb2d.debug.offsetX) / (gb2d.debug.zoom * 100),
-                y: (y - rect.top - gb2d.debug.offsetY) / (gb2d.debug.zoom * 100)
+                x: (x - rect.left - gearbox.debug.offsetX) / (gearbox.debug.zoom * 100),
+                y: (y - rect.top - gearbox.debug.offsetY) / (gearbox.debug.zoom * 100)
             };
         };
 
@@ -534,7 +534,7 @@
                 world.makeObject(nextId++, {
                     x: pos.x + (Math.random() - 0.5) * 0.2,
                     y: pos.y + (Math.random() - 0.5) * 0.2,
-                    shape: Math.random() > 0.5 ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                    shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
                     radius: 0.15,
                     width: 0.3, height: 0.3,
                     mass: 0.5,
@@ -550,11 +550,11 @@
             const hits = world.queryPoint(pos.x, pos.y);
             if (hits.length > 0) {
                 const target = world.getObjectById(hits[0]);
-                if (target && target.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+                if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
                     mouseAnchor = world.makeObject(999999, {
                         x: pos.x, y: pos.y,
-                        type: gb2d.bodyTypes.FIXED_OBJECT,
-                        shape: gb2d.shapes.CIRCLE,
+                        type: gearbox.bodyTypes.FIXED_OBJECT,
+                        shape: gearbox.shapes.CIRCLE,
                         radius: 0.05,
                         color: "transparent",
                         maskBits: 0
@@ -658,7 +658,7 @@
                 world.makeObject(nextId++, {
                     x: (Math.random() - 0.5) * 3,
                     y: -2,
-                    shape: Math.random() > 0.5 ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                    shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
                     radius: 0.2,
                     width: 0.4, height: 0.4,
                     mass: 1.0,
@@ -672,16 +672,16 @@
             // Cleanup objects that fall off
             const toRemove = [];
             world.iterateObjects(obj => {
-                if (obj.y > 7 && obj.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+                if (obj.y > 7 && obj.type !== gearbox.bodyTypes.FIXED_OBJECT) {
                     toRemove.push(obj.id);
                 }
             });
             toRemove.forEach(id => world.removeObject(id));
 
             // Visual labels
-            gb2d.debug.clearLabels();
-            gb2d.debug.addLabel({ text: "GEARBOX2D CORE", x: 0, y: -2.5, fontSize: "20px Orbitron", color: "var(--accent-cyan)" });
-            gb2d.debug.addLabel({ text: "Interactive WASM Physics", x: 0, y: -2.0, fontSize: "14px Inter", color: "var(--text-muted)" });
+            gearbox.debug.clearLabels();
+            gearbox.debug.addLabel({ text: "GEARBOX2D CORE", x: 0, y: -2.5, fontSize: "20px Orbitron", color: "var(--accent-cyan)" });
+            gearbox.debug.addLabel({ text: "Interactive WASM Physics", x: 0, y: -2.0, fontSize: "14px Inter", color: "var(--text-muted)" });
 
             requestAnimationFrame(loop);
         }
@@ -696,17 +696,16 @@
 <section id="get-started">
     <h2>Ready to build?</h2>
     <div class="code-snippet">
-        <pre><span class="keyword">import</span> { GearBox2D } <span class="keyword">from</span> <span class="string">'gearbox-2d'</span>;
+        <pre><span class="keyword">import</span> gearbox <span class="keyword">from</span> <span class="string">'gearbox2d'</span>;
 
-<span class="keyword">const</span> engine = <span class="keyword">new</span> <span class="function">GearBox2D</span>();
-<span class="keyword">await</span> engine.<span class="function">initialize</span>();
+<span class="keyword">await</span> gearbox.<span class="function">init</span>();
 
 <span class="comment">// Define your universe</span>
-<span class="keyword">const</span> world = engine.<span class="function">createWorld</span>();</pre>
+<span class="keyword">const</span> world = gearbox.<span class="function">makeWorld</span>();</pre>
     </div>
     <div class="cta-buttons" style="text-align: center;">
         <a href="docs.html#api-reference" class="secondary">View API Reference</a>
-        <a href="docs.html#installation">npm install gearbox-2d</a>
+        <a href="docs.html#installation">npm install gearbox2d</a>
     </div>
 </section>
 
@@ -718,14 +717,14 @@
 
 <section id="contribute">
     <h2>Open Source Core</h2>
-    <p>GearBox2D is community-driven. Explore the source and contribute to the physics revolution.</p>
+    <p>Gearbox2D is community-driven. Explore the source and contribute to the physics revolution.</p>
     <div class="cta-buttons">
         <a href="https://github.com/JSideris/Gearbox2D">Repository</a>
     </div>
 </section>
 
 <footer class="footer">
-    <p>&copy; 2024 GearBox2D Protocol. All rights reserved.</p>
+    <p>&copy; 2024 Gearbox2D Protocol. All rights reserved.</p>
     <p>
         <a href="#features">Features</a> |
         <a href="https://github.com/your-repo-url">GitHub</a> |

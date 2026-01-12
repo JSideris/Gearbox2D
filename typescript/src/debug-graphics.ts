@@ -1,5 +1,5 @@
 
-import { World, PhysicalObject, HingeJoint, DistanceJoint, SpringJoint, GearJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gb2d.js';
+import { World, PhysicalObject, HingeJoint, DistanceJoint, SpringJoint, GearJoint, SHAPES, IS_ASLEEP, HAS_PHYSICAL_COLLISION, HAS_AABB_COLLISION } from './gearbox.js';
 
 const ANIMSCALE = 100;
 const MAX_VECTOR_MAGNITUDE = 3.0; // Approximately 3cm when scaled

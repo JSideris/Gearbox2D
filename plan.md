@@ -174,3 +174,7 @@
 
 ## Known Issues
 - Piles of objects don't go to sleep as easily as they should (regression).
+- FPS slowdown in fleas, likely caused by BVH becomming un-optimized.
+- Fleas example sometimes shows instances of objects escaping the scene.
+- Sliding objects never come to rest.
+- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.

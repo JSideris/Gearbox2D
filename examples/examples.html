@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GearBox2D Examples | Protocol Interface</title>
+    <title>Gearbox2D Examples | Protocol Interface</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
@@ -105,7 +105,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
-        import gb2d from 'gb2d';
+        import gearbox from 'gearbox2d';
         import { generalExamples } from './categories/general-examples.ts';
         import { constraintsExamples } from './categories/constraints-examples.ts';
         import { optimizationExamples } from './categories/optimization-examples.ts';
@@ -149,15 +149,15 @@
         ]
 
         let generalSetupTemplate = `
-import gb2d from "gb2d";
+import gearbox from "gearbox2d";
 
 let world;
 {{GLOBAL}}
-gb2d.init().then(()=>{
-    world = gb2d.makeWorld();
+gearbox.init().then(()=>{
+    world = gearbox.makeWorld();
     
     // Optional:
-    gb2d.debug.enableDebugGraphics(document.getElementById("debug-canvas"), world);
+    gearbox.debug.enableDebugGraphics(document.getElementById("debug-canvas"), world);
 
     init();
     setInterval(()=>{
@@ -264,9 +264,9 @@ gb2d.init().then(()=>{
         let avgStepTime = 0;
 
         // Initialize the physics engine
-        gb2d.init().then(() => {
-            world = gb2d.makeWorld();
-            gb2d.debug.enableDebugGraphics(canvas, world);
+        gearbox.init().then(() => {
+            world = gearbox.makeWorld();
+            gearbox.debug.enableDebugGraphics(canvas, world);
 
             function animate() {
                 const now = performance.now();
@@ -293,7 +293,7 @@ gb2d.init().then(()=>{
                     let removedMemory = memoryData[dataPtr % 100] ?? 0;
                     let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
 
-                    // Use actual elapsed time instead of gb2d.debugFrameTime
+                    // Use actual elapsed time instead of gearbox.debugFrameTime
                     animTimeData[dataPtr % 100] = elapsed || 16.67; // Fallback to 60fps if elapsed is 0
                     memoryData[dataPtr % 100] = performance.memory.usedJSHeapSize / 1048576;
                     stepTimeData[dataPtr % 100] = stepTime;
@@ -350,7 +350,7 @@ gb2d.init().then(()=>{
                 
                 // Re-run camera center if we just showed it
                 if (!isInfoMode) {
-                    gb2d.debug.centerCamera(5, 5);
+                    gearbox.debug.centerCamera(5, 5);
                 }
             };
             
@@ -373,18 +373,18 @@ gb2d.init().then(()=>{
                 const mouseY = e.offsetY;
 
                 // Calculate world coordinates before zoom
-                const worldX = (mouseX - gb2d.debug.offsetX) / gb2d.debug.zoom;
-                const worldY = (mouseY - gb2d.debug.offsetY) / gb2d.debug.zoom;
+                const worldX = (mouseX - gearbox.debug.offsetX) / gearbox.debug.zoom;
+                const worldY = (mouseY - gearbox.debug.offsetY) / gearbox.debug.zoom;
 
                 const delta = -Math.sign(e.deltaY);
                 const zoomFactor = Math.pow(1 + zoomSpeed, delta);
-                const newZoom = Math.min(Math.max(gb2d.debug.zoom * zoomFactor, 0.1), 10);
+                const newZoom = Math.min(Math.max(gearbox.debug.zoom * zoomFactor, 0.1), 10);
 
-                gb2d.debug.zoom = newZoom;
+                gearbox.debug.zoom = newZoom;
 
                 // Adjust offset to keep mouse position fixed in world space
-                gb2d.debug.offsetX = mouseX - worldX * gb2d.debug.zoom;
-                gb2d.debug.offsetY = mouseY - worldY * gb2d.debug.zoom;
+                gearbox.debug.offsetX = mouseX - worldX * gearbox.debug.zoom;
+                gearbox.debug.offsetY = mouseY - worldY * gearbox.debug.zoom;
             }, { passive: false });
 
             let isPanning = false;
@@ -403,8 +403,8 @@ gb2d.init().then(()=>{
                 if (isPanning) {
                     const dx = e.clientX - lastMouseX;
                     const dy = e.clientY - lastMouseY;
-                    gb2d.debug.offsetX += dx;
-                    gb2d.debug.offsetY += dy;
+                    gearbox.debug.offsetX += dx;
+                    gearbox.debug.offsetY += dy;
                     lastMouseX = e.clientX;
                     lastMouseY = e.clientY;
                 }
@@ -451,8 +451,8 @@ gb2d.init().then(()=>{
                     const dx = touchX - lastTouchX;
                     const dy = touchY - lastTouchY;
 
-                    gb2d.debug.offsetX += dx;
-                    gb2d.debug.offsetY += dy;
+                    gearbox.debug.offsetX += dx;
+                    gearbox.debug.offsetY += dy;
 
                     lastTouchX = touchX;
                     lastTouchY = touchY;
@@ -465,7 +465,7 @@ gb2d.init().then(()=>{
 
                     if (lastTouchDistance > 0) {
                         const zoomFactor = distance / lastTouchDistance;
-                        const newZoom = Math.min(Math.max(gb2d.debug.zoom * zoomFactor, 0.1), 10);
+                        const newZoom = Math.min(Math.max(gearbox.debug.zoom * zoomFactor, 0.1), 10);
 
                         // Midpoint in screen coordinates
                         const midX = (touch1.clientX + touch2.clientX) / 2;
@@ -477,14 +477,14 @@ gb2d.init().then(()=>{
                         const canvasMidY = midY - rect.top;
 
                         // Calculate world coordinates before zoom
-                        const worldX = (canvasMidX - gb2d.debug.offsetX) / gb2d.debug.zoom;
-                        const worldY = (canvasMidY - gb2d.debug.offsetY) / gb2d.debug.zoom;
+                        const worldX = (canvasMidX - gearbox.debug.offsetX) / gearbox.debug.zoom;
+                        const worldY = (canvasMidY - gearbox.debug.offsetY) / gearbox.debug.zoom;
 
-                        gb2d.debug.zoom = newZoom;
+                        gearbox.debug.zoom = newZoom;
 
                         // Adjust offset to keep midpoint fixed in world space
-                        gb2d.debug.offsetX = canvasMidX - worldX * gb2d.debug.zoom;
-                        gb2d.debug.offsetY = canvasMidY - worldY * gb2d.debug.zoom;
+                        gearbox.debug.offsetX = canvasMidX - worldX * gearbox.debug.zoom;
+                        gearbox.debug.offsetY = canvasMidY - worldY * gearbox.debug.zoom;
                     }
                     lastTouchDistance = distance;
                 }
@@ -530,18 +530,18 @@ gb2d.init().then(()=>{
             }
 
             world.clear();
-            gb2d.debug.clearLabels();
-            gb2d.debug.showForceVectors = false;
-            gb2d.debug.showImpulseVectors = false;
+            gearbox.debug.clearLabels();
+            gearbox.debug.showForceVectors = false;
+            gearbox.debug.showImpulseVectors = false;
             world.setHasPenetrationResolution(true);
             world.setHasRestitution(true);
             world.setHasFriction(true);
             world.setGravity(0, 0);
 
             // Reset camera position and zoom (center at 5,5 world coordinates)
-            gb2d.debug.zoom = 1.0;
-            gb2d.debug.centerCamera(5, 5);
-            gb2d.debug.showAabbs = true;
+            gearbox.debug.zoom = 1.0;
+            gearbox.debug.centerCamera(5, 5);
+            gearbox.debug.showAabbs = true;
             
             currentExample = exampleKey;
             const exampleInfo = examplesMap[exampleKey];

@@ -1,10 +1,10 @@
-# GearBox2D - High-Speed 2D Physics Engine
+# Gearbox2D - High-Speed 2D Physics Engine
 
 **⚠️ WORK IN PROGRESS (Alpha)** - *Gearbox2D is currently in active development. APIs are subject to change.*
 
 Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the ground up for the modern browser. Built in C++ and compiled to WebAssembly (WASM), it provides a high-performance core with a developer-friendly TypeScript wrapper.
 
-## Why GearBox2D?
+## Why Gearbox2D?
 
 1.  **Web-First Performance**: Zero-copy memory sharing between WASM and JavaScript via shared buffers.
 2.  **Authoritative Synchronization**: Designed for real-time multiplayer with stable state injection.
@@ -15,7 +15,7 @@ Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the
 ### 1. Installation
 
 ```bash
-npm install gearbox-2d
+npm install gearbox2d
 ```
 
 For more ways to install (including CDN usage), see the [Installation Guide](docs/installation.md).
@@ -23,11 +23,11 @@ For more ways to install (including CDN usage), see the [Installation Guide](doc
 ### 2. Quick Start
 
 ```typescript
-import gb2d from 'gearbox-2d';
+import gearbox from 'gearbox2d';
 
 async function init() {
-    await gb2d.init();
-    const world = gb2d.makeWorld();
+    await gearbox.init();
+    const world = gearbox.makeWorld();
     world.setGravity(0, 9.8);
     
     // ... setup world ...
@@ -52,7 +52,7 @@ Check out [Your First Simulation](docs/first-simulation.md) for a full, copy-pas
 
 ## Project Status & Roadmap
 
-GearBox2D is currently in **Alpha**. The core physics solver and joint system are stable, but APIs are evolving. Check the [plan.md](plan.md) file for a detailed list of implemented features and future goals.
+Gearbox2D is currently in **Alpha**. The core physics solver and joint system are stable, but APIs are evolving. Check the [plan.md](plan.md) file for a detailed list of implemented features and future goals.
 
 ## Contributing
 

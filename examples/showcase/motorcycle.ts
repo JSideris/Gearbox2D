@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let nextId = 1;
 let chassis = null;
@@ -18,8 +18,8 @@ const CAT_TERRAIN = 0x0004;
 
 const screenToWorld = (x, y) => {
     return {
-        x: (x - gb2d.debug.offsetX) / (gb2d.debug.zoom * 100),
-        y: (y - gb2d.debug.offsetY) / (gb2d.debug.zoom * 100)
+        x: (x - gearbox.debug.offsetX) / (gearbox.debug.zoom * 100),
+        y: (y - gearbox.debug.offsetY) / (gearbox.debug.zoom * 100)
     };
 };
 
@@ -31,11 +31,11 @@ const onMouseDown = (e, world) => {
     if (hits.length > 0) {
         const targetId = hits[0];
         const target = world.getObjectById(targetId);
-        if (target && target.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+        if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
             mouseAnchor = world.makeObject(999999, {
                 x: pos.x, y: pos.y,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
-                shape: gb2d.shapes.CIRCLE, radius: 0.05,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.CIRCLE, radius: 0.05,
                 color: "transparent", maskBits: 0
             });
             dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
@@ -84,7 +84,7 @@ export const motorcycleExample = new Example({
     ].join("\n\n"),
     onInit: (world) => {
         world.clear();
-        gb2d.debug.showAabbs = false;
+        gearbox.debug.showAabbs = false;
         nextId = 1;
         terrainBoxes = [];
         keys = {};
@@ -100,7 +100,7 @@ export const motorcycleExample = new Example({
         // Chassis
         chassis = world.makeObject(nextId++, {
             x: cx, y: cy,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 1.2, height: 0.4,
             mass: 10.0,
             color: "#ff4444",
@@ -112,7 +112,7 @@ export const motorcycleExample = new Example({
         // Engine (internal spinning mass to drive wheels)
         engine = world.makeObject(nextId++, {
             x: cx, y: cy - 0.15,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.25,
             mass: 5.0,
             color: "#444",
@@ -124,7 +124,7 @@ export const motorcycleExample = new Example({
         // Rear Suspension Arm (Swingarm)
         const rearArm = world.makeObject(nextId++, {
             x: cx - 0.6, y: cy + 0.2,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 0.6, height: 0.1,
             mass: 1.0,
             color: "#666",
@@ -145,7 +145,7 @@ export const motorcycleExample = new Example({
         // Rear Wheel
         rearWheel = world.makeObject(nextId++, {
             x: cx - 0.9, y: cy + 0.2, // Aligned with arm anchor
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.4,
             mass: 2.0,
             color: "#333",
@@ -165,7 +165,7 @@ export const motorcycleExample = new Example({
         // Front Suspension Arm (Forks)
         const frontArm = world.makeObject(nextId++, {
             x: cx + 0.7, y: cy + 0.2,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 0.1, height: 0.8,
             r: 0.3,
             mass: 1.0,
@@ -187,7 +187,7 @@ export const motorcycleExample = new Example({
         // Front Wheel
         frontWheel = world.makeObject(nextId++, {
             x: cx + 0.8, y: cy + 0.5, // Aligned with fork anchor
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.4,
             mass: 2.0,
             color: "#333",
@@ -204,9 +204,9 @@ export const motorcycleExample = new Example({
         // --- 2. Initial Terrain ---
         const startPlatform = world.makeObject(nextId++, {
             x: cx, y: cy + 2.0,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 20, height: 1.0,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#444",
             categoryBits: CAT_TERRAIN,
             maskBits: CAT_CHASSIS | CAT_WHEEL
@@ -217,9 +217,9 @@ export const motorcycleExample = new Example({
         world.makeObject(nextId++, {
             x: -7.72, y: 0.01,
             r: 1.2, // Very steep (now tilted correctly as \_)
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: 15, height: 1.0,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#333",
             categoryBits: CAT_TERRAIN,
             maskBits: CAT_CHASSIS | CAT_WHEEL
@@ -292,17 +292,17 @@ export const motorcycleExample = new Example({
         // --- 4. Camera Follow ---
         const targetX = chassis.x;
         const targetY = chassis.y;
-        const canvasWidth = gb2d.debug.canvas?.width || 800;
-        const canvasHeight = gb2d.debug.canvas?.height || 600;
+        const canvasWidth = gearbox.debug.canvas?.width || 800;
+        const canvasHeight = gearbox.debug.canvas?.height || 600;
         
         // Smoothed camera follow (accounts for zoom)
         const lerp = (a, b, t) => a + (b - a) * t;
-        const zoom = gb2d.debug.zoom;
+        const zoom = gearbox.debug.zoom;
         const idealOffsetX = canvasWidth / 2 - targetX * 100 * zoom;
         const idealOffsetY = canvasHeight / 2 - targetY * 100 * zoom;
         
-        gb2d.debug.offsetX = lerp(gb2d.debug.offsetX, idealOffsetX, 0.1);
-        gb2d.debug.offsetY = lerp(gb2d.debug.offsetY, idealOffsetY, 0.1);
+        gearbox.debug.offsetX = lerp(gearbox.debug.offsetX, idealOffsetX, 0.1);
+        gearbox.debug.offsetY = lerp(gearbox.debug.offsetY, idealOffsetY, 0.1);
 
         // --- 5. Procedural Terrain ---
         const lastBox = terrainBoxes[terrainBoxes.length - 1];
@@ -334,9 +334,9 @@ export const motorcycleExample = new Example({
             const box = world.makeObject(nextId++, {
                 x: nextX, y: nextY,
                 r: angle,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: width, height: height,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: `hsl(${20 + Math.random() * 40}, 30%, ${30 + Math.random() * 20}%)`, // Earthy tones
                 categoryBits: CAT_TERRAIN,
                 maskBits: CAT_CHASSIS | CAT_WHEEL
@@ -350,11 +350,11 @@ export const motorcycleExample = new Example({
             }
         }
 
-        gb2d.debug.clearLabels();
+        gearbox.debug.clearLabels();
         // Instructions pinned to world at the start
         if (chassis.x < 15) {
-            gb2d.debug.addLabel({ text: "Motorcycle Trials", x: 5, y: 3, fontSize: "28px Arial", color: "#fff", position: "on-top" });
-            gb2d.debug.addLabel({ text: "Use D/A to drive and W/S to balance!", x: 5, y: 3.5, fontSize: "16px Arial", color: "#aaa", position: "on-top" });
+            gearbox.debug.addLabel({ text: "Motorcycle Trials", x: 5, y: 3, fontSize: "28px Arial", color: "#fff", position: "on-top" });
+            gearbox.debug.addLabel({ text: "Use D/A to drive and W/S to balance!", x: 5, y: 3.5, fontSize: "16px Arial", color: "#aaa", position: "on-top" });
         }
     },
     onCleanup: (world) => {
@@ -380,8 +380,8 @@ export const motorcycleExample = new Example({
         }
 
         // Reset debug offset
-        gb2d.debug.offsetX = 0;
-        gb2d.debug.offsetY = 0;
+        gearbox.debug.offsetX = 0;
+        gearbox.debug.offsetY = 0;
     }
 });
 

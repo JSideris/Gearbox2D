@@ -8,7 +8,7 @@
       "baseUrl": ".",
       "rootDir": "..", // Point rootDir to the project root instead of typescript/src
       "paths": {
-        "gb2d": ["../typescript/src/gb2d.ts"]
+        "gearbox2d": ["../typescript/src/gearbox.ts"]
       }
     },
     "include": ["**/*", "../typescript/src/**/*"]

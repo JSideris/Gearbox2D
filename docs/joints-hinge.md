@@ -40,7 +40,7 @@ A common use for a hinge joint is creating a pendulum by connecting a dynamic ob
 // 1. Create a static anchor
 const anchor = world.makeObject(1, {
     x: 10, y: 2,
-    type: gb2d.bodyTypes.FIXED_OBJECT
+    type: gearbox.bodyTypes.FIXED_OBJECT
 });
 
 // 2. Create a dynamic weight

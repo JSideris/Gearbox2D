@@ -1,11 +1,11 @@
 
-import gb2dModule from '../../dist/wasm/gb2d-module.js';
+import gearboxModule from '../../dist/wasm/gearbox-module.js';
 import { DebugGraphics } from './debug-graphics.js';
 import { SHAPES, BODY_TYPES } from './constants.js';
 import { World } from './world.js';
 
-/**@type {Gb2d} */
-export class Gb2d {
+/**@type {Gearbox} */
+export class Gearbox {
 	isInitialized: boolean;
 	debug = new DebugGraphics();
 
@@ -30,7 +30,7 @@ export class Gb2d {
 	async init(options: { wasmBinary?: Uint8Array } = {}){
 		if(this.isInitialized) return;
 
-		let Module = await gb2dModule(options)
+		let Module = await gearboxModule(options)
 
 		const {
 			// ObjectShape,
@@ -56,7 +56,7 @@ export class Gb2d {
 	}
 }
 
-const gb2d = new Gb2d();
+const gearbox = new Gearbox();
 
-export default gb2d;
+export default gearbox;
 

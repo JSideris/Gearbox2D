@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let nextId = 1;
 let impulseTimer = 0;
@@ -9,8 +9,8 @@ let canvas: HTMLCanvasElement | null = null;
 
 const screenToWorld = (x: number, y: number) => {
     return {
-        x: (x - gb2d.debug.offsetX) / (gb2d.debug.zoom * 100),
-        y: (y - gb2d.debug.offsetY) / (gb2d.debug.zoom * 100)
+        x: (x - gearbox.debug.offsetX) / (gearbox.debug.zoom * 100),
+        y: (y - gearbox.debug.offsetY) / (gearbox.debug.zoom * 100)
     };
 };
 
@@ -26,13 +26,13 @@ const onMouseDown = (e: MouseEvent, world: any) => {
         const targetId = hits[0];
         const target = world.getObjectById(targetId);
 
-        if (target && target.type !== gb2d.bodyTypes.FIXED_OBJECT) {
+        if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
             // Create a temporary mouse anchor
             mouseAnchor = world.makeObject(999999, {
                 x: pos.x,
                 y: pos.y,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
-                shape: gb2d.shapes.CIRCLE,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.CIRCLE,
                 radius: 0.05,
                 color: "transparent",
                 maskBits: 0
@@ -82,67 +82,98 @@ export const generalExamples = [
         ].join("\n\n"),
         onInit: (world) => {
             world.clear();
-            gb2d.debug.showAabbs = false;
+            gearbox.debug.showAabbs = false;
             nextId = 1;
 
             world.setGravity(0, 9.8);
             world.setHasRestitution(true);
             world.setHasFriction(true);
 
-            // Ground
+            // Boundaries (Thicker, with roof, moved out to preserve area)
+            const thickness = 1.0;
+            const innerWidth = 9.2;
+            const innerHeight = 9.0;
+            const wallHeight = innerHeight + thickness * 2;
+            const boundaryWidth = innerWidth + thickness * 2;
+
+            // Floor
             world.makeObject(nextId++, {
-                x: 5, y: 9.5,
-                shape: gb2d.shapes.BOX,
-                width: 10, height: 1.0,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                x: 5, y: 9.0 + thickness / 2,
+                shape: gearbox.shapes.BOX,
+                width: boundaryWidth, height: thickness,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                color: "#444"
+            });
+
+            // Roof
+            world.makeObject(nextId++, {
+                x: 5, y: 0.0 - thickness / 2,
+                shape: gearbox.shapes.BOX,
+                width: boundaryWidth, height: thickness,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#444"
             });
 
             // Walls
-            world.makeObject(nextId++, { x: 0.2, y: 5, shape: gb2d.shapes.BOX, width: 0.4, height: 10, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#444" });
-            world.makeObject(nextId++, { x: 9.8, y: 5, shape: gb2d.shapes.BOX, width: 0.4, height: 10, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#444" });
+            world.makeObject(nextId++, { 
+                x: 5 - innerWidth / 2 - thickness / 2, 
+                y: 4.5, 
+                shape: gearbox.shapes.BOX, 
+                width: thickness, height: wallHeight, 
+                type: gearbox.bodyTypes.FIXED_OBJECT, 
+                color: "#444" 
+            });
+            world.makeObject(nextId++, { 
+                x: 5 + innerWidth / 2 + thickness / 2, 
+                y: 4.5, 
+                shape: gearbox.shapes.BOX, 
+                width: thickness, height: wallHeight, 
+                type: gearbox.bodyTypes.FIXED_OBJECT, 
+                color: "#444" 
+            });
 
-            // Pile of shapes
+            // Grid of shapes to prevent initial overlap
             const colors = ["#ff4444", "#44ff44", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
+            const cols = 8;
+            const rows = 5;
+            const spacingX = 1.0;
+            const spacingY = 1.2;
+            const startX = 5 - ((cols - 1) * spacingX) / 2;
+            const startY = 2.0;
             
-            for (let i = 0; i < 15; i++) {
-                const x = 2 + Math.random() * 6;
-                const y = 2 + Math.random() * 5;
-                const color = colors[i % colors.length];
-                
-                const commonProps = {
-                    x, y,
-                    mass: 1.0,
-                    color,
-                    linearDamping: 0.5,
-                    angularDamping: 1.5
-                };
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = startX + c * spacingX;
+                    const y = startY + r * spacingY;
+                    const color = colors[(r * cols + c) % colors.length];
+                    
+                    const commonProps = {
+                        x, y,
+                        mass: 1.0,
+                        color,
+                        linearDamping: 0.5,
+                        angularDamping: 1.5
+                    };
 
-                const rand = Math.random();
-                if (rand < 0.45) {
-                    // Circle
-                    world.makeObject(nextId++, {
-                        ...commonProps,
-                        shape: gb2d.shapes.CIRCLE,
-                        radius: 0.3 + Math.random() * 0.4,
-                    });
-                } else if (rand < 0.9) {
-                    // Box
-                    world.makeObject(nextId++, {
-                        ...commonProps,
-                        shape: gb2d.shapes.BOX,
-                        width: 0.5 + Math.random() * 0.8,
-                        height: 0.5 + Math.random() * 0.8,
-                        r: Math.random() * Math.PI,
-                    });
-                } else {
-                    // AABB (less common)
-                    world.makeObject(nextId++, {
-                        ...commonProps,
-                        shape: gb2d.shapes.AABB,
-                        width: 0.5 + Math.random() * 0.8,
-                        height: 0.5 + Math.random() * 0.8,
-                    });
+                    const rand = Math.random();
+                    if (rand < 0.5) {
+                        // Circle
+                        world.makeObject(nextId++, {
+                            ...commonProps,
+                            shape: gearbox.shapes.CIRCLE,
+                            radius: 0.2 + Math.random() * 0.2,
+                            r: Math.random() * Math.PI,
+                        });
+                    } else {
+                        // Box
+                        world.makeObject(nextId++, {
+                            ...commonProps,
+                            shape: gearbox.shapes.BOX,
+                            width: 0.4 + Math.random() * 0.4,
+                            height: 0.4 + Math.random() * 0.4,
+                            r: Math.random() * Math.PI,
+                        });
+                    }
                 }
             }
 
@@ -174,9 +205,9 @@ export const generalExamples = [
             }
         },
         onTick: (world, dt) => {
-            gb2d.debug.clearLabels();
-            gb2d.debug.addLabel({ text: "Interactive Sandbox", x: 5, y: 0.5, fontSize: "28px Arial", color: "#bbb", position: "on-top" });
-            gb2d.debug.addLabel({ text: "Click and drag objects!", x: 5, y: 1.2, fontSize: "16px Arial", color: "#888", position: "on-top" });
+            gearbox.debug.clearLabels();
+            gearbox.debug.addLabel({ text: "Interactive Sandbox", x: 5, y: 0.5, fontSize: "28px Arial", color: "#bbb", position: "on-top" });
+            gearbox.debug.addLabel({ text: "Click and drag objects!", x: 5, y: 1.2, fontSize: "16px Arial", color: "#888", position: "on-top" });
         }
     }),
 
@@ -198,7 +229,7 @@ export const generalExamples = [
                 r: Math.PI / 2 * Math.random(),
                 rs: 5,
                 mass: 0.1, // 100g
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: .30,
                 angularDamping: 0.0, 
                 linearDamping: 0.0 // Set to 0 to prevent the orbit from slowing down.
@@ -210,8 +241,8 @@ export const generalExamples = [
                 y: 5.00,
                 r: Math.PI / 2 * Math.random(),
                 rs: .1,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.SENSOR, // Sensors don't collide with other objects.
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.SENSOR, // Sensors don't collide with other objects.
                 radius: 1.00,
                 angularDamping: 0.0, 
             });
@@ -261,7 +292,7 @@ export const generalExamples = [
                 x: 2.50,
                 y: 5.00,
                 r: Math.PI / 2 * Math.random(),
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: .30,
                 mass: 1,
                 damping: 0.1
@@ -271,7 +302,7 @@ export const generalExamples = [
                 x: 5.00,
                 y: 5.00,
                 r: Math.PI / 2 * Math.random(),
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: .60,
                 mass: 2,
                 damping: 0.02
@@ -281,7 +312,7 @@ export const generalExamples = [
             world.makeObject(3, {
                 x: 7.50,
                 y: 5.00,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 1.0,
                 height: 0.3,
                 mass: 100,
@@ -345,8 +376,8 @@ export const generalExamples = [
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: 1.00 + Math.random() * 5.00,
                     vy: -8.00 - Math.random() * 8.00,
-                    shape: gb2d.shapes.CIRCLE,
-                    type: gb2d.bodyTypes.SENSOR,
+                    shape: gearbox.shapes.CIRCLE,
+                    type: gearbox.bodyTypes.SENSOR,
                     radius: .2 + m * .2,
 
                     // Remember, gravity is an acceleration vector. So it affects all masses equally. 
@@ -390,8 +421,8 @@ export const generalExamples = [
             world.makeObject(1, {
                 x: 5,
                 y: 0,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 11,
                 height: 2,
                 
@@ -399,24 +430,24 @@ export const generalExamples = [
             world.makeObject(2, {
                 x: 5,
                 y: 10,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 11,
                 height: 2,
             });
             world.makeObject(3, {
                 x: 0,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 2,
                 height: 11,
             });
             world.makeObject(4, {
                 x: 10,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 2,
                 height: 11,
             });
@@ -427,8 +458,8 @@ export const generalExamples = [
                 y: 2,
                 vx: (Math.random() < 0.5 ? -1 : 1) * (1.5 + Math.random() * 1.5), 
                 r: Math.PI / 2 * Math.random(),
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: .75,
                 mass: 0.5,
                 linearDamping: 0.0,
@@ -476,14 +507,14 @@ export const generalExamples = [
                 let mass = m;
 
                 if (shapeType < 0.1) {
-                    shape = gb2d.shapes.POINT;
+                    shape = gearbox.shapes.POINT;
                     mass = 0.01; // Points have very small mass
                 } else if (shapeType < 0.2) {
-                    shape = gb2d.shapes.AABB;
+                    shape = gearbox.shapes.AABB;
                 } else if (shapeType < 0.6) {
-                    shape = gb2d.shapes.BOX;
+                    shape = gearbox.shapes.BOX;
                 } else {
-                    shape = gb2d.shapes.CIRCLE;
+                    shape = gearbox.shapes.CIRCLE;
                 }
 
                 world.makeObject(nextId++, {
@@ -494,10 +525,10 @@ export const generalExamples = [
                     vx: (2.00 + Math.random() * 5.00) * dir,
                     vy: -8.00 - Math.random() * 2.00,
                     shape: shape,
-                    type: gb2d.bodyTypes.RIGID_BODY,
-                    radius: (shape === gb2d.shapes.BOX || shape === gb2d.shapes.AABB) ? w : r,
+                    type: gearbox.bodyTypes.RIGID_BODY,
+                    radius: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB) ? w : r,
                     // width: isBox ? r * 2 : 0,
-                    height: (shape === gb2d.shapes.BOX || shape === gb2d.shapes.AABB) ? h : 0,
+                    height: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB) ? h : 0,
                     mass: mass, 
                     linearDamping: 0,
                 });
@@ -550,14 +581,14 @@ export const generalExamples = [
                 world.makeObject(id, {
                     x: 4.5,
                     y: 2.5 * id - 0.5,
-                    shape: gb2d.shapes.AABB,
-                    type: gb2d.bodyTypes.FIXED_OBJECT,
+                    shape: gearbox.shapes.AABB,
+                    type: gearbox.bodyTypes.FIXED_OBJECT,
                     width: 9.0,
                     height: 1,
                     mass: 1,
                 });
 
-                gb2d.debug.addLabel({
+                gearbox.debug.addLabel({
                     text: platformSummaries[id - 1],
                     x: 4.5,
                     y: 2.5 * id - 1.2,
@@ -573,14 +604,14 @@ export const generalExamples = [
                 x: 4.5,
                 y: 9.7,
                 r: 0.1,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 9.0,
                 height: 1,
                     mass: 1,
             });
 
-            gb2d.debug.addLabel({
+            gearbox.debug.addLabel({
                 text: "High static vs no static friction.",
                 x: 4.5,
                 y: 9.0,
@@ -598,13 +629,13 @@ export const generalExamples = [
                 rs: -8,
                 kFriction: 0.8,
                 sFriction: 0.5,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 0.5,
                 mass: 0.5
             });
 
-            gb2d.debug.addLabel({
+            gearbox.debug.addLabel({
                 text: "Reverse",
                 objectId: rollingObj1Id,
                 position: 'above',
@@ -619,13 +650,13 @@ export const generalExamples = [
                 rs: 15,
                 kFriction: 0.2,
                 sFriction: 0.5,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 0.5,
                 mass: 0.5
             });
 
-            gb2d.debug.addLabel({
+            gearbox.debug.addLabel({
                 text: "Forward",
                 objectId: rollingObj2Id,
                 position: 'above',
@@ -640,14 +671,14 @@ export const generalExamples = [
                 vx: 7,
                 kFriction: 1.2,
                 sFriction: 0.5,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
                 mass: 0.5
             });
 
-            gb2d.debug.addLabel({
+            gearbox.debug.addLabel({
                 text: "Slide",
                 objectId: slidingBoxId,
                 position: 'above',
@@ -662,14 +693,14 @@ export const generalExamples = [
                 vx: 0.5,
                 kFriction: 0.7,
                 sFriction: 0.7,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: .5,
                 mass: 0.5
             });
 
-            gb2d.debug.addLabel({
+            gearbox.debug.addLabel({
                 text: "Static",
                 objectId: staticBoxId,
                 position: 'above',
@@ -684,14 +715,14 @@ export const generalExamples = [
                 vx: 0.5,
                 kFriction: 0.01,
                 sFriction: 0.0,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: .5,
                 mass: 0.5
             });
 
-            gb2d.debug.addLabel({
+            gearbox.debug.addLabel({
                 text: "Kinetic",
                 objectId: kineticBoxId,
                 position: 'above',
@@ -716,7 +747,7 @@ export const generalExamples = [
         ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 10);
-            gb2d.debug.showForceVectors = false;
+            gearbox.debug.showForceVectors = false;
             
             // Platform Categories: 0x1 (Blue), 0x2 (Red), 0x4 (Green)
             
@@ -725,39 +756,39 @@ export const generalExamples = [
             world.makeObject(bluePlatId, {
                 x: 2.5, y: 8,
                 width: 4, height: 0.5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x1,
                 maskBits: 0x1 | 0x4,
                 color: '#00f2ff'
             });
-            gb2d.debug.addLabel({ text: "Collides with Blue & Green", objectId: bluePlatId, color: '#00f2ff', position: 'below' });
+            gearbox.debug.addLabel({ text: "Collides with Blue & Green", objectId: bluePlatId, color: '#00f2ff', position: 'below' });
 
             // Red Platform (Collides with category 2 and 4)
             const redPlatId = nextId++;
             world.makeObject(redPlatId, {
                 x: 7.5, y: 8,
                 width: 4, height: 0.5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x2,
                 maskBits: 0x2 | 0x4,
                 color: '#ff4444'
             });
-            gb2d.debug.addLabel({ text: "Collides with Red & Green", objectId: redPlatId, color: '#ff4444', position: 'below' });
+            gearbox.debug.addLabel({ text: "Collides with Red & Green", objectId: redPlatId, color: '#ff4444', position: 'below' });
 
             // Universal Platform (Collides with everything: 0x1 | 0x2 | 0x4)
             const universalPlatId = nextId++;
             world.makeObject(universalPlatId, {
                 x: 5, y: 4,
                 width: 2, height: 0.5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 categoryBits: 0x4,
                 maskBits: 0x7, // 1 | 2 | 4
                 color: '#44ff44'
             });
-            gb2d.debug.addLabel({ text: "Collides with All", objectId: universalPlatId, color: '#44ff44', position: 'below' });
+            gearbox.debug.addLabel({ text: "Collides with All", objectId: universalPlatId, color: '#44ff44', position: 'below' });
         },
         onTick: (world, dt)=>{
             if(Math.random() < 0.05){
@@ -777,15 +808,15 @@ export const generalExamples = [
                     x: 2 + Math.random() * 6,
                     y: 0,
                     radius: 0.3,
-                    shape: gb2d.shapes.CIRCLE,
-                    type: gb2d.bodyTypes.RIGID_BODY,
+                    shape: gearbox.shapes.CIRCLE,
+                    type: gearbox.bodyTypes.RIGID_BODY,
                     mass: 1,
                     categoryBits: cat,
                     maskBits: mask,
                     color: color
                 });
                 
-                gb2d.debug.addLabel({
+                gearbox.debug.addLabel({
                     text: `Cat:0x${cat.toString(16)} Mask:0x${mask.toString(16)}`,
                     objectId: id,
                     color: color,
@@ -823,49 +854,49 @@ export const generalExamples = [
             world.makeObject(nextId++, {
                 x: 5, y: 9.7,
                 width: 8, height: 0.6,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#444"
             });
             
             // Side barriers
-            world.makeObject(nextId++, { x: 1, y: 7, width: 0.2, height: 6, shape: gb2d.shapes.BOX, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#444" });
-            world.makeObject(nextId++, { x: 9, y: 7, width: 0.2, height: 6, shape: gb2d.shapes.BOX, type: gb2d.bodyTypes.FIXED_OBJECT, color: "#444" });
+            world.makeObject(nextId++, { x: 1, y: 7, width: 0.2, height: 6, shape: gearbox.shapes.BOX, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" });
+            world.makeObject(nextId++, { x: 9, y: 7, width: 0.2, height: 6, shape: gearbox.shapes.BOX, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" });
 
             // 2. Kinematic Objects: The Machinery
             // A rotating center piece
             const rotor = world.makeObject(nextId++, {
                 x: 5, y: 4,
                 width: 3.5, height: 0.3,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.KINEMATIC_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.KINEMATIC_OBJECT,
                 color: "#a0f",
                 rs: 1.5 // Radians per second
             });
-            gb2d.debug.addLabel({ text: "Kinematic Rotor", objectId: rotor.id, position: "above", color: "#a0f" });
+            gearbox.debug.addLabel({ text: "Kinematic Rotor", objectId: rotor.id, position: "above", color: "#a0f" });
 
             // A moving side platform
             const elevator = world.makeObject(nextId++, {
                 x: 2.5, y: 7,
                 width: 1.5, height: 0.3,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.KINEMATIC_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.KINEMATIC_OBJECT,
                 color: "#a0f",
                 vx: 1.0
             });
             (world as any).elevator = elevator;
-            gb2d.debug.addLabel({ text: "Kinematic Elevator", objectId: elevator.id, position: "above", color: "#a0f" });
+            gearbox.debug.addLabel({ text: "Kinematic Elevator", objectId: elevator.id, position: "above", color: "#a0f" });
 
             // 4. Sensor: The Recycling Zone
             const recycler = world.makeObject(nextId++, {
                 x: 5, y: 8.8,
                 width: 4, height: 1.2,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.SENSOR,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.SENSOR,
                 color: "rgba(0, 255, 100, 0.15)",
                 wantsEvents: true
             });
-            gb2d.debug.addLabel({ text: "Sensor Recycler", objectId: recycler.id, position: "on-top", color: "#4f4" });
+            gearbox.debug.addLabel({ text: "Sensor Recycler", objectId: recycler.id, position: "on-top", color: "#4f4" });
 
             // Store the recycler ID to identify it in collisions
             (world as any).recyclerId = recycler.id;
@@ -877,7 +908,7 @@ export const generalExamples = [
                 
                 if (otherId !== null) {
                     const other = world.getObjectById(otherId);
-                    if (other && other.type === gb2d.bodyTypes.RIGID_BODY) {
+                    if (other && other.type === gearbox.bodyTypes.RIGID_BODY) {
                         (world as any).toRemove.add(otherId);
                         // Visual cue: change color before removal
                         other.color = "#4f4";
@@ -901,11 +932,11 @@ export const generalExamples = [
                 
                 world.makeObject(nextId++, {
                     x, y: 0.5,
-                    shape: isCircle ? gb2d.shapes.CIRCLE : gb2d.shapes.BOX,
+                    shape: isCircle ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
                     radius: 0.25,
                     width: 0.5, height: 0.5,
                     mass: 0.5 + Math.random() * 1.0,
-                    type: gb2d.bodyTypes.RIGID_BODY,
+                    type: gearbox.bodyTypes.RIGID_BODY,
                     color: colors[Math.floor(Math.random() * colors.length)],
                     restitution: 0.3
                 });
@@ -926,7 +957,7 @@ export const generalExamples = [
             let outOfBounds = [];
             world.iterateObjects(obj => {
                 if (obj.y > 11 || obj.y < -5 || obj.x > 11 || obj.x < -1) {
-                    if (obj.type === gb2d.bodyTypes.RIGID_BODY) {
+                    if (obj.type === gearbox.bodyTypes.RIGID_BODY) {
                         outOfBounds.push(obj.id);
                     }
                 }

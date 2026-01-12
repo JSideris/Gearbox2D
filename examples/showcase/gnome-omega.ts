@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let nextId = 1;
 let engineHub = null;
@@ -19,7 +19,7 @@ export const gnomeOmegaExample = new Example({
     ].join("\n\n"),
     onInit: (world) => {
         world.clear();
-        gb2d.debug.showAabbs = false;
+        gearbox.debug.showAabbs = false;
         nextId = 1;
         engineHub = null;
 
@@ -39,9 +39,9 @@ export const gnomeOmegaExample = new Example({
         // Stationary center of the rotation
         const hubAnchor = world.makeObject(nextId++, {
             x: cx, y: cy,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.15,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#888",
             categoryBits: CAT_FIXED,
             maskBits: 0 // Collide with nothing
@@ -50,9 +50,9 @@ export const gnomeOmegaExample = new Example({
         // The fixed crank pin (stationary throw)
         const crankPin = world.makeObject(nextId++, {
             x: cx, y: cy + crankOffset,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.1,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#ff4444",
             categoryBits: CAT_FIXED,
             maskBits: 0 // Collide with nothing
@@ -61,7 +61,7 @@ export const gnomeOmegaExample = new Example({
         // The rotating hub (crankcase)
         engineHub = world.makeObject(nextId++, {
             x: cx, y: cy,
-            shape: gb2d.shapes.CIRCLE,
+            shape: gearbox.shapes.CIRCLE,
             radius: 0.8,
             mass: 50.0, // Increased mass for stability
             color: "#aaa",
@@ -97,7 +97,7 @@ export const gnomeOmegaExample = new Example({
                 const wall = world.makeObject(nextId++, {
                     x: wallX, y: wallY,
                     r: orientation,
-                    shape: gb2d.shapes.BOX,
+                    shape: gearbox.shapes.BOX,
                     width: wallWidth, height: wallHeight,
                     mass: 1.0,
                     color: "#bbb",
@@ -128,7 +128,7 @@ export const gnomeOmegaExample = new Example({
             const piston = world.makeObject(nextId++, {
                 x: pistonX, y: pistonY,
                 r: orientation,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 0.7, height: 1.0, // Piston width (0.7) is now less than inner gap (0.8)
                 mass: 0.5,
                 color: "#ddd",
@@ -147,7 +147,7 @@ export const gnomeOmegaExample = new Example({
             const rod = world.makeObject(nextId++, {
                 x: rodX, y: rodY,
                 r: rodAngle,
-                shape: gb2d.shapes.BOX,
+                shape: gearbox.shapes.BOX,
                 width: 0.15, height: rodLength,
                 mass: 0.2,
                 color: "#fff",

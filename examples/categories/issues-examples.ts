@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let impulseTimer = 0;
 let nextId = 1;
@@ -21,8 +21,8 @@ export const issuesExamples = [
                 x: 5,
                 y: 8,
                 // r: Math.PI,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 1,
                 mass: 1,
@@ -33,8 +33,8 @@ export const issuesExamples = [
                 x: 7,
                 y: 2,
                 // r: Math.PI,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 5,
                 height: 1,
@@ -45,8 +45,8 @@ export const issuesExamples = [
                 x: 3,
                 y: 5,
                 // r: Math.PI,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 5,
                 height: 1,
@@ -73,8 +73,8 @@ export const issuesExamples = [
                 x: 5,
                 y: 8,
                 r: Math.PI / 2,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 1,
                 mass: 1,
@@ -85,8 +85,8 @@ export const issuesExamples = [
                 x: 7,
                 y: 2,
                 // r: Math.PI / 2,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 5,
                 height: 1,
                 mass: 1,
@@ -95,8 +95,8 @@ export const issuesExamples = [
                 x: 3,
                 y: 5,
                 // r: Math.PI / 2,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 5,
                 height: 1,
                 mass: 1,
@@ -121,8 +121,8 @@ export const issuesExamples = [
                 x: 8,
                 y: 5,
                 // r: Math.PI,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 1,
                 mass: 1,
@@ -133,8 +133,8 @@ export const issuesExamples = [
                 x: 2,
                 y: 3,
                 vx: 3,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 1,
                 height: 5,
@@ -161,8 +161,8 @@ export const issuesExamples = [
                 x: 8,
                 y: 5,
                 // r: Math.PI,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 1,
                 mass: 1,
@@ -173,8 +173,8 @@ export const issuesExamples = [
                 x: 2,
                 y: 6,
                 vx: 3,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 1,
                 height: 5,
@@ -200,8 +200,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 5,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 1,
                 mass: 4,
             });
@@ -211,8 +211,8 @@ export const issuesExamples = [
                 y: 2.0,
                 vx: 3,
                 vy: 3,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 0.5,
                 mass: 1,
 
@@ -220,7 +220,7 @@ export const issuesExamples = [
                 rs: 0.01,
             });
         },
-        onTick: (gb2d, world, dt)=>{
+        onTick: (gearbox, world, dt)=>{
         }
     }),
 
@@ -240,8 +240,8 @@ export const issuesExamples = [
                 x: 5,
                 y: 6,
                 r: Math.PI / 8,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 8,
                 height: 1,
             });
@@ -250,14 +250,14 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 2,
                 y: 2,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
                 mass: 0.2,
             });
         },
-        onTick: (gb2d, world, dt)=>{
+        onTick: (gearbox, world, dt)=>{
         }
     }),
 
@@ -278,8 +278,8 @@ export const issuesExamples = [
                 y: 6,
                 // r: Math.PI / 8,
                 r: 0.1,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 8,
                 height: 1,
                 restitution: 0.0,
@@ -289,15 +289,15 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 2,
                 y: 2,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
                 mass: 0.2,
                 restitution: 0.0,
             });
         },
-        onTick: (gb2d, world, dt)=>{
+        onTick: (gearbox, world, dt)=>{
         }
     }),
 
@@ -328,8 +328,8 @@ export const issuesExamples = [
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: (2.00 + Math.random() * 5.00) * 1,
                     vy: -6.00 - Math.random() * 1.00,
-                    shape: gb2d.shapes.CIRCLE,
-                    type: gb2d.bodyTypes.RIGID_BODY,
+                    shape: gearbox.shapes.CIRCLE,
+                    type: gearbox.bodyTypes.RIGID_BODY,
                     radius: r,
                     mass: m, 
                 });
@@ -343,8 +343,8 @@ export const issuesExamples = [
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: (2.00 + Math.random() * 5.00) * -1,
                     vy: -6.00 - Math.random() * 1.00,
-                    shape: gb2d.shapes.CIRCLE,
-                    type: gb2d.bodyTypes.RIGID_BODY,
+                    shape: gearbox.shapes.CIRCLE,
+                    type: gearbox.bodyTypes.RIGID_BODY,
                     radius: r,
                     mass: m, 
                 });
@@ -386,8 +386,8 @@ export const issuesExamples = [
                 x: 5,
                 y: 6,
                 r: Math.PI / 2,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 8,
             });
@@ -396,8 +396,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 7,
                 y: 5,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
                 mass: 0.2,
@@ -422,8 +422,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 8,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 8,
                 height: 1,
                 // restitution: 1
@@ -433,8 +433,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 7,
                 y: 2,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 1,
                 mass: 0.2,
                 restitution: 1,
@@ -457,8 +457,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 5,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 5,
             });
@@ -468,8 +468,8 @@ export const issuesExamples = [
                 x: 5.2,
                 y: 5,
                 // vx: -50,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 0.1,
                 mass: 0.2,
                 restitution: 0.5,
@@ -494,8 +494,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 6,
-                shape: gb2d.shapes.AABB,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.AABB,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 8,
                 height: 1,
             });
@@ -504,8 +504,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 7,
                 y: 4,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
                 mass: 0.2,
@@ -529,8 +529,8 @@ export const issuesExamples = [
             world.makeObject(id++, {
                 x: 5,
                 y: 5,
-                shape: gb2d.shapes.BOX,
-                type: gb2d.bodyTypes.FIXED_OBJECT,
+                shape: gearbox.shapes.BOX,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
                 width: 1,
                 height: 5,
             });
@@ -540,8 +540,8 @@ export const issuesExamples = [
                 x: 5.2,
                 y: 5,
                 // vx: -50,
-                shape: gb2d.shapes.CIRCLE,
-                type: gb2d.bodyTypes.RIGID_BODY,
+                shape: gearbox.shapes.CIRCLE,
+                type: gearbox.bodyTypes.RIGID_BODY,
                 radius: 0.1,
                 mass: 0.2,
                 restitution: 0.5,

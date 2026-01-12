@@ -1,9 +1,9 @@
 {
-  "name": "gearbox-2d",
+  "name": "gearbox2d",
   "version": "0.1.0",
   "description": "A 2D physics engine with TypeScript interface and WebAssembly core",
-  "main": "dist/js/gb2d.js",
-  "types": "dist/js/gb2d.d.ts",
+  "main": "dist/js/gearbox.js",
+  "types": "dist/js/gearbox.d.ts",
   "scripts": {
     "clean": "rimraf dist/js",
     "build:ts": "tsc",

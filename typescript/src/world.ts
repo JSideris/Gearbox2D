@@ -2,8 +2,8 @@
 import { PhysicalObject } from './physical-object.js';
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from './joints.js';
 import { SIZE_I, ID_OFFSET, EVENT_TYPES } from './constants.js';
-// We'll import gb2d from engine.js to access debug graphics
-import gb2d from './engine.js';
+// We'll import gearbox from engine.js to access debug graphics
+import gearbox from './engine.js';
 
 export class World {
 	world: any;
@@ -119,7 +119,7 @@ export class World {
 		}
 		else {
 			// Remove any labels attached to this object.
-			gb2d.debug.removeObjectLabels(id);
+			gearbox.debug.removeObjectLabels(id);
 
 			// Remove any associated joints from our local record.
 			// The C++ side will handle the actual removal of the joints.

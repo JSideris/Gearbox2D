@@ -1,4 +1,4 @@
-import { World } from 'gb2d';
+import { World } from 'gearbox2d';
 
 export type OnInitCallback = (world: World) => void;
 export type OnTickCallback = (world: World, dt: number) => void;

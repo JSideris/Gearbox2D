@@ -1,12 +1,12 @@
 # Core Concepts
 
-Understanding these three fundamental concepts will help you build stable and predictable simulations in GearBox2D.
+Understanding these three fundamental concepts will help you build stable and predictable simulations in Gearbox2D.
 
 ## 1. The World
 The `World` is the heart of your simulation. It is the container for all physical objects, joints, and global settings like gravity.
 
 ```javascript
-const world = gb2d.makeWorld();
+const world = gearbox.makeWorld();
 world.setGravity(0, 9.8); // Set gravity to 9.8 m/s² downwards
 ```
 
@@ -24,7 +24,7 @@ world.step(1/60);
 ```
 
 ### The Importance of a Fixed Timestep
-For the most stable results, you should ideally step the world at a **fixed frequency** (like 60Hz). While GearBox2D can handle variable time steps (e.g., using your game loop's `dt`), huge spikes in time can cause objects to tunnel through walls or joints to explode.
+For the most stable results, you should ideally step the world at a **fixed frequency** (like 60Hz). While Gearbox2D can handle variable time steps (e.g., using your game loop's `dt`), huge spikes in time can cause objects to tunnel through walls or joints to explode.
 
 **Pro-tip:** If your game's frame rate drops, it's better to run multiple small physics steps than one giant one.
 

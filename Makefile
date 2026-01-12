@@ -13,7 +13,7 @@ EMCC = emcc
 CXX = g++  # Native C++ compiler for tests
 
 # Project name
-TARGET = gb2d-module
+TARGET = gearbox-module
 TEST_TARGET = runTests
 
 # Source files

@@ -16,16 +16,16 @@ Key responsibilities include:
 
 ### Creating a World
 
-A `World` instance is created via the main `gb2d` engine object. This ensures the underlying WebAssembly module is initialized before the world is constructed.
+A `World` instance is created via the main `gearbox` engine object. This ensures the underlying WebAssembly module is initialized before the world is constructed.
 
 ```typescript
-import gb2d from 'gearbox2d';
+import gearbox from 'gearbox2d';
 
 // Ensure the engine is initialized first
-await gb2d.init();
+await gearbox.init();
 
 // Create a new world instance
-const world = gb2d.makeWorld();
+const world = gearbox.makeWorld();
 ```
 
 ### Stepping the Simulation
@@ -110,8 +110,8 @@ Objects are created with a unique ID and a specification object.
 
 ```typescript
 const obj = world.makeObject(101, {
-    shape: gb2d.shapes.CIRCLE,
-    type: gb2d.bodyTypes.RIGID_BODY,
+    shape: gearbox.shapes.CIRCLE,
+    type: gearbox.bodyTypes.RIGID_BODY,
     x: 0,
     y: 0,
     radius: 1,
@@ -199,8 +199,8 @@ This is useful for scenarios like:
 - **Multi-room environments**: Managing different rooms or levels that don't interact with each other physically.
 
 ```typescript
-const gameWorld = gb2d.makeWorld();
-const uiWorld = gb2d.makeWorld();
+const gameWorld = gearbox.makeWorld();
+const uiWorld = gearbox.makeWorld();
 
 // These worlds are completely isolated
 gameWorld.setGravity(0, 9.81);

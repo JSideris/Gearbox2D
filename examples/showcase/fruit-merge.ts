@@ -1,5 +1,5 @@
 import Example from '../example.js';
-import gb2d from 'gb2d';
+import gearbox from 'gearbox2d';
 
 let nextId = 1;
 let canvas: HTMLCanvasElement | null = null;
@@ -45,7 +45,7 @@ const resetGameState = () => {
 };
 
 const screenToWorldX = (x: number) => {
-    return (x - gb2d.debug.offsetX) / (gb2d.debug.zoom * 100);
+    return (x - gearbox.debug.offsetX) / (gearbox.debug.zoom * 100);
 };
 
 export const fruitMergeExample = new Example({
@@ -62,7 +62,7 @@ export const fruitMergeExample = new Example({
     onInit: (world) => {
         world.clear();
         resetGameState();
-        gb2d.debug.showAabbs = false;
+        gearbox.debug.showAabbs = false;
 
         world.setGravity(0, 9.8);
         world.setHasRestitution(true);
@@ -78,27 +78,27 @@ export const fruitMergeExample = new Example({
         // Bucket Bottom
         world.makeObject(nextId++, {
             x: bx, y: by + bh / 2 + thickness / 2,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: bw + thickness * 2, height: thickness,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
         });
 
         // Left Wall
         world.makeObject(nextId++, {
             x: bx - bw / 2 - thickness / 2, y: by,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: thickness, height: bh,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
         });
 
         // Right Wall
         world.makeObject(nextId++, {
             x: bx + bw / 2 + thickness / 2, y: by,
-            shape: gb2d.shapes.BOX,
+            shape: gearbox.shapes.BOX,
             width: thickness, height: bh,
-            type: gb2d.bodyTypes.FIXED_OBJECT,
+            type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
         });
 
@@ -109,7 +109,7 @@ export const fruitMergeExample = new Example({
             const id = nextId++;
             const fruit = world.makeObject(id, {
                 x, y,
-                shape: gb2d.shapes.CIRCLE,
+                shape: gearbox.shapes.CIRCLE,
                 radius: fruitDef.radius,
                 mass: fruitDef.mass,
                 color: fruitDef.color,
@@ -220,25 +220,25 @@ export const fruitMergeExample = new Example({
     },
 
     onTick: (world, dt) => {
-        gb2d.debug.clearLabels();
+        gearbox.debug.clearLabels();
 
         if (gameState.isGameOver) {
-            gb2d.debug.addLabel({ text: "GAME OVER", x: 5, y: 4, fontSize: "48px Arial", color: "#ff4444", position: "on-top" });
-            gb2d.debug.addLabel({ text: `Final Score: ${gameState.score}`, x: 5, y: 5, fontSize: "24px Arial", color: "#fff", position: "on-top" });
-            gb2d.debug.addLabel({ text: "Click to Restart", x: 5, y: 6, fontSize: "20px Arial", color: "#888", position: "on-top" });
+            gearbox.debug.addLabel({ text: "GAME OVER", x: 5, y: 4, fontSize: "48px Arial", color: "#ff4444", position: "on-top" });
+            gearbox.debug.addLabel({ text: `Final Score: ${gameState.score}`, x: 5, y: 5, fontSize: "24px Arial", color: "#fff", position: "on-top" });
+            gearbox.debug.addLabel({ text: "Click to Restart", x: 5, y: 6, fontSize: "20px Arial", color: "#888", position: "on-top" });
             return;
         }
 
         // Draw Score
-        gb2d.debug.addLabel({ text: `Score: ${gameState.score}`, x: 0.5, y: 0.5, fontSize: "24px Arial", color: "#fff", textAlign: "left" });
+        gearbox.debug.addLabel({ text: `Score: ${gameState.score}`, x: 0.5, y: 0.5, fontSize: "24px Arial", color: "#fff", textAlign: "left" });
 
         // Draw Next Fruit Preview
         const nextFruit = FRUIT_LEVELS[gameState.nextFruitLevel];
-        gb2d.debug.addLabel({ text: `Next: ${nextFruit.name}`, x: 8.0, y: 0.5, fontSize: "18px Arial", color: nextFruit.color, textAlign: "right" });
+        gearbox.debug.addLabel({ text: `Next: ${nextFruit.name}`, x: 8.0, y: 0.5, fontSize: "18px Arial", color: nextFruit.color, textAlign: "right" });
 
         // Draw Drop Guide / Preview
         const previewY = 1.5;
-        gb2d.debug.addLabel({ 
+        gearbox.debug.addLabel({ 
             text: "●", 
             x: gameState.mouseX, 
             y: previewY, 
@@ -256,7 +256,7 @@ export const fruitMergeExample = new Example({
             }
         });
 
-        gb2d.debug.addLabel({ text: "Fruit Merge", x: 5, y: 0.5, fontSize: "28px Arial", color: "#bbb", position: "on-top" });
+        gearbox.debug.addLabel({ text: "Fruit Merge", x: 5, y: 0.5, fontSize: "28px Arial", color: "#bbb", position: "on-top" });
     },
 
     onCleanup: (world) => {
