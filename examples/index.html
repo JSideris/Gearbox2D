@@ -695,13 +695,33 @@
 
 <section id="get-started">
     <h2>Ready to build?</h2>
+    <p>Integration is simple and unopinionated. Start building high-performance physics simulations with a developer experience that prioritizes clarity and speed.</p>
     <div class="code-snippet">
         <pre><span class="keyword">import</span> gearbox <span class="keyword">from</span> <span class="string">'gearbox2d'</span>;
 
-<span class="keyword">await</span> gearbox.<span class="function">init</span>();
+<span class="keyword">async function</span> <span class="function">start</span>() {
+    <span class="comment">// Initialize the WASM core and prepare shared memory. Call this once.</span>
+    <span class="keyword">await</span> gearbox.<span class="function">init</span>();
 
-<span class="comment">// Define your universe</span>
-<span class="keyword">const</span> world = gearbox.<span class="function">makeWorld</span>();</pre>
+    <span class="keyword">const</span> world = gearbox.<span class="function">makeWorld</span>();
+
+    <span class="comment">// Add a ground box</span>
+    world.<span class="function">makeObject</span>(<span class="string">1</span>, {
+        x: <span class="string">0</span>, y: <span class="string">10</span>,
+        width: <span class="string">20</span>, height: <span class="string">1</span>,
+        shape: gearbox.shapes.BOX,
+        type: gearbox.bodyTypes.FIXED_OBJECT
+    });
+
+    <span class="comment">// Basic simulation loop</span>
+    <span class="keyword">function</span> <span class="function">loop</span>() {
+        world.<span class="function">step</span>();
+        <span class="function">requestAnimationFrame</span>(loop);
+    }
+    <span class="function">loop</span>();
+}
+
+<span class="function">start</span>();</pre>
     </div>
     <div class="cta-buttons" style="text-align: center;">
         <a href="docs.html#api-reference" class="secondary">View API Reference</a>
