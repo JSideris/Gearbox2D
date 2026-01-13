@@ -114,6 +114,8 @@
         import { showcaseExamples } from './categories/showcase-examples.ts';
         import MarkdownParser from './utils/markdown.ts';
         
+        const isProduction = !['localhost', '127.0.0.1'].includes(window.location.hostname);
+
         /**
          * We'll add examples here, grouped by category.
          * I'm also using this page to plan out which examples to add. Don't remove those comments!
@@ -146,7 +148,7 @@
                 examples: issuesExamples
 
             },
-        ]
+        ].filter(category => !isProduction || category.name !== "Known Issues");
 
         let generalSetupTemplate = `
 import gearbox from "gearbox2d";
