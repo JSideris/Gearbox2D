@@ -227,6 +227,14 @@ void World::addEvent(int type, int idA, int idB, float impulse) {
 }
 
 void World::step() {
+    // Snapshot current state for interpolation before processing the next step
+    for (auto& object : objectsList) {
+        int idx = object->worldIndex * FDATA_EPO;
+        liveFloatData[idx + FDATA_PREV_X] = liveFloatData[idx + FDATA_X];
+        liveFloatData[idx + FDATA_PREV_Y] = liveFloatData[idx + FDATA_Y];
+        liveFloatData[idx + FDATA_PREV_R] = liveFloatData[idx + FDATA_R];
+    }
+
     eventData.clear();
     static int frameCount = 0;
     _doKinematics();

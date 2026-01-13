@@ -11,6 +11,7 @@ import {
     CATEGORY_BITS_OFFSET, MASK_BITS_OFFSET, IA_OFFSET, 
     NFX_OFFSET, NFY_OFFSET, NIX_OFFSET, NIY_OFFSET, NIA_OFFSET,
     INV_INERTIA_OFFSET, MAX_EXTENT_OFFSET,
+    PREV_X_OFFSET, PREV_Y_OFFSET, PREV_R_OFFSET,
     BODY_TYPES
 } from './constants.js';
 import type { World } from './world.js';
@@ -133,6 +134,10 @@ export class PhysicalObject {
     
     get ay2() { return this.liveFData[this.index * SIZE_F + AY2_OFFSET]; }
     // set ay2(v) { this.liveFData[this.index * SIZE_F + AY2_OFFSET] = v; }
+
+    get prevX() { return this.liveFData[this.index * SIZE_F + PREV_X_OFFSET]; }
+    get prevY() { return this.liveFData[this.index * SIZE_F + PREV_Y_OFFSET]; }
+    get prevR() { return this.liveFData[this.index * SIZE_F + PREV_R_OFFSET]; }
     
     get hasCollisionFlags() { return this.liveIData[this.index * SIZE_I + HAS_COLLISION_OFFSET]; }
 

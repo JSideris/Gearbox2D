@@ -15,7 +15,7 @@ export const clockworkExample = new Example({
         "### Features",
         "- **Regulated Motion**: A 2.0m pendulum defines a 9-second period in low gravity (1.0 m/s²).",
         "- **Grashof Linkage**: Precision geometry allows the drive gear to complete full 360° rotations.",
-        "- **Mainspring Power**: A tensioned `SpringJoint` drives the escapement, physically limited by the pendulum.",
+        "- **Kinematic Drive**: The escapement gear is driven at a fixed rotation speed to ensure perfect timekeeping.",
         "- **Multi-stage Reduction**: 7 `GearJoint` stages step down the escapement's motion to hours and minutes.",
         "- **Real-time Sync**: The hands and gear train initialize to your local system time."
     ].join("\n\n"),
@@ -45,9 +45,12 @@ export const clockworkExample = new Example({
 
         // Simulation Parameters
         const p = { 
-            crankRadius: 0.25, 
-            groundDist: 1.0, 
-            rockerLength: 0.8, 
+            crankRadius: 0.251412, 
+            groundDist: 0.962005, 
+            rockerLength: 0.788035, 
+            escXOffset: 0.0,
+            conRodFreq: 15.0,
+            conRodDamping: 1.0,
             springFreq: 0.5, 
             springX: cx - 1.5 
         };
@@ -80,7 +83,7 @@ export const clockworkExample = new Example({
         optimizeBtn.textContent = 'Start Auto-Optimize';
         optimizeBtn.style = `width:100%;padding:8px;background:#444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;`;
         optimizeBtn.onclick = () => {
-            const s = world.scoreState;
+            const s = (world as any).scoreState;
             s.isOptimizing = !s.isOptimizing;
             optimizeBtn.textContent = s.isOptimizing ? 'Stop Auto-Optimize' : 'Start Auto-Optimize';
             optimizeBtn.style.background = s.isOptimizing ? '#f00' : '#444';
@@ -136,12 +139,14 @@ export const clockworkExample = new Example({
         createSlider('Crank Radius', 'crankRadius', 0.05, 0.5, 0.01);
         createSlider('Ground Distance', 'groundDist', 0.5, 2.0, 0.05);
         createSlider('Rocker Length', 'rockerLength', 0.3, 1.5, 0.05);
+        createSlider('Esc X Offset', 'escXOffset', -0.5, 0.5, 0.01);
+        createSlider('Rod Frequency', 'conRodFreq', 5.0, 50.0, 1.0);
         createSlider('Spring Frequency', 'springFreq', 0.1, 2.0, 0.05);
         createSlider('Spring X Pos', 'springX', cx - 3.0, cx - 0.5, 0.1);
         
         const pendPivotY = cy + 2.0;
         const escapementY = pendPivotY - p.groundDist;
-        const targetPeriod = 9.0; 
+        const targetPeriod = 8.0; // Sync with gear rotation (8s)
         const pendulumLength = g * Math.pow(targetPeriod / (2 * Math.PI), 2);
         const rockerPinDist = pendulumLength - p.rockerLength;
 
@@ -154,46 +159,56 @@ export const clockworkExample = new Example({
             x: cx + Math.sin(initialPendAngle) * pendulumLength,
             y: pendPivotY + Math.cos(initialPendAngle) * pendulumLength,
             r: -initialPendAngle,
-            shape: gearbox.shapes.CIRCLE, radius: 0.4, mass: 50.0, color: "#cd853f", categoryBits: CAT_MECH, maskBits: 0
+            shape: gearbox.shapes.CIRCLE, radius: 0.4, mass: 5.0, color: "#cd853f", categoryBits: CAT_MECH, maskBits: 0
         });
         pendulum.angularDamping = 0.01;
         world.createHingeJoint(nextId++, pendCenter, pendulum, { worldAnchor: { x: cx, y: pendPivotY }, anchorB: { x: 0, y: -pendulumLength } });
 
-        const fastGear = world.makeObject(nextId++, { x: cx, y: escapementY, r: 0, shape: gearbox.shapes.CIRCLE, radius: 0.5, mass: 0.5, color: "#aaa", categoryBits: CAT_GEAR, maskBits: 0 });
-        fastGear.angularDamping = 0.05; 
-        const fastHinge = world.createHingeJoint(nextId++, escCenter, fastGear, { worldAnchor: { x: cx, y: escapementY } });
+        const fastGear = world.makeObject(nextId++, { 
+            x: cx + p.escXOffset, y: escapementY, r: 0, 
+            shape: gearbox.shapes.CIRCLE, radius: 0.5, 
+            type: gearbox.bodyTypes.KINEMATIC_OBJECT,
+            color: "#aaa", categoryBits: CAT_GEAR, maskBits: 0 
+        });
+        fastGear.rs = (Math.PI * 2) / 8.0; 
+        const fastHinge = world.createHingeJoint(nextId++, escCenter, fastGear, { worldAnchor: { x: cx + p.escXOffset, y: escapementY } });
 
         const crankPinLocal = { x: p.crankRadius, y: 0 }; 
-        const pendPinLocal = { x: 0, y: -pendulumLength + rockerPinDist }; 
-        const conRodLen = Math.sqrt(Math.pow(fastGear.localToWorld(crankPinLocal).x - pendulum.localToWorld(pendPinLocal).x, 2) + 
-                                 Math.pow(fastGear.localToWorld(crankPinLocal).y - pendulum.localToWorld(pendPinLocal).y, 2));
+        const pendPinLocal = { x: 0, y: -p.rockerLength }; 
+        
+        // Calculate IDEAL rod length (Reference pose: both at 0 rad)
+        const getIdealLen = () => {
+            const refGearX = cx + p.escXOffset;
+            const refGearY = pendPivotY - p.groundDist;
+            const refCrankPinW = { x: refGearX + p.crankRadius, y: refGearY };
+            const refRockerPinW = { x: cx, y: pendPivotY + (pendulumLength - p.rockerLength) };
+            return Math.sqrt(Math.pow(refCrankPinW.x - refRockerPinW.x, 2) + Math.pow(refCrankPinW.y - refRockerPinW.y, 2));
+        };
 
-        const conRodJoint = world.createDistanceJoint(nextId++, fastGear, pendulum, { anchorA: crankPinLocal, anchorB: pendPinLocal, length: conRodLen });
-
-        const springAnchor = world.makeObject(nextId++, { x: p.springX, y: escapementY - 1.0, shape: gearbox.shapes.CIRCLE, radius: 0.05, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#ff4444", categoryBits: CAT_STATIC, maskBits: 0 });
-        const springJoint = world.createSpringJoint(nextId++, springAnchor, fastGear, { anchorB: { x: 0.5, y: 0 }, frequencyHz: p.springFreq, dampingRatio: 0.2, length: 1.2 });
+        const conRodJoint = world.createSpringJoint(nextId++, fastGear, pendulum, { 
+            anchorA: crankPinLocal, anchorB: pendPinLocal, 
+            length: getIdealLen(),
+            frequencyHz: p.conRodFreq, dampingRatio: p.conRodDamping
+        });
 
         const updateSimulation = () => {
             const newEscY = pendPivotY - p.groundDist;
+            const newEscX = cx + p.escXOffset;
+            escCenter.x = newEscX;
             escCenter.y = newEscY;
+            fastGear.x = newEscX;
             fastGear.y = newEscY;
-            fastHinge.localAnchorA = escCenter.worldToLocal({ x: cx, y: newEscY });
+            fastHinge.localAnchorA = escCenter.worldToLocal({ x: newEscX, y: newEscY });
             
             conRodJoint.localAnchorA = { x: p.crankRadius, y: 0 };
-            const newRockerPinDist = pendulumLength - p.rockerLength;
-            conRodJoint.localAnchorB = { x: 0, y: -pendulumLength + newRockerPinDist };
-            
-            const wA = fastGear.localToWorld(conRodJoint.localAnchorA);
-            const wB = pendulum.localToWorld(conRodJoint.localAnchorB);
-            conRodJoint.length = Math.sqrt(Math.pow(wB.x - wA.x, 2) + Math.pow(wB.y - wA.y, 2));
-            
-            springAnchor.x = p.springX;
-            springAnchor.y = newEscY - 1.0;
-            springJoint.frequencyHz = p.springFreq;
+            conRodJoint.localAnchorB = { x: 0, y: -p.rockerLength };
+            conRodJoint.length = getIdealLen();
+            conRodJoint.frequencyHz = p.conRodFreq;
+            conRodJoint.dampingRatio = p.conRodDamping;
         };
 
         // Scoring state
-        world.scoreState = {
+        (world as any).scoreState = {
             fastGear,
             pendulum,
             params: p,
@@ -201,7 +216,13 @@ export const clockworkExample = new Example({
             updateSliderUI,
             optStatus,
             lastFastR: fastGear.r,
-            history: [], // Buffer for sliding window: { time, rotDelta, reversal }
+            lastPendRs: pendulum.rs,
+            lastRsSign: Math.sign(pendulum.rs),
+            rsSignChanges: 0,
+            maxAngle: -Infinity,
+            minAngle: Infinity,
+            hasCrossedZero: false,
+            history: [], // Buffer for sliding window: { time, rotDelta, reversal, pendR, pendRs, pendRa }
             periodTimes: [],
             lastPendSide: Math.sign(pendulum.r),
             lastPendCrossing: 0,
@@ -431,12 +452,12 @@ export const clockworkExample = new Example({
         world.createGearJoint(nextId++, hourHinge, hourHandHinge, -1.0);
     },
     onTick: (world, dt) => {
-        const s = world.scoreState;
+        const s = (world as any).scoreState;
         if (s) {
             const now = performance.now();
-            const windowSize = 5000; // 5 seconds in ms
+            const windowSize = 8000; // Match one full 8s cycle
 
-            // 1. Track Tick Events
+            // 1. Track Pendulum and Gear Events
             let rotDelta = 0;
             let isReversal = false;
             if (s.fastGear) {
@@ -446,15 +467,30 @@ export const clockworkExample = new Example({
                 s.lastFastR = s.fastGear.r;
             }
 
-            s.history.push({ time: now, rotDelta, isReversal });
+            const pendR = s.pendulum.r;
+            const pendRs = s.pendulum.rs;
+            const pendRa = (pendRs - s.lastPendRs) / dt;
+            s.lastPendRs = pendRs;
+
+            const currentRsSign = Math.sign(pendRs);
+            if (currentRsSign !== s.lastRsSign && currentRsSign !== 0) {
+                s.rsSignChanges++;
+                s.lastRsSign = currentRsSign;
+            }
+
+            s.maxAngle = Math.max(s.maxAngle, pendR);
+            s.minAngle = Math.min(s.minAngle, pendR);
+
+            s.history.push({ time: now, rotDelta, isReversal, pendR, pendRs, pendRa });
 
             // 2. Track Pendulum Period
             if (s.pendulum) {
                 const currentSide = Math.sign(s.pendulum.r);
                 if (currentSide !== s.lastPendSide && currentSide !== 0) {
+                    s.hasCrossedZero = true;
                     if (s.lastPendCrossing > 0) {
-                        const period = (now - s.lastPendCrossing) / 500;
-                        if (period > 0.2 && period < 5.0) {
+                        const period = (now - s.lastPendCrossing) / 500; // Half period in seconds approx
+                        if (period > 0.5 && period < 10.0) {
                             s.periodTimes.push({ time: now, period });
                         }
                     }
@@ -463,105 +499,122 @@ export const clockworkExample = new Example({
                 }
             }
 
-            // 3. Prune Old Data (Older than 5s)
+            // 3. Prune Old Data
             const cutoff = now - windowSize;
             while (s.history.length > 0 && s.history[0].time < cutoff) s.history.shift();
             while (s.periodTimes.length > 0 && s.periodTimes[0].time < cutoff) s.periodTimes.shift();
 
             // 4. Calculate Recent Performance
-            let recentRotations = 0;
-            let recentReversalCount = 0;
-            for (const event of s.history) {
-                recentRotations += event.rotDelta;
-                if (event.isReversal) recentReversalCount++;
+            let avgAbsRa = 0;
+            let avgAbsRs = 0;
+            let maxRa = 0;
+            if (s.history.length > 0) {
+                let sumRa = 0;
+                let sumRs = 0;
+                for (const event of s.history) {
+                    sumRa += Math.abs(event.pendRa);
+                    sumRs += Math.abs(event.pendRs);
+                    maxRa = Math.max(maxRa, Math.abs(event.pendRa));
+                }
+                avgAbsRa = sumRa / s.history.length;
+                avgAbsRs = sumRs / s.history.length;
             }
 
-            // CONTINUOUS GRADIENT (Signs of Life)
-            // Even if the clock is stalled, these provide a reason to tweak parameters.
-            const pendActivity = (Math.abs(s.pendulum.r) + Math.abs(s.pendulum.rs) * 0.5);
-            const gearActivity = Math.abs(s.fastGear.rs);
+            // SCORE COMPONENTS
+            // 1. Healthy Amplitude (we want it to swing at least 0.3 rads)
+            const amplitude = (s.maxAngle - s.minAngle) / 2;
+            let score = Math.min(amplitude, 0.6) * 2000; 
 
-            let score = recentRotations * 5000;      // Primary goal: Rotation
-            score -= recentReversalCount * 20;       // Penalty for jitter/reversals (lowered)
-            score += pendActivity * 200;             // Reward for swinging (the gradient)
-            score += gearActivity * 50;              // Reward for gear movement
+            // 2. Symmetry (max and min should be centered around 0)
+            const centerOffset = Math.abs(s.maxAngle + s.minAngle);
+            score -= centerOffset * 1000;
 
-            // Period Accuracy Bonus
-            if (s.periodTimes.length > 0) {
-                const avgPeriod = s.periodTimes.reduce((acc, p) => acc + p.period, 0) / s.periodTimes.length;
-                const periodError = Math.abs(avgPeriod - 1.0);
-                score += Math.max(0, 1000 * (1 - periodError * 2)); // High bonus for timing
+            // 3. Smoothness (penalize high angular acceleration / "snappiness")
+            // A natural pendulum has max acceleration at the ends, but here we want to avoid 
+            // the "rapid back and forth" the user mentioned.
+            score -= avgAbsRa * 10;
+            score -= maxRa * 2;
+
+            // 4. Jitter Detection (Penalize extra velocity sign changes)
+            // In one cycle (8s), it should ideally change sign exactly 2 times.
+            if (s.rsSignChanges > 2) {
+                score -= (s.rsSignChanges - 2) * 500;
             }
 
-            // STALL PENALTY (The Cliff)
-            // If it's not rotating at all, apply a large penalty.
-            if (recentRotations < 0.005) {
-                score -= 2000;
+            // 5. Signs of Life
+            score += avgAbsRs * 100;
+
+            // CRITICAL PENALTIES (Abysmal scores for non-functional states)
+            if (!s.hasCrossedZero) {
+                score -= 10000; // Large penalty for not crossing zero
+            }
+            if (amplitude < 0.1) {
+                score -= 5000; // Large penalty for stalling/no range
             }
 
-            s.scoreDisplay.textContent = `Recent Score (5s): ${Math.floor(score)}`;
+            // Reset max/min for next window evaluation if not optimizing
+            if (!s.isOptimizing && s.history.length === 0) {
+                s.maxAngle = -Infinity;
+                s.minAngle = Infinity;
+                s.hasCrossedZero = false;
+                s.rsSignChanges = 0;
+            }
+
+            s.scoreDisplay.textContent = `Score: ${Math.floor(score)} | Amp: ${amplitude.toFixed(2)} | Jit: ${Math.max(0, s.rsSignChanges - 2)}${!s.hasCrossedZero ? ' [STUCK]' : ''}`;
 
             // --- AUTO-OPTIMIZER LOGIC ---
             if (s.isOptimizing) {
-                const keys = ['crankRadius', 'groundDist', 'rockerLength', 'springFreq', 'springX'];
+                const keys = ['crankRadius', 'groundDist', 'rockerLength', 'escXOffset', 'conRodFreq'];
                 
                 if (s.optimizationStage === 'PREPARE') {
-                    s.bestScore = score;
+                    s.bestScore = -Infinity;
                     s.optimizationStage = 'TWEAK';
                     s.evalTimer = now + windowSize;
                     s.improvedThisCycle = false;
+                    s.maxAngle = -Infinity;
+                    s.minAngle = Infinity;
+                    s.hasCrossedZero = false;
+                    s.rsSignChanges = 0;
                 } 
                 else if (now > s.evalTimer) {
                     if (s.optimizationStage === 'TWEAK') {
-                        // Compare score after evaluation period
-                        if (score > s.bestScore + 0.1) { // Lower threshold for subtle improvements
+                        if (score > s.bestScore) {
                             s.bestScore = score;
                             s.improvedThisCycle = true;
-                            s.optStatus.textContent = `Optimizer: Improved ${keys[s.optParamIndex]} (Score: ${Math.floor(score)})`;
-                            console.log(`Optimizer: Found improvement! New best score: ${Math.floor(score)}`);
+                            s.optStatus.textContent = `Improved ${keys[s.optParamIndex]} (Best: ${Math.floor(score)})`;
                         } else {
-                            // Revert
                             s.params[keys[s.optParamIndex]] -= s.epsilon * s.optDirection;
                             s.updateSimulation();
                             s.updateSliderUI(keys[s.optParamIndex]);
                         }
 
-                        // Move to next step
                         s.optDirection *= -1;
                         if (s.optDirection === 1) {
                             s.optParamIndex++;
                             if (s.optParamIndex >= keys.length) {
                                 s.optParamIndex = 0;
                                 if (!s.improvedThisCycle) {
-                                    s.epsilon *= 0.8; // Decay slower
-                                    s.epsilon = Math.max(s.epsilon, 0.002); // Don't shrink to zero
-                                    console.log(`Optimizer: No improvements this cycle. Shrinking epsilon to ${s.epsilon.toFixed(4)}`);
+                                    s.epsilon *= 0.7;
                                 }
                                 s.improvedThisCycle = false;
                             }
                         }
 
-                        // Apply next tweak
                         s.params[keys[s.optParamIndex]] += s.epsilon * s.optDirection;
                         s.updateSimulation();
                         s.updateSliderUI(keys[s.optParamIndex]);
                         
+                        // Reset window metrics for next evaluation
+                        s.maxAngle = -Infinity;
+                        s.minAngle = Infinity;
+                        s.hasCrossedZero = false;
+                        s.rsSignChanges = 0;
                         s.evalTimer = now + windowSize;
-                        s.optStatus.textContent = `Opt: Testing ${keys[s.optParamIndex]} (${s.optDirection > 0 ? '+' : '-'}) eps=${s.epsilon.toFixed(4)}`;
+                        s.optStatus.textContent = `Testing ${keys[s.optParamIndex]} (${s.optDirection > 0 ? '+' : '-'}) Best: ${Math.floor(s.bestScore)}`;
                     }
                 }
             } else {
                 s.optStatus.textContent = 'Optimizer: Idle';
-            }
-        }
-
-        // "Escapement" Impulse - A kick to maintain regulation
-        if (pendulum) {
-
-            // If pendulum is moving towards center, give it a healthy push
-            // Only if it's below a target speed to avoid over-accelerating
-            if (Math.abs(pendulum.r) < 0.1 && Math.abs(pendulum.rs) > 0.02 && Math.abs(pendulum.rs) < 1.2) {
-                pendulum.applyAngularImpulse(Math.sign(pendulum.rs) * 0.4);
             }
         }
 

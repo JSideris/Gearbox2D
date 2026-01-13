@@ -433,13 +433,26 @@
         };
 
         world.makeObject(nextId++, { ...wallOptions, x: 3, y: -1.35 }); // Top wall
-        world.makeObject(nextId++, { ...wallOptions, x: 3, y: 1.35 });  // Bottom wall
+        world.makeObject(nextId++, { ...        wallOptions, x: 3, y: 1.35 });  // Bottom wall
 
-        function loop() {
-            world.step();
+        let lastTime = performance.now();
+        let accumulator = 0;
+        const physicsStep = 1/60;
+
+        function loop(now) {
+            let dt = (now - lastTime) / 1000;
+            lastTime = now;
+            if (dt > 0.25) dt = 0.25;
+            accumulator += dt;
+
+            while (accumulator >= physicsStep) {
+                world.step();
+                accumulator -= physicsStep;
+            }
+            world.interpolationAlpha = accumulator / physicsStep;
             requestAnimationFrame(loop);
         }
-        loop();
+        requestAnimationFrame(loop);
     }
 
     async function initDemo() {
@@ -641,33 +654,44 @@
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // 6. Simulation Loop
-        function loop() {
-            frameCount++;
-            
-            // Step physics
-            world.step();
+        let lastTime = performance.now();
+        let accumulator = 0;
+        const physicsStep = 1/60;
 
-            // Rotate the gear (apply torque) - keep it at a reasonable speed
-            const targetSpeed = 1.5;
-            if (gearCross1.rs < targetSpeed) {
-                gearCross1.applyAngularImpulse(0.1);
-            }
+        function loop(now) {
+            let dt = (now - lastTime) / 1000;
+            lastTime = now;
+            if (dt > 0.25) dt = 0.25;
+            accumulator += dt;
 
-            // Fountain logic
-            if (frameCount % 40 === 0 && world.objectCount < 40) {
-                world.makeObject(nextId++, {
-                    x: (Math.random() - 0.5) * 3,
-                    y: -2,
-                    shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
-                    radius: 0.2,
-                    width: 0.4, height: 0.4,
-                    mass: 1.0,
-                    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-                    vx: (Math.random() - 0.5) * 1,
-                    categoryBits: objectCategory,
-                    maskBits: objectCategory | gearCategory
-                });
+            while (accumulator >= physicsStep) {
+                frameCount++;
+                world.step();
+
+                // Rotate the gear (apply torque) - keep it at a reasonable speed
+                const targetSpeed = 1.5;
+                if (gearCross1.rs < targetSpeed) {
+                    gearCross1.applyAngularImpulse(0.1);
+                }
+
+                // Fountain logic
+                if (frameCount % 40 === 0 && world.objectCount < 40) {
+                    world.makeObject(nextId++, {
+                        x: (Math.random() - 0.5) * 3,
+                        y: -2,
+                        shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
+                        radius: 0.2,
+                        width: 0.4, height: 0.4,
+                        mass: 1.0,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        vx: (Math.random() - 0.5) * 1,
+                        categoryBits: objectCategory,
+                        maskBits: objectCategory | gearCategory
+                    });
+                }
+                accumulator -= physicsStep;
             }
+            world.interpolationAlpha = accumulator / physicsStep;
 
             // Cleanup objects that fall off
             const toRemove = [];
@@ -714,11 +738,24 @@
     });
 
     <span class="comment">// Basic simulation loop</span>
-    <span class="keyword">function</span> <span class="function">loop</span>() {
-        world.<span class="function">step</span>();
+    <span class="keyword">let</span> lastTime = performance.<span class="function">now</span>();
+    <span class="keyword">let</span> accumulator = <span class="string">0</span>;
+    <span class="keyword">const</span> physicsStep = <span class="string">1/60</span>;
+
+    <span class="keyword">function</span> <span class="function">loop</span>(now) {
+        <span class="keyword">let</span> dt = (now - lastTime) / <span class="string">1000</span>;
+        lastTime = now;
+        <span class="keyword">if</span> (dt > <span class="string">0.25</span>) dt = <span class="string">0.25</span>;
+        accumulator += dt;
+
+        <span class="keyword">while</span> (accumulator >= physicsStep) {
+            world.<span class="function">step</span>();
+            accumulator -= physicsStep;
+        }
+        world.interpolationAlpha = accumulator / physicsStep;
         <span class="function">requestAnimationFrame</span>(loop);
     }
-    <span class="function">loop</span>();
+    <span class="function">requestAnimationFrame</span>(loop);
 }
 
 <span class="function">start</span>();</pre>

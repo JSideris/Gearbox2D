@@ -5,6 +5,7 @@
 - `installation.md`: Setup
 - `core-concepts.md`: Core Concepts
 - `first-simulation.md`: First Simulation
+- `game-loop.md`: The Simulation Loop
 - `development.md`: Engine Development
 - `plan.md`: Project Roadmap
 

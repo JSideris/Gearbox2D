@@ -48,7 +48,7 @@
   "bugs": {
     "url": "https://github.com/JSideris/Gearbox2D/issues"
   },
-  "homepage": "https://github.com/JSideris/Gearbox2D#readme",
+  "homepage": "https://gearbox2d.com",
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^25.0.3",

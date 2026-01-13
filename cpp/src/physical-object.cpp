@@ -111,6 +111,12 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
         maxExtent = valH * 0.5f; 
     }
     world.liveFloatData.push_back(maxExtent); 
+    
+    // Previous state for interpolation
+    world.liveFloatData.push_back(lastX); // prev_x
+    world.liveFloatData.push_back(lastY); // prev_y
+    world.liveFloatData.push_back(lastR); // prev_r
+    world.liveFloatData.push_back(0.0f);  // padding to match FDATA_EPO = 36
 }
 
 PhysicalObject::~PhysicalObject() {

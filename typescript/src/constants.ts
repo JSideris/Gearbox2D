@@ -1,6 +1,6 @@
 
 export const SIZE_I = 6;
-export const SIZE_F = 32;
+export const SIZE_F = 36;
 
 export const ID_OFFSET = 0;
 export const SHAPE_OFFSET = 1;
@@ -72,4 +72,7 @@ export const IA_OFFSET = 28;
 export const NIA_OFFSET = 29;
 export const INV_INERTIA_OFFSET = 30;
 export const MAX_EXTENT_OFFSET = 31;
+export const PREV_X_OFFSET = 32;
+export const PREV_Y_OFFSET = 33;
+export const PREV_R_OFFSET = 34;
 

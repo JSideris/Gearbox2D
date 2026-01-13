@@ -11,6 +11,7 @@ export class World {
 	liveIntData: Int32Array;
 	objectCount: number;
 	stepCount: number = 0;
+	interpolationAlpha: number = 1.0;
 	objectsById: Record<number, PhysicalObject>;
 	jointsById: Record<number, HingeJoint | DistanceJoint | SpringJoint | GearJoint>;
 
