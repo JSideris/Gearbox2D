@@ -43,7 +43,7 @@ PhysicalObject::PhysicalObject(World& world, int id, emscripten_val options)
     world.liveIntData.push_back((int)type); // type.
     world.liveIntData.push_back(0); // has collision bits.
 
-    categoryBits = options.hasOwnProperty("categoryBits") ? (uint32_t)options["categoryBits"].as<int>() : CATEGORY_DYNAMIC;
+    categoryBits = options.hasOwnProperty("categoryBits") ? (uint32_t)options["categoryBits"].as<int>() : (shape == ObjectShape::POINT ? CATEGORY_POINT : CATEGORY_DYNAMIC);
     maskBits = options.hasOwnProperty("maskBits") ? (uint32_t)options["maskBits"].as<int>() : CATEGORY_ALL;
     wantsEvents = options.hasOwnProperty("wantsEvents") ? options["wantsEvents"].as<bool>() : false;
 

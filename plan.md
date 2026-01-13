@@ -148,7 +148,7 @@
 - [ ] Experimental: Sleep drift (sleeping at terminal velocity).
 
 ### SIMD
-- [ ] ???
+- [ ] Find opportunities to optimize using SIMD.
 
 ## Advanced Features
 - [ ] Smart anti-tunelling.

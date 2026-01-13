@@ -289,7 +289,7 @@ void World::_doKinematics(){
             bool treeNeedsUpdate = object->recomputeAabb(0);
 
             if(treeNeedsUpdate){
-                bvh.updateLeaf(object->bvhNode, object->aabb);
+                object->bvhNode = bvh.updateLeaf(object->bvhNode, object->aabb);
             }
         }
     }

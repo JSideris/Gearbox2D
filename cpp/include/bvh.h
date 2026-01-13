@@ -9,7 +9,7 @@
 #include <fstream>
 #include <chrono>
 
-#define MAX_ALLOWED_COLLISIONS 5000
+#define MAX_ALLOWED_COLLISIONS 20000
 
 // Collision categories as bitflags
 enum CollisionCategory : uint32_t {
@@ -487,12 +487,19 @@ public:
         delete parent;
     }
     
-    // Update a leaf's AABB and propagate changes
-    void updateLeaf(BvhNode* leaf, const Aabb& newBounds) {
-        if (!leaf || !leaf->isLeaf) return;
+    // Update a leaf's AABB and propagate changes with re-insertion
+    BvhNode* updateLeaf(BvhNode* leaf, const Aabb& newBounds) {
+        if (!leaf || !leaf->isLeaf) return leaf;
         
-        leaf->bounds = newBounds;
-        updateAncestors(leaf);
+        // Capture data and properties before removal
+        void* userData = leaf->data;
+        CollisionProperties props = leaf->properties;
+
+        // Remove the leaf from the tree
+        remove(leaf);
+        
+        // Re-insert the leaf at the best new location
+        return insert(newBounds, userData, props);
     }
     
     // Detect all potential collision pairs in the tree
