@@ -255,9 +255,9 @@
             }
         }
     </style>
-  <script type="module" crossorigin src="./assets/main-S_kNGAwj.js"></script>
+  <script type="module" crossorigin src="./assets/main-D-A_JmYQ.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/world-C2Ab8g_n.js">
+  <link rel="modulepreload" crossorigin href="./assets/world-CWpoFZSg.js">
 </head>
 <body>
 
@@ -326,11 +326,24 @@
     });
 
     <span class="comment">// Basic simulation loop</span>
-    <span class="keyword">function</span> <span class="function">loop</span>() {
-        world.<span class="function">step</span>();
+    <span class="keyword">let</span> lastTime = performance.<span class="function">now</span>();
+    <span class="keyword">let</span> accumulator = <span class="string">0</span>;
+    <span class="keyword">const</span> physicsStep = <span class="string">1/60</span>;
+
+    <span class="keyword">function</span> <span class="function">loop</span>(now) {
+        <span class="keyword">let</span> dt = (now - lastTime) / <span class="string">1000</span>;
+        lastTime = now;
+        <span class="keyword">if</span> (dt > <span class="string">0.25</span>) dt = <span class="string">0.25</span>;
+        accumulator += dt;
+
+        <span class="keyword">while</span> (accumulator >= physicsStep) {
+            world.<span class="function">step</span>();
+            accumulator -= physicsStep;
+        }
+        world.interpolationAlpha = accumulator / physicsStep;
         <span class="function">requestAnimationFrame</span>(loop);
     }
-    <span class="function">loop</span>();
+    <span class="function">requestAnimationFrame</span>(loop);
 }
 
 <span class="function">start</span>();</pre>
