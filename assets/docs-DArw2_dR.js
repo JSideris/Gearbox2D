@@ -1,22 +1,22 @@
-import"./modulepreload-polyfill-B5Qt9EMX.js";import{M as b}from"./markdown-tUR2hliS.js";const y="# Documentation Structure: Gearbox2D\n\n## Getting Started\n- `introduction.md`: Introduction\n- `installation.md`: Setup\n- `core-concepts.md`: Core Concepts\n- `first-simulation.md`: First Simulation\n- `game-loop.md`: The Simulation Loop\n- `development.md`: Engine Development\n- `plan.md`: Project Roadmap\n\n## Core Architecture\n- `architecture-wasm-memory.md`: WASM & Shared Memory\n- `architecture-world.md`: World Management\n- `architecture-coordinates.md`: Coordinates & Units\n\n## Physical Objects\n- `objects-body-types.md`: Body Types\n- `objects-lifecycle.md`: Object Lifecycle\n- `objects-properties.md`: Body Properties\n- `objects-state.md`: Body State\n\n## Shapes & Geometry\n- `shapes-current.md`: Supported Shapes\n- `shapes-planned.md`: Planned Shapes\n\n## Constraints & Joints\n- `joints-overview.md`: Joints Overview\n- `joints-hinge.md`: Hinge Joints\n- `joints-distance.md`: Distance Joints\n- `joints-spring.md`: Spring Joints\n- `joints-gear.md`: Gear Joints\n\n## Collision System\n- `collision-broad-phase.md`: Broad Phase\n- `collision-narrow-phase.md`: Narrow Phase\n- `collision-filtering.md`: Collision Filtering\n\n## Events\n- `events.md`: Physical Object Events\n\n## Spatial Queries & Interaction\n- `interaction-queries.md`: Spatial Queries\n\n## Graphics & Debugging\n- `graphics-debug.md`: Debug Graphics\n\n## Performance & Optimization\n- `performance-tips.md`: Performance Tips\n- `performance-optimizations.md`: Optimizations\n\n## Advanced & Planned Features\n- `planned-fluid-dynamics.md`: Fluid Dynamics (Planned)\n- `planned-ai-pathfinding.md`: AI Pathfinding (Planned)\n- `planned-ccd.md`: Continuous Collision Detection (Planned)\n\n## API Reference\n- `api-reference.md`: API Reference\n\n",p=Object.freeze(Object.defineProperty({__proto__:null,default:y},Symbol.toStringTag,{value:"Module"})),f=`# API Reference
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{M as y}from"./markdown-tUR2hliS.js";const b="# Documentation Structure: Gearbox2D\n\n## Getting Started\n- `introduction.md`: Introduction\n- `installation.md`: Setup\n- `core-concepts.md`: Core Concepts\n- `first-simulation.md`: First Simulation\n- `game-loop.md`: The Simulation Loop\n- `development.md`: Engine Development\n- `plan.md`: Project Roadmap\n\n## Core Architecture\n- `architecture-wasm-memory.md`: WASM & Shared Memory\n- `architecture-world.md`: World Management\n- `architecture-coordinates.md`: Coordinates & Units\n\n## Bodys\n- `objects-body-types.md`: Body Types\n- `objects-lifecycle.md`: Object Lifecycle\n- `objects-properties.md`: Body Properties\n- `objects-state.md`: Body State\n\n## Shapes & Geometry\n- `shapes-current.md`: Supported Shapes\n- `shapes-planned.md`: Planned Shapes\n\n## Constraints & Joints\n- `joints-overview.md`: Joints Overview\n- `joints-hinge.md`: Hinge Joints\n- `joints-distance.md`: Distance Joints\n- `joints-spring.md`: Spring Joints\n- `joints-gear.md`: Gear Joints\n\n## Collision System\n- `collision-broad-phase.md`: Broad Phase\n- `collision-narrow-phase.md`: Narrow Phase\n- `collision-filtering.md`: Collision Filtering\n\n## Events\n- `events.md`: Body Events\n\n## Spatial Queries & Interaction\n- `interaction-queries.md`: Spatial Queries\n\n## Graphics & Debugging\n- `graphics-debug.md`: Debug Graphics\n\n## Performance & Optimization\n- `performance-tips.md`: Performance Tips\n- `performance-optimizations.md`: Optimizations\n\n## Advanced & Planned Features\n- `planned-fluid-dynamics.md`: Fluid Dynamics (Planned)\n- `planned-ai-pathfinding.md`: AI Pathfinding (Planned)\n- `planned-ccd.md`: Continuous Collision Detection (Planned)\n\n## API Reference\n- `api-reference.md`: API Reference\n\n",p=Object.freeze(Object.defineProperty({__proto__:null,default:b},Symbol.toStringTag,{value:"Module"})),f=`# API Reference
 TODO
 
 `,v=Object.freeze(Object.defineProperty({__proto__:null,default:f},Symbol.toStringTag,{value:"Module"})),w=`# Coordinate System
 TODO
 
-`,j=Object.freeze(Object.defineProperty({__proto__:null,default:w},Symbol.toStringTag,{value:"Module"})),_=`# WASM & Shared Memory
+`,x=Object.freeze(Object.defineProperty({__proto__:null,default:w},Symbol.toStringTag,{value:"Module"})),j=`# WASM & Shared Memory
 TODO
 
-`,x=Object.freeze(Object.defineProperty({__proto__:null,default:_},Symbol.toStringTag,{value:"Module"})),S=`# World Object
+`,_=Object.freeze(Object.defineProperty({__proto__:null,default:j},Symbol.toStringTag,{value:"Module"})),S=`# World Object
 
-The \`World\` object is the central container for all physical entities in Gearbox2D. It manages the lifecycle of physical objects and joints, orchestrates the simulation steps, and handles global physics settings like gravity and collision resolution.
+The \`World\` object is the central container for all physical entities in Gearbox2D. It manages the lifecycle of bodys and joints, orchestrates the simulation steps, and handles global physics settings like gravity and collision resolution.
 
 ## Introduction
 
 In Gearbox2D, the \`World\` acts as the coordinator for the entire physics simulation. It maintains internal data structures (like the BVH for spatial partitioning) and provides the interface for creating, querying, and manipulating the physical environment.
 
 Key responsibilities include:
-- **Entity Management**: Creating and removing physical objects and joints.
+- **Entity Management**: Creating and removing bodys and joints.
 - **Simulation Control**: Stepping the physics forward in time.
 - **Global Settings**: Configuring gravity and toggleable physics features (restitution, friction, etc.).
 - **Spatial Queries**: Performing point queries and broad-phase checks.
@@ -113,18 +113,27 @@ world.setHasPenetrationResolution(true);
 
 The \`World\` manages all entities through unique IDs. This allows for efficient lookups across the JavaScript and WebAssembly boundary.
 
-### Physical Objects
+### Bodys
 
-Objects are created with a unique ID and a specification object.
+Objects are created with a unique ID and a specification object. You can attach fixtures (shapes) atomically during creation or add them later.
 
 \`\`\`typescript
-const obj = world.makeObject(101, {
-    shape: gearbox.shapes.CIRCLE,
-    type: gearbox.bodyTypes.RIGID_BODY,
+// Atomic creation with multiple fixtures
+const obj = world.makeBody(101, {
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
     x: 0,
     y: 0,
-    radius: 1,
-    mass: 1
+    fixtures: [
+        { shape: gearbox.shapes.CIRCLE, radius: 1, localX: -1 },
+        { shape: gearbox.shapes.CIRCLE, radius: 1, localX: 1 }
+    ]
+});
+
+// Adding a fixture at runtime
+obj.createFixture({
+    shape: gearbox.shapes.BOX,
+    width: 2,
+    height: 1
 });
 
 // Remove an object by ID
@@ -133,7 +142,7 @@ world.removeObject(101);
 
 ### Joints
 
-Joints are created through factory methods on the \`World\` instance. They connect two \`PhysicalObject\` instances.
+Joints are created through factory methods on the \`World\` instance. They connect two \`Body\` instances.
 
 - **Hinge Joint**: \`createHingeJoint(id, bodyA, bodyB, options)\`
 - **Distance Joint**: \`createDistanceJoint(id, bodyA, bodyB, options)\`
@@ -159,7 +168,7 @@ You can query the world to find objects at specific coordinates.
 // Find all objects at (x, y) that match a collision mask
 const hits = world.queryPoint(5.5, 10.2, 0xFFFF);
 hits.forEach(id => {
-    const obj = world.getObjectById(id);
+    const obj = world.getBodyById(id);
     console.log(\`Hit object: \${id}\`);
 });
 \`\`\`
@@ -184,10 +193,10 @@ A key architectural feature of Gearbox2D is the use of shared memory buffers for
 
 When a \`World\` is created, it exposes \`liveFloatData\` and \`liveIntData\`. These are \`TypedArrays\` (Float32Array and Int32Array) that map directly to the underlying C++ data structures in WASM memory.
 
-Instead of calling expensive getter/setter functions for every object's position every frame, the engine updates these buffers directly. The TypeScript \`PhysicalObject\` wrappers use these buffers to provide high-performance access to object state.
+Instead of calling expensive getter/setter functions for every object's position every frame, the engine updates these buffers directly. The TypeScript \`Body\` wrappers use these buffers to provide high-performance access to object state.
 
 \`\`\`typescript
-// Accessing live data directly (via PhysicalObject)
+// Accessing live data directly (via Body)
 const x = obj.x; // Reads from liveFloatData
 obj.x = 10;      // Writes to liveFloatData
 \`\`\`
@@ -219,18 +228,18 @@ uiWorld.step();
 `,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),T=`# Broad Phase
 TODO
 
-`,O=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
+`,C=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),B=`# Collision Filtering
 TODO
 
-`,B=Object.freeze(Object.defineProperty({__proto__:null,default:C},Symbol.toStringTag,{value:"Module"})),P=`# Narrow Phase
+`,I=Object.freeze(Object.defineProperty({__proto__:null,default:B},Symbol.toStringTag,{value:"Module"})),O=`# Narrow Phase
 TODO
 
-`,I=Object.freeze(Object.defineProperty({__proto__:null,default:P},Symbol.toStringTag,{value:"Module"})),k=`# Core Concepts
+`,k=Object.freeze(Object.defineProperty({__proto__:null,default:O},Symbol.toStringTag,{value:"Module"})),P=`# Core Concepts
 
 Understanding these three fundamental concepts will help you build stable and predictable simulations in Gearbox2D.
 
 ## 1. The World
-The \`World\` is the heart of your simulation. It is the container for all physical objects, joints, and global settings like gravity.
+The \`World\` is the heart of your simulation. It is the container for all bodys, joints, and global settings like gravity.
 
 \`\`\`javascript
 const world = gearbox.makeWorld();
@@ -279,7 +288,7 @@ An **Impulse** is an instantaneous change in momentum. Think of it like a hammer
 ### Angular Impulses
 If you want to spin an object instantly without hitting a specific point, use \`applyAngularImpulse(torque)\`.
 
-`,D=Object.freeze(Object.defineProperty({__proto__:null,default:k},Symbol.toStringTag,{value:"Module"})),E=`# Development & Contributing
+`,D=Object.freeze(Object.defineProperty({__proto__:null,default:P},Symbol.toStringTag,{value:"Module"})),E=`# Development & Contributing
 
 Follow these instructions to build Gearbox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
 
@@ -376,11 +385,15 @@ Gearbox2D provides an event system to react to changes in the physics world, suc
 To improve performance, events are opt-in per object. You must set \`wantsEvents: true\` when creating an object to receive events for it.
 
 \`\`\`typescript
-const obj = world.makeObject({
-  shape: gearbox.SHAPES.CIRCLE,
-  radius: 1,
-  wantsEvents: true // Enable events for this object
+const obj = world.makeBody(id, {
+  type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+  x: 5, y: 5
 });
+obj.addFixture(id, {
+  shape: gearbox.shapes.CIRCLE,
+  radius: 1,
+});
+// Note: Events are currently enabled globally on the World instance.
 \`\`\`
 
 ## Global Event Handlers
@@ -389,12 +402,12 @@ You can set global handlers on the \`World\` instance to listen for events from 
 
 ### Collision Events
 
-*   \`onCollisionStart(idA, idB, impulse)\`: Fired when two objects begin colliding.
-*   \`onCollisionEnd(idA, idB, impulse)\`: Fired when two objects stop colliding.
+*   \`onCollisionStart(idA, idB, fIdA, fIdB, impulse)\`: Fired when two fixtures begin colliding.
+*   \`onCollisionEnd(idA, idB, fIdA, fIdB)\`: Fired when two fixtures stop colliding.
 
 \`\`\`typescript
-world.onCollisionStart = (idA, idB, impulse) => {
-  console.log(\`Objects \${idA} and \${idB} started colliding with impulse \${impulse}\`);
+world.onCollisionStart = (idA, idB, fIdA, fIdB, impulse) => {
+  console.log(\`Body \${idA} (Fixture \${fIdA}) and Body \${idB} (Fixture \${fIdB}) started colliding.\`);
 };
 \`\`\`
 
@@ -415,10 +428,11 @@ world.onWake = (id) => {
 
 ## Per-Object Event Handlers
 
-Alternatively, you can set event handlers directly on \`PhysicalObject\` instances.
+Alternatively, you can set event handlers directly on \`Body\` instances.
 
 \`\`\`typescript
-const obj = world.makeObject({ /* ... */, wantsEvents: true });
+const obj = world.makeBody(id, { x: 5, y: 5 });
+obj.addFixture(id, { shape: gearbox.shapes.CIRCLE, radius: 1 });
 
 obj.onSleep = () => {
   console.log("I am going to sleep!");
@@ -438,7 +452,7 @@ While you can always check the \`isSleeping\` state of an object by reading its 
 3.  **Integration**: Events fit well into reactive UI frameworks or state management systems.
 
 Note: Reading \`obj.isSleeping\` is still useful for logic that needs to know the current state at any time without tracking transitions.
-`,z=Object.freeze(Object.defineProperty({__proto__:null,default:M},Symbol.toStringTag,{value:"Module"})),R=`# Your First Simulation
+`,F=Object.freeze(Object.defineProperty({__proto__:null,default:M},Symbol.toStringTag,{value:"Module"})),R=`# Your First Simulation
 
 This guide will walk you through creating a simple physics simulation: a box falling onto a static floor.
 
@@ -492,25 +506,28 @@ async function start() {
 
     // 3. Create a static floor
     // ID: 1, Position: (5, 9), Size: 10x1
-    world.makeObject(1, {
+    world.makeBody(1, {
         x: 5,
         y: 9,
-        width: 10,
-        height: 1,
-        shape: gearbox.shapes.BOX,
         type: gearbox.bodyTypes.FIXED_OBJECT,
         color: "#444"
+    }).addFixture(1, {
+        shape: gearbox.shapes.BOX,
+        width: 10,
+        height: 1,
     });
 
     // 4. Create a dynamic falling box
     // ID: 2, Position: (5, 2), Size: 1x1
-    const box = world.makeObject(2, {
+    const box = world.makeBody(2, {
         x: 5,
         y: 2,
+        color: "#ff4444"
+    });
+    box.addFixture(2, {
+        shape: gearbox.shapes.BOX,
         width: 1,
         height: 1,
-        shape: gearbox.shapes.BOX,
-        color: "#ff4444"
     });
 
     // 5. Setup Rendering (using debug graphics)
@@ -577,7 +594,7 @@ You must serve your files using a web server to allow the browser to load the \`
 \`\`\`bash
 npx http-server .
 \`\`\`Open your browser to \`http://localhost:8080\`, and you should see a red box fall and bounce on the floor!
-`,F=Object.freeze(Object.defineProperty({__proto__:null,default:R},Symbol.toStringTag,{value:"Module"})),H=`# The Simulation Loop
+`,z=Object.freeze(Object.defineProperty({__proto__:null,default:R},Symbol.toStringTag,{value:"Module"})),J=`# The Simulation Loop
 
 For a physics engine, how you advance time is just as important as the physics calculations themselves. This guide covers the best practices for setting up a stable and smooth simulation loop in Gearbox2D.
 
@@ -684,10 +701,10 @@ while (accumulator >= dt) {
 ## Engine Specifics: Internal Damping
 
 Gearbox2D uses a precomputed \`decayMap\` to ensure that velocities decay consistently regardless of the chosen timestep. When you call \`world.setTimeStep(dt)\`, the engine recalculates these multipliers so that "10% friction per second" feels the same at 60Hz as it does at 120Hz.
-`,J=Object.freeze(Object.defineProperty({__proto__:null,default:H},Symbol.toStringTag,{value:"Module"})),G=`# Debug Graphics
+`,H=Object.freeze(Object.defineProperty({__proto__:null,default:J},Symbol.toStringTag,{value:"Module"})),L=`# Debug Graphics
 TODO
 
-`,L=Object.freeze(Object.defineProperty({__proto__:null,default:G},Symbol.toStringTag,{value:"Module"})),q=`# Installation
+`,G=Object.freeze(Object.defineProperty({__proto__:null,default:L},Symbol.toStringTag,{value:"Module"})),q=`# Installation
 
 Gearbox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
 
@@ -767,7 +784,7 @@ Once you have the engine installed, check out [Your First Simulation](#first-sim
 `,V=Object.freeze(Object.defineProperty({__proto__:null,default:q},Symbol.toStringTag,{value:"Module"})),N=`# Spatial Queries
 TODO
 
-`,U=Object.freeze(Object.defineProperty({__proto__:null,default:N},Symbol.toStringTag,{value:"Module"})),$=`# Introduction
+`,U=Object.freeze(Object.defineProperty({__proto__:null,default:N},Symbol.toStringTag,{value:"Module"})),X=`# Introduction
 
 **Gearbox2D** is a high-performance 2D physics and AI engine written in C++, compiled to WebAssembly, and designed for the modern web. 
 
@@ -815,9 +832,9 @@ Gearbox2D has been in development since 2023 and was first published to npm in J
 1.  **[Installation Guide](#installation)** - Get the engine running in your project.
 2.  **[Core Concepts](#core-concepts)** - Learn about the World, Ticks, and Forces.
 3.  **[Your First Simulation](#first-simulation)** - Build a basic world in minutes.
-`,Y=Object.freeze(Object.defineProperty({__proto__:null,default:$},Symbol.toStringTag,{value:"Module"})),X="# Distance Joint\n\nA **Distance Joint** maintains a fixed distance between two points on two separate physical objects. It prevents the objects from moving closer together or further apart than the specified length.\n\nFor general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).\n\n## Creation\n\nTo create a distance joint, use the `world.createDistanceJoint` method.\n\n```javascript\nconst joint = world.createDistanceJoint(id, bodyA, bodyB, {\n    worldAnchorA: { x: 2, y: 5 },\n    worldAnchorB: { x: 8, y: 5 }\n});\n```\n\n### Options\n\n| Property | Type | Description |\n| :--- | :--- | :--- |\n| `worldAnchorA` | `Vec2` | World coordinate for anchor on `bodyA`. |\n| `worldAnchorB` | `Vec2` | World coordinate for anchor on `bodyB`. |\n| `anchorA` | `Vec2` | Local anchor relative to `bodyA`. |\n| `anchorB` | `Vec2` | Local anchor relative to `bodyB`. |\n| `length` | `number` | The target distance. If omitted, it's calculated from anchors at creation. |\n\n## Properties\n\nIn addition to the [common joint properties](./joints-overview.md#common-properties), the Distance Joint provides:\n\n| Property | Type | Access | Description |\n| :--- | :--- | :--- | :--- |\n| `length` | `number` | Read/Write | The current target distance for the joint. |\n| `localAnchorA` | `Vec2` | Read/Write | Local anchor point on `bodyA`. |\n| `localAnchorB` | `Vec2` | Read/Write | Local anchor point on `bodyB`. |\n\n## Example: Rigid Rod\n\n```javascript\nconst ball1 = world.makeObject(1, { x: 5, y: 5 });\nconst ball2 = world.makeObject(2, { x: 10, y: 5 });// Connect with a 5m rigid rod\nworld.createDistanceJoint(101, ball1, ball2, {\n    length: 5\n});\n```\n",K=Object.freeze(Object.defineProperty({__proto__:null,default:X},Symbol.toStringTag,{value:"Module"})),Q=`# Gear Joint
+`,Y=Object.freeze(Object.defineProperty({__proto__:null,default:X},Symbol.toStringTag,{value:"Module"})),$="# Distance Joint\n\nA **Distance Joint** maintains a fixed distance between two points on two separate bodys. It prevents the objects from moving closer together or further apart than the specified length.\n\nFor general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).\n\n## Creation\n\nTo create a distance joint, use the `world.createDistanceJoint` method.\n\n```javascript\nconst joint = world.createDistanceJoint(id, bodyA, bodyB, {\n    worldAnchorA: { x: 2, y: 5 },\n    worldAnchorB: { x: 8, y: 5 }\n});\n```\n\n### Options\n\n| Property | Type | Description |\n| :--- | :--- | :--- |\n| `worldAnchorA` | `Vec2` | World coordinate for anchor on `bodyA`. |\n| `worldAnchorB` | `Vec2` | World coordinate for anchor on `bodyB`. |\n| `anchorA` | `Vec2` | Local anchor relative to `bodyA`. |\n| `anchorB` | `Vec2` | Local anchor relative to `bodyB`. |\n| `length` | `number` | The target distance. If omitted, it's calculated from anchors at creation. |\n\n## Properties\n\nIn addition to the [common joint properties](./joints-overview.md#common-properties), the Distance Joint provides:\n\n| Property | Type | Access | Description |\n| :--- | :--- | :--- | :--- |\n| `length` | `number` | Read/Write | The current target distance for the joint. |\n| `localAnchorA` | `Vec2` | Read/Write | Local anchor point on `bodyA`. |\n| `localAnchorB` | `Vec2` | Read/Write | Local anchor point on `bodyB`. |\n\n## Example: Rigid Rod\n\n```javascript\nconst ball1 = world.makeBody(1, { x: 5, y: 5 });\nconst ball2 = world.makeBody(2, { x: 10, y: 5 });// Connect with a 5m rigid rod\nball1.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nball2.addFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nworld.createDistanceJoint(101, ball1, ball2, {\n    length: 5\n});\n```\n",K=Object.freeze(Object.defineProperty({__proto__:null,default:$},Symbol.toStringTag,{value:"Module"})),Q=`# Gear Joint
 
-A **Gear Joint** links the rotation of two physical objects by constraining their relative angles via two existing [Hinge Joints](./joints-hinge.md).
+A **Gear Joint** links the rotation of two bodys by constraining their relative angles via two existing [Hinge Joints](./joints-hinge.md).
 
 For general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).
 
@@ -860,17 +877,19 @@ In addition to the [common joint properties](./joints-overview.md#common-propert
 
 \`\`\`javascript
 // Large gear
-const gear1 = world.makeObject(1, { x: 5, y: 5 });
+const gear1 = world.makeBody(1, { x: 5, y: 5 });
+gear1.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 1.0 });
 const hinge1 = world.createHingeJoint(10, staticBody, gear1, { worldAnchor: { x: 5, y: 5 } });
 
 // Small gear
-const gear2 = world.makeObject(2, { x: 7, y: 5 });
+const gear2 = world.makeBody(2, { x: 7, y: 5 });
+gear2.addFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });
 const hinge2 = world.createHingeJoint(11, staticBody, gear2, { worldAnchor: { x: 7, y: 5 } });// Link them with a 2:1 ratio
 world.createGearJoint(101, hinge1, hinge2, 2.0);
 \`\`\`
 `,Z=Object.freeze(Object.defineProperty({__proto__:null,default:Q},Symbol.toStringTag,{value:"Module"})),ee=`# Hinge Joint
 
-A **Hinge Joint** (also known as a **Revolute Joint**) constrains two physical objects to share a common point, allowing them to rotate freely around that point. This is similar to a pin or a hinge on a door.
+A **Hinge Joint** (also known as a **Revolute Joint**) constrains two bodys to share a common point, allowing them to rotate freely around that point. This is similar to a pin or a hinge on a door.
 
 For general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).
 
@@ -908,23 +927,24 @@ A common use for a hinge joint is creating a pendulum by connecting a dynamic ob
 
 \`\`\`javascript
 // 1. Create a static anchor
-const anchor = world.makeObject(1, {
+const anchor = world.makeBody(1, {
     x: 10, y: 2,
     type: gearbox.bodyTypes.FIXED_OBJECT
 });
+anchor.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 0.2 });
 
 // 2. Create a dynamic weight
-const weight = world.makeObject(2, {
+const weight = world.makeBody(2, {
     x: 15, y: 2,
-    width: 1, height: 1
-});// 3. Connect them with a hinge at the anchor's position
+});
+weight.addFixture(2, { shape: gearbox.shapes.BOX, width: 1, height: 1 });// 3. Connect them with a hinge at the anchor's position
 world.createHingeJoint(101, anchor, weight, {
     worldAnchor: { x: 10, y: 2 }
 });
 \`\`\`
 `,ne=Object.freeze(Object.defineProperty({__proto__:null,default:ee},Symbol.toStringTag,{value:"Module"})),te=`# Joints Overview
 
-Joints in Gearbox2D are used to constrain the movement of physical objects relative to each other or to the world. By connecting bodies with joints, you can create complex mechanisms like pendulums, ragdolls, cars, and gear trains.
+Joints in Gearbox2D are used to constrain the movement of bodys relative to each other or to the world. By connecting bodies with joints, you can create complex mechanisms like pendulums, ragdolls, cars, and gear trains.
 
 ## Common Features
 
@@ -956,8 +976,8 @@ Every joint object provides access to the following:
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | \`id\` | \`number\` | The unique ID provided at creation. |
-| \`bodyA\` | \`PhysicalObject\` | The first body connected by the joint. |
-| \`bodyB\` | \`PhysicalObject\` | The second body connected by the joint. |
+| \`bodyA\` | \`Body\` | The first body connected by the joint. |
+| \`bodyB\` | \`Body\` | The second body connected by the joint. |
 | \`reactionForce\` | \`Vec2\` | The force (in Newtons) being applied by the joint to maintain the constraint. |
 | \`reactionTorque\` | \`number\` | The torque being applied by the joint. |
 
@@ -980,24 +1000,27 @@ Use this table to decide which joint is best for your specific use case:
 - **Breakable Joints**: You can simulate breakable connections by checking the magnitude of \`reactionForce\` every frame and calling \`world.removeJoint()\` if it exceeds a threshold.
 - **Static Anchors**: To anchor an object to a fixed point in space, connect it to a \`FIXED_OBJECT\` body at the desired world location.
 
-`,oe=Object.freeze(Object.defineProperty({__proto__:null,default:te},Symbol.toStringTag,{value:"Module"})),ie="# Spring Joint\n\nA **Spring Joint** (also known as a soft distance joint) maintains a target distance between two objects while allowing for elastic movement. It simulates a physical spring-damper system.\n\nFor general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).\n\n## Creation\n\nTo create a spring joint, use the `world.createSpringJoint` method.\n\n```javascript\nconst joint = world.createSpringJoint(id, bodyA, bodyB, {\n    worldAnchorA: { x: 5, y: 2 },\n    worldAnchorB: { x: 5, y: 5 },\n    frequencyHz: 2.0,\n    dampingRatio: 0.5\n});\n```\n\n### Options\n\n| Property | Type | Default | Description |\n| :--- | :--- | :--- | :--- |\n| `frequencyHz` | `number` | `5.0` | Stiffness (Hertz). `0` makes it rigid. |\n| `dampingRatio` | `number` | `0.7` | Oscillation decay (`0` to `1+`). |\n| `length` | `number` | *auto* | Rest length of the spring. |\n| `worldAnchorA/B` | `Vec2` | - | World coordinates for anchors. |\n\n## Properties\n\nIn addition to the [common joint properties](./joints-overview.md#common-properties), the Spring Joint provides:\n\n| Property | Type | Access | Description |\n| :--- | :--- | :--- | :--- |\n| `frequencyHz` | `number` | Read/Write | Adjusts the stiffness. |\n| `dampingRatio` | `number` | Read/Write | Adjusts the oscillation decay. |\n| `length` | `number` | Read/Write | The rest length of the spring. |\n\n## Dynamics\n\n- **Frequency (`frequencyHz`)**: Higher values make the spring stiffer.\n- **Damping (`dampingRatio`)**: `0.0` is undamped (never stops), `1.0` is critically damped (stops quickly).\n\n## Example: Suspension System\n\n```javascript\nconst chassis = world.makeObject(1, { x: 10, y: 5 });\nconst wheel = world.makeObject(2, { x: 10, y: 6 });// Soft suspension\nworld.createSpringJoint(101, chassis, wheel, {\n    anchorA: { x: 0, y: 1 },\n    frequencyHz: 3.0,\n    dampingRatio: 0.5\n});\n```\n",se=Object.freeze(Object.defineProperty({__proto__:null,default:ie},Symbol.toStringTag,{value:"Module"})),ae=`# Body Types
+`,oe=Object.freeze(Object.defineProperty({__proto__:null,default:te},Symbol.toStringTag,{value:"Module"})),ie="# Spring Joint\n\nA **Spring Joint** (also known as a soft distance joint) maintains a target distance between two objects while allowing for elastic movement. It simulates a physical spring-damper system.\n\nFor general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).\n\n## Creation\n\nTo create a spring joint, use the `world.createSpringJoint` method.\n\n```javascript\nconst joint = world.createSpringJoint(id, bodyA, bodyB, {\n    worldAnchorA: { x: 5, y: 2 },\n    worldAnchorB: { x: 5, y: 5 },\n    frequencyHz: 2.0,\n    dampingRatio: 0.5\n});\n```\n\n### Options\n\n| Property | Type | Default | Description |\n| :--- | :--- | :--- | :--- |\n| `frequencyHz` | `number` | `5.0` | Stiffness (Hertz). `0` makes it rigid. |\n| `dampingRatio` | `number` | `0.7` | Oscillation decay (`0` to `1+`). |\n| `length` | `number` | *auto* | Rest length of the spring. |\n| `worldAnchorA/B` | `Vec2` | - | World coordinates for anchors. |\n\n## Properties\n\nIn addition to the [common joint properties](./joints-overview.md#common-properties), the Spring Joint provides:\n\n| Property | Type | Access | Description |\n| :--- | :--- | :--- | :--- |\n| `frequencyHz` | `number` | Read/Write | Adjusts the stiffness. |\n| `dampingRatio` | `number` | Read/Write | Adjusts the oscillation decay. |\n| `length` | `number` | Read/Write | The rest length of the spring. |\n\n## Dynamics\n\n- **Frequency (`frequencyHz`)**: Higher values make the spring stiffer.\n- **Damping (`dampingRatio`)**: `0.0` is undamped (never stops), `1.0` is critically damped (stops quickly).\n\n## Example: Suspension System\n\n```javascript\nconst chassis = world.makeBody(1, { x: 10, y: 5 });\nconst wheel = world.makeBody(2, { x: 10, y: 6 });// Soft suspension\nchassis.addFixture(1, { shape: gearbox.shapes.BOX, width: 2, height: 1 });\nwheel.addFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nworld.createSpringJoint(101, chassis, wheel, {\n    anchorA: { x: 0, y: 1 },\n    frequencyHz: 3.0,\n    dampingRatio: 0.5\n});\n```\n",ae=Object.freeze(Object.defineProperty({__proto__:null,default:ie},Symbol.toStringTag,{value:"Module"})),se=`# Body Types
 
-In Gearbox2D, every physical object has a body type that determines how it interacts with the physics world. You can set the body type when creating an object using the \`type\` property.
+In Gearbox2D, every body has a body type that determines how it interacts with the physics world. You can set the body type when creating an object using the \`type\` property.
 
 ## Available Body Types
 
 ### Rigid Body (Dynamic)
-\`gearbox.bodyTypes.RIGID_BODY\`
+\`gearbox.bodyTypes.DYNAMIC_OBJECT\`
 
 Dynamic bodies are fully simulated by the physics engine. They are affected by gravity, external forces, impulses, and collisions with other objects. This is the default type for most interactive objects like players, boxes, or debris.
 
 \`\`\`typescript
-world.makeObject(nextId++, {
+const bodyId = nextId++;
+const body = world.makeBody(bodyId, {
     x: 5, y: 5,
-    shape: gearbox.shapes.CIRCLE,
-    radius: 0.5,
     mass: 1.0,
-    type: gearbox.bodyTypes.RIGID_BODY
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT
+});
+body.addFixture(bodyId, {
+    shape: gearbox.shapes.CIRCLE,
+    radius: 0.5
 });
 \`\`\`
 
@@ -1007,11 +1030,14 @@ world.makeObject(nextId++, {
 Fixed objects have infinite mass and are immovable by the physics simulation. They do not respond to forces or impulses. They are typically used for static environment elements like ground, walls, or platforms. While they can be moved manually by setting their position, they do not have velocity-based movement.
 
 \`\`\`typescript
-world.makeObject(nextId++, {
+const bodyId = nextId++;
+const body = world.makeBody(bodyId, {
     x: 5, y: 9,
-    width: 10, height: 1,
-    shape: gearbox.shapes.AABB,
     type: gearbox.bodyTypes.FIXED_OBJECT
+});
+body.addFixture(bodyId, {
+    shape: gearbox.shapes.AABB,
+    width: 10, height: 1
 });
 \`\`\`
 
@@ -1021,45 +1047,109 @@ world.makeObject(nextId++, {
 Kinematic objects are a hybrid between dynamic and fixed objects. Like fixed objects, they have infinite mass and are unaffected by forces or collisions. However, they can have velocity and will move based on that velocity. This makes them ideal for moving platforms, elevators, or character-controlled objects that should "push" other objects without being pushed back.
 
 \`\`\`typescript
-world.makeObject(nextId++, {
+const bodyId = nextId++;
+const body = world.makeBody(bodyId, {
     x: 2, y: 5,
     vx: 2.0, // Moves horizontally
-    width: 2, height: 0.5,
-    shape: gearbox.shapes.BOX,
     type: gearbox.bodyTypes.KINEMATIC_OBJECT
 });
-\`\`\`
-
-### Sensor
-\`gearbox.bodyTypes.SENSOR\`
-
-Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks. Note that sensors still require collision categories and masks to be configured to interact with specific groups.\`\`\`typescript
-world.makeObject(nextId++, {
-    x: 5, y: 5,
-    shape: gearbox.shapes.CIRCLE,
-    radius: 2.0,
-    type: gearbox.bodyTypes.SENSOR,
-    wantsEvents: true // Opt-in to collision events
+body.addFixture(bodyId, {
+    shape: gearbox.shapes.BOX,
+    width: 2, height: 0.5
 });
 \`\`\`
-`,re=Object.freeze(Object.defineProperty({__proto__:null,default:ae},Symbol.toStringTag,{value:"Module"})),le=`# Physical Object Lifecycle
 
-Understanding the lifecycle of a \`PhysicalObject\` is crucial for efficient simulation management. This page covers how objects are created, updated during the simulation loop, transitioned into sleep states, and eventually removed.
+## Sensors
+
+Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks.
+
+In **Gearbox2D**, a sensor is not a body type, but a property of a **Fixture**. This allows you to attach sensors to any type of body:
+- **Static Sensor:** A fixed trigger zone (Fixed Body).
+- **Moving Sensor:** An elevator or platform trigger (Kinematic Body).
+- **Attached Sensor:** A vision cone or proximity alert attached to a player (Dynamic Body).
+
+To create a sensor, set the \`isSensor\` property to \`true\` on the fixture options.
+
+### Example: Static Trigger Zone
+\`\`\`typescript
+const bodyId = nextId++;
+world.makeBody(bodyId, {
+    x: 5, y: 5,
+    type: gearbox.bodyTypes.FIXED_OBJECT,
+}).addFixture({
+    shape: gearbox.shapes.CIRCLE,
+    radius: 2.0,
+    isSensor: true // This fixture will trigger events but not block movement
+});
+\`\`\`
+
+### Example: Attached Vision Cone
+\`\`\`typescript
+const player = world.makeBody(nextId++, {
+    x: 5, y: 5,
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT
+});
+
+// Physical body
+player.addFixture({
+    shape: gearbox.shapes.CIRCLE,
+    radius: 0.5
+});
+
+// Vision cone (sensor)
+player.addFixture({
+    shape: gearbox.shapes.BOX,
+    width: 4, height: 2,
+    localX: 2.5, // Positioned in front of the player
+    isSensor: true
+});
+\`\`\`
+`,re=Object.freeze(Object.defineProperty({__proto__:null,default:se},Symbol.toStringTag,{value:"Module"})),le=`# Body Lifecycle
+
+Understanding the lifecycle of a \`Body\` is crucial for efficient simulation management. This page covers how objects are created, updated during the simulation loop, transitioned into sleep states, and eventually removed.
 
 ## Creation
 
-Physical objects are instantiated using the \`world.makeObject()\` method. This method initializes the object in both the JavaScript wrapper and the underlying C++ engine.
+Bodys are instantiated using the \`world.makeBody()\` method. You can create a body with a single fixture, multiple fixtures at once (atomic creation), or add fixtures later using \`body.createFixture()\`.
+
+### Atomic Creation (Multiple Fixtures)
 
 \`\`\`typescript
-const obj = world.makeObject(id, {
+const obj = world.makeBody(id, {
     x: 10,
     y: 20,
-    shape: gearbox.shapes.CIRCLE,
-    radius: 1,
-    type: gearbox.bodyTypes.RIGID_BODY,
-    mass: 1.0,
-    // ... other properties
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+    fixtures: [
+        {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 1,
+            localX: -1
+        },
+        {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 1,
+            localX: 1
+        }
+    ]
 });
+\`\`\`
+
+### Runtime Additions
+
+\`\`\`typescript
+// Add a single fixture
+const fixture = obj.createFixture({
+    shape: gearbox.shapes.BOX,
+    width: 2,
+    height: 0.5,
+    restitution: 0.8
+});
+
+// Or add multiple fixtures at once
+obj.createFixture([
+    { shape: gearbox.shapes.CIRCLE, radius: 0.5, localY: -1 },
+    { shape: gearbox.shapes.CIRCLE, radius: 0.5, localY: 1 }
+]);
 \`\`\`
 
 Upon creation, the engine:
@@ -1118,36 +1208,53 @@ During removal, the engine:
 3. Clears **Contacts** from other objects' tracking lists.
 4. Reorganizes the **Live Data Buffers** to fill the gap (using a swap-and-pop strategy for $O(1)$ removal).
 
-> **Note**: After calling \`removeObject()\`, the JavaScript \`PhysicalObject\` wrapper becomes invalid and should no longer be used.
+> **Note**: After calling \`removeObject()\`, the JavaScript \`Body\` wrapper becomes invalid and should no longer be used.
 
 `,ce=Object.freeze(Object.defineProperty({__proto__:null,default:le},Symbol.toStringTag,{value:"Module"})),de=`# Object Properties
-TODO
 
+## Mass and Inertia
+
+In Gearbox2D, the mass and moment of inertia of a body are primarily determined by its fixtures. Each fixture has a \`density\` property, and the engine calculates the mass and inertia based on the fixture's shape and its distance from the body's center of mass.
+
+### Manual Mass Override
+
+You can manually set the mass of a body by providing a \`mass\` value in the body options or by calling \`setMass(m)\`. 
+
+When a manual mass is set:
+- The body is flagged as having a **Fixed Mass**.
+- The engine will respect this total mass value exactly.
+- The fixtures are still used to determine the **distribution** of mass. The engine will calculate the center of mass and the moment of inertia based on the fixtures, but it will scale the final inertia to match your manually specified total mass.
+
+This allows you to easily control the total weight of an object (e.g., "this car weighs 1500kg") while still benefiting from realistic physical rotations based on how its fixtures are arranged.
+
+### Automatic Mass Calculation
+
+If you do not specify a mass for the body (or set it to \`0\`), the engine will automatically calculate the body's total mass as the sum of the masses of all its fixtures. In this mode, changing a fixture's density or size will automatically update the body's total mass.
 `,pe=Object.freeze(Object.defineProperty({__proto__:null,default:de},Symbol.toStringTag,{value:"Module"})),he=`# State Management
 TODO
 
 `,ue=Object.freeze(Object.defineProperty({__proto__:null,default:he},Symbol.toStringTag,{value:"Module"})),me=`# Performance Optimizations
 TODO
 
-`,ge=Object.freeze(Object.defineProperty({__proto__:null,default:me},Symbol.toStringTag,{value:"Module"})),be=`# Performance Tips
+`,ge=Object.freeze(Object.defineProperty({__proto__:null,default:me},Symbol.toStringTag,{value:"Module"})),ye=`# Performance Tips
 TODO
 
-`,ye=Object.freeze(Object.defineProperty({__proto__:null,default:be},Symbol.toStringTag,{value:"Module"})),fe=`# AI & Pathfinding (Planned)
+`,be=Object.freeze(Object.defineProperty({__proto__:null,default:ye},Symbol.toStringTag,{value:"Module"})),fe=`# AI & Pathfinding (Planned)
 TODO
 
 `,ve=Object.freeze(Object.defineProperty({__proto__:null,default:fe},Symbol.toStringTag,{value:"Module"})),we=`# Continuous Collision Detection (Planned)
 TODO
 
-`,je=Object.freeze(Object.defineProperty({__proto__:null,default:we},Symbol.toStringTag,{value:"Module"})),_e=`# Fluid Dynamics (Planned)
+`,xe=Object.freeze(Object.defineProperty({__proto__:null,default:we},Symbol.toStringTag,{value:"Module"})),je=`# Fluid Dynamics (Planned)
 TODO
 
-`,xe=Object.freeze(Object.defineProperty({__proto__:null,default:_e},Symbol.toStringTag,{value:"Module"})),Se=`# Supported Shapes
+`,_e=Object.freeze(Object.defineProperty({__proto__:null,default:je},Symbol.toStringTag,{value:"Module"})),Se=`# Supported Shapes
 TODO
 
 `,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Planned Shapes
 TODO
 
-`,Oe=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Ce=`# Plan:
+`,Ce=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Be=`# Plan:
 
 ## Shapes, Kinematics, Collisions
 - [x] Setup and test Rust w/ web assembly target.
@@ -1168,12 +1275,12 @@ TODO
 	- [ ] Ellipse.
 	- [ ] Line.
 	- [x] Point.
-- [ ] Composite objects.
+- [x] Composite objects (Multi-fixture bodies).
 - [x] Add rotations.
 - [x] Compute/track AABB for each object.
 - [x] Implement VBH.
 - [x] Implement broad phase collision detection using BVH.
-- [ ] Implement narrow phase collision detection.
+- [x] Implement narrow phase collision detection.
 	- [x] AABB-AABB.
 	- [x] Box-AABB -> Box-Box.
 	- [x] Box-Box.
@@ -1216,7 +1323,9 @@ TODO
 	- [x] Penetration resolution.
 	- [x] Collision impulse.
 	- [x] Collision friction.
-- [ ] Implement collision events.
+- [x] Implement collision events.
+	- [X] Body-body collision events.
+	- [X] Fixture-fixture collision events.
 - [x] Define object types.
 	- [x] Sensor.
 	- [x] Physical.
@@ -1242,7 +1351,9 @@ TODO
 ## Misc
 - [x] Elasticity (restitution).
 - [x] Static/dynamic friction.
-- [ ] Support changing the center of mass.
+- [x] Support changing the center of mass.
+- [x] Live data buffers (Direct Wasm/TS memory mapping).
+- [x] Per-fixture material properties (Friction, Restitution, Density).
 - [ ] Squishy objects via per-object bias factor for Baumgarte stabilization.
 
 
@@ -1323,8 +1434,7 @@ TODO
 
 ## Known Issues
 - Piles of objects don't go to sleep as easily as they should (regression).
-- FPS slowdown in fleas, likely caused by BVH becomming un-optimized.
 - Fleas example sometimes shows instances of objects escaping the scene.
 - Sliding objects never come to rest.
-- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.`,Be=Object.freeze(Object.defineProperty({__proto__:null,default:Ce},Symbol.toStringTag,{value:"Module"})),Pe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":j,"../docs/architecture-wasm-memory.md":x,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":O,"../docs/collision-filtering.md":B,"../docs/collision-narrow-phase.md":I,"../docs/core-concepts.md":D,"../docs/development.md":W,"../docs/events.md":z,"../docs/first-simulation.md":F,"../docs/game-loop.md":J,"../docs/graphics-debug.md":L,"../docs/installation.md":V,"../docs/interaction-queries.md":U,"../docs/introduction.md":Y,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":se,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":ue,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":ye,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":je,"../docs/planned-fluid-dynamics.md":xe,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Oe,"../docs/structure.md":p,"../plan.md":Be});function Ie(n){const o=n.split(`
-`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const a=t.match(/- `([^`]+\.md)`:\s*(.*)/);a&&e&&e.pages.push({file:a[1],title:a[2].trim().replace(/\.$/,"")})}return i}const h=Ie(Pe),d=document.getElementById("docs-list"),ke=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){h.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&s.classList.add("collapsed")})})}async function u(){const n=window.location.hash.substring(1),o=n?`${n}.md`:h[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),ke.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=b.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,a=Array.from(e.classList).find(g=>g.startsWith("language-"));a&&t.setAttribute("data-lang",a.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",u);De();u();const r=()=>window.innerWidth<=768,s=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{s.classList.toggle("collapsed")});r()&&s.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!s.classList.contains("collapsed")&&s.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!s.classList.contains("collapsed")&&!s.contains(n.target)&&!m.contains(n.target)&&s.classList.add("collapsed")});
+- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Be},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":C,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":W,"../docs/events.md":F,"../docs/first-simulation.md":z,"../docs/game-loop.md":H,"../docs/graphics-debug.md":G,"../docs/installation.md":V,"../docs/interaction-queries.md":U,"../docs/introduction.md":Y,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":ue,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Ce,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
+`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const h=ke(Oe),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){h.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function u(){const n=window.location.hash.substring(1),o=n?`${n}.md`:h[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=y.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(g=>g.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",u);De();u();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!m.contains(n.target)&&a.classList.add("collapsed")});

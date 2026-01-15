@@ -9,10 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-  <script type="module" crossorigin src="./assets/examples-DKkDbbHd.js"></script>
+  <script type="module" crossorigin src="./assets/examples-BAC0rDKx.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
   <link rel="modulepreload" crossorigin href="./assets/markdown-tUR2hliS.js">
-  <link rel="modulepreload" crossorigin href="./assets/world-DF5MwRXX.js">
+  <link rel="modulepreload" crossorigin href="./assets/engine-CRZEadYw.js">
   <link rel="stylesheet" crossorigin href="./assets/markdown-DGfjjK-Z.css">
 </head>
 <body>
@@ -58,9 +58,9 @@
             </div>
             
             <div id="metrics">
-                <div id="fps"><i class="fas fa-tachometer-alt"></i>FPS: 0</div>
-                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
                 <div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
+                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
+                <div id="fps"><i class="fas fa-tachometer-alt"></i>Render FPS: 0</div>
             </div>
             
             <div id="description"></div>
@@ -80,6 +80,7 @@
                             <button class="code-tab" data-panel="general">Setup</button>
                             <button class="code-tab active" data-panel="init">Init</button>
                             <button class="code-tab" data-panel="tick">Tick</button>
+                            <button class="code-tab" data-panel="render">Render</button>
                         </div>
                         <button id="copy-code" title="Copy code to clipboard">
                             <i class="fas fa-copy"></i>
@@ -97,6 +98,10 @@
                     
                     <div class="code-panel" id="tick-panel">
                         <pre id="tick-code"></pre>
+                    </div>
+                    
+                    <div class="code-panel" id="render-panel">
+                        <pre id="render-code"></pre>
                     </div>
                 </div>
             </div>

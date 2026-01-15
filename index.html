@@ -255,9 +255,9 @@
             }
         }
     </style>
-  <script type="module" crossorigin src="./assets/main-BQ_79nZ5.js"></script>
+  <script type="module" crossorigin src="./assets/main-ClLu3NgU.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/world-DF5MwRXX.js">
+  <link rel="modulepreload" crossorigin href="./assets/engine-CRZEadYw.js">
 </head>
 <body>
 
@@ -318,11 +318,13 @@
     <span class="keyword">const</span> world = gearbox.<span class="function">makeWorld</span>();
 
     <span class="comment">// Add a ground box</span>
-    world.<span class="function">makeObject</span>(<span class="string">1</span>, {
+    const ground = world.<span class="function">makeBody</span>(<span class="string">1</span>, {
         x: <span class="string">0</span>, y: <span class="string">10</span>,
+        type: gearbox.bodyTypes.FIXED_OBJECT
+    });
+    ground.<span class="function">addFixture</span>(<span class="string">1</span>, {
         width: <span class="string">20</span>, height: <span class="string">1</span>,
         shape: gearbox.shapes.BOX,
-        type: gearbox.bodyTypes.FIXED_OBJECT
     });
 
     <span class="comment">// Basic simulation loop</span>
