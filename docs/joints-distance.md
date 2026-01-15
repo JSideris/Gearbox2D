@@ -1,6 +1,6 @@
 # Distance Joint
 
-A **Distance Joint** maintains a fixed distance between two points on two separate physical objects. It prevents the objects from moving closer together or further apart than the specified length.
+A **Distance Joint** maintains a fixed distance between two points on two separate bodys. It prevents the objects from moving closer together or further apart than the specified length.
 
 For general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).
 
@@ -38,8 +38,10 @@ In addition to the [common joint properties](./joints-overview.md#common-propert
 ## Example: Rigid Rod
 
 ```javascript
-const ball1 = world.makeObject(1, { x: 5, y: 5 });
-const ball2 = world.makeObject(2, { x: 10, y: 5 });// Connect with a 5m rigid rod
+const ball1 = world.makeBody(1, { x: 5, y: 5 });
+const ball2 = world.makeBody(2, { x: 10, y: 5 });// Connect with a 5m rigid rod
+ball1.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });
+ball2.addFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });
 world.createDistanceJoint(101, ball1, ball2, {
     length: 5
 });

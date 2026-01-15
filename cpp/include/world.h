@@ -9,54 +9,56 @@
 #include <algorithm>
 #include <memory>
 
-// class CollisionSolver;
-// class PhysicalObject;
+#ifdef __EMSCRIPTEN__
+#include <emscripten/val.h>
+#endif
 
 #include "debug.h"
 #include "vec2.h"
 #include "bvh.h"
 #include "collision-solver.h"
-#include "physical-object.h"
-#include "impulse-solver.h"
 #include "constants.h"
 #include "joint.h"
 
-class PhysicalObject;  // Forward declaration of PhysicalObject
-class Joint;           // Forward declaration of Joint
+class Body;
+class Fixture;
+class Joint;
 
 struct ContactConstraint {
-    PhysicalObject* a;
-    PhysicalObject* b;
+    Body* a;
+    Body* b;
+    Fixture* fA;
+    Fixture* fB;
     Vec2 point;
     Vec2 normal;
     float depth;
     Vec2 rA, rB;
     float normalMass, tangentMass;
     Vec2 tangent;
-    float friction;
+    float staticFriction, kineticFriction;
     float bias;
+    float restitution;
     float positionBias;
     float normalImpulse, frictionImpulse, positionImpulse;
 
     void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
     void solve(bool enableNormal, bool enableFriction);
 
-    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), positionImpulse(0.0f) {}
+    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), positionImpulse(0.0f), staticFriction(0.0f), kineticFriction(0.0f) {}
 };
 
 class World {
 private:
-
-    std::unordered_map<int, PhysicalObject*> objectsMap;  // Stores objects by their ID
-    std::vector<PhysicalObject*> objectsList;             // List for efficient iteration
-    std::unordered_map<int, std::unique_ptr<Joint>> jointsMap; // Stores joints by their ID
-	Bvh bvh;
+    std::unordered_map<int, Body*> bodiesMap;
+    std::vector<Body*> bodiesList;
+    std::unordered_map<int, Fixture*> fixturesMap;
+    std::vector<Fixture*> fixturesList;
+    
+    std::unordered_map<int, std::unique_ptr<Joint>> jointsMap;
     CollisionSolver collisionSolver;
-    // std::vector<int> ids;
 
-	float timeStep = 1.0f / 60.0f;  // Default time step of 60 Hz
-
-	Vec2 gravity = Vec2(0.0f, 0.0f);  // Default gravity vector
+    float timeStep = 1.0f / 60.0f;
+    Vec2 gravity = Vec2(0.0f, 0.0f);
 
     bool hasPenetrationResolution = true;
     bool hasRestitution = true;
@@ -64,6 +66,7 @@ private:
     std::vector<ContactConstraint> contactConstraints;
     std::vector<float> eventData;
     int velocityIterations;
+    int nextFixtureId = 1;
 
     struct PairHash {
         size_t operator()(const std::pair<int, int>& p) const {
@@ -86,31 +89,25 @@ private:
 
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> currentPairs;
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> prevPairs;
+    std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual> bodyContactCounts;
     std::unordered_map<std::pair<int, int>, float, PairHash, PairEqual> resolvedImpulses;
 
 public:
-    void addEvent(int type, int idA, int idB, float impulse);
+    Bvh bvh;
+    std::vector<float> liveBodyFloatData;
+    std::vector<int> liveBodyIntData;
+    std::vector<float> liveFixtureFloatData;
+    std::vector<int> liveFixtureIntData;
 
-	std::vector<float> liveFloatData;  // x1, y1, r1, xs1, ys1, rs1, mass, fx, fy, ix, iy  x2, ...
-	std::vector<int> liveIntData;  // id, shape, type, hasaabbcollision
+    std::unordered_map<int, float> decayMap;
 
-    std::unordered_map<int, float> decayMap;  // Stores precomputed decay rates by decay percentage per second.
-
-    // Default constructor
     World();
-
-    // Destructor to clean up dynamic memory
     ~World();
 
-    // Make a new object to the world (ownership transferred to World)
-    // Returns the index of the new object
-    int makeObject(int id, emscripten_val options);
-    // void addObject(PhysicalObject* object);
-
-    // Remove an object from the world by its ID
+    int makeBody(int id, emscripten_val options);
+    int addFixture(int bodyId, int fixtureId, emscripten_val options);
     int removeObject(int id);
 
-    // Joint management
     int createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY);
     int createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length);
     int createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length, float frequencyHz, float dampingRatio);
@@ -119,47 +116,38 @@ public:
     Joint* getJoint(int id);
 
     void setTimeStep(float dt);
-
     void setHasPenetrationResolution(bool value);
     void setHasRestitution(bool value);
     void setHasFriction(bool value);
-
     void setGravity(float x, float y);
 
-    std::vector<int> queryPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
+    std::vector<int> queryBodiesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
+    std::vector<int> queryFixturesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
+    Body* getBody(int id) const;
+    Body* getBodyAtIndex(int index) const;
+    Fixture* getFixture(int id) const;
+    int getBodyCount() const;
+    int getFixtureCount() const;
+    int findFixtureIndex(int id);
 
-    int findeIndexForObject(int id);
-    // Access an object by its ID
-    PhysicalObject* getObject(int id) const;
-
-	PhysicalObject* getObjectAtIndex(int index) const;
-
-    int getObjectCount() const;
-
-#ifdef EMSCRIPTEN
-	emscripten_val getLiveFloatData();
-	emscripten_val getLiveIntData();
+#ifdef __EMSCRIPTEN__
+    emscripten_val getLiveBodyFloatData();
+    emscripten_val getLiveBodyIntData();
+    emscripten_val getLiveFixtureFloatData();
+    emscripten_val getLiveFixtureIntData();
     emscripten_val getEventData();
 #endif
     int getEventCount();
+    void addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB, float impulse);
 
-    // Step function to update all objects in the world
     void step();
-    void _doKinematics();
+    void _doIntegrateVelocities();
+    void _doIntegratePositions();
     void _doBroadPhase();
     void _doNarrowPhase();
     void _doContactManagement();
     void _doResolution();
-    void __doPenetrationResolution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
-    void __doRestitution(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
-    void __doCollisionFriction(CollisionInfo& collisionInfo, PhysicalObject* objA, PhysicalObject* objB);
-    void _doConstraints();
-    void _doSleepManagement();
-    // void __updateSleepTimers();
-
-	void clear();
-
-	void destroy();
+    void clear();
 };
 
-#endif // WORLD_H
+#endif

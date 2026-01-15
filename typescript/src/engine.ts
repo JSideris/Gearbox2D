@@ -14,6 +14,7 @@ export class Gearbox {
 	bodyTypes = BODY_TYPES;
 
 	// Wasm module constructors.
+	private _module: any;
 	private _worldC: any;
 	private _vec2C: any;
 	
@@ -31,11 +32,9 @@ export class Gearbox {
 		if(this.isInitialized) return;
 
 		let Module = await gearboxModule(options)
+		this._module = Module;
 
 		const {
-			// ObjectShape,
-			// ObjectType, 
-			// PhysicalObject, 
 			Vec2, 
 			World: WorldConstructor, 
 		} = Module;
@@ -43,16 +42,28 @@ export class Gearbox {
 		
 		this._worldC = WorldConstructor;
 		this._vec2C = Vec2;
-		// this._physicalObject = PhysicalObject;
+		// this._body = Body;
 		// this._objectType = ObjectType;
 		// this._objectShape = ObjectShape;
 
 		this.isInitialized = true;
 	}
 
+	getWasmMemory(){
+		this._initCheck();
+		// Emscripten modularized builds might expose memory in different ways
+		const buffer = this._module.HEAP8?.buffer || 
+					   this._module.HEAPU8?.buffer || 
+					   this._module.wasmMemory?.buffer || 
+					   this._module.buffer;
+		return buffer ? buffer.byteLength : 0;
+	}
+
 	makeWorld(){
 		this._initCheck();
-		return new World(this._worldC);
+		const world = new World(new this._worldC());
+		(world as any)._wasmMemoryGetter = () => this.getWasmMemory();
+		return world;
 	}
 }
 

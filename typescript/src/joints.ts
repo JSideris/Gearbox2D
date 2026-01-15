@@ -1,14 +1,16 @@
 
 import type { World } from './world.js';
-import type { PhysicalObject } from './physical-object.js';
+import type { Body } from './Body.js';
+import { JOINT_TYPES } from './constants.js';
 
 export class HingeJoint {
+	readonly type = JOINT_TYPES.HINGE;
 	id: number;
 	world: World;
-	bodyA: PhysicalObject;
-	bodyB: PhysicalObject;
+	bodyA: Body;
+	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }) {
+	constructor(id: number, world: World, bodyA: Body, bodyB: Body, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }) {
 		this.id = id;
 		this.world = world;
 		this.bodyA = bodyA;
@@ -56,12 +58,13 @@ export class HingeJoint {
 }
 
 export class DistanceJoint {
+	readonly type = JOINT_TYPES.DISTANCE;
 	id: number;
 	world: World;
-	bodyA: PhysicalObject;
-	bodyB: PhysicalObject;
+	bodyA: Body;
+	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number) {
+	constructor(id: number, world: World, bodyA: Body, bodyB: Body, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number) {
 		this.id = id;
 		this.world = world;
 		this.bodyA = bodyA;
@@ -119,12 +122,13 @@ export class DistanceJoint {
 }
 
 export class SpringJoint {
+	readonly type = JOINT_TYPES.SPRING;
 	id: number;
 	world: World;
-	bodyA: PhysicalObject;
-	bodyB: PhysicalObject;
+	bodyA: Body;
+	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: PhysicalObject, bodyB: PhysicalObject, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number, frequencyHz: number, dampingRatio: number) {
+	constructor(id: number, world: World, bodyA: Body, bodyB: Body, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number, frequencyHz: number, dampingRatio: number) {
 		this.id = id;
 		this.world = world;
 		this.bodyA = bodyA;
@@ -206,6 +210,7 @@ export class SpringJoint {
 }
 
 export class GearJoint {
+	readonly type = JOINT_TYPES.GEAR;
 	id: number;
 	world: World;
 	joint1: HingeJoint;

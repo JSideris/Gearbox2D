@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "world.h"
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 #include "distance-joint.h"
 
 class DistanceJointTest : public ::testing::Test {
@@ -11,7 +12,7 @@ protected:
     DistanceJointTest() {
         options.properties["x"] = 0.0f;
         options.properties["y"] = 0.0f;
-        options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+        options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
         options.properties["shape"] = static_cast<int>(ObjectShape::BOX);
         options.properties["width"] = 1.0f;
         options.properties["height"] = 1.0f;
@@ -24,14 +25,14 @@ TEST_F(DistanceJointTest, DistanceIsMaintained) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idA, options);
+    world.makeBody(idA, options);
     
     // Rigid body at (5, 0)
     options.properties["x"] = 5.0f;
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
-    world.makeObject(idB, options);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    world.makeBody(idB, options);
     
-    PhysicalObject* objB = world.getObject(idB);
+    Body* objB = world.getBody(idB);
     
     // Distance joint with length 3.0
     // Anchors at centers (0, 0)
@@ -51,14 +52,14 @@ TEST_F(DistanceJointTest, CentrifugalForce) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idA, options);
+    world.makeBody(idA, options);
     
     // Rigid body at (2, 0) with vertical velocity
     options.properties["x"] = 2.0f;
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
-    world.makeObject(idB, options);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    world.makeBody(idB, options);
     
-    PhysicalObject* objB = world.getObject(idB);
+    Body* objB = world.getBody(idB);
     objB->setVelocity(Vec2(0.0f, 10.0f));
     
     // Distance joint with length 2.0
@@ -79,14 +80,14 @@ TEST_F(DistanceJointTest, ReactionForce) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idA, options);
+    world.makeBody(idA, options);
     
     // Rigid body at (0, -2)
     options.properties["x"] = 0.0f;
     options.properties["y"] = -2.0f;
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["mass"] = 1.0f;
-    world.makeObject(idB, options);
+    world.makeBody(idB, options);
     
     // Distance joint with length 2.0
     world.createDistanceJoint(jointId, idA, idB, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
@@ -107,14 +108,14 @@ TEST_F(DistanceJointTest, SetLengthAtRuntime) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idA, options);
+    world.makeBody(idA, options);
     
     // Rigid body at (5, 0)
     options.properties["x"] = 5.0f;
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
-    world.makeObject(idB, options);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    world.makeBody(idB, options);
     
-    PhysicalObject* objB = world.getObject(idB);
+    Body* objB = world.getBody(idB);
     
     // Distance joint with length 5.0
     world.createDistanceJoint(jointId, idA, idB, 0.0f, 0.0f, 0.0f, 0.0f, 5.0f);

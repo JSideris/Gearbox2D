@@ -1,21 +1,49 @@
-# Physical Object Lifecycle
+# Body Lifecycle
 
-Understanding the lifecycle of a `PhysicalObject` is crucial for efficient simulation management. This page covers how objects are created, updated during the simulation loop, transitioned into sleep states, and eventually removed.
+Understanding the lifecycle of a `Body` is crucial for efficient simulation management. This page covers how objects are created, updated during the simulation loop, transitioned into sleep states, and eventually removed.
 
 ## Creation
 
-Physical objects are instantiated using the `world.makeObject()` method. This method initializes the object in both the JavaScript wrapper and the underlying C++ engine.
+Bodys are instantiated using the `world.makeBody()` method. You can create a body with a single fixture, multiple fixtures at once (atomic creation), or add fixtures later using `body.createFixture()`.
+
+### Atomic Creation (Multiple Fixtures)
 
 ```typescript
-const obj = world.makeObject(id, {
+const obj = world.makeBody(id, {
     x: 10,
     y: 20,
-    shape: gearbox.shapes.CIRCLE,
-    radius: 1,
-    type: gearbox.bodyTypes.RIGID_BODY,
-    mass: 1.0,
-    // ... other properties
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+    fixtures: [
+        {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 1,
+            localX: -1
+        },
+        {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 1,
+            localX: 1
+        }
+    ]
 });
+```
+
+### Runtime Additions
+
+```typescript
+// Add a single fixture
+const fixture = obj.createFixture({
+    shape: gearbox.shapes.BOX,
+    width: 2,
+    height: 0.5,
+    restitution: 0.8
+});
+
+// Or add multiple fixtures at once
+obj.createFixture([
+    { shape: gearbox.shapes.CIRCLE, radius: 0.5, localY: -1 },
+    { shape: gearbox.shapes.CIRCLE, radius: 0.5, localY: 1 }
+]);
 ```
 
 Upon creation, the engine:
@@ -74,5 +102,5 @@ During removal, the engine:
 3. Clears **Contacts** from other objects' tracking lists.
 4. Reorganizes the **Live Data Buffers** to fill the gap (using a swap-and-pop strategy for $O(1)$ removal).
 
-> **Note**: After calling `removeObject()`, the JavaScript `PhysicalObject` wrapper becomes invalid and should no longer be used.
+> **Note**: After calling `removeObject()`, the JavaScript `Body` wrapper becomes invalid and should no longer be used.
 

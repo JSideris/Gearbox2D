@@ -1,6 +1,6 @@
 # Joints Overview
 
-Joints in Gearbox2D are used to constrain the movement of physical objects relative to each other or to the world. By connecting bodies with joints, you can create complex mechanisms like pendulums, ragdolls, cars, and gear trains.
+Joints in Gearbox2D are used to constrain the movement of bodys relative to each other or to the world. By connecting bodies with joints, you can create complex mechanisms like pendulums, ragdolls, cars, and gear trains.
 
 ## Common Features
 
@@ -32,8 +32,8 @@ Every joint object provides access to the following:
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `number` | The unique ID provided at creation. |
-| `bodyA` | `PhysicalObject` | The first body connected by the joint. |
-| `bodyB` | `PhysicalObject` | The second body connected by the joint. |
+| `bodyA` | `Body` | The first body connected by the joint. |
+| `bodyB` | `Body` | The second body connected by the joint. |
 | `reactionForce` | `Vec2` | The force (in Newtons) being applied by the joint to maintain the constraint. |
 | `reactionTorque` | `number` | The torque being applied by the joint. |
 

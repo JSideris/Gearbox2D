@@ -19,12 +19,12 @@
 	- [ ] Ellipse.
 	- [ ] Line.
 	- [x] Point.
-- [ ] Composite objects.
+- [x] Composite objects (Multi-fixture bodies).
 - [x] Add rotations.
 - [x] Compute/track AABB for each object.
 - [x] Implement VBH.
 - [x] Implement broad phase collision detection using BVH.
-- [ ] Implement narrow phase collision detection.
+- [x] Implement narrow phase collision detection.
 	- [x] AABB-AABB.
 	- [x] Box-AABB -> Box-Box.
 	- [x] Box-Box.
@@ -67,7 +67,9 @@
 	- [x] Penetration resolution.
 	- [x] Collision impulse.
 	- [x] Collision friction.
-- [ ] Implement collision events.
+- [x] Implement collision events.
+	- [X] Body-body collision events.
+	- [X] Fixture-fixture collision events.
 - [x] Define object types.
 	- [x] Sensor.
 	- [x] Physical.
@@ -93,7 +95,9 @@
 ## Misc
 - [x] Elasticity (restitution).
 - [x] Static/dynamic friction.
-- [ ] Support changing the center of mass.
+- [x] Support changing the center of mass.
+- [x] Live data buffers (Direct Wasm/TS memory mapping).
+- [x] Per-fixture material properties (Friction, Restitution, Density).
 - [ ] Squishy objects via per-object bias factor for Baumgarte stabilization.
 
 
@@ -174,7 +178,6 @@
 
 ## Known Issues
 - Piles of objects don't go to sleep as easily as they should (regression).
-- FPS slowdown in fleas, likely caused by BVH becomming un-optimized.
 - Fleas example sometimes shows instances of objects escaping the scene.
 - Sliding objects never come to rest.
 - AABBs seem to sink into other objects, like circles, boxes, and other AABBs.

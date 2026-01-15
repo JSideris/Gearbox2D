@@ -1,6 +1,6 @@
 # Hinge Joint
 
-A **Hinge Joint** (also known as a **Revolute Joint**) constrains two physical objects to share a common point, allowing them to rotate freely around that point. This is similar to a pin or a hinge on a door.
+A **Hinge Joint** (also known as a **Revolute Joint**) constrains two bodys to share a common point, allowing them to rotate freely around that point. This is similar to a pin or a hinge on a door.
 
 For general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).
 
@@ -38,16 +38,17 @@ A common use for a hinge joint is creating a pendulum by connecting a dynamic ob
 
 ```javascript
 // 1. Create a static anchor
-const anchor = world.makeObject(1, {
+const anchor = world.makeBody(1, {
     x: 10, y: 2,
     type: gearbox.bodyTypes.FIXED_OBJECT
 });
+anchor.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 0.2 });
 
 // 2. Create a dynamic weight
-const weight = world.makeObject(2, {
+const weight = world.makeBody(2, {
     x: 15, y: 2,
-    width: 1, height: 1
-});// 3. Connect them with a hinge at the anchor's position
+});
+weight.addFixture(2, { shape: gearbox.shapes.BOX, width: 1, height: 1 });// 3. Connect them with a hinge at the anchor's position
 world.createHingeJoint(101, anchor, weight, {
     worldAnchor: { x: 10, y: 2 }
 });

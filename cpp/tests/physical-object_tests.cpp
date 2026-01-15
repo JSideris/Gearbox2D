@@ -1,25 +1,26 @@
 #include <gtest/gtest.h>
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 #include "world.h"
 
-// Helper to create basic options for PhysicalObject
+// Helper to create basic options for Body
 emscripten_val createOptions(float x = 0.0f, float y = 0.0f, float mass = 1.0f) {
     emscripten_val options;
     options.properties["x"] = x;
     options.properties["y"] = y;
     options.properties["mass"] = mass;
-    options.properties["type"] = (int)ObjectType::RIGID_BODY;
+    options.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
     options.properties["shape"] = (int)ObjectShape::CIRCLE;
     options.properties["radius"] = 1.0f;
     return options;
 }
 
-TEST(PhysicalObjectTest, CreationAndInitialization) {
+TEST(BodyTest, CreationAndInitialization) {
     World world;
     emscripten_val options = createOptions(10.0f, 20.0f, 5.0f);
     
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     EXPECT_EQ(obj->getId(), 1);
     EXPECT_FLOAT_EQ(obj->getX(), 10.0f);
@@ -28,11 +29,11 @@ TEST(PhysicalObjectTest, CreationAndInitialization) {
     EXPECT_FLOAT_EQ(obj->getInverseMass(), 1.0f / 5.0f);
 }
 
-TEST(PhysicalObjectTest, MovementAndSleepState) {
+TEST(BodyTest, MovementAndSleepState) {
     World world;
     emscripten_val options = createOptions();
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     // Initial state
     EXPECT_FALSE(obj->isSleeping);
@@ -55,13 +56,13 @@ TEST(PhysicalObjectTest, MovementAndSleepState) {
     EXPECT_FALSE(obj->isSleeping);
 }
 
-TEST(PhysicalObjectTest, ContactManagement) {
+TEST(BodyTest, ContactManagement) {
     World world;
     emscripten_val options = createOptions();
-    int indexA = world.makeObject(1, options);
-    int indexB = world.makeObject(2, options);
-    PhysicalObject* objA = world.getObjectAtIndex(indexA);
-    PhysicalObject* objB = world.getObjectAtIndex(indexB);
+    int indexA = world.makeBody(1, options);
+    int indexB = world.makeBody(2, options);
+    Body* objA = world.getBodyAtIndex(indexA);
+    Body* objB = world.getBodyAtIndex(indexB);
     
     // Add contact
     objA->addContact(objB);
@@ -86,23 +87,23 @@ TEST(PhysicalObjectTest, ContactManagement) {
     EXPECT_TRUE(objB->isSleeping); // B should still be sleeping
 }
 
-TEST(PhysicalObjectTest, AabbRecomputation) {
+TEST(BodyTest, AabbRecomputation) {
     World world;
     emscripten_val options = createOptions(0, 0);
     options.properties["radius"] = 1.0f;
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     // Initial AABB for circle at (0,0) with radius 1 should be (-1,-1) to (1,1)
     obj->recomputeAabb(1); // mode 1: without padding
-    EXPECT_FLOAT_EQ(obj->aabb.min.x, -1.0f);
-    EXPECT_FLOAT_EQ(obj->aabb.min.y, -1.0f);
-    EXPECT_FLOAT_EQ(obj->aabb.max.x, 1.0f);
-    EXPECT_FLOAT_EQ(obj->aabb.max.y, 1.0f);
+    EXPECT_FLOAT_EQ(obj->fixtures[0]->aabb.min.x, -1.0f);
+    EXPECT_FLOAT_EQ(obj->fixtures[0]->aabb.min.y, -1.0f);
+    EXPECT_FLOAT_EQ(obj->fixtures[0]->aabb.max.x, 1.0f);
+    EXPECT_FLOAT_EQ(obj->fixtures[0]->aabb.max.y, 1.0f);
     
     // Move and recompute
     obj->setX(5.0f);
     obj->recomputeAabb(1);
-    EXPECT_FLOAT_EQ(obj->aabb.min.x, 4.0f);
-    EXPECT_FLOAT_EQ(obj->aabb.max.x, 6.0f);
+    EXPECT_FLOAT_EQ(obj->fixtures[0]->aabb.min.x, 4.0f);
+    EXPECT_FLOAT_EQ(obj->fixtures[0]->aabb.max.x, 6.0f);
 }

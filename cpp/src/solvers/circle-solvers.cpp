@@ -1,148 +1,100 @@
 #include "collision-solver.h"
+#include "world.h"
 #include "constants.h"
 #include <cmath>
+#include <algorithm>
 
 using namespace std;
 
 bool CollisionSolver::_solveCircleCircle() {
-    float rA = floatData[_indexA * FDATA_EPO + FDATA_RADIUS];
-    float rB = floatData[_indexB * FDATA_EPO + FDATA_RADIUS];
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
+    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
 
-    auto pA = Vec2(xA, yA);
-    auto pB = Vec2(xB, yB);
+    float rA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
+    float rB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
+    
+    // World position = Body position + rotated Local position
+    float bXA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X];
+    float bYA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y];
+    float bRA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lXA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+    float lYA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    
+    float cosA = cos(bRA), sinA = sin(bRA);
+    Vec2 pA(bXA + (lXA * cosA - lYA * sinA), bYA + (lXA * sinA + lYA * cosA));
 
-    auto pDiff = (pB-pA);
+    float bXB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
+    float bYB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
+    float bRB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lXB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+    float lYB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    
+    float cosB = cos(bRB), sinB = sin(bRB);
+    Vec2 pB(bXB + (lXB * cosB - lYB * sinB), bYB + (lXB * sinB + lYB * cosB));
 
-    auto pd2 = pDiff.magnitudeSquared();
+    Vec2 pDiff = pB - pA;
+    float pd2 = pDiff.magnitudeSquared();
 
-    if((rA + rB)*(rA + rB) > pd2){
+    if ((rA + rB) * (rA + rB) > pd2) {
         float distance = sqrt(pd2);
-        Vec2 normal;
-        
-        if (distance > 0.0001f) {
-            normal = pDiff / distance;
-        } else {
-            // Centers are identical, use a default normal (pointing up)
-            normal = Vec2(0.0f, -1.0f);
-        }
+        Vec2 normal = (distance > 0.0001f) ? pDiff / distance : Vec2(0.0f, -1.0f);
+        float penetrationDepth = rA + rB - distance;
+        Vec2 contactPoint = pA + normal * (rA - penetrationDepth * 0.5f);
 
-        auto penetrationDepth = rA + rB - distance;
+        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
         
-        // Midpoint of the overlap region for more stable stacking
-        auto contactPoint = pA + normal * (rA - penetrationDepth * 0.5f);
-
-        // Compute relative velocity including rotational effects at contact point
-        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
-                floatData[_indexA * FDATA_EPO + FDATA_VY]);
-        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
-                floatData[_indexB * FDATA_EPO + FDATA_VY]);
-                
-        // Get rotational speeds
-        float wA_rot = floatData[_indexA * FDATA_EPO + FDATA_RS];
-        float wB_rot = floatData[_indexB * FDATA_EPO + FDATA_RS];
+        Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
+        Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
+        Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
         
-        // Calculate radius vectors (from center to contact point)
-        Vec2 rA_vec = contactPoint - pA;
-        Vec2 rB_vec = contactPoint - pB;
-        
-        // Calculate tangential velocities due to rotation
-        Vec2 tangentialVelocityA(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
-        Vec2 tangentialVelocityB(-rB_vec.y * wB_rot, rB_vec.x * wB_rot);
-        
-        // Total velocities at contact point
-        Vec2 totalVelocityA = vA + tangentialVelocityA;
-        Vec2 totalVelocityB = vB + tangentialVelocityB;
-        
-        // Store the actual relative velocity at the contact point
-        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
-
-        collisions.push_back(CollisionInfo{
-            true,               // Collision detected
-            contactPoint,       // Contact point
-            normal,             // Collision normal
-            penetrationDepth,   // Penetration depth
-            _indexA,            // Object A index
-            _indexB,            // Object B index
-            relativeVelocity,   // Relative velocity including rotational effects
-            0.0f                // Friction coefficient
-        });
-
+        collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
         return true;
     }
-
     return false;
 }
 
 bool CollisionSolver::_solveCirclePoint() {
-    float rA = floatData[_indexA * FDATA_EPO + FDATA_RADIUS];
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
+    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
 
-    auto pA = Vec2(xA, yA);
-    auto pB = Vec2(xB, yB);
+    float rA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
+    
+    float bXA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X];
+    float bYA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y];
+    float bRA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lXA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+    float lYA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    float cosA = cos(bRA), sinA = sin(bRA);
+    Vec2 pA(bXA + (lXA * cosA - lYA * sinA), bYA + (lXA * sinA + lYA * cosA));
+
+    float bXB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
+    float bYB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
+    float bRB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lXB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+    float lYB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    float cosB = cos(bRB), sinB = sin(bRB);
+    Vec2 pB(bXB + (lXB * cosB - lYB * sinB), bYB + (lXB * sinB + lYB * cosB));
 
     if (testPointCircle(pB, pA, rA)) {
-        auto pDiff = (pB - pA);
+        Vec2 pDiff = pB - pA;
         float distance = pDiff.magnitude();
-        Vec2 normal;
-
-        if (distance > 0.0001f) {
-            normal = pDiff / distance;
-        } else {
-            // Point is at circle center, use a default normal
-            normal = Vec2(0.0f, -1.0f);
-        }
-
-        auto penetrationDepth = rA - distance;
+        Vec2 normal = (distance > 0.0001f) ? pDiff / distance : Vec2(0.0f, -1.0f);
+        float penetrationDepth = rA - distance;
         
-        // Contact point is the point itself
-        auto contactPoint = pB;
-
-        // Compute relative velocity including rotational effects at contact point
-        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
-                floatData[_indexA * FDATA_EPO + FDATA_VY]);
-        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
-                floatData[_indexB * FDATA_EPO + FDATA_VY]);
-                
-        // Get rotational speeds
-        float wA_rot = floatData[_indexA * FDATA_EPO + FDATA_RS];
-        float wB_rot = floatData[_indexB * FDATA_EPO + FDATA_RS];
+        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
         
-        // Calculate radius vectors (from center to contact point)
-        Vec2 rA_vec = contactPoint - pA;
-        Vec2 rB_vec = contactPoint - pB; // (0,0) for a point
+        Vec2 rA_vec = pB - pA;
+        Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
+        Vec2 totalVelocityB = vB; // Point has no rotation effects usually or we can add if needed
         
-        // Calculate tangential velocities due to rotation
-        Vec2 tangentialVelocityA(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
-        Vec2 tangentialVelocityB(-rB_vec.y * wB_rot, rB_vec.x * wB_rot);
-        
-        // Total velocities at contact point
-        Vec2 totalVelocityA = vA + tangentialVelocityA;
-        Vec2 totalVelocityB = vB + tangentialVelocityB;
-        
-        // Store the actual relative velocity at the contact point
-        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
-
-        collisions.push_back(CollisionInfo{
-            true,               // Collision detected
-            contactPoint,       // Contact point
-            normal,             // Collision normal
-            penetrationDepth,   // Penetration depth
-            _indexA,            // Object A index
-            _indexB,            // Object B index
-            relativeVelocity,   // Relative velocity
-            0.0f                // Friction coefficient
-        });
-
+        collisions.push_back(CollisionInfo{true, pB, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
         return true;
     }
-
     return false;
 }
-

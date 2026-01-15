@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "world.h"
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 
 // Helper to create options
 emscripten_val createWorldOptions(float x, float y, float mass = 1.0f) {
@@ -8,7 +9,7 @@ emscripten_val createWorldOptions(float x, float y, float mass = 1.0f) {
     options.properties["x"] = x;
     options.properties["y"] = y;
     options.properties["mass"] = mass;
-    options.properties["type"] = (int)ObjectType::RIGID_BODY;
+    options.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
     options.properties["shape"] = (int)ObjectShape::CIRCLE;
     options.properties["radius"] = 1.0f;
     return options;
@@ -19,8 +20,8 @@ TEST(WorldTest, BasicStepKinematics) {
     world.setGravity(0.0f, -10.0f); // 10 units/s^2 downwards
     world.setTimeStep(0.1f);
     
-    int id = world.makeObject(1, createWorldOptions(0.0f, 10.0f));
-    PhysicalObject* obj = world.getObjectAtIndex(id);
+    int id = world.makeBody(1, createWorldOptions(0.0f, 10.0f));
+    Body* obj = world.getBodyAtIndex(id);
     
     // Initial velocity should be 0
     EXPECT_FLOAT_EQ(obj->getVelocityY(), 0.0f);
@@ -40,15 +41,15 @@ TEST(WorldTest, CollisionFlagsUpdate) {
     world.setGravity(0.0f, 0.0f);
     
     // Two circles overlapping at the start
-    world.makeObject(1, createWorldOptions(0.0f, 0.0f));
-    world.makeObject(2, createWorldOptions(1.0f, 0.0f));
+    world.makeBody(1, createWorldOptions(0.0f, 0.0f));
+    world.makeBody(2, createWorldOptions(1.0f, 0.0f));
     
     world.step();
     
-    // Check collision flags in liveIntData
-    // LIVE_INT_HAS_COLLISION is index 3 in the epoch
-    int flag1 = world.liveIntData[0 * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION];
-    int flag2 = world.liveIntData[1 * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION];
+    // Check collision flags in liveBodyIntData
+    // BODY_IDATA_FLAGS is index 3 in the epoch
+    int flag1 = world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
+    int flag2 = world.liveBodyIntData[1 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
     
     EXPECT_TRUE(flag1 & HAS_PHYSICAL_COLLISION);
     EXPECT_TRUE(flag2 & HAS_PHYSICAL_COLLISION);
@@ -57,14 +58,14 @@ TEST(WorldTest, CollisionFlagsUpdate) {
 
 TEST(WorldTest, ObjectRemoval) {
     World world;
-    world.makeObject(1, createWorldOptions(0, 0));
-    world.makeObject(2, createWorldOptions(10, 10));
+    world.makeBody(1, createWorldOptions(0, 0));
+    world.makeBody(2, createWorldOptions(10, 10));
     
-    EXPECT_EQ(world.getObjectCount(), 2);
+    EXPECT_EQ(world.getBodyCount(), 2);
     
     world.removeObject(1);
-    EXPECT_EQ(world.getObjectCount(), 1);
-    EXPECT_EQ(world.getObjectAtIndex(0)->getId(), 2);
+    EXPECT_EQ(world.getBodyCount(), 1);
+    EXPECT_EQ(world.getBodyAtIndex(0)->getId(), 2);
 }
 
 

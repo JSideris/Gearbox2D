@@ -8,7 +8,6 @@ export const issuesExamples = [
     new Example({
         name: "TC-1 (SOLVED)",
         key: "tc-1",
-        hidden: true,
         description: [
             "**Test Case 1**: Verifies stability during box-on-box collisions.",
             "Previously, boxes would exhibit 'jitter' or 'explosive' behavior when colliding at certain angles."
@@ -17,40 +16,43 @@ export const issuesExamples = [
             world.setGravity(0, 10);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 8,
                 // r: Math.PI,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+                mass: 1,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 1,
                 height: 1,
-                mass: 1,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 7,
                 y: 2,
                 // r: Math.PI,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 1,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 5,
                 height: 1,
-                mass: 1,
             });
 
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 3,
                 y: 5,
                 // r: Math.PI,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 1,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 5,
                 height: 1,
-                mass: 1,
             });
         },
         onTick: (world, dt)=>{
@@ -60,7 +62,6 @@ export const issuesExamples = [
     new Example({
         name: "TC-2 (SOLVED)",
         key: "tc-2",
-        hidden: true,
         description: [
             "**Test Case 2**: Ensures `BOX` shapes do not tunnel through `AABB` shapes.",
             "This test case was used to refine the overlap detection and penetration resolution logic for different boundary types."
@@ -69,37 +70,40 @@ export const issuesExamples = [
             world.setGravity(0, 10);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 8,
                 r: Math.PI / 2,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+                mass: 1,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: 1,
                 height: 1,
-                mass: 1,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 7,
                 y: 2,
                 // r: Math.PI / 2,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 1,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 5,
                 height: 1,
-                mass: 1,
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 3,
                 y: 5,
                 // r: Math.PI / 2,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 1,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 5,
                 height: 1,
-                mass: 1,
             });
         },
         onTick: (world, dt)=>{
@@ -117,28 +121,30 @@ export const issuesExamples = [
             world.setGravity(0, 0);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 8,
                 y: 5,
                 // r: Math.PI,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+                mass: 1,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 1,
                 height: 1,
-                mass: 1,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 2,
                 y: 3,
                 vx: 3,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 1,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 1,
                 height: 5,
-                mass: 1,
             });
         },
         onTick: (world, dt)=>{
@@ -148,7 +154,6 @@ export const issuesExamples = [
     new Example({
         name: "TC-4 (SOLVED)",
         key: "tc-4",
-        hidden: true,
         description: [
             "**Test Case 4**: Correctness of angular velocity direction.",
             "Ensures that objects receive torque in the physically correct direction based on the contact point and normal."
@@ -157,28 +162,30 @@ export const issuesExamples = [
             world.setGravity(0, 0);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 8,
                 y: 5,
                 // r: Math.PI,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+                mass: 1,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 1,
                 height: 1,
-                mass: 1,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 2,
                 y: 6,
                 vx: 3,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 1,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 // radius: 1,
                 width: 1,
                 height: 5,
-                mass: 1,
             });
         },
         onTick: (world, dt)=>{
@@ -188,7 +195,6 @@ export const issuesExamples = [
     new Example({
         name: "TC-5 (SOLVED)",
         key: "tc-5",
-        hidden: true,
         description: [
             "**Test Case 5**: Sensitivity to initial rotation.",
             "Fixes an issue where even tiny angular velocities (`rs`) caused disproportionate collision responses. Also verifies that rotating objects transfer angular momentum in opposing directions."
@@ -197,30 +203,31 @@ export const issuesExamples = [
             world.setGravity(0, 0);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 5,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
-                radius: 1,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 4,
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 1,
             });
 
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 2.8,
                 y: 2.0,
                 vx: 3,
                 vy: 3,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
-                radius: 0.5,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 1,
-
                 // rs: 10,
                 rs: 0.01,
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.5,
             });
         },
-        onTick: (gearbox, world, dt)=>{
+        onTick: (world, dt)=>{
         }
     }),
 
@@ -236,28 +243,30 @@ export const issuesExamples = [
             world.setHasFriction(false);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 6,
                 r: Math.PI / 8,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 8,
                 height: 1,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 2,
                 y: 2,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 0.2,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
-                mass: 0.2,
             });
         },
-        onTick: (gearbox, world, dt)=>{
+        onTick: (world, dt)=>{
         }
     }),
 
@@ -273,31 +282,33 @@ export const issuesExamples = [
             // world.setHasRestitution(false);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 6,
                 // r: Math.PI / 8,
                 r: 0.1,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 8,
                 height: 1,
                 restitution: 0.0,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 2,
                 y: 2,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 0.2,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
-                mass: 0.2,
                 restitution: 0.0,
             });
         },
-        onTick: (gearbox, world, dt)=>{
+        onTick: (world, dt)=>{
         }
     }),
 
@@ -321,40 +332,44 @@ export const issuesExamples = [
             if(impulseTimer % 60 == 0){
                 let m = .1 + Math.random() * .4;
                 let r = .2 + m*m * .8;
-                world.makeObject(nextId++, {
+                let id1 = nextId++;
+                world.makeBody(id1, {
                     x: 0,
                     y: 7.50,
                     r: Math.PI / 2 * Math.random(),
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: (2.00 + Math.random() * 5.00) * 1,
                     vy: -6.00 - Math.random() * 1.00,
-                    shape: gearbox.shapes.CIRCLE,
-                    type: gearbox.bodyTypes.RIGID_BODY,
-                    radius: r,
+                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: m, 
+                }).addFixture({
+                    shape: gearbox.shapes.CIRCLE,
+                    radius: r,
                 });
 
                 m = .1 + Math.random() * .4;
                 r = .2 + m*m * .8;
-                world.makeObject(nextId++, {
+                let id2 = nextId++;
+                world.makeBody(id2, {
                     x: 10,
                     y: 7.50,
                     r: Math.PI / 2 * Math.random(),
                     rs: (Math.random() - 0.5) * 5.00,
                     vx: (2.00 + Math.random() * 5.00) * -1,
                     vy: -6.00 - Math.random() * 1.00,
-                    shape: gearbox.shapes.CIRCLE,
-                    type: gearbox.bodyTypes.RIGID_BODY,
-                    radius: r,
+                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: m, 
+                }).addFixture({
+                    shape: gearbox.shapes.CIRCLE,
+                    radius: r,
                 });
 
                 // Scan for objects that are out of bounds and remove them.
                 // Another way to do this would be to use collision events.
-                let objectCount = world.objectCount;
+                let objectCount = world.getBodyCount();
                 let toRemove = [];
 
-                world.iterateObjects(obj=>{
+                world.iterateBodies(obj=>{
                     
                     if(obj.y > 10.50){
                         // Don't remove stuff in the middle of the loop!!!
@@ -382,25 +397,27 @@ export const issuesExamples = [
             // world.setHasRestitution(false);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 6,
                 r: Math.PI / 2,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 1,
                 height: 8,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 7,
                 y: 5,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 0.2,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
-                mass: 0.2,
             });
         },
         onTick: (world, dt)=>{
@@ -419,26 +436,28 @@ export const issuesExamples = [
             // world.setHasRestitution(false);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 8,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: 8,
                 height: 1,
                 // restitution: 1
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 7,
                 y: 2,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
-                radius: 1,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 0.2,
-                restitution: 1,
                 rs: -0.1,
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 1,
+                restitution: 1,
             });
         },
         onTick: (world, dt)=>{
@@ -454,24 +473,26 @@ export const issuesExamples = [
         onInit: (world)=>{
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 5,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: 1,
                 height: 5,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5.2,
                 y: 5,
                 // vx: -50,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
-                radius: 0.1,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 0.2,
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.1,
                 restitution: 0.5,
             });
         },
@@ -491,24 +512,26 @@ export const issuesExamples = [
             // world.setHasRestitution(false);
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 6,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: 8,
                 height: 1,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 7,
                 y: 4,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 0.2,
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
-                type: gearbox.bodyTypes.RIGID_BODY,
                 width: 1,
                 height: 1,
-                mass: 0.2,
             });
         },
         onTick: (world, dt)=>{
@@ -526,24 +549,26 @@ export const issuesExamples = [
         onInit: (world)=>{
 
             let id = 1;
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 5,
-                shape: gearbox.shapes.BOX,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
                 width: 1,
                 height: 5,
             });
 
             // Anohter box but this time a rigid body.
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5.2,
                 y: 5,
                 // vx: -50,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
-                radius: 0.1,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 0.2,
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.1,
                 restitution: 0.5,
             });
         },

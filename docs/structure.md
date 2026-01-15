@@ -14,7 +14,7 @@
 - `architecture-world.md`: World Management
 - `architecture-coordinates.md`: Coordinates & Units
 
-## Physical Objects
+## Bodys
 - `objects-body-types.md`: Body Types
 - `objects-lifecycle.md`: Object Lifecycle
 - `objects-properties.md`: Body Properties
@@ -37,7 +37,7 @@
 - `collision-filtering.md`: Collision Filtering
 
 ## Events
-- `events.md`: Physical Object Events
+- `events.md`: Body Events
 
 ## Spatial Queries & Interaction
 - `interaction-queries.md`: Spatial Queries

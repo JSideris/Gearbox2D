@@ -1,13 +1,13 @@
 # World Object
 
-The `World` object is the central container for all physical entities in Gearbox2D. It manages the lifecycle of physical objects and joints, orchestrates the simulation steps, and handles global physics settings like gravity and collision resolution.
+The `World` object is the central container for all physical entities in Gearbox2D. It manages the lifecycle of bodys and joints, orchestrates the simulation steps, and handles global physics settings like gravity and collision resolution.
 
 ## Introduction
 
 In Gearbox2D, the `World` acts as the coordinator for the entire physics simulation. It maintains internal data structures (like the BVH for spatial partitioning) and provides the interface for creating, querying, and manipulating the physical environment.
 
 Key responsibilities include:
-- **Entity Management**: Creating and removing physical objects and joints.
+- **Entity Management**: Creating and removing bodys and joints.
 - **Simulation Control**: Stepping the physics forward in time.
 - **Global Settings**: Configuring gravity and toggleable physics features (restitution, friction, etc.).
 - **Spatial Queries**: Performing point queries and broad-phase checks.
@@ -104,18 +104,27 @@ world.setHasPenetrationResolution(true);
 
 The `World` manages all entities through unique IDs. This allows for efficient lookups across the JavaScript and WebAssembly boundary.
 
-### Physical Objects
+### Bodys
 
-Objects are created with a unique ID and a specification object.
+Objects are created with a unique ID and a specification object. You can attach fixtures (shapes) atomically during creation or add them later.
 
 ```typescript
-const obj = world.makeObject(101, {
-    shape: gearbox.shapes.CIRCLE,
-    type: gearbox.bodyTypes.RIGID_BODY,
+// Atomic creation with multiple fixtures
+const obj = world.makeBody(101, {
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
     x: 0,
     y: 0,
-    radius: 1,
-    mass: 1
+    fixtures: [
+        { shape: gearbox.shapes.CIRCLE, radius: 1, localX: -1 },
+        { shape: gearbox.shapes.CIRCLE, radius: 1, localX: 1 }
+    ]
+});
+
+// Adding a fixture at runtime
+obj.createFixture({
+    shape: gearbox.shapes.BOX,
+    width: 2,
+    height: 1
 });
 
 // Remove an object by ID
@@ -124,7 +133,7 @@ world.removeObject(101);
 
 ### Joints
 
-Joints are created through factory methods on the `World` instance. They connect two `PhysicalObject` instances.
+Joints are created through factory methods on the `World` instance. They connect two `Body` instances.
 
 - **Hinge Joint**: `createHingeJoint(id, bodyA, bodyB, options)`
 - **Distance Joint**: `createDistanceJoint(id, bodyA, bodyB, options)`
@@ -150,7 +159,7 @@ You can query the world to find objects at specific coordinates.
 // Find all objects at (x, y) that match a collision mask
 const hits = world.queryPoint(5.5, 10.2, 0xFFFF);
 hits.forEach(id => {
-    const obj = world.getObjectById(id);
+    const obj = world.getBodyById(id);
     console.log(`Hit object: ${id}`);
 });
 ```
@@ -175,10 +184,10 @@ A key architectural feature of Gearbox2D is the use of shared memory buffers for
 
 When a `World` is created, it exposes `liveFloatData` and `liveIntData`. These are `TypedArrays` (Float32Array and Int32Array) that map directly to the underlying C++ data structures in WASM memory.
 
-Instead of calling expensive getter/setter functions for every object's position every frame, the engine updates these buffers directly. The TypeScript `PhysicalObject` wrappers use these buffers to provide high-performance access to object state.
+Instead of calling expensive getter/setter functions for every object's position every frame, the engine updates these buffers directly. The TypeScript `Body` wrappers use these buffers to provide high-performance access to object state.
 
 ```typescript
-// Accessing live data directly (via PhysicalObject)
+// Accessing live data directly (via Body)
 const x = obj.x; // Reads from liveFloatData
 obj.x = 10;      // Writes to liveFloatData
 ```

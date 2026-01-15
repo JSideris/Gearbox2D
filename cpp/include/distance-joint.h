@@ -9,7 +9,7 @@ public:
     Vec2 localAnchorB;
     float length;
 
-    DistanceJoint(int id, PhysicalObject* a, PhysicalObject* b, Vec2 anchorA, Vec2 anchorB, float length);
+    DistanceJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length);
 
     void preSolve(float dt) override;
     void solve() override;
@@ -28,7 +28,7 @@ public:
 
 private:
     float impulse;
-    Vec2 u;
+    Vec2 normal;
     Vec2 rA, rB;
     float mass;
     float bias;

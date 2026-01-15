@@ -50,8 +50,9 @@ BenchmarkResult benchmarkSingleTree(int numCategories, const std::vector<int>& d
 
     for (int c = 0; c < numCategories; ++c) {
         CollisionProperties props;
-        props.category = 1 << c;
-        props.collidesWith = 1 << c; // Self-collision only for clear measurement
+        props.userCategory = 1 << c;
+        props.userMask = 1 << c; // Self-collision only for clear measurement
+        props.systemCategory = CATEGORY_DYNAMIC;
         
         for (int i = 0; i < dist[c]; ++i) {
             float x = dense ? 0 : posDist(gen);
@@ -87,8 +88,9 @@ BenchmarkResult benchmarkMultiTree(int numCategories, const std::vector<int>& di
 
     for (int c = 0; c < numCategories; ++c) {
         CollisionProperties props;
-        props.category = 1 << c;
-        props.collidesWith = 1 << c;
+        props.userCategory = 1 << c;
+        props.userMask = 1 << c;
+        props.systemCategory = CATEGORY_DYNAMIC;
         
         for (int i = 0; i < dist[c]; ++i) {
             float x = dense ? 0 : posDist(gen);

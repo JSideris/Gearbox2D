@@ -37,34 +37,43 @@ export const gnomeOmegaExample = new Example({
         const CAT_ROD = 0x1000;
 
         // Stationary center of the rotation
-        const hubAnchor = world.makeObject(nextId++, {
+        const hubAnchorId = nextId++;
+        const hubAnchor = world.makeBody(hubAnchorId, {
             x: cx, y: cy,
-            shape: gearbox.shapes.CIRCLE,
-            radius: 0.15,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#888",
+        });
+        hubAnchor.addFixture(hubAnchorId, {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 0.15,
             categoryBits: CAT_FIXED,
             maskBits: 0 // Collide with nothing
         });
 
         // The fixed crank pin (stationary throw)
-        const crankPin = world.makeObject(nextId++, {
+        const crankPinId = nextId++;
+        const crankPin = world.makeBody(crankPinId, {
             x: cx, y: cy + crankOffset,
-            shape: gearbox.shapes.CIRCLE,
-            radius: 0.1,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#ff4444",
+        });
+        crankPin.addFixture(crankPinId, {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 0.1,
             categoryBits: CAT_FIXED,
             maskBits: 0 // Collide with nothing
         });
 
         // The rotating hub (crankcase)
-        engineHub = world.makeObject(nextId++, {
+        const engineHubId = nextId++;
+        engineHub = world.makeBody(engineHubId, {
             x: cx, y: cy,
-            shape: gearbox.shapes.CIRCLE,
-            radius: 0.8,
             mass: 50.0, // Increased mass for stability
             color: "#aaa",
+        });
+        engineHub.addFixture(engineHubId, {
+            shape: gearbox.shapes.CIRCLE,
+            radius: 0.8,
             categoryBits: CAT_HUB,
             maskBits: 0, // Collide with nothing
             restitution: 0
@@ -94,13 +103,16 @@ export const gnomeOmegaExample = new Example({
                 const wallX = cx + cos * wallDist + (-sin) * (side * wallGap / 2);
                 const wallY = cy + sin * wallDist + (cos) * (side * wallGap / 2);
                 
-                const wall = world.makeObject(nextId++, {
+                const wallId = nextId++;
+                const wall = world.makeBody(wallId, {
                     x: wallX, y: wallY,
                     r: orientation,
-                    shape: gearbox.shapes.BOX,
-                    width: wallWidth, height: wallHeight,
                     mass: 1.0,
                     color: "#bbb",
+                });
+                wall.addFixture(wallId, {
+                    shape: gearbox.shapes.BOX,
+                    width: wallWidth, height: wallHeight,
                     categoryBits: CAT_CYLINDER,
                     maskBits: CAT_PISTON, // Only collide with pistons
                     restitution: 0,
@@ -125,13 +137,16 @@ export const gnomeOmegaExample = new Example({
 
             const pistonX = cx + cos * pistonDist;
             const pistonY = cy + sin * pistonDist;
-            const piston = world.makeObject(nextId++, {
+            const pistonId = nextId++;
+            const piston = world.makeBody(pistonId, {
                 x: pistonX, y: pistonY,
                 r: orientation,
-                shape: gearbox.shapes.BOX,
-                width: 0.7, height: 1.0, // Piston width (0.7) is now less than inner gap (0.8)
                 mass: 0.5,
                 color: "#ddd",
+            });
+            piston.addFixture(pistonId, {
+                shape: gearbox.shapes.BOX,
+                width: 0.7, height: 1.0, // Piston width (0.7) is now less than inner gap (0.8)
                 categoryBits: CAT_PISTON,
                 maskBits: CAT_CYLINDER, // Only collide with cylinder walls
                 restitution: 0,
@@ -144,13 +159,16 @@ export const gnomeOmegaExample = new Example({
             // Rotate rod to point from crank pin to piston
             const rodAngle = Math.atan2(pistonY - (cy + crankOffset), pistonX - cx) - Math.PI / 2;
             
-            const rod = world.makeObject(nextId++, {
+            const rodId = nextId++;
+            const rod = world.makeBody(rodId, {
                 x: rodX, y: rodY,
                 r: rodAngle,
-                shape: gearbox.shapes.BOX,
-                width: 0.15, height: rodLength,
                 mass: 0.2,
                 color: "#fff",
+            });
+            rod.addFixture(rodId, {
+                shape: gearbox.shapes.BOX,
+                width: 0.15, height: rodLength,
                 categoryBits: CAT_ROD,
                 maskBits: 0, // Rods are non-colliding
                 restitution: 0

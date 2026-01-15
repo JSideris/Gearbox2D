@@ -1,4 +1,5 @@
 #include "collision-solver.h"
+#include "world.h"
 #include "constants.h"
 #include <cmath>
 #include <algorithm>
@@ -7,443 +8,287 @@
 using namespace std;
 
 bool CollisionSolver::_solveBoxBox() {
-    // Get Box A data
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-    float wA = floatData[_indexA * FDATA_EPO + FDATA_W];
-    float hA = floatData[_indexA * FDATA_EPO + FDATA_H];
-    float rotationA = floatData[_indexA * FDATA_EPO + FDATA_R];
-    float angVelA = floatData[_indexA * FDATA_EPO + FDATA_RS]; // Angular velocity
+    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
 
-    // Get Box B data
-    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
-    float wB = floatData[_indexB * FDATA_EPO + FDATA_W];
-    float hB = floatData[_indexB * FDATA_EPO + FDATA_H];
-    float rotationB = floatData[_indexB * FDATA_EPO + FDATA_R];
-    float angVelB = floatData[_indexB * FDATA_EPO + FDATA_RS]; // Angular velocity
-
-    // Check if either object is a fixed body
-    bool isAFixed = (intData[_indexA * LIVE_INT_EPO + LIVE_INT_TYPE] == static_cast<int>(ObjectType::FIXED_OBJECT));
-    bool isBFixed = (intData[_indexB * LIVE_INT_EPO + LIVE_INT_TYPE] == static_cast<int>(ObjectType::FIXED_OBJECT));
-
-    // Get the corners of both boxes
-    Vec2 cornersA[4], cornersB[4];
-    float halfWidthA = wA / 2.0f;
-    float halfHeightA = hA / 2.0f;
-    float halfWidthB = wB / 2.0f;
-    float halfHeightB = hB / 2.0f;
-
-    // Box A corners (local coordinates, then rotated and translated to world coordinates)
-    cornersA[0] = Vec2(-halfWidthA, -halfHeightA).rotate(rotationA) + Vec2(xA, yA);
-    cornersA[1] = Vec2(halfWidthA, -halfHeightA).rotate(rotationA) + Vec2(xA, yA);
-    cornersA[2] = Vec2(halfWidthA, halfHeightA).rotate(rotationA) + Vec2(xA, yA);
-    cornersA[3] = Vec2(-halfWidthA, halfHeightA).rotate(rotationA) + Vec2(xA, yA);
-
-    // Box B corners
-    cornersB[0] = Vec2(-halfWidthB, -halfHeightB).rotate(rotationB) + Vec2(xB, yB);
-    cornersB[1] = Vec2(halfWidthB, -halfHeightB).rotate(rotationB) + Vec2(xB, yB);
-    cornersB[2] = Vec2(halfWidthB, halfHeightB).rotate(rotationB) + Vec2(xB, yB);
-    cornersB[3] = Vec2(-halfWidthB, halfHeightB).rotate(rotationB) + Vec2(xB, yB);
-
-    // Edge vectors for each box
-    Vec2 edgesA[4], edgesB[4];
-    for (int i = 0; i < 4; i++) {
-        edgesA[i] = cornersA[(i + 1) % 4] - cornersA[i];
-        edgesB[i] = cornersB[(i + 1) % 4] - cornersB[i];
-    }
-
-    // Compute all possible separating axes (perpendicular to edges)
-    Vec2 axes[8];
-    for (int i = 0; i < 4; i++) {
-        // Perpendicular to edge = (-edge.y, edge.x) normalized
-        axes[i] = Vec2(-edgesA[i].y, edgesA[i].x).normalize();
-        axes[i + 4] = Vec2(-edgesB[i].y, edgesB[i].x).normalize();
-    }
-
-    // Separating Axis Test (SAT)
-    float minOverlap = FLT_MAX;
-    int minOverlapAxis = -1;
-    bool fromAtoB = true;  // Direction flag for consistent normals
-
-    // Helper function to project box onto an axis
-    auto projectBoxOntoAxis = [](const Vec2 corners[4], const Vec2& axis) {
-        float minVal = corners[0].dot(axis);
-        float maxVal = minVal;
-
-        for (int i = 1; i < 4; i++) {
-            float projection = corners[i].dot(axis);
-            if (projection < minVal) minVal = projection;
-            if (projection > maxVal) maxVal = projection;
-        }
-
-        return std::make_pair(minVal, maxVal);
+    auto getFixtureWorldPos = [&](int fIdx, int bIdx) {
+        float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
+        float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
+        float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
+        float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+        float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+        float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        float cosR = cos(br), sinR = sin(br);
+        return make_pair(Vec2(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR)), br + lr);
     };
 
-    // Check each axis for separation or to find minimum penetration
-    for (int i = 0; i < 8; i++) {
-        auto [minA, maxA] = projectBoxOntoAxis(cornersA, axes[i]);
-        auto [minB, maxB] = projectBoxOntoAxis(cornersB, axes[i]);
+    auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
+    auto [pB, rotB] = getFixtureWorldPos(_indexB, bIdxB);
+    float wA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
+    float hA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+    float wB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
+    float hB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
 
-        // Check for separation (no overlap)
-        if (maxA < minB || maxB < minA) {
-            return false;  // Separating axis found, no collision
-        }
+    Vec2 axesA[2] = { Vec2(cos(rotA), sin(rotA)), Vec2(-sin(rotA), cos(rotA)) };
+    Vec2 axesB[2] = { Vec2(cos(rotB), sin(rotB)), Vec2(-sin(rotB), cos(rotB)) };
+    float halfA[2] = { wA / 2.0f, hA / 2.0f };
+    float halfB[2] = { wB / 2.0f, hB / 2.0f };
 
-        // Calculate overlap - we need to determine which way the axis points
-        float overlapAB = maxA - minB;  // A pushing into B
-        float overlapBA = maxB - minA;  // B pushing into A
-        float overlap = std::min(overlapAB, overlapBA);
-        
-        // Track axis with minimum overlap for collision normal
+    Vec2 relPos = pB - pA;
+    float minOverlap = FLT_MAX;
+    int bestAxis = -1;
+
+    for (int i = 0; i < 4; ++i) {
+        Vec2 axis = (i < 2) ? axesA[i] : axesB[i - 2];
+        float projA = halfA[0] * abs(axis.dot(axesA[0])) + halfA[1] * abs(axis.dot(axesA[1]));
+        float projB = halfB[0] * abs(axis.dot(axesB[0])) + halfB[1] * abs(axis.dot(axesB[1]));
+        float dist = abs(relPos.dot(axis));
+        float overlap = projA + projB - dist;
+
+        if (overlap < 0) return false;
         if (overlap < minOverlap) {
             minOverlap = overlap;
-            minOverlapAxis = i;
-            // Check which way the normal should point (A->B or B->A)
-            Vec2 centerDiff = Vec2(xB - xA, yB - yA);
-            fromAtoB = (centerDiff.dot(axes[i]) >= 0);
+            bestAxis = i;
         }
     }
 
-    // Get the collision normal (ensure it points from A to B)
-    Vec2 normal = fromAtoB ? axes[minOverlapAxis] : -axes[minOverlapAxis];
-    
-    // Find contact points
-    Vec2 contacts[2];
-    float depths[2];
-    int contactCount = 0;
-    
-    // Helper to calculate penetration depth of a point into a box along the collision normal
-    auto getDepth = [&](const Vec2& point, const Vec2 corners[4], const Vec2& n, bool isPointInA) {
-        // Find the "reference" face of the box being penetrated
-        // The depth is the maximum penetration along the normal N
-        float maxD = -FLT_MAX;
-        for (int i = 0; i < 4; i++) {
-            float d = isPointInA ? (point - corners[i]).dot(n) : (corners[i] - point).dot(n);
-            if (d > maxD) maxD = d;
+    // Identify reference and incident boxes
+    bool aIsReference = (bestAxis < 2);
+    Vec2 normal = aIsReference ? axesA[bestAxis] : axesB[bestAxis - 2];
+    if (normal.dot(relPos) < 0) normal = normal * -1.0f;
+
+    // The normal now points from A to B.
+    // If B is reference, normal should point from B to A for clipping logic, 
+    // but we'll stick to normal pointing from A to B and adjust.
+
+    Vec2 refP = aIsReference ? pA : pB;
+    Vec2 incP = aIsReference ? pB : pA;
+    Vec2* refAxes = aIsReference ? axesA : axesB;
+    Vec2* incAxes = aIsReference ? axesB : axesA;
+    float* refHalf = aIsReference ? halfA : halfB;
+    float* incHalf = aIsReference ? halfB : halfA;
+    Vec2 refNormal = aIsReference ? normal : normal * -1.0f;
+
+    // Find incident face
+    int incAxisIdx = 0;
+    float minDot = FLT_MAX;
+    for (int i = 0; i < 2; ++i) {
+        float d = incAxes[i].dot(refNormal);
+        if (d < minDot) { minDot = d; incAxisIdx = i; }
+        if (-incAxes[i].dot(refNormal) < minDot) { minDot = -incAxes[i].dot(refNormal); incAxisIdx = i + 2; }
+    }
+
+    Vec2 incNormal = (incAxisIdx < 2) ? incAxes[incAxisIdx] : incAxes[incAxisIdx - 2] * -1.0f;
+    Vec2 incVertices[2];
+    if (incAxisIdx == 0) { // +X face
+        incVertices[0] = incP + incAxes[0] * incHalf[0] + incAxes[1] * incHalf[1];
+        incVertices[1] = incP + incAxes[0] * incHalf[0] - incAxes[1] * incHalf[1];
+    } else if (incAxisIdx == 2) { // -X face
+        incVertices[0] = incP - incAxes[0] * incHalf[0] + incAxes[1] * incHalf[1];
+        incVertices[1] = incP - incAxes[0] * incHalf[0] - incAxes[1] * incHalf[1];
+    } else if (incAxisIdx == 1) { // +Y face
+        incVertices[0] = incP + incAxes[1] * incHalf[1] + incAxes[0] * incHalf[0];
+        incVertices[1] = incP + incAxes[1] * incHalf[1] - incAxes[0] * incHalf[0];
+    } else { // -Y face
+        incVertices[0] = incP - incAxes[1] * incHalf[1] + incAxes[0] * incHalf[0];
+        incVertices[1] = incP - incAxes[1] * incHalf[1] - incAxes[0] * incHalf[0];
+    }
+
+    // Clip against side planes of reference box
+    int refSideAxisIdx = (bestAxis % 2 == 0) ? 1 : 0;
+    Vec2 sideAxis = refAxes[refSideAxisIdx];
+    float sideOffset1 = sideAxis.dot(refP + sideAxis * refHalf[refSideAxisIdx]);
+    float sideOffset2 = -sideAxis.dot(refP - sideAxis * refHalf[refSideAxisIdx]);
+
+    auto clip = [](Vec2 vIn[2], Vec2 n, float offset, Vec2 vOut[2]) -> int {
+        int count = 0;
+        float d1 = n.dot(vIn[0]) - offset;
+        float d2 = n.dot(vIn[1]) - offset;
+        if (d1 <= 0) vOut[count++] = vIn[0];
+        if (d2 <= 0) vOut[count++] = vIn[1];
+        if (d1 * d2 < 0) {
+            float alpha = d1 / (d1 - d2);
+            vOut[count++] = vIn[0] + (vIn[1] - vIn[0]) * alpha;
         }
-        return maxD;
+        return count;
     };
 
-    // Check if vertices from box B are penetrating box A
-    for (int i = 0; i < 4; i++) {
-        bool inside = true;
-        for (int j = 0; j < 4; j++) {
-            Vec2 edgeNormal = Vec2(-edgesA[j].y, edgesA[j].x).normalize();
-            if (edgeNormal.dot(cornersB[i] - cornersA[j]) < 0) {
-                inside = false;
-                break;
-            }
-        }
-        if (inside) {
-            float depth = getDepth(cornersB[i], cornersA, normal, false);
-            if (depth > 0) {
-                contacts[contactCount] = cornersB[i];
-                depths[contactCount] = depth;
-                contactCount++;
-                if (contactCount == 2) break;
-            }
+    Vec2 clippedVertices[2], tempVertices[2];
+    int count = clip(incVertices, sideAxis, sideOffset1, tempVertices);
+    if (count < 2) return false;
+    count = clip(tempVertices, sideAxis * -1.0f, sideOffset2, clippedVertices);
+    if (count < 2) return false;
+
+    // Clip against reference face plane
+    float refOffset = refNormal.dot(refP + refNormal * refHalf[bestAxis % 2]);
+    
+    bool foundCollision = false;
+    for (int i = 0; i < count; ++i) {
+        float depth = refNormal.dot(clippedVertices[i]) - refOffset;
+        if (depth <= 0) {
+            foundCollision = true;
+            Vec2 contactPoint = clippedVertices[i]; // Deepest points are on the incident box
+            float penetration = -depth;
+
+            Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
+            Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+            float rsA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+            float rsB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+            
+            Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
+            Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * rsA, rA_vec.x * rsA);
+            Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * rsB, rB_vec.x * rsB);
+
+            collisions.push_back(CollisionInfo{true, contactPoint, normal, penetration, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
         }
     }
-    
-    // Check if vertices from box A are penetrating box B
-    if (contactCount < 2) {
-        for (int i = 0; i < 4; i++) {
-            bool inside = true;
-            for (int j = 0; j < 4; j++) {
-                Vec2 edgeNormal = Vec2(-edgesB[j].y, edgesB[j].x).normalize();
-                if (edgeNormal.dot(cornersA[i] - cornersB[j]) < 0) {
-                    inside = false;
-                    break;
-                }
-            }
-            if (inside) {
-                float depth = getDepth(cornersA[i], cornersB, normal, true);
-                if (depth > 0) {
-                    contacts[contactCount] = cornersA[i];
-                    depths[contactCount] = depth;
-                    contactCount++;
-                    if (contactCount == 2) break;
-                }
-            }
-        }
-    }
-    
-    // If no penetrating vertices were found, use the closest approach as fallback
-    if (contactCount == 0) {
-        float minDistance = FLT_MAX;
-        Vec2 bestContactPoint;
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                Vec2 pointOnEdgeA, pointOnEdgeB;
-                float distanceSq = closestPointsBetweenLines(
-                    cornersA[i], cornersA[(i+1)%4],
-                    cornersB[j], cornersB[(j+1)%4],
-                    pointOnEdgeA, pointOnEdgeB);
-                if (distanceSq < minDistance) {
-                    minDistance = distanceSq;
-                    bestContactPoint = (pointOnEdgeA + pointOnEdgeB) * 0.5f;
-                }
-            }
-        }
-        contacts[0] = bestContactPoint;
-        depths[0] = minOverlap;
-        contactCount = 1;
-    }
-    
-    // Fallback - if all else fails, use center of overlap
-    if (contactCount == 0) {
-        contacts[0] = Vec2((xA + xB) / 2, (yA + yB) / 2);
-        depths[0] = minOverlap;
-        contactCount = 1;
-    }
-    
-    // Process each contact point
-    for (int i = 0; i < contactCount; i++) {
-        // Vectors from centers to contact point
-        Vec2 rA = contacts[i] - Vec2(xA, yA);
-        Vec2 rB = contacts[i] - Vec2(xB, yB);
-        
-        // Calculate velocities at contact point
-        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], floatData[_indexA * FDATA_EPO + FDATA_VY]);
-        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], floatData[_indexB * FDATA_EPO + FDATA_VY]);
-        
-        // Add rotational velocity
-        if (!isAFixed) {
-            vA = vA + Vec2(-rA.y * angVelA, rA.x * angVelA);
-        }
-        
-        if (!isBFixed) {
-            vB = vB + Vec2(-rB.y * angVelB, rB.x * angVelB);
-        }
-        
-        // Calculate relative velocity
-        Vec2 relVel = vB - vA;
-        
-        // Add collision to list
-        collisions.push_back(CollisionInfo{
-            true,                    // Collision detected
-            contacts[i],             // Contact point
-            normal,                  // Collision normal
-            depths[i],               // Individual penetration depth
-            _indexA,                 // Object A index
-            _indexB,                 // Object B index
-            relVel,                  // Relative velocity
-            0.0f                     // Friction placeholder
-        });
-    }
-    
-    return true;
+
+    return foundCollision;
 }
 
 bool CollisionSolver::_solveBoxPoint() {
-    // A is Box, B is Point
-    float xP = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yP = floatData[_indexB * FDATA_EPO + FDATA_Y];
+    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
 
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-    float wA = floatData[_indexA * FDATA_EPO + FDATA_W];
-    float hA = floatData[_indexA * FDATA_EPO + FDATA_H];
-    float rA = floatData[_indexA * FDATA_EPO + FDATA_R];
+    auto getFixtureWorldPos = [&](int fIdx, int bIdx) {
+        float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
+        float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
+        float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
+        float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+        float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+        float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        float cosR = cos(br), sinR = sin(br);
+        return make_pair(Vec2(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR)), br + lr);
+    };
 
-    Vec2 boxCenter(xA, yA);
-    Vec2 pointPos(xP, yP);
+    auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
+    auto [pB, rotB] = getFixtureWorldPos(_indexB, bIdxB); // B is the point
     
-    // Check if point is inside local AABB
-    if (testPointBox(pointPos, boxCenter, wA, hA, rA)) {
-        // Rotate point into box's local space for edge distance calculation
-        Vec2 relPoint = (pointPos - boxCenter).rotate(-rA);
-        float halfW = wA / 2.0f;
-        float halfH = hA / 2.0f;
+    float wA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
+    float hA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
 
-        // Find closest edge in local space
-        float dLeft = relPoint.x - (-halfW);
-        float dRight = halfW - relPoint.x;
-        float dTop = relPoint.y - (-halfH);
-        float dBottom = halfH - relPoint.y;
+    // Transform Point to Box local space
+    Vec2 relPos = pB - pA;
+    float cosA = cos(-rotA), sinA = sin(-rotA);
+    Vec2 localPos(relPos.x * cosA - relPos.y * sinA, relPos.x * sinA + relPos.y * cosA);
 
-        float minDist = dLeft;
-        Vec2 normalLocal(-1.0f, 0.0f);
+    float halfW = wA / 2.0f;
+    float halfH = hA / 2.0f;
 
-        if (dRight < minDist) {
-            minDist = dRight;
-            normalLocal = Vec2(1.0f, 0.0f);
+    if (localPos.x >= -halfW && localPos.x <= halfW && localPos.y >= -halfH && localPos.y <= halfH) {
+        float d1 = localPos.x - (-halfW);
+        float d2 = halfW - localPos.x;
+        float d3 = localPos.y - (-halfH);
+        float d4 = halfH - localPos.y;
+        
+        float minDist = min({d1, d2, d3, d4});
+        Vec2 normalLocal;
+        if (minDist == d1) normalLocal = Vec2(-1, 0);
+        else if (minDist == d2) normalLocal = Vec2(1, 0);
+        else if (minDist == d3) normalLocal = Vec2(0, -1);
+        else normalLocal = Vec2(0, 1);
+        
+        // Transform normal back to world space
+        float cosW = cos(rotA), sinW = sin(rotA);
+        Vec2 normal(normalLocal.x * cosW - normalLocal.y * sinW, normalLocal.x * sinW + normalLocal.y * cosW);
+        
+        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        float wA_rot = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+        
+        Vec2 rA_vec = pB - pA;
+        Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
+        
+        collisions.push_back(CollisionInfo{true, pB, normal, minDist, _indexA, _indexB, vB - totalVelocityA, 0.0f});
+        return true;
+    }
+    return false;
+}
+bool CollisionSolver::_solveCircleBox() {
+    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+
+    float rA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
+    
+    auto getFixtureWorldPos = [&](int fIdx, int bIdx) {
+        float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
+        float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
+        float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
+        float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+        float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+        float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        float cosR = cos(br), sinR = sin(br);
+        return make_pair(Vec2(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR)), br + lr);
+    };
+
+    auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
+    auto [pB, rotB] = getFixtureWorldPos(_indexB, bIdxB);
+    
+    float wB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
+    float hB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+
+    // Transform Circle center to Box local space
+    Vec2 relPos = pA - pB;
+    float cosB = cos(-rotB), sinB = sin(-rotB);
+    Vec2 localPos(relPos.x * cosB - relPos.y * sinB, relPos.x * sinB + relPos.y * cosB);
+
+    float halfW = wB / 2.0f;
+    float halfH = hB / 2.0f;
+
+    float closestX = max(-halfW, min(localPos.x, halfW));
+    float closestY = max(-halfH, min(localPos.y, halfH));
+
+    Vec2 closestPointLocal(closestX, closestY);
+    Vec2 diffLocal = localPos - closestPointLocal;
+    float distSq = diffLocal.magnitudeSquared();
+
+    bool inside = false;
+    if (distSq == 0) {
+        inside = true;
+        float d1 = localPos.x - (-halfW);
+        float d2 = halfW - localPos.x;
+        float d3 = localPos.y - (-halfH);
+        float d4 = halfH - localPos.y;
+        
+        float minDist = min({d1, d2, d3, d4});
+        if (minDist == d1) { closestPointLocal.x = -halfW; diffLocal = Vec2(-1, 0); }
+        else if (minDist == d2) { closestPointLocal.x = halfW; diffLocal = Vec2(1, 0); }
+        else if (minDist == d3) { closestPointLocal.y = -halfH; diffLocal = Vec2(0, -1); }
+        else { closestPointLocal.y = halfH; diffLocal = Vec2(0, 1); }
+        distSq = minDist * minDist;
+    }
+
+    if (distSq < rA * rA || inside) {
+        float distance = sqrt(distSq);
+        Vec2 normalLocal;
+        float penetrationDepth;
+
+        if (inside) {
+            normalLocal = diffLocal;
+            penetrationDepth = rA + distance;
+        } else {
+            normalLocal = diffLocal / distance;
+            penetrationDepth = rA - distance;
         }
-        if (dTop < minDist) {
-            minDist = dTop;
-            normalLocal = Vec2(0.0f, -1.0f);
-        }
-        if (dBottom < minDist) {
-            minDist = dBottom;
-            normalLocal = Vec2(0.0f, 1.0f);
-        }
 
-        // Rotate normal back to world space
-        Vec2 normal = normalLocal.rotate(rA);
-        float penetrationDepth = minDist;
-        Vec2 contactPoint = pointPos;
+        // Transform back to world space
+        float cosW = cos(rotB), sinW = sin(rotB);
+        Vec2 normal(normalLocal.x * cosW - normalLocal.y * sinW, normalLocal.x * sinW + normalLocal.y * cosW);
+        Vec2 contactPoint(closestPointLocal.x * cosW - closestPointLocal.y * sinW + pB.x, 
+                          closestPointLocal.x * sinW + closestPointLocal.y * cosW + pB.y);
 
-        // Compute relative velocity including rotational effects
-        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
-                floatData[_indexA * FDATA_EPO + FDATA_VY]);
-        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
-                floatData[_indexB * FDATA_EPO + FDATA_VY]);
+        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
         
-        float wA_rot = floatData[_indexA * FDATA_EPO + FDATA_RS];
+        Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
+        Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
+        Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
         
-        Vec2 rA_vec = contactPoint - boxCenter;
-        Vec2 tangentialVelocityA(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
-        
-        Vec2 totalVelocityA = vA + tangentialVelocityA;
-        Vec2 totalVelocityB = vB; // Point has no rotation effects
-        
-        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
-
-        collisions.push_back(CollisionInfo{
-            true,               // Collision detected
-            contactPoint,       // Contact point
-            normal,             // Collision normal
-            penetrationDepth,   // Penetration depth
-            _indexA,            // Object A index (Box)
-            _indexB,            // Object B index (Point)
-            relativeVelocity,   // Relative velocity
-            0.0f                // Friction coefficient
-        });
-
+        collisions.push_back(CollisionInfo{true, contactPoint, normal * -1.0f, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
         return true;
     }
 
     return false;
 }
-
-bool CollisionSolver::_solveCircleBox() {
-    // Get Circle (Object A) data
-    float rA = floatData[_indexA * FDATA_EPO + FDATA_RADIUS];
-    float xA = floatData[_indexA * FDATA_EPO + FDATA_X];
-    float yA = floatData[_indexA * FDATA_EPO + FDATA_Y];
-
-    // Get Box (Object B) data
-    float xB = floatData[_indexB * FDATA_EPO + FDATA_X];
-    float yB = floatData[_indexB * FDATA_EPO + FDATA_Y];
-    float wB = floatData[_indexB * FDATA_EPO + FDATA_W];
-    float hB = floatData[_indexB * FDATA_EPO + FDATA_H];
-    float rotationB = floatData[_indexB * FDATA_EPO + FDATA_R];
-
-    // Compute the relative position of the circle's center to the box's center
-    Vec2 circleCenter(xA, yA);
-    Vec2 boxCenter(xB, yB);
-    Vec2 relCircleCenter = circleCenter - boxCenter;
-
-    // Rotate the relative position into the box's local space (unrotate the box)
-    Vec2 localCircleCenter = relCircleCenter.rotate(-rotationB);
-
-    // Box half-extents
-    float halfW = wB / 2.0f;
-    float halfH = hB / 2.0f;
-
-    // Find the closest point on the box to the circle in the box's local space
-    float closestX = max(-halfW, min(localCircleCenter.x, halfW));
-    float closestY = max(-halfH, min(localCircleCenter.y, halfH));
-
-    // Compute the distance vector between the circle's center and the closest point
-    Vec2 closestPointLocal(closestX, closestY);
-    Vec2 distanceVecLocal = closestPointLocal - localCircleCenter;
-
-    // Calculate the squared distance
-    float distanceSquared = distanceVecLocal.magnitudeSquared();
-
-    // Check if the distance squared is less than the circle's radius squared
-    if (distanceSquared < rA * rA) {
-        float distance = sqrt(distanceSquared);
-        float penetrationDepth;
-        Vec2 normalLocal;
-        Vec2 contactPointLocal;
-
-        // Check if the circle's center is inside the box
-        bool isInside = (localCircleCenter.x > -halfW && localCircleCenter.x < halfW &&
-                         localCircleCenter.y > -halfH && localCircleCenter.y < halfH);
-
-        if (isInside || distance < 0.0001f) {
-            // Find distances to each face in local space
-            float dLeft = localCircleCenter.x - (-halfW);
-            float dRight = halfW - localCircleCenter.x;
-            float dTop = localCircleCenter.y - (-halfH);
-            float dBottom = halfH - localCircleCenter.y;
-
-            float minDist = dLeft;
-            normalLocal = Vec2(1.0f, 0.0f);
-            contactPointLocal = Vec2(-halfW, localCircleCenter.y);
-
-            if (dRight < minDist) {
-                minDist = dRight;
-                normalLocal = Vec2(-1.0f, 0.0f);
-                contactPointLocal = Vec2(halfW, localCircleCenter.y);
-            }
-            if (dTop < minDist) {
-                minDist = dTop;
-                normalLocal = Vec2(0.0f, 1.0f);
-                contactPointLocal = Vec2(localCircleCenter.x, -halfH);
-            }
-            if (dBottom < minDist) {
-                minDist = dBottom;
-                normalLocal = Vec2(0.0f, -1.0f);
-                contactPointLocal = Vec2(localCircleCenter.x, halfH);
-            }
-
-            penetrationDepth = rA + minDist;
-            // contactPointLocal already set above
-        } else {
-            // Standard case: circle is outside or just touching
-            normalLocal = distanceVecLocal / distance;
-            penetrationDepth = rA - distance;
-            contactPointLocal = closestPointLocal;
-        }
-
-        // Rotate normal and contact point back to world space
-        Vec2 normal = normalLocal.rotate(rotationB);
-        Vec2 contactPoint = contactPointLocal.rotate(rotationB) + boxCenter;
-
-        // Compute relative velocity including rotational effects at contact point
-        Vec2 vA(floatData[_indexA * FDATA_EPO + FDATA_VX], 
-                floatData[_indexA * FDATA_EPO + FDATA_VY]);
-        Vec2 vB(floatData[_indexB * FDATA_EPO + FDATA_VX], 
-                floatData[_indexB * FDATA_EPO + FDATA_VY]);
-                
-        // Get rotational speeds
-        float wA_rot = floatData[_indexA * FDATA_EPO + FDATA_RS];
-        float wB_rot = floatData[_indexB * FDATA_EPO + FDATA_RS];
-        
-        // Calculate radius vectors (from center to contact point)
-        Vec2 rA_vec = contactPoint - circleCenter;
-        Vec2 rB_vec = contactPoint - boxCenter;
-        
-        // Calculate tangential velocities due to rotation
-        Vec2 tangentialVelocityA(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
-        Vec2 tangentialVelocityB(-rB_vec.y * wB_rot, rB_vec.x * wB_rot);
-        
-        // Total velocities at contact point
-        Vec2 totalVelocityA = vA + tangentialVelocityA;
-        Vec2 totalVelocityB = vB + tangentialVelocityB;
-        
-        // Store the actual relative velocity at the contact point
-        Vec2 relativeVelocity = totalVelocityB - totalVelocityA;
-
-        // Store the collision info
-        collisions.push_back(CollisionInfo{
-            true,                      // Collision detected
-            contactPoint,              // Contact point
-            normal,                    // Collision normal
-            penetrationDepth,          // Penetration depth
-            _indexA,                   // Object A index (Circle)
-            _indexB,                   // Object B index (Box)
-            relativeVelocity,          // Correct relative velocity including rotational effects
-            0.0f                       // Friction placeholder (can be computed later)
-        });
-
-        return true;
-    }
-
-    return false;  // No collision
-}
-

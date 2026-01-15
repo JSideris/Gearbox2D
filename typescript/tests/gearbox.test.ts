@@ -12,7 +12,7 @@ describe('Gearbox constants', () => {
   });
 
   test('BODY_TYPES should be defined correctly', () => {
-    expect(BODY_TYPES.RIGID_BODY).toBe(0);
-    expect(BODY_TYPES.FIXED_OBJECT).toBe(2);
+    expect(BODY_TYPES.DYNAMIC_OBJECT).toBe(0);
+    expect(BODY_TYPES.FIXED_OBJECT).toBe(1);
   });
 });

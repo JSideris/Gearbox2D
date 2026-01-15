@@ -8,7 +8,7 @@ public:
     Vec2 localAnchorA;
     Vec2 localAnchorB;
 
-    HingeJoint(int id, PhysicalObject* a, PhysicalObject* b, Vec2 anchorA, Vec2 anchorB);
+    HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB);
 
     void preSolve(float dt) override;
     void solve() override;

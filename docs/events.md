@@ -7,11 +7,15 @@ Gearbox2D provides an event system to react to changes in the physics world, suc
 To improve performance, events are opt-in per object. You must set `wantsEvents: true` when creating an object to receive events for it.
 
 ```typescript
-const obj = world.makeObject({
-  shape: gearbox.SHAPES.CIRCLE,
-  radius: 1,
-  wantsEvents: true // Enable events for this object
+const obj = world.makeBody(id, {
+  type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+  x: 5, y: 5
 });
+obj.addFixture(id, {
+  shape: gearbox.shapes.CIRCLE,
+  radius: 1,
+});
+// Note: Events are currently enabled globally on the World instance.
 ```
 
 ## Global Event Handlers
@@ -20,12 +24,12 @@ You can set global handlers on the `World` instance to listen for events from al
 
 ### Collision Events
 
-*   `onCollisionStart(idA, idB, impulse)`: Fired when two objects begin colliding.
-*   `onCollisionEnd(idA, idB, impulse)`: Fired when two objects stop colliding.
+*   `onCollisionStart(idA, idB, fIdA, fIdB, impulse)`: Fired when two fixtures begin colliding.
+*   `onCollisionEnd(idA, idB, fIdA, fIdB)`: Fired when two fixtures stop colliding.
 
 ```typescript
-world.onCollisionStart = (idA, idB, impulse) => {
-  console.log(`Objects ${idA} and ${idB} started colliding with impulse ${impulse}`);
+world.onCollisionStart = (idA, idB, fIdA, fIdB, impulse) => {
+  console.log(`Body ${idA} (Fixture ${fIdA}) and Body ${idB} (Fixture ${fIdB}) started colliding.`);
 };
 ```
 
@@ -46,10 +50,11 @@ world.onWake = (id) => {
 
 ## Per-Object Event Handlers
 
-Alternatively, you can set event handlers directly on `PhysicalObject` instances.
+Alternatively, you can set event handlers directly on `Body` instances.
 
 ```typescript
-const obj = world.makeObject({ /* ... */, wantsEvents: true });
+const obj = world.makeBody(id, { x: 5, y: 5 });
+obj.addFixture(id, { shape: gearbox.shapes.CIRCLE, radius: 1 });
 
 obj.onSleep = () => {
   console.log("I am going to sleep!");

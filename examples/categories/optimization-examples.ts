@@ -6,7 +6,7 @@ let nextId = 1;
 
 export const optimizationExamples = [
     new Example({
-        name: "Sleep and Islands",
+        name: "⚠ Sleep and Islands",
         key: "sleep-and-islands",
         description: [
             "**Sleep** optimization in **Gearbox2D** uses a movement-based heuristic computed during the kinematics step.",
@@ -22,16 +22,17 @@ export const optimizationExamples = [
             simulationTime = 3;
             nextId = 0;
 
-            world.makeObject(nextId++, {
+            world.makeBody(nextId++, {
                 x: 5,
                 y: 8.50,
-                width: 20,
-                height: 1,
                 vx: 0.0,
                 vy: 0.0,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 mass: 2, 
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
+                width: 20,
+                height: 1,
             });
         },
         // Once collisions are a bit more stable, the number of colliding objects can be doubled.
@@ -41,17 +42,19 @@ export const optimizationExamples = [
             let numbSeconds = Math.floor(simulationTime / 3);
             if(numbSeconds > nextId){
                 if(nextId < nObjects){
-                    world.makeObject(nextId++, {
+                    const bodyId = nextId++;
+                    world.makeBody(bodyId, {
                         x: 5,
                         y: 0,
                         r: (Math.random() - 0.5) * 0.1, // Add small random rotation
-                        width: 6,
-                        height: 0.5,
                         vx: 0,
                         vy: 0,
-                        shape: gearbox.shapes.BOX,
-                        type: gearbox.bodyTypes.RIGID_BODY,
+                        type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                         mass: 0.2, 
+                    }).addFixture({
+                        shape: gearbox.shapes.BOX,
+                        width: 6,
+                        height: 0.5,
                         sFriction: 10,
                         kFriction: 10,
                     });
@@ -70,26 +73,28 @@ export const optimizationExamples = [
         ],
         onInit: (world)=>{
 
-            world.makeObject(1, {
+            world.makeBody(1, {
                 x: 10,
                 y: 10,
-                radius: 1,
                 vx: -5.0,
                 vy: -5.0,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 0.2, 
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 1,
                 restitution: 0,
             });
-            world.makeObject(2, {
+            world.makeBody(2, {
                 x: 0,
                 y: 0,
-                radius: 1,
                 vx: 5.0,
                 vy: 5.0,
-                shape: gearbox.shapes.CIRCLE,
-                type: gearbox.bodyTypes.RIGID_BODY,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 0.2, 
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 1,
                 restitution: 0,
             });
         },
@@ -97,5 +102,5 @@ export const optimizationExamples = [
         onTick: (world, dt)=>{
         }
     }),
-    // BVH Biasing.
+    // TODO: BVH Biasing.
 ];

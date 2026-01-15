@@ -1,21 +1,83 @@
 #pragma once
 
-#define LIVE_INT_EPO 6
-#define LIVE_INT_ID 0
-#define LIVE_INT_SHAPE 1
-#define LIVE_INT_TYPE 2
-#define LIVE_INT_HAS_COLLISION 3
-#define LIVE_INT_CATEGORY_BITS 4
-#define LIVE_INT_MASK_BITS 5
+// --- Body Data Layout ---
+#define BODY_IDATA_EPO 4
+#define BODY_IDATA_ID 0
+#define BODY_IDATA_TYPE 1
+#define BODY_IDATA_FLAGS 2
+#define BODY_IDATA_FIXTURE_COUNT 3
 
-// Int flags
-// Shape and Object Type
+#define BODY_FDATA_EPO 28
+#define BODY_FDATA_X 0
+#define BODY_FDATA_Y 1
+#define BODY_FDATA_R 2
+#define BODY_FDATA_VX 3
+#define BODY_FDATA_VY 4
+#define BODY_FDATA_RS 5
+#define BODY_FDATA_M 6
+#define BODY_FDATA_IM 7
+#define BODY_FDATA_G_SCALE 8
+#define BODY_FDATA_DAMPING 9
+#define BODY_FDATA_ANGULAR_DAMPING 10
+#define BODY_FDATA_FX 11
+#define BODY_FDATA_FY 12
+#define BODY_FDATA_IX 13
+#define BODY_FDATA_IY 14
+#define BODY_FDATA_IA 15
+#define BODY_FDATA_NFX 16
+#define BODY_FDATA_NFY 17
+#define BODY_FDATA_NIX 18
+#define BODY_FDATA_NIY 19
+#define BODY_FDATA_NIA 20
+#define BODY_FDATA_INV_INERTIA 21
+#define BODY_FDATA_PREV_X 22
+#define BODY_FDATA_PREV_Y 23
+#define BODY_FDATA_PREV_R 24
+#define BODY_FDATA_SLEEP_TIMER 25
+#define BODY_FDATA_ERR_ACC_X 26
+#define BODY_FDATA_ERR_ACC_R 27 // Combined X/Y and R
+
+// --- Fixture Data Layout ---
+#define FIXTURE_IDATA_EPO 6
+#define FIXTURE_IDATA_ID 0
+#define FIXTURE_IDATA_BODY_INDEX 1
+#define FIXTURE_IDATA_SHAPE 2
+#define FIXTURE_IDATA_CATEGORY_BITS 3
+#define FIXTURE_IDATA_MASK_BITS 4
+#define FIXTURE_IDATA_FLAGS 5
+
+#define FIXTURE_FDATA_EPO 16
+#define FIXTURE_FDATA_LOCAL_X 0
+#define FIXTURE_FDATA_LOCAL_Y 1
+#define FIXTURE_FDATA_LOCAL_R 2
+#define FIXTURE_FDATA_W 3
+#define FIXTURE_FDATA_RADIUS 3
+#define FIXTURE_FDATA_H 4
+#define FIXTURE_FDATA_RESTITUTION 5
+#define FIXTURE_FDATA_S_FRICTION 6
+#define FIXTURE_FDATA_K_FRICTION 7
+#define FIXTURE_FDATA_AX1 8
+#define FIXTURE_FDATA_AY1 9
+#define FIXTURE_FDATA_AX2 10
+#define FIXTURE_FDATA_AY2 11
+#define FIXTURE_FDATA_MAX_EXTENT 12
+#define FIXTURE_FDATA_DENSITY 13
+
+// Collision type and Body Flags
+#define HAS_AABB_COLLISION 0x1
+#define HAS_PHYSICAL_COLLISION 0x2
+#define IS_SLEEPING 0x4
+#define HAS_FIXED_MASS 0x8
+#define WANTS_EVENTS 0x10
+
 enum class ObjectType {
-    RIGID_BODY,
-    SENSOR,
+    DYNAMIC_OBJECT,
     FIXED_OBJECT,
     KINEMATIC_OBJECT
 };
+
+#define FIXTURE_FLAG_IS_SENSOR 0x4
+#define FIXTURE_FLAG_WANTS_EVENTS 0x8
 
 enum class ObjectShape {
     POINT,
@@ -27,53 +89,9 @@ enum class ObjectShape {
     POLYGON
 };
 
-// Collision type.
-#define HAS_AABB_COLLISION 0x1
-#define HAS_PHYSICAL_COLLISION 0x2
-
 enum class EventType {
     COLLISION_START = 0,
     COLLISION_END = 1,
     SLEEP = 2,
     WAKE = 3
 };
-
-#define FDATA_EPO 36 // Number of float data per object.
-
-#define FDATA_X 0 // Position
-#define FDATA_Y 1 // Position
-#define FDATA_R 2 // Rotation
-#define FDATA_VX 3 // Velocity
-#define FDATA_VY 4 // Velocity
-#define FDATA_RS 5 // Rotation speed // Not sure what the units are. Need to double-check.
-#define FDATA_M 6 // Mass
-#define FDATA_IM 7 // Inverse Mass
-#define FDATA_G_SCALE 8 // How much gravity affects this object.
-#define FDATA_RESTITUTION 9 // Bounciness
-#define FDATA_S_FRICTION 10 // Static friction
-#define FDATA_K_FRICTION 11 // Kinetic friction
-#define FDATA_DAMPING 12 // Linear damping (air resistance)
-#define FDATA_ANGULAR_DAMPING 13 // Angular damping
-#define FDATA_W 14 // Width
-#define FDATA_RADIUS 14 // Radius
-#define FDATA_H 15 // Height
-#define FDATA_FX 16 // Force accumulator (READ ONLY)
-#define FDATA_FY 17 // Force accumulator (READ ONLY)
-#define FDATA_IX 18 // Impulse accumulator X (READ ONLY)
-#define FDATA_IY 19 // Impulse accumulator Y (READ ONLY)
-#define FDATA_AX1 20 // AABB Info
-#define FDATA_AY1 21
-#define FDATA_AX2 22
-#define FDATA_AY2 23
-#define FDATA_NFX 24
-#define FDATA_NFY 25
-#define FDATA_NIX 26
-#define FDATA_NIY 27
-#define FDATA_IA 28 // Angular impulse accumulator (READ ONLY)
-#define FDATA_NIA 29 // Next Angular Impulse accumulator (for external application)
-#define FDATA_INV_INERTIA 30 // Cached inverse inertia (READ ONLY)
-#define FDATA_MAX_EXTENT 31 // Max distance from center for AABB padding
-#define FDATA_PREV_X 32 // Previous state for interpolation
-#define FDATA_PREV_Y 33
-#define FDATA_PREV_R 34
-// Always increase FDATA_EPO when adding new fields.

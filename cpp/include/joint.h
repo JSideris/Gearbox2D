@@ -3,15 +3,15 @@
 
 #include "vec2.h"
 
-class PhysicalObject;
+class Body;
 
 class Joint {
 public:
     int id;
-    PhysicalObject* bodyA;
-    PhysicalObject* bodyB;
+    Body* bodyA;
+    Body* bodyB;
 
-    Joint(int id, PhysicalObject* a, PhysicalObject* b) : id(id), bodyA(a), bodyB(b) {}
+    Joint(int id, Body* a, Body* b) : id(id), bodyA(a), bodyB(b) {}
     virtual ~Joint() {}
 
     virtual void preSolve(float dt) = 0;
@@ -38,10 +38,9 @@ public:
     virtual void setLocalAnchorB(Vec2 b) {}
     virtual Vec2 getLocalAnchorB() const { return Vec2(0, 0); }
 
-    virtual bool isConnectedTo(PhysicalObject* body) const {
+    virtual bool isConnectedTo(Body* body) const {
         return bodyA == body || bodyB == body;
     }
 };
 
 #endif
-

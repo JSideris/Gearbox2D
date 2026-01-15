@@ -76,30 +76,36 @@ export const fruitMergeExample = new Example({
         const thickness = 0.2;
 
         // Bucket Bottom
-        world.makeObject(nextId++, {
+        const bucketBottomId = nextId++;
+        world.makeBody(bucketBottomId, {
             x: bx, y: by + bh / 2 + thickness / 2,
-            shape: gearbox.shapes.BOX,
-            width: bw + thickness * 2, height: thickness,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
+        }).addFixture(bucketBottomId, {
+            shape: gearbox.shapes.BOX,
+            width: bw + thickness * 2, height: thickness,
         });
 
         // Left Wall
-        world.makeObject(nextId++, {
+        const leftWallId = nextId++;
+        world.makeBody(leftWallId, {
             x: bx - bw / 2 - thickness / 2, y: by,
-            shape: gearbox.shapes.BOX,
-            width: thickness, height: bh,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
+        }).addFixture(leftWallId, {
+            shape: gearbox.shapes.BOX,
+            width: thickness, height: bh,
         });
 
         // Right Wall
-        world.makeObject(nextId++, {
+        const rightWallId = nextId++;
+        world.makeBody(rightWallId, {
             x: bx + bw / 2 + thickness / 2, y: by,
-            shape: gearbox.shapes.BOX,
-            width: thickness, height: bh,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
+        }).addFixture(rightWallId, {
+            shape: gearbox.shapes.BOX,
+            width: thickness, height: bh,
         });
 
         const spawnFruit = (x: number, y: number, level: number, isInitial: boolean = false) => {
@@ -107,15 +113,17 @@ export const fruitMergeExample = new Example({
             
             const fruitDef = FRUIT_LEVELS[level];
             const id = nextId++;
-            const fruit = world.makeObject(id, {
+            const fruit = world.makeBody(id, {
                 x, y,
-                shape: gearbox.shapes.CIRCLE,
-                radius: fruitDef.radius,
                 mass: fruitDef.mass,
                 color: fruitDef.color,
+            });
+            fruit.addFixture(id, {
+                shape: gearbox.shapes.CIRCLE,
+                radius: fruitDef.radius,
                 restitution: 0.2,
-                staticFriction: 0.5,
-                kineticFriction: 0.3,
+                sFriction: 0.5,
+                kFriction: 0.3,
             });
 
             if (fruit) {
@@ -150,8 +158,8 @@ export const fruitMergeExample = new Example({
                 gameState.mergingIds.add(idA);
                 gameState.mergingIds.add(idB);
 
-                const objA = world.getObjectById(idA);
-                const objB = world.getObjectById(idB);
+                const objA = world.getBodyById(idA);
+                const objB = world.getBodyById(idB);
 
                 if (objA && objB) {
                     const midX = (objA.x + objB.x) / 2;
@@ -248,7 +256,7 @@ export const fruitMergeExample = new Example({
         });
 
         // Check for Fall Out (Game Over)
-        world.iterateObjects((obj) => {
+        world.iterateBodies((obj) => {
             if (gameState.fruitIds.has(obj.id)) {
                 if (obj.y > 12) { // Fell below the bucket
                     gameState.isGameOver = true;

@@ -3,7 +3,7 @@
 Understanding these three fundamental concepts will help you build stable and predictable simulations in Gearbox2D.
 
 ## 1. The World
-The `World` is the heart of your simulation. It is the container for all physical objects, joints, and global settings like gravity.
+The `World` is the heart of your simulation. It is the container for all bodys, joints, and global settings like gravity.
 
 ```javascript
 const world = gearbox.makeWorld();

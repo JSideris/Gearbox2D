@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "world.h"
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 #include "hinge-joint.h"
 #include "gear-joint.h"
 
@@ -12,7 +13,7 @@ protected:
     GearJointTest() {
         options.properties["x"] = 0.0f;
         options.properties["y"] = 0.0f;
-        options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+        options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
         options.properties["shape"] = static_cast<int>(ObjectShape::BOX);
         options.properties["width"] = 1.0f;
         options.properties["height"] = 1.0f;
@@ -26,16 +27,16 @@ TEST_F(GearJointTest, GearRatioConstraint) {
     
     // Static body to anchor both hinges
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idStatic, options);
+    world.makeBody(idStatic, options);
     
     // First gear body
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["x"] = 1.0f;
-    world.makeObject(id1, options);
+    world.makeBody(id1, options);
     
     // Second gear body
     options.properties["x"] = -1.0f;
-    world.makeObject(id2, options);
+    world.makeBody(id2, options);
     
     // Hinge for first gear
     world.createHingeJoint(hinge1Id, idStatic, id1, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -48,8 +49,8 @@ TEST_F(GearJointTest, GearRatioConstraint) {
     // -> w2 + 2.0 * w1 = 0
     world.createGearJoint(gearId, hinge1Id, hinge2Id, 2.0f);
     
-    PhysicalObject* obj1 = world.getObject(id1);
-    PhysicalObject* obj2 = world.getObject(id2);
+    Body* obj1 = world.getBody(id1);
+    Body* obj2 = world.getBody(id2);
     
     // Rotate first gear
     obj1->setAngularVelocity(1.0f);
@@ -68,10 +69,10 @@ TEST_F(GearJointTest, GearCleanup) {
     int hinge1Id = 101, hinge2Id = 102, gearId = 200;
     
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idStatic, options);
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
-    world.makeObject(id1, options);
-    world.makeObject(id2, options);
+    world.makeBody(idStatic, options);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    world.makeBody(id1, options);
+    world.makeBody(id2, options);
     
     world.createHingeJoint(hinge1Id, idStatic, id1, 0.0f, 0.0f, 0.0f, 0.0f);
     world.createHingeJoint(hinge2Id, idStatic, id2, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -98,16 +99,16 @@ TEST_F(GearJointTest, UpdateRatioAtRuntime) {
     
     // Static body to anchor both hinges
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeObject(idStatic, options);
+    world.makeBody(idStatic, options);
     
     // First gear body
-    options.properties["type"] = static_cast<int>(ObjectType::RIGID_BODY);
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["x"] = 1.0f;
-    world.makeObject(id1, options);
+    world.makeBody(id1, options);
     
     // Second gear body
     options.properties["x"] = -1.0f;
-    world.makeObject(id2, options);
+    world.makeBody(id2, options);
     
     // Hinge for first gear
     world.createHingeJoint(hinge1Id, idStatic, id1, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -125,8 +126,8 @@ TEST_F(GearJointTest, UpdateRatioAtRuntime) {
     joint->setRatio(0.5f);
     EXPECT_EQ(joint->getRatio(), 0.5f);
     
-    PhysicalObject* obj1 = world.getObject(id1);
-    PhysicalObject* obj2 = world.getObject(id2);
+    Body* obj1 = world.getBody(id1);
+    Body* obj2 = world.getBody(id2);
     
     // Rotate first gear
     obj1->setAngularVelocity(1.0f);

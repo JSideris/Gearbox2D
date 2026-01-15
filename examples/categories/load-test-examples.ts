@@ -19,59 +19,63 @@ export const loadTestExamples = [
             let length = 11;
 
             // Walls
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 0,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: length,
                 height: thickness,
                 restitution: 0.99,
-                
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 10,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: length,
                 height: thickness,
                 restitution: 0.99,
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 0,
                 y: 5,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: thickness,
                 height: length,
                 restitution: 0.99,
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 10,
                 y: 5,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: thickness,
                 height: length,
                 restitution: 0.99,
             });
 
             for(let i = 0; i < 2000; i++){
-
-                world.makeObject(id++, {
+                const bodyId = id++;
+                world.makeBody(bodyId, {
                     x: Math.random() * 8 + 1,
                     y: Math.random() * 8 + 1,
                     vx: Math.random() * 1.00 - .50,
                     vy: Math.random() * 1.00 - .50,
                     r: Math.PI / 2 * Math.random(),
                     rs: (Math.random() - 0.5) * 20.00,
-                    shape: gearbox.shapes.CIRCLE,
-                    type: gearbox.bodyTypes.RIGID_BODY,
-                    radius: .05,
+                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: 0.5,
                     linearDamping: 0.0,
                     angularDamping: 0.5,
+                }).addFixture({
+                    shape: gearbox.shapes.CIRCLE,
+                    radius: .05,
                     restitution: 0.5,
                 });
             }
@@ -96,60 +100,73 @@ export const loadTestExamples = [
             let length = 11;
 
             // Walls
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 0,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: length,
                 height: thickness,
-                restitution: 0.99,
-                
+                restitution: 1.0,
+                sFriction: 0,
+                kFriction: 0,
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 5,
                 y: 10,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: length,
                 height: thickness,
-                restitution: 0.99,
+                restitution: 1.0,
+                sFriction: 0,
+                kFriction: 0,
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 0,
                 y: 5,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: thickness,
                 height: length,
-                restitution: 0.99,
+                restitution: 1.0,
+                sFriction: 0,
+                kFriction: 0,
             });
-            world.makeObject(id++, {
+            world.makeBody(id++, {
                 x: 10,
                 y: 5,
-                shape: gearbox.shapes.AABB,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.AABB,
                 width: thickness,
                 height: length,
-                restitution: 0.99,
+                restitution: 1.0,
+                sFriction: 0,
+                kFriction: 0,
             });
 
             for(let i = 0; i < nFleas; i++){
-
-                world.makeObject(id++, {
+                const bodyId = id++;
+                world.makeBody(bodyId, {
                     x: Math.random() * 8 + 1,
                     y: Math.random() * 8 + 1,
                     vx: Math.random() * 10.00 - 5.0,
                     // vy: Math.random() * 1.00 - .50,
                     r: Math.PI / 2 * Math.random(),
-                    shape: gearbox.shapes.POINT,
-                    type: gearbox.bodyTypes.RIGID_BODY,
-                    radius: .05,
+                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: 2,
                     linearDamping: 0.0,
                     angularDamping: 0.5,
-
-                    restitution: 0.99,
+                }).addFixture({
+                    shape: gearbox.shapes.POINT,
+                    radius: .05,
+                    restitution: 1.0,
+                    sFriction: 0,
+                    kFriction: 0,
                 });
             }
         },

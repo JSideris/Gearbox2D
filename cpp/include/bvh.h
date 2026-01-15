@@ -23,14 +23,16 @@ enum CollisionCategory : uint32_t {
 
 // Object properties that affect collision behavior
 struct CollisionProperties {
-    uint32_t category;      // What this object is
-    uint32_t collidesWith;  // What it can collide with
+    uint32_t userCategory;      // What this object is (user defined)
+    uint32_t userMask;          // What it can collide with (user defined)
+    uint32_t systemCategory;    // Internal engine category (Static, Dynamic, Point, etc.)
     bool isSleeping;
-    bool isRigid;          // For sensor filtering
+    bool isRigid;               // For sensor filtering
     
     CollisionProperties() 
-        : category(CATEGORY_DYNAMIC), 
-          collidesWith(CATEGORY_ALL),
+        : userCategory(0xFFFFFFFF), 
+          userMask(0xFFFFFFFF),
+          systemCategory(CATEGORY_DYNAMIC),
           isSleeping(false),
           isRigid(true) {}
     
@@ -39,45 +41,49 @@ struct CollisionProperties {
         if (isSleeping && other.isSleeping) return false;
         
         // Points don't collide with points
-        if ((category & CATEGORY_POINT) && (other.category & CATEGORY_POINT)) {
+        if ((systemCategory & CATEGORY_POINT) && (other.systemCategory & CATEGORY_POINT)) {
             return false;
         }
         
         // Non-rigid sensors don't collide with other non-rigid sensors
-        if ((category & CATEGORY_SENSOR) && (other.category & CATEGORY_SENSOR) &&
+        if ((systemCategory & CATEGORY_SENSOR) && (other.systemCategory & CATEGORY_SENSOR) &&
             !isRigid && !other.isRigid) {
             return false;
         }
         
-        // Check collision masks
-        return (category & other.collidesWith) && (other.category & collidesWith);
+        // Check user collision masks
+        return (userCategory & other.userMask) && (other.userCategory & userMask);
     }
 };
 
 // Aggregated properties for internal nodes
 struct AggregatedProperties {
-    uint32_t containsCategories;   // OR of all child categories
-    uint32_t mayCollideWith;       // OR of all child collidesWith masks
-    bool containsAwake;            // Any awake objects in subtree?
-    bool containsRigid;            // Any rigid objects in subtree?
+    uint32_t containsSystemCategories; // OR of all child system categories
+    uint32_t containsUserCategories;   // OR of all child user categories
+    uint32_t mayCollideWithUserMask;   // OR of all child user masks
+    bool containsAwake;                // Any awake objects in subtree?
+    bool containsRigid;                // Any rigid objects in subtree?
     
     AggregatedProperties() 
-        : containsCategories(0), 
-          mayCollideWith(0),
+        : containsSystemCategories(0), 
+          containsUserCategories(0),
+          mayCollideWithUserMask(0),
           containsAwake(false),
           containsRigid(false) {}
     
     void mergeWith(const AggregatedProperties& other) {
-        containsCategories |= other.containsCategories;
-        mayCollideWith |= other.mayCollideWith;
+        containsSystemCategories |= other.containsSystemCategories;
+        containsUserCategories |= other.containsUserCategories;
+        mayCollideWithUserMask |= other.mayCollideWithUserMask;
         containsAwake |= other.containsAwake;
         containsRigid |= other.containsRigid;
     }
     
     static AggregatedProperties fromLeaf(const CollisionProperties& props) {
         AggregatedProperties agg;
-        agg.containsCategories = props.category;
-        agg.mayCollideWith = props.collidesWith;
+        agg.containsSystemCategories = props.systemCategory;
+        agg.containsUserCategories = props.userCategory;
+        agg.mayCollideWithUserMask = props.userMask;
         agg.containsAwake = !props.isSleeping;
         agg.containsRigid = props.isRigid;
         return agg;
@@ -87,21 +93,21 @@ struct AggregatedProperties {
         // If both subtrees contain only sleeping objects, skip
         if (!containsAwake && !other.containsAwake) return false;
         
-        // Check if any objects in this subtree can collide with any in the other
-        bool thisCanCollideWithOther = (containsCategories & other.mayCollideWith) != 0;
-        bool otherCanCollideWithThis = (other.containsCategories & mayCollideWith) != 0;
+        // Check if any objects in this subtree can collide with any in the other based on user masks
+        bool thisCanCollideWithOther = (containsUserCategories & other.mayCollideWithUserMask) != 0;
+        bool otherCanCollideWithThis = (other.containsUserCategories & mayCollideWithUserMask) != 0;
         
         if (!thisCanCollideWithOther || !otherCanCollideWithThis) return false;
         
         // Special case: if both subtrees contain only points, skip
-        if (containsCategories == CATEGORY_POINT && 
-            other.containsCategories == CATEGORY_POINT) {
+        if (containsSystemCategories == CATEGORY_POINT && 
+            other.containsSystemCategories == CATEGORY_POINT) {
             return false;
         }
         
         // Special case: if both contain only non-rigid sensors, skip
-        if (containsCategories == CATEGORY_SENSOR && 
-            other.containsCategories == CATEGORY_SENSOR &&
+        if (containsSystemCategories == CATEGORY_SENSOR && 
+            other.containsSystemCategories == CATEGORY_SENSOR &&
             !containsRigid && !other.containsRigid) {
             return false;
         }
@@ -237,7 +243,7 @@ public:
 
 class Bvh {
 public:
-    // Public collision results - contains pairs of PhysicalObject pointers
+    // Public collision results - contains pairs of Fixture pointers
     std::vector<std::pair<void*, void*>> collisionPairs;
 
 private:
@@ -256,10 +262,11 @@ private:
 
         // Mask Biasing: penalize "polluting" a subtree with new categories or masks.
         // This encourages objects with similar collision profiles to cluster together.
-        uint32_t newCats = newProps.category & ~node->aggregated.containsCategories;
-        uint32_t newMasks = newProps.collidesWith & ~node->aggregated.mayCollideWith;
+        uint32_t newCats = newProps.userCategory & ~node->aggregated.containsUserCategories;
+        uint32_t newMasks = newProps.userMask & ~node->aggregated.mayCollideWithUserMask;
+        uint32_t newSystemCats = newProps.systemCategory & ~node->aggregated.containsSystemCategories;
         
-        int pollution = __builtin_popcount(newCats) + __builtin_popcount(newMasks);
+        int pollution = __builtin_popcount(newCats) + __builtin_popcount(newMasks) + __builtin_popcount(newSystemCats);
         
         // Empirical weight for mask purity vs spatial fit.
         // Weight 1.0f was found to be the "golden ratio" in performance studies.

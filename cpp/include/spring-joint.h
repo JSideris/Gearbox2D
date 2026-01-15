@@ -11,7 +11,7 @@ public:
     float frequencyHz;
     float dampingRatio;
 
-    SpringJoint(int id, PhysicalObject* a, PhysicalObject* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio);
+    SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio);
 
     void preSolve(float dt) override;
     void solve() override;
@@ -36,7 +36,7 @@ public:
 
 private:
     float impulse;
-    Vec2 u;
+    Vec2 normal;
     Vec2 rA, rB;
     float mass;
     float bias;

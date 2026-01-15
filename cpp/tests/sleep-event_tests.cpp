@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "world.h"
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 
 // Helper to create options with wantsEvents
 emscripten_val createSleepEventOptions(float x, float y, bool wantsEvents = true) {
@@ -8,7 +9,7 @@ emscripten_val createSleepEventOptions(float x, float y, bool wantsEvents = true
     options.properties["x"] = x;
     options.properties["y"] = y;
     options.properties["mass"] = 1.0f;
-    options.properties["type"] = (int)ObjectType::RIGID_BODY;
+    options.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
     options.properties["shape"] = (int)ObjectShape::CIRCLE;
     options.properties["radius"] = 1.0f;
     options.properties["wantsEvents"] = wantsEvents;
@@ -20,8 +21,8 @@ TEST(SleepEventTest, SleepAndWakeEvents) {
     world.setGravity(0.0f, 0.0f);
     
     // Create an object that wants events
-    world.makeObject(1, createSleepEventOptions(0.0f, 0.0f, true));
-    PhysicalObject* obj = world.getObject(1);
+    world.makeBody(1, createSleepEventOptions(0.0f, 0.0f, true));
+    Body* obj = world.getBody(1);
     
     // Initially awake
     EXPECT_FALSE(obj->isSleeping);
@@ -71,8 +72,8 @@ TEST(SleepEventTest, AutomaticSleepEvent) {
     
     // Create an object with a very short sleep time required
     emscripten_val options = createSleepEventOptions(0.0f, 0.0f, true);
-    world.makeObject(1, options);
-    PhysicalObject* obj = world.getObject(1);
+    world.makeBody(1, options);
+    Body* obj = world.getBody(1);
     obj->sleepTimeRequired = 0.02f; // Longer than one step (0.0166s), shorter than two (0.0333s)
     
     world.step(); // First step, timer = 0.0166
@@ -91,8 +92,8 @@ TEST(SleepEventTest, OptInMechanism) {
     world.setGravity(0.0f, 0.0f);
     
     // Object that doesn't want events
-    world.makeObject(1, createSleepEventOptions(0.0f, 0.0f, false));
-    PhysicalObject* obj = world.getObject(1);
+    world.makeBody(1, createSleepEventOptions(0.0f, 0.0f, false));
+    Body* obj = world.getBody(1);
     
     obj->sleep();
     EXPECT_EQ(world.getEventCount(), 0);

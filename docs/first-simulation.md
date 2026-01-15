@@ -52,25 +52,28 @@ async function start() {
 
     // 3. Create a static floor
     // ID: 1, Position: (5, 9), Size: 10x1
-    world.makeObject(1, {
+    world.makeBody(1, {
         x: 5,
         y: 9,
-        width: 10,
-        height: 1,
-        shape: gearbox.shapes.BOX,
         type: gearbox.bodyTypes.FIXED_OBJECT,
         color: "#444"
+    }).addFixture(1, {
+        shape: gearbox.shapes.BOX,
+        width: 10,
+        height: 1,
     });
 
     // 4. Create a dynamic falling box
     // ID: 2, Position: (5, 2), Size: 1x1
-    const box = world.makeObject(2, {
+    const box = world.makeBody(2, {
         x: 5,
         y: 2,
+        color: "#ff4444"
+    });
+    box.addFixture(2, {
+        shape: gearbox.shapes.BOX,
         width: 1,
         height: 1,
-        shape: gearbox.shapes.BOX,
-        color: "#ff4444"
     });
 
     // 5. Setup Rendering (using debug graphics)

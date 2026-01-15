@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 #include "world.h"
 
-// Helper to create options for Kinematic PhysicalObject
+// Helper to create options for Kinematic Body
 emscripten_val createKinematicOptions(float x = 0.0f, float y = 0.0f) {
     emscripten_val options;
     options.properties["x"] = x;
@@ -17,8 +18,8 @@ TEST(KinematicObjectTest, CreationAndMass) {
     World world;
     emscripten_val options = createKinematicOptions(10.0f, 20.0f);
     
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     EXPECT_EQ(obj->getId(), 1);
     EXPECT_EQ(obj->type, ObjectType::KINEMATIC_OBJECT);
@@ -32,8 +33,8 @@ TEST(KinematicObjectTest, MovementByVelocity) {
     world.setGravity(0.0f, 10.0f); // Gravity should NOT affect kinematic objects
     
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     obj->setVelocityX(10.0f);
     obj->setVelocityY(5.0f);
@@ -57,8 +58,8 @@ TEST(KinematicObjectTest, MovementByVelocity) {
 TEST(KinematicObjectTest, IgnoresForces) {
     World world;
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     obj->applyForce(100.0f, 100.0f);
     world.step();
@@ -72,8 +73,8 @@ TEST(KinematicObjectTest, IgnoresForces) {
 TEST(KinematicObjectTest, IgnoresImpulses) {
     World world;
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     obj->applyImpulse(100.0f, 100.0f, 0.0f, 0.0f);
     world.step();
@@ -88,8 +89,8 @@ TEST(KinematicObjectTest, RotationalStability) {
     World world;
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
     options.properties["angularDamping"] = 0.5f; // High damping
-    int index = world.makeObject(1, options);
-    PhysicalObject* obj = world.getObjectAtIndex(index);
+    int index = world.makeBody(1, options);
+    Body* obj = world.getBodyAtIndex(index);
     
     float initialRS = 10.0f;
     obj->setAngularVelocity(initialRS);

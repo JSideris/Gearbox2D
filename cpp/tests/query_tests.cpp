@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "world.h"
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 #include "constants.h"
 
 // Helper to create options for various shapes
@@ -16,7 +17,7 @@ static emscripten_val createShapeOptions(float x, float y, ObjectShape shape, fl
         options.properties["width"] = w;
         options.properties["height"] = h;
     }
-    options.properties["type"] = (int)ObjectType::RIGID_BODY;
+    options.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
     options.properties["mass"] = 1.0f;
     return options;
 }
@@ -24,9 +25,9 @@ static emscripten_val createShapeOptions(float x, float y, ObjectShape shape, fl
 TEST(QueryTest, CircleHitTest) {
     World world;
     // Circle at (5, 5) with radius 1
-    world.makeObject(1, createShapeOptions(5.0f, 5.0f, ObjectShape::CIRCLE, 1.0f));
+    world.makeBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::CIRCLE, 1.0f));
     
-    PhysicalObject* obj = world.getObject(1);
+    Body* obj = world.getBody(1);
     
     // Center should be hit
     EXPECT_TRUE(obj->testPoint(5.0f, 5.0f));
@@ -39,9 +40,9 @@ TEST(QueryTest, CircleHitTest) {
 TEST(QueryTest, AabbHitTest) {
     World world;
     // AABB at (5, 5) with width 2, height 2 (range 4-6)
-    world.makeObject(1, createShapeOptions(5.0f, 5.0f, ObjectShape::AABB, 2.0f, 2.0f));
+    world.makeBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::AABB, 2.0f, 2.0f));
     
-    PhysicalObject* obj = world.getObject(1);
+    Body* obj = world.getBody(1);
     
     EXPECT_TRUE(obj->testPoint(5.0f, 5.0f));
     EXPECT_TRUE(obj->testPoint(4.1f, 4.1f));
@@ -53,9 +54,9 @@ TEST(QueryTest, AabbHitTest) {
 TEST(QueryTest, BoxHitTest) {
     World world;
     // Box at (5, 5) with width 2, height 1, rotated 0
-    world.makeObject(1, createShapeOptions(5.0f, 5.0f, ObjectShape::BOX, 2.0f, 1.0f, 0.0f));
+    world.makeBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::BOX, 2.0f, 1.0f, 0.0f));
     
-    PhysicalObject* obj = world.getObject(1);
+    Body* obj = world.getBody(1);
     
     EXPECT_TRUE(obj->testPoint(5.5f, 5.2f));
     EXPECT_FALSE(obj->testPoint(5.5f, 5.6f)); // Outside height (half-height is 0.5)
@@ -71,14 +72,14 @@ TEST(QueryTest, BoxHitTest) {
 TEST(QueryTest, WorldQueryPoint) {
     World world;
     // Obj 1: Circle at (2, 2) rad 1
-    world.makeObject(1, createShapeOptions(2.0f, 2.0f, ObjectShape::CIRCLE, 1.0f));
+    world.makeBody(1, createShapeOptions(2.0f, 2.0f, ObjectShape::CIRCLE, 1.0f));
     // Obj 2: Box at (2, 2) width 0.5, height 0.5
-    world.makeObject(2, createShapeOptions(2.0f, 2.0f, ObjectShape::BOX, 0.5f, 0.5f));
+    world.makeBody(2, createShapeOptions(2.0f, 2.0f, ObjectShape::BOX, 0.5f, 0.5f));
     // Obj 3: Circle far away at (10, 10)
-    world.makeObject(3, createShapeOptions(10.0f, 10.0f, ObjectShape::CIRCLE, 1.0f));
+    world.makeBody(3, createShapeOptions(10.0f, 10.0f, ObjectShape::CIRCLE, 1.0f));
     
     // Query at (2, 2) should return 1 and 2
-    std::vector<int> hits = world.queryPoint(2.0f, 2.0f);
+    std::vector<int> hits = world.queryBodiesAtPoint(2.0f, 2.0f);
     EXPECT_EQ(hits.size(), 2);
     
     // Check if both IDs are present
@@ -91,12 +92,12 @@ TEST(QueryTest, WorldQueryPoint) {
     EXPECT_TRUE(found2);
     
     // Query at (10, 10) should return 3
-    hits = world.queryPoint(10.0f, 10.0f);
+    hits = world.queryBodiesAtPoint(10.0f, 10.0f);
     EXPECT_EQ(hits.size(), 1);
     EXPECT_EQ(hits[0], 3);
     
     // Query at (5, 5) should return nothing
-    hits = world.queryPoint(5.0f, 5.0f);
+    hits = world.queryBodiesAtPoint(5.0f, 5.0f);
     EXPECT_EQ(hits.size(), 0);
 }
 
@@ -105,24 +106,24 @@ TEST(QueryTest, WorldQueryWithMask) {
     
     auto opt1 = createShapeOptions(5.0f, 5.0f, ObjectShape::CIRCLE, 1.0f);
     opt1.properties["categoryBits"] = 0x1;
-    world.makeObject(1, opt1);
+    world.makeBody(1, opt1);
     
     auto opt2 = createShapeOptions(5.0f, 5.0f, ObjectShape::BOX, 1.0f, 1.0f);
     opt2.properties["categoryBits"] = 0x2;
-    world.makeObject(2, opt2);
+    world.makeBody(2, opt2);
     
     // Query with mask 0x1 (should only hit obj 1)
-    std::vector<int> hits = world.queryPoint(5.0f, 5.0f, 0x1);
+    std::vector<int> hits = world.queryBodiesAtPoint(5.0f, 5.0f, 0x1);
     EXPECT_EQ(hits.size(), 1);
     EXPECT_EQ(hits[0], 1);
     
     // Query with mask 0x2 (should only hit obj 2)
-    hits = world.queryPoint(5.0f, 5.0f, 0x2);
+    hits = world.queryBodiesAtPoint(5.0f, 5.0f, 0x2);
     EXPECT_EQ(hits.size(), 1);
     EXPECT_EQ(hits[0], 2);
     
     // Query with mask 0x3 (should hit both)
-    hits = world.queryPoint(5.0f, 5.0f, 0x3);
+    hits = world.queryBodiesAtPoint(5.0f, 5.0f, 0x3);
     EXPECT_EQ(hits.size(), 2);
 }
 

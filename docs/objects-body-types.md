@@ -1,21 +1,24 @@
 # Body Types
 
-In Gearbox2D, every physical object has a body type that determines how it interacts with the physics world. You can set the body type when creating an object using the `type` property.
+In Gearbox2D, every body has a body type that determines how it interacts with the physics world. You can set the body type when creating an object using the `type` property.
 
 ## Available Body Types
 
 ### Rigid Body (Dynamic)
-`gearbox.bodyTypes.RIGID_BODY`
+`gearbox.bodyTypes.DYNAMIC_OBJECT`
 
 Dynamic bodies are fully simulated by the physics engine. They are affected by gravity, external forces, impulses, and collisions with other objects. This is the default type for most interactive objects like players, boxes, or debris.
 
 ```typescript
-world.makeObject(nextId++, {
+const bodyId = nextId++;
+const body = world.makeBody(bodyId, {
     x: 5, y: 5,
-    shape: gearbox.shapes.CIRCLE,
-    radius: 0.5,
     mass: 1.0,
-    type: gearbox.bodyTypes.RIGID_BODY
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT
+});
+body.addFixture(bodyId, {
+    shape: gearbox.shapes.CIRCLE,
+    radius: 0.5
 });
 ```
 
@@ -25,11 +28,14 @@ world.makeObject(nextId++, {
 Fixed objects have infinite mass and are immovable by the physics simulation. They do not respond to forces or impulses. They are typically used for static environment elements like ground, walls, or platforms. While they can be moved manually by setting their position, they do not have velocity-based movement.
 
 ```typescript
-world.makeObject(nextId++, {
+const bodyId = nextId++;
+const body = world.makeBody(bodyId, {
     x: 5, y: 9,
-    width: 10, height: 1,
-    shape: gearbox.shapes.AABB,
     type: gearbox.bodyTypes.FIXED_OBJECT
+});
+body.addFixture(bodyId, {
+    shape: gearbox.shapes.AABB,
+    width: 10, height: 1
 });
 ```
 
@@ -39,24 +45,60 @@ world.makeObject(nextId++, {
 Kinematic objects are a hybrid between dynamic and fixed objects. Like fixed objects, they have infinite mass and are unaffected by forces or collisions. However, they can have velocity and will move based on that velocity. This makes them ideal for moving platforms, elevators, or character-controlled objects that should "push" other objects without being pushed back.
 
 ```typescript
-world.makeObject(nextId++, {
+const bodyId = nextId++;
+const body = world.makeBody(bodyId, {
     x: 2, y: 5,
     vx: 2.0, // Moves horizontally
-    width: 2, height: 0.5,
-    shape: gearbox.shapes.BOX,
     type: gearbox.bodyTypes.KINEMATIC_OBJECT
+});
+body.addFixture(bodyId, {
+    shape: gearbox.shapes.BOX,
+    width: 2, height: 0.5
 });
 ```
 
-### Sensor
-`gearbox.bodyTypes.SENSOR`
+## Sensors
 
-Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks. Note that sensors still require collision categories and masks to be configured to interact with specific groups.```typescript
-world.makeObject(nextId++, {
+Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks.
+
+In **Gearbox2D**, a sensor is not a body type, but a property of a **Fixture**. This allows you to attach sensors to any type of body:
+- **Static Sensor:** A fixed trigger zone (Fixed Body).
+- **Moving Sensor:** An elevator or platform trigger (Kinematic Body).
+- **Attached Sensor:** A vision cone or proximity alert attached to a player (Dynamic Body).
+
+To create a sensor, set the `isSensor` property to `true` on the fixture options.
+
+### Example: Static Trigger Zone
+```typescript
+const bodyId = nextId++;
+world.makeBody(bodyId, {
     x: 5, y: 5,
+    type: gearbox.bodyTypes.FIXED_OBJECT,
+}).addFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 2.0,
-    type: gearbox.bodyTypes.SENSOR,
-    wantsEvents: true // Opt-in to collision events
+    isSensor: true // This fixture will trigger events but not block movement
+});
+```
+
+### Example: Attached Vision Cone
+```typescript
+const player = world.makeBody(nextId++, {
+    x: 5, y: 5,
+    type: gearbox.bodyTypes.DYNAMIC_OBJECT
+});
+
+// Physical body
+player.addFixture({
+    shape: gearbox.shapes.CIRCLE,
+    radius: 0.5
+});
+
+// Vision cone (sensor)
+player.addFixture({
+    shape: gearbox.shapes.BOX,
+    width: 4, height: 2,
+    localX: 2.5, // Positioned in front of the player
+    isSensor: true
 });
 ```

@@ -12,13 +12,13 @@ TEST(BvhBiasingTest, ClusteringByMask) {
 
     // Profile A
     CollisionProperties propsA;
-    propsA.category = 1 << 4;
-    propsA.collidesWith = 1 << 4;
+    propsA.userCategory = 1 << 4;
+    propsA.userMask = 1 << 4;
 
     // Profile B
     CollisionProperties propsB;
-    propsB.category = 1 << 5;
-    propsB.collidesWith = 1 << 5;
+    propsB.userCategory = 1 << 5;
+    propsB.userMask = 1 << 5;
 
     // Insert 4 objects in the same spot, alternating profiles: A1, B1, A2, B2
     // With spatial-only SAH, A2 would likely join with the nearest node (B1) or root.
@@ -49,8 +49,8 @@ TEST(BvhBiasingTest, SpatialPriorityOverMask) {
     // Group 2 at (100,100)
     Aabb aabb2(Vec2(100, 100), Vec2(101, 101));
 
-    CollisionProperties propsA; propsA.category = 1 << 4;
-    CollisionProperties propsB; propsB.category = 1 << 5;
+    CollisionProperties propsA; propsA.userCategory = 1 << 4;
+    CollisionProperties propsB; propsB.userCategory = 1 << 5;
 
     BvhNode* n1_A = bvh.insert(aabb1, (void*)1, propsA);
     BvhNode* n2_B = bvh.insert(aabb2, (void*)2, propsB);

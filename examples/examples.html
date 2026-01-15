@@ -54,9 +54,9 @@
             </div>
             
             <div id="metrics">
-                <div id="fps"><i class="fas fa-tachometer-alt"></i>FPS: 0</div>
-                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
                 <div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
+                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
+                <div id="fps"><i class="fas fa-tachometer-alt"></i>Render FPS: 0</div>
             </div>
             
             <div id="description"></div>
@@ -76,6 +76,7 @@
                             <button class="code-tab" data-panel="general">Setup</button>
                             <button class="code-tab active" data-panel="init">Init</button>
                             <button class="code-tab" data-panel="tick">Tick</button>
+                            <button class="code-tab" data-panel="render">Render</button>
                         </div>
                         <button id="copy-code" title="Copy code to clipboard">
                             <i class="fas fa-copy"></i>
@@ -93,6 +94,10 @@
                     
                     <div class="code-panel" id="tick-panel">
                         <pre id="tick-code"></pre>
+                    </div>
+                    
+                    <div class="code-panel" id="render-panel">
+                        <pre id="render-code"></pre>
                     </div>
                 </div>
             </div>
@@ -256,6 +261,7 @@ gearbox.init().then(()=>{
         let generalCodePre = document.getElementById("general-code");
         let initCodePre = document.getElementById("init-code");
         let tickCodePre = document.getElementById("tick-code");
+        let renderCodePre = document.getElementById("render-code");
         let toggleCode = document.getElementById("toggle-code");
         let fpsDiv = document.getElementById("fps");
         let memoryDiv = document.getElementById("memory");
@@ -310,6 +316,13 @@ gearbox.init().then(()=>{
                 }
                 world.interpolationAlpha = accumulator / physicsStep;
 
+                if (currentExample && examplesMap[currentExample]) {
+                    const exampleObj = examplesMap[currentExample].example;
+                    if (exampleObj && typeof exampleObj.onRender === 'function') {
+                        exampleObj.onRender(world);
+                    }
+                }
+
                 const endTime = performance.now();
                 const stepTime = (endTime - startTime) * 1000;
 
@@ -319,7 +332,7 @@ gearbox.init().then(()=>{
                 let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
 
                 animTimeData[dataPtr % 100] = dt * 1000 || 16.67;
-                memoryData[dataPtr % 100] = (performance.memory ? performance.memory.usedJSHeapSize : 0) / 1048576;
+                memoryData[dataPtr % 100] = (world ? world.getMemoryUsage() : 0);
                 stepTimeData[dataPtr % 100] = stepTime;
 
                 avgAnimFrame += (animTimeData[dataPtr % 100] - removedAnimTime) / 100;
@@ -329,8 +342,14 @@ gearbox.init().then(()=>{
                 dataPtr++;
 
                 const fps = avgAnimFrame > 0 ? Math.round(1000 / avgAnimFrame) : 0;
-                fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>FPS: ${fps}`;
-                memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${avgMemory.toFixed(2)} MB`;
+                fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>Render FPS: ${fps}`;
+                
+                if (avgMemory < 1048576) {
+                    memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${(avgMemory / 1024).toFixed(2)} KB`;
+                } else {
+                    memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${(avgMemory / 1048576).toFixed(2)} MB`;
+                }
+                
                 stepTimeDiv.innerHTML = `<i class="fas fa-stopwatch"></i>Step Time: ${avgStepTime.toFixed(0)} μs`;
 
                 requestAnimationFrame(animate);
@@ -552,8 +571,8 @@ gearbox.init().then(()=>{
 
             world.clear();
             gearbox.debug.clearLabels();
-            gearbox.debug.showForceVectors = false;
-            gearbox.debug.showImpulseVectors = false;
+            gearbox.debug.showForceVectors = true;
+            gearbox.debug.showImpulseVectors = true;
             world.setHasPenetrationResolution(true);
             world.setHasRestitution(true);
             world.setHasFriction(true);
@@ -591,7 +610,8 @@ gearbox.init().then(()=>{
                     /^function\s*\(world\)\s*\{/,
                     /^function\s*\(world,\s*dt\)\s*\{/,
                     /^function\s+init\s*\(world\)\s*\{/,
-                    /^function\s+tick\s*\(world,\s*dt\)\s*\{/
+                    /^function\s+tick\s*\(world,\s*dt\)\s*\{/,
+                    /^function\s+render\s*\(world\)\s*\{/
                 ];
                 
                 let processed = false;
@@ -636,10 +656,12 @@ gearbox.init().then(()=>{
             let globalLines = (exampleObj.globalLines?.join("\n") ?? "");
             let initCodeSource = exampleObj.onInitRaw || exampleObj.onInit?.toString() || '';
             let tickCodeSource = exampleObj.onTickRaw || exampleObj.onTick?.toString() || '';
+            let renderCodeSource = exampleObj.onRenderRaw || exampleObj.onRender?.toString() || '';
 
             generalCodePre.textContent = (generalSetupTemplate.split("{{GLOBAL}}").join(globalLines));
             initCodePre.textContent = formatExampleCode(initCodeSource, "init");
             tickCodePre.textContent = formatExampleCode(tickCodeSource, "tick");
+            renderCodePre.textContent = formatExampleCode(renderCodeSource, "render");
 
             // Apply syntax highlighting
             applyHighlighting();

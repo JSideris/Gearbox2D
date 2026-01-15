@@ -1,40 +1,31 @@
 #pragma once
 
-#include <unordered_map>
-#include <functional>
-#include <iostream>
-
+#include <vector>
 #include "vec2.h"
 
-using namespace std;
+class World;
 
 struct CollisionInfo {
     bool isColliding;
     Vec2 contactPoint;
     Vec2 normal;
     float penetrationDepth;
-    int indexA;
-    int indexB;
+    int indexA; // Fixture index
+    int indexB; // Fixture index
     Vec2 relativeVelocity;
-
-    // Set after collision resolution
     float normalImpulseMagnitude;
 };
 
 class CollisionSolver {
 public:
+    std::vector<CollisionInfo> collisions;
+    World& world;
 
-    vector<CollisionInfo> collisions;
-    vector<int>& intData;
-    vector<float>& floatData;
-
-    CollisionSolver(vector<int>& intData, vector<float>& floatData);
+    CollisionSolver(World& world);
 
     void clear();
-    
     bool solve(int indexA, int indexB);
 
-    // Static point-in-shape tests for reuse
     static bool testPointCircle(const Vec2& point, const Vec2& center, float radius);
     static bool testPointAabb(const Vec2& point, const Vec2& center, float width, float height);
     static bool testPointBox(const Vec2& point, const Vec2& center, float width, float height, float rotation);
@@ -45,20 +36,13 @@ private:
     Vec2 _relativeVelocity;
 
     void _swap();
+    float closestPointsBetweenLines(const Vec2& p1, const Vec2& p2, const Vec2& p3, const Vec2& p4, Vec2& pointOnLine1, Vec2& pointOnLine2);
 
-    float closestPointsBetweenLines(
-        const Vec2& p1, const Vec2& p2,
-        const Vec2& p3, const Vec2& p4,
-        Vec2& pointOnLine1, Vec2& pointOnLine2);
-
-    // Get the correct solver for the obj types
     bool _solveAabbAabb();
     bool _solveAabbPoint();
     bool _solveAabbCircle();
-    
     bool _solveCircleCircle();
     bool _solveCirclePoint();
-    
     bool _solveBoxBox();
     bool _solveBoxPoint();
     bool _solveCircleBox();

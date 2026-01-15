@@ -310,13 +310,15 @@ TEST(BvhTest, DetectCollisions_CategoryFiltering) {
     
     // Object A: Dynamic, collides with Static
     CollisionProperties propsA;
-    propsA.category = CATEGORY_DYNAMIC;
-    propsA.collidesWith = CATEGORY_STATIC;
+    propsA.userCategory = CATEGORY_DYNAMIC;
+    propsA.userMask = CATEGORY_STATIC;
+    propsA.systemCategory = CATEGORY_DYNAMIC;
     
     // Object B: Dynamic, collides with All
     CollisionProperties propsB;
-    propsB.category = CATEGORY_DYNAMIC;
-    propsB.collidesWith = CATEGORY_ALL;
+    propsB.userCategory = CATEGORY_DYNAMIC;
+    propsB.userMask = CATEGORY_ALL;
+    propsB.systemCategory = CATEGORY_DYNAMIC;
     
     bvh.insert(overlapAabb, (void*)1, propsA);
     bvh.insert(overlapAabb, (void*)2, propsB);
@@ -327,8 +329,9 @@ TEST(BvhTest, DetectCollisions_CategoryFiltering) {
     
     // Object C: Static, collides with All
     CollisionProperties propsC;
-    propsC.category = CATEGORY_STATIC;
-    propsC.collidesWith = CATEGORY_ALL;
+    propsC.userCategory = CATEGORY_STATIC;
+    propsC.userMask = CATEGORY_ALL;
+    propsC.systemCategory = CATEGORY_STATIC;
     
     bvh.insert(overlapAabb, (void*)3, propsC);
     
@@ -374,7 +377,7 @@ TEST(BvhTest, DetectCollisions_SpecialExclusions) {
     
     // Points don't collide with points
     CollisionProperties pointProps;
-    pointProps.category = CATEGORY_POINT;
+    pointProps.systemCategory = CATEGORY_POINT;
     
     bvh.insert(overlapAabb, (void*)1, pointProps);
     bvh.insert(overlapAabb, (void*)2, pointProps);
@@ -385,7 +388,7 @@ TEST(BvhTest, DetectCollisions_SpecialExclusions) {
     // Non-rigid sensors don't collide with other non-rigid sensors
     bvh.clear();
     CollisionProperties sensorProps;
-    sensorProps.category = CATEGORY_SENSOR;
+    sensorProps.systemCategory = CATEGORY_SENSOR;
     sensorProps.isRigid = false;
     
     bvh.insert(overlapAabb, (void*)3, sensorProps);
@@ -396,7 +399,7 @@ TEST(BvhTest, DetectCollisions_SpecialExclusions) {
     
     // Sensor vs Rigid should collide
     CollisionProperties rigidProps;
-    rigidProps.category = CATEGORY_DYNAMIC;
+    rigidProps.systemCategory = CATEGORY_DYNAMIC;
     rigidProps.isRigid = true;
     
     bvh.insert(overlapAabb, (void*)5, rigidProps);
@@ -412,9 +415,9 @@ TEST(BvhTest, PropertyPropagation) {
     Bvh bvh;
     
     // Create a tree with multiple nodes to ensure we have ancestors
-    CollisionProperties p1; p1.category = CATEGORY_DYNAMIC; p1.isSleeping = true;
-    CollisionProperties p2; p2.category = CATEGORY_DYNAMIC; p2.isSleeping = true;
-    CollisionProperties p3; p3.category = CATEGORY_STATIC;  p3.isSleeping = true;
+    CollisionProperties p1; p1.userCategory = CATEGORY_DYNAMIC; p1.systemCategory = CATEGORY_DYNAMIC; p1.isSleeping = true;
+    CollisionProperties p2; p2.userCategory = CATEGORY_DYNAMIC; p2.systemCategory = CATEGORY_DYNAMIC; p2.isSleeping = true;
+    CollisionProperties p3; p3.userCategory = CATEGORY_STATIC;  p3.systemCategory = CATEGORY_STATIC;  p3.isSleeping = true;
     
     BvhNode* n1 = bvh.insert(createAabb(0,0,1,1), (void*)1, p1);
     BvhNode* n2 = bvh.insert(createAabb(2,2,3,3), (void*)2, p2);
@@ -426,8 +429,8 @@ TEST(BvhTest, PropertyPropagation) {
     
     // Initially all sleeping
     EXPECT_FALSE(root->aggregated.containsAwake);
-    EXPECT_TRUE((root->aggregated.containsCategories & CATEGORY_DYNAMIC) != 0);
-    EXPECT_TRUE((root->aggregated.containsCategories & CATEGORY_STATIC) != 0);
+    EXPECT_TRUE((root->aggregated.containsUserCategories & CATEGORY_DYNAMIC) != 0);
+    EXPECT_TRUE((root->aggregated.containsUserCategories & CATEGORY_STATIC) != 0);
     
     // Wake up one leaf, check ancestor propagation
     n1->wakeUp();
@@ -435,10 +438,11 @@ TEST(BvhTest, PropertyPropagation) {
     
     // Change category and check propagation
     CollisionProperties newProps = n3->properties;
-    newProps.category = CATEGORY_SENSOR;
+    newProps.userCategory = CATEGORY_SENSOR;
+    newProps.systemCategory = CATEGORY_SENSOR;
     n3->updateProperties(newProps);
     
-    EXPECT_TRUE((root->aggregated.containsCategories & CATEGORY_SENSOR) != 0);
+    EXPECT_TRUE((root->aggregated.containsUserCategories & CATEGORY_SENSOR) != 0);
     // Static should be gone if n3 was the only static object
-    EXPECT_FALSE((root->aggregated.containsCategories & CATEGORY_STATIC) != 0);
+    EXPECT_FALSE((root->aggregated.containsUserCategories & CATEGORY_STATIC) != 0);
 }

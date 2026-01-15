@@ -37,8 +37,9 @@ void runBenchmark(const std::string& runId, float weight) {
     const int objectsPerCategory = 100;
     for (int c = 0; c < numCategories; ++c) {
         CollisionProperties props;
-        props.category = 1 << c;
-        props.collidesWith = 1 << c;
+    props.userCategory = 1 << c;
+    props.userMask = 1 << c;
+    props.systemCategory = CATEGORY_DYNAMIC;
         for (int i = 0; i < objectsPerCategory; ++i) {
             bvh.insert(overlapAabb, (void*)(long)(c * objectsPerCategory + i + 1), props);
         }
@@ -57,8 +58,9 @@ void runBenchmarkSpread(const std::string& runId, float weight) {
     const int objectsPerCategory = 100;
     for (int c = 0; c < numCategories; ++c) {
         CollisionProperties props;
-        props.category = 1 << c;
-        props.collidesWith = 1 << c;
+    props.userCategory = 1 << c;
+    props.userMask = 1 << c;
+    props.systemCategory = CATEGORY_DYNAMIC;
         for (int i = 0; i < objectsPerCategory; ++i) {
             float x = (float)rand() / RAND_MAX * 100.0f;
             float y = (float)rand() / RAND_MAX * 100.0f;

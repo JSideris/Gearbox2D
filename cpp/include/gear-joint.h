@@ -21,7 +21,7 @@ public:
     void setRatio(float r) override;
     float getRatio() const override;
 
-    bool isConnectedTo(PhysicalObject* body) const override;
+    bool isConnectedTo(Body* body) const override;
 
 private:
     float impulse;

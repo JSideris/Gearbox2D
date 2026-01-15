@@ -47,12 +47,14 @@ ScenarioResult bulletHell(bool biased) {
     // To get "unbiased" data for the paper, we would normally re-compile with weight 0.
     
     CollisionProperties bulletProps;
-    bulletProps.category = 1 << 0;
-    bulletProps.collidesWith = 1 << 1;
+    bulletProps.userCategory = 1 << 0;
+    bulletProps.userMask = 1 << 1;
+    bulletProps.systemCategory = CATEGORY_DYNAMIC;
 
     CollisionProperties playerProps;
-    playerProps.category = 1 << 1;
-    playerProps.collidesWith = 1 << 0;
+    playerProps.userCategory = 1 << 1;
+    playerProps.userMask = 1 << 0;
+    playerProps.systemCategory = CATEGORY_DYNAMIC;
 
     // Insert 5000 bullets
     for (int i = 0; i < 5000; ++i) {
@@ -92,8 +94,9 @@ ScenarioResult dynamicMasks() {
 
     for (int i = 0; i < 1000; ++i) {
         CollisionProperties props;
-        props.category = 1 << (i % 8);
-        props.collidesWith = 0xFFFFFFFF;
+        props.userCategory = 1 << (i % 8);
+        props.userMask = 0xFFFFFFFF;
+        props.systemCategory = CATEGORY_DYNAMIC;
         float x = posDist(gen);
         float y = posDist(gen);
         nodes.push_back(bvh.insert(Aabb(Vec2(x, y), Vec2(x+1, y+1)), (void*)(long)(i + 1), props));
@@ -103,7 +106,8 @@ ScenarioResult dynamicMasks() {
     for (int iter = 0; iter < 10; ++iter) {
         for (int i = 0; i < 100; ++i) { // Change 10% of objects' masks
             CollisionProperties newProps;
-            newProps.category = 1 << (rand() % 8);
+            newProps.userCategory = 1 << (rand() % 8);
+            newProps.systemCategory = CATEGORY_DYNAMIC;
             nodes[rand() % 1000]->updateProperties(newProps);
         }
         bvh.detectCollisions();
@@ -131,8 +135,9 @@ ScenarioResult sparseUniform() {
 
     for (int i = 0; i < 2000; ++i) {
         CollisionProperties props;
-        props.category = 1 << (i % 32); // 32 categories
-        props.collidesWith = 1 << (i % 32);
+        props.userCategory = 1 << (i % 32); // 32 categories
+        props.userMask = 1 << (i % 32);
+        props.systemCategory = CATEGORY_DYNAMIC;
         float x = posDist(gen);
         float y = posDist(gen);
         bvh.insert(Aabb(Vec2(x, y), Vec2(x+1, y+1)), (void*)(long)(i + 1), props);

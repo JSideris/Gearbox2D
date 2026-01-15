@@ -1,32 +1,22 @@
-#include <iostream>
-#include <cstdlib>
-#include <cmath>
 #include "world.h"
+#include "body.h"
+#include "fixture.h"
 #include "constants.h"
 #include "hinge-joint.h"
 #include "distance-joint.h"
 #include "spring-joint.h"
 #include "gear-joint.h"
 #include <algorithm>
-#include <fstream>
-#include <chrono>
-#include <sstream>
 
 BvhMetrics g_bvhMetrics;
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#include <stdio.h>
-#endif
-
-World::World():
-    collisionSolver(liveIntData, liveFloatData){
-    // TODO: if we add more than 10k items, there should be some kind of event to warn the client.
-    // Currently, the engine crashes with that many items. But with optimizations it's possible to exceed that.
+World::World() : collisionSolver(*this) {
     setTimeStep(1.0f / 60.0f);
     int maxSize = 10000;
-    liveFloatData.reserve(maxSize * FDATA_EPO);
-    liveIntData.reserve(maxSize * LIVE_INT_EPO);
+    liveBodyFloatData.reserve(maxSize * BODY_FDATA_EPO);
+    liveBodyIntData.reserve(maxSize * BODY_IDATA_EPO);
+    liveFixtureFloatData.reserve(maxSize * FIXTURE_FDATA_EPO);
+    liveFixtureIntData.reserve(maxSize * FIXTURE_IDATA_EPO);
     contactConstraints.reserve(100);
     velocityIterations = 50;
 }
@@ -35,670 +25,561 @@ World::~World() {
     clear();
 }
 
-int World::makeObject(int id, emscripten_val options){
-    int currentSize = objectsList.size();
-    // liveFloatData.resize((currentSize + 1) * FDATA_EPO);
-    // liveIntData.resize((currentSize + 1) * LIVE_INT_EPO);
+int World::makeBody(int id, emscripten_val options) {
+    auto* body = new Body(*this, id, options);
+    body->worldIndex = bodiesList.size();
+    bodiesMap[id] = body;
+    bodiesList.push_back(body);
 
-    auto object = new PhysicalObject(*this, id, options);
+    // Support atomic creation of multiple fixtures
+    if (!options["fixtures"].isUndefined()) {
+        emscripten_val fixtures = options["fixtures"];
+        int length = fixtures["length"].as<int>();
+        for (int i = 0; i < length; ++i) {
+            addFixture(id, 0, fixtures[i]);
+        }
+    }
 
-    object->worldIndex = currentSize;
-    object->updateInverseInertia();
+    // Only create an initial fixture if shape is specified (legacy/single fixture support)
+    if (!options["shape"].isUndefined()) {
+        int fId = (!options["fixtureId"].isUndefined()) ? options["fixtureId"].as<int>() : nextFixtureId++;
+        addFixture(id, fId, options);
+    }
 
-    objectsMap[id] = object;
-    objectsList.push_back(object);
+    return body->worldIndex;
+}
 
-    object->recomputeAabb(1);
+int World::addFixture(int bodyId, int fixtureId, emscripten_val options) {
+    auto it = bodiesMap.find(bodyId);
+    if (it == bodiesMap.end()) return -1;
+    Body* body = it->second;
+
+    int fId = (fixtureId > 0) ? fixtureId : nextFixtureId++;
+    auto* fixture = new Fixture(*this, fId, body, options);
+    fixture->worldIndex = fixturesList.size();
+    fixturesMap[fId] = fixture;
+    fixturesList.push_back(fixture);
+    
+    body->addFixture(fixture);
+    fixture->updateAabb(1);
 
     CollisionProperties props;
-    props.category = object->categoryBits;
-    props.collidesWith = object->maskBits;
-    props.isRigid = (object->type == ObjectType::RIGID_BODY);
-    props.isSleeping = object->isSleeping;
+    props.userCategory = fixture->getCategoryBits();
+    props.userMask = fixture->getMaskBits();
+    props.systemCategory = fixture->getSystemCategory();
+    props.isRigid = !fixture->isSensor();
+    props.isSleeping = body->isSleeping;
 
-    auto* bvhNode = bvh.insert(object->aabb, object, props);
-    object->bvhNode = bvhNode;
+    fixture->bvhNode = bvh.insert(fixture->aabb, fixture, props);
 
-    // cout << object->getRadius() << endl;
-
-    return object->worldIndex;
+    return fixture->worldIndex;
 }
 
 int World::removeObject(int id) {
+    auto itBody = bodiesMap.find(id);
+    if (itBody == bodiesMap.end()) return -1;
 
-    // cout << "Removing object with id: " << id << endl;
-
-    auto it = objectsMap.find(id);
-
-    if (it != objectsMap.end()) {
-        auto object = it->second;
-
-        // Remove any joints associated with this object
-        std::vector<int> jointsToRemove;
-        for (auto& pair : jointsMap) {
-            if (pair.second->isConnectedTo(object)) {
-                jointsToRemove.push_back(pair.first);
-            }
-        }
-        for (int jointId : jointsToRemove) {
-            removeJoint(jointId);
-        }
-
-        // Remove the object from the BVH
-        // cout << "Remove from BVH???" << endl;
-        if (object->bvhNode) {
-            // cout << "Removing from BVH" << endl;
-            // TODO: ensure that this frees up the memory used by the node.
-            bvh.remove(object->bvhNode);
-            object->bvhNode = nullptr;
-        }
-
-        // Get the index of the object to remove
-        int index = object->worldIndex;
-
-        // Clear the object's reference to the world
-        object->worldIndex = -1;
-
-        // Remove the object from the list if it has a valid index
-        if (index != -1 && index < objectsList.size()) {
-            // Swap the object to be removed with the last object in the list
-            iter_swap(objectsList.begin() + index, objectsList.end() - 1);
-
-            for(int i = 0; i < LIVE_INT_EPO; i++){
-                iter_swap(
-                    liveIntData.begin() + index * LIVE_INT_EPO + i, 
-                    liveIntData.begin() + (liveIntData.size() / LIVE_INT_EPO - 1) * LIVE_INT_EPO + i
-                );
-            }
-
-            for(int i = 0; i < FDATA_EPO; i++){
-                iter_swap(
-                    liveFloatData.begin() + index * FDATA_EPO + i, 
-                    liveFloatData.begin() + (liveFloatData.size() / FDATA_EPO - 1) * FDATA_EPO + i
-                );
-            }
-            // Update the worldIndex of the swapped object
-            objectsList[index]->worldIndex = index;
-
-            // Remove the last element (which is the object we want to remove)
-            objectsList.pop_back();
-
-            // Remove the corresponding data from arrays
-            for(int i = 0; i < LIVE_INT_EPO; i++){
-                liveIntData.pop_back();
-            }
-            for(int i = 0; i < FDATA_EPO; i++){
-                liveFloatData.pop_back();
-            }
-        }
-
-        // Remove the object from the map
-        objectsMap.erase(it);
-
-        delete object;
-
-        return index;
-    }
-    else return -1;
-}
-
-PhysicalObject* World::getObject(int id) const {
-    auto it = objectsMap.find(id);
-    if (it != objectsMap.end()) {
-        return it->second;
-    }
-    return nullptr;
-}
-
-PhysicalObject* World::getObjectAtIndex(int index) const {
-    if (index >= 0 && index < objectsList.size()) {
-        return objectsList[index];
-    }
-    return nullptr;
-}
-
-int World::findeIndexForObject(int id){
-    auto it = objectsMap.find(id);
-    if (it != objectsMap.end()) {
-        return it->second->worldIndex;
-    }
-    return -1;
-
-}
-
-int World::getObjectCount() const {
-    return objectsList.size();
-}
-
-void World::setGravity(float x, float y) {
-    gravity.x = x;
-    gravity.y = y;
-}
-
-std::vector<int> World::queryPoint(float x, float y, uint32_t mask) {
-    std::vector<int> hitIds;
-    // Tiny AABB around the point
-    Aabb pointBox(Vec2(x - 0.001f, y - 0.001f), Vec2(x + 0.001f, y + 0.001f));
+    Body* body = itBody->second;
     
+    // Remove joints
+    std::vector<int> jointsToRemove;
+    for (auto& pair : jointsMap) {
+        if (pair.second->isConnectedTo(body)) jointsToRemove.push_back(pair.first);
+    }
+    for (int jId : jointsToRemove) removeJoint(jId);
+
+    // Remove fixtures
+    for (auto* fixture : body->fixtures) {
+        if (fixture->bvhNode) {
+            bvh.remove(fixture->bvhNode);
+            fixture->bvhNode = nullptr;
+        }
+        
+        int fIdx = fixture->worldIndex;
+        if (fIdx != -1 && fIdx < fixturesList.size()) {
+            std::iter_swap(fixturesList.begin() + fIdx, fixturesList.end() - 1);
+            
+            for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) {
+                std::iter_swap(liveFixtureIntData.begin() + fIdx * FIXTURE_IDATA_EPO + i,
+                               liveFixtureIntData.begin() + (fixturesList.size() - 1) * FIXTURE_IDATA_EPO + i);
+            }
+            for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) {
+                std::iter_swap(liveFixtureFloatData.begin() + fIdx * FIXTURE_FDATA_EPO + i,
+                               liveFixtureFloatData.begin() + (fixturesList.size() - 1) * FIXTURE_FDATA_EPO + i);
+            }
+            
+            fixturesList[fIdx]->worldIndex = fIdx;
+            fixturesList.pop_back();
+            for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) liveFixtureIntData.pop_back();
+            for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) liveFixtureFloatData.pop_back();
+        }
+        fixturesMap.erase(fixture->id);
+        delete fixture;
+    }
+
+    int bIdx = body->worldIndex;
+    if (bIdx != -1 && bIdx < bodiesList.size()) {
+        std::iter_swap(bodiesList.begin() + bIdx, bodiesList.end() - 1);
+        for (int i = 0; i < BODY_IDATA_EPO; ++i) {
+            std::iter_swap(liveBodyIntData.begin() + bIdx * BODY_IDATA_EPO + i,
+                           liveBodyIntData.begin() + (bodiesList.size() - 1) * BODY_IDATA_EPO + i);
+        }
+        for (int i = 0; i < BODY_FDATA_EPO; ++i) {
+            std::iter_swap(liveBodyFloatData.begin() + bIdx * BODY_FDATA_EPO + i,
+                           liveBodyFloatData.begin() + (bodiesList.size() - 1) * BODY_FDATA_EPO + i);
+        }
+        bodiesList[bIdx]->worldIndex = bIdx;
+        
+        // Update all fixtures of the moved body to point to the new body index
+        for (auto* f : bodiesList[bIdx]->fixtures) {
+            liveFixtureIntData[f->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX] = bIdx;
+        }
+
+        bodiesList.pop_back();
+        for (int i = 0; i < BODY_IDATA_EPO; ++i) liveBodyIntData.pop_back();
+        for (int i = 0; i < BODY_FDATA_EPO; ++i) liveBodyFloatData.pop_back();
+    }
+    
+    bodiesMap.erase(itBody);
+    delete body;
+    return bIdx;
+}
+
+void World::step() {
+    // Clear collision flags on all bodies and fixtures
+    for (int i = 0; i < bodiesList.size(); ++i) {
+        liveBodyIntData[i * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
+        
+        // Reset forces and accumulated impulses from the previous frame
+        // This ensures they are available for the debug renderer between steps
+        int fIdx = i * BODY_FDATA_EPO;
+        liveBodyFloatData[fIdx + BODY_FDATA_FX] = 0;
+        liveBodyFloatData[fIdx + BODY_FDATA_FY] = 0;
+        liveBodyFloatData[fIdx + BODY_FDATA_IX] = 0;
+        liveBodyFloatData[fIdx + BODY_FDATA_IY] = 0;
+        liveBodyFloatData[fIdx + BODY_FDATA_IA] = 0;
+    }
+    for (int i = 0; i < fixturesList.size(); ++i) {
+        liveFixtureIntData[i * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
+    }
+
+    for (auto* body : bodiesList) {
+        int idx = body->worldIndex * BODY_FDATA_EPO;
+        liveBodyFloatData[idx + BODY_FDATA_PREV_X] = liveBodyFloatData[idx + BODY_FDATA_X];
+        liveBodyFloatData[idx + BODY_FDATA_PREV_Y] = liveBodyFloatData[idx + BODY_FDATA_Y];
+        liveBodyFloatData[idx + BODY_FDATA_PREV_R] = liveBodyFloatData[idx + BODY_FDATA_R];
+    }
+
+    eventData.clear();
+    _doIntegrateVelocities();
+    _doBroadPhase();
+    _doNarrowPhase();
+    
+    for (auto& pair : jointsMap) {
+        if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
+        pair.second->preSolve(timeStep);
+    }
+    _doResolution();
+    _doIntegratePositions();
+    _doContactManagement();
+}
+
+void World::_doIntegrateVelocities() {
+    for (auto* body : bodiesList) {
+        if (body->isSleeping) {
+            int idx = body->worldIndex * BODY_FDATA_EPO;
+            if (liveBodyFloatData[idx + BODY_FDATA_NIX] != 0 || liveBodyFloatData[idx + BODY_FDATA_NIY] != 0 || 
+                liveBodyFloatData[idx + BODY_FDATA_NIA] != 0 || liveBodyFloatData[idx + BODY_FDATA_NFX] != 0 || 
+                liveBodyFloatData[idx + BODY_FDATA_NFY] != 0) {
+                body->wakeUp();
+            }
+        }
+        if (body->isSleeping) continue;
+
+        float m = body->getMass();
+        float gScale = body->getGravityScale();
+        body->applyForce(gravity.x * m * gScale, gravity.y * m * gScale);
+        body->integrateVelocities(timeStep);
+    }
+}
+
+void World::_doIntegratePositions() {
+    for (auto* body : bodiesList) {
+        if (body->isSleeping) continue;
+
+        bool moved = body->integratePositions(timeStep);
+
+        if (moved) {
+            float pr = body->getRotation();
+            float cosR = cos(pr);
+            float sinR = sin(pr);
+            for (auto* fixture : body->fixtures) {
+                // Check if tight AABB (mode 1) is still within current fat AABB
+                Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
+                if (!fixture->aabb.contains(tightAabb)) {
+                    // Out of bounds, update to new fat AABB and broadphase
+                    fixture->updateAabb(cosR, sinR, 0);
+                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb);
+                }
+            }
+        }
+    }
+}
+
+void World::_doBroadPhase() {
+    bvh.detectCollisions();
+}
+
+void World::_doNarrowPhase() {
+    collisionSolver.clear();
+    currentPairs.clear();
+    for (auto& pair : bvh.collisionPairs) {
+        Fixture* f1 = static_cast<Fixture*>(pair.first);
+        Fixture* f2 = static_cast<Fixture*>(pair.second);
+        
+        bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex);
+        
+        // Mark as AABB collision (broadphase overlap)
+        liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        
+        // Also mark bodies for backward compatibility
+        liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+
+        if (colliding) {
+            currentPairs.insert({f1->id, f2->id});
+            // Mark fixtures as colliding for debug graphics
+            liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+            liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+
+            // Also mark bodies for backward compatibility
+            liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+            liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+        }
+    }
+}
+
+void World::_doContactManagement() {
+    for (const auto& pair : currentPairs) {
+        if (prevPairs.find(pair) == prevPairs.end()) {
+            Fixture* fA = getFixture(pair.first);
+            Fixture* fB = getFixture(pair.second);
+            if (fA && fB) {
+                Body* bA = fA->body;
+                Body* bB = fB->body;
+                
+                std::pair<int, int> bodyPair = {bA->id, bB->id};
+                if (bodyPair.first > bodyPair.second) std::swap(bodyPair.first, bodyPair.second);
+                
+                if (bodyContactCounts[bodyPair]++ == 0) {
+                    bA->addContact(bB);
+                    bB->addContact(bA);
+                }
+                
+                if (bA->wantsEvents() || bB->wantsEvents() || fA->wantsEvents() || fB->wantsEvents()) {
+                    addEvent((int)EventType::COLLISION_START, bA->id, bB->id, fA->id, fB->id, resolvedImpulses[pair]);
+                }
+            }
+        }
+    }
+    for (const auto& pair : prevPairs) {
+        if (currentPairs.find(pair) == currentPairs.end()) {
+            Fixture* fA = getFixture(pair.first);
+            Fixture* fB = getFixture(pair.second);
+            if (fA && fB) {
+                Body* bA = fA->body;
+                Body* bB = fB->body;
+                if (bA->isSleeping && bB->isSleeping) {
+                    currentPairs.insert(pair);
+                    continue;
+                }
+                
+                std::pair<int, int> bodyPair = {bA->id, bB->id};
+                if (bodyPair.first > bodyPair.second) std::swap(bodyPair.first, bodyPair.second);
+                
+                if (--bodyContactCounts[bodyPair] == 0) {
+                    bA->removeContact(bB);
+                    bB->removeContact(bA);
+                }
+                
+                if (bA->wantsEvents() || bB->wantsEvents() || fA->wantsEvents() || fB->wantsEvents()) {
+                    addEvent((int)EventType::COLLISION_END, bA->id, bB->id, fA->id, fB->id, 0);
+                }
+            }
+        }
+    }
+    prevPairs = currentPairs;
+}
+
+void World::_doResolution() {
+    contactConstraints.clear();
+    for (auto& col : collisionSolver.collisions) {
+        // Col indices are fixture indices. We need to look up body from fixture.
+        Fixture* fA = fixturesList[col.indexA];
+        Fixture* fB = fixturesList[col.indexB];
+        Body* bA = fA->body;
+        Body* bB = fB->body;
+
+        if (fA->isSensor() || fB->isSensor()) continue;
+        if (bA->getInverseMass() + bB->getInverseMass() == 0) continue;
+
+        ContactConstraint c;
+        c.a = bA; c.b = bB;
+        c.fA = fA; c.fB = fB;
+        c.point = col.contactPoint;
+        c.normal = col.normal;
+        c.depth = col.penetrationDepth;
+        
+        // Combine friction and restitution
+        float resA = fA->getRestitution();
+        float resB = fB->getRestitution();
+        c.restitution = std::max(resA, resB);
+        
+        float sFricA = fA->getStaticFriction();
+        float sFricB = fB->getStaticFriction();
+        c.staticFriction = std::sqrt(sFricA * sFricB);
+        
+        float kFricA = fA->getKineticFriction();
+        float kFricB = fB->getKineticFriction();
+        c.kineticFriction = std::sqrt(kFricA * kFricB);
+
+        c.preSolve(timeStep, hasRestitution, hasPenetrationResolution, hasFriction);
+        contactConstraints.push_back(c);
+    }
+
+    for (int iter = 0; iter < velocityIterations; ++iter) {
+        for (auto& c : contactConstraints) c.solve(hasRestitution || hasPenetrationResolution, hasFriction);
+        for (auto& pair : jointsMap) {
+            if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
+            pair.second->solve();
+        }
+    }
+
+    resolvedImpulses.clear();
+    for (auto& c : contactConstraints) {
+        std::pair<int, int> pair = {c.fA->id, c.fB->id};
+        if (pair.first > pair.second) std::swap(pair.first, pair.second);
+        resolvedImpulses[pair] += c.normalImpulse;
+    }
+}
+
+void World::clear() {
+    while (!bodiesList.empty()) removeObject(bodiesList[0]->id);
+    liveBodyFloatData.clear(); liveBodyIntData.clear();
+    liveFixtureFloatData.clear(); liveFixtureIntData.clear();
+}
+
+Body* World::getBody(int id) const { auto it = bodiesMap.find(id); return it != bodiesMap.end() ? it->second : nullptr; }
+Body* World::getBodyAtIndex(int index) const { return (index >= 0 && index < bodiesList.size()) ? bodiesList[index] : nullptr; }
+Fixture* World::getFixture(int id) const { auto it = fixturesMap.find(id); return it != fixturesMap.end() ? it->second : nullptr; }
+int World::getBodyCount() const { return bodiesList.size(); }
+int World::getFixtureCount() const { return fixturesList.size(); }
+
+int World::findFixtureIndex(int id) {
+    auto it = fixturesMap.find(id);
+    return it != fixturesMap.end() ? it->second->worldIndex : -1;
+}
+
+void World::setTimeStep(float dt) {
+    timeStep = dt;
+    decayMap[99] = pow(1.0f - 0.99f, dt);
+}
+
+void World::setGravity(float x, float y) { gravity.x = x; gravity.y = y; }
+void World::setHasPenetrationResolution(bool v) { hasPenetrationResolution = v; }
+void World::setHasRestitution(bool v) { hasRestitution = v; }
+void World::setHasFriction(bool v) { hasFriction = v; }
+
+std::vector<int> World::queryBodiesAtPoint(float x, float y, uint32_t mask) {
+    std::vector<int> hitIds;
+    std::unordered_set<int> uniqueBodyIds;
+    Aabb pointBox(Vec2(x - 0.001f, y - 0.001f), Vec2(x + 0.001f, y + 0.001f));
     std::vector<BvhNode*> candidates;
     bvh.query(pointBox, candidates);
-
     for (auto node : candidates) {
-        PhysicalObject* obj = static_cast<PhysicalObject*>(node->data);
-        // Broad phase: Check collision mask
-        if (obj->categoryBits & mask) {
-            // Narrow phase: Precise shape check
-            if (obj->testPoint(x, y)) {
-                hitIds.push_back(obj->id);
+        Fixture* fixture = static_cast<Fixture*>(node->data);
+        if (fixture->getCategoryBits() & mask) {
+            if (fixture->testPoint(x, y)) {
+                uniqueBodyIds.insert(fixture->body->id);
+            }
+        }
+    }
+    for (int id : uniqueBodyIds) hitIds.push_back(id);
+    return hitIds;
+}
+
+std::vector<int> World::queryFixturesAtPoint(float x, float y, uint32_t mask) {
+    std::vector<int> hitIds;
+    Aabb pointBox(Vec2(x - 0.001f, y - 0.001f), Vec2(x + 0.001f, y + 0.001f));
+    std::vector<BvhNode*> candidates;
+    bvh.query(pointBox, candidates);
+    for (auto node : candidates) {
+        Fixture* fixture = static_cast<Fixture*>(node->data);
+        if (fixture->getCategoryBits() & mask) {
+            if (fixture->testPoint(x, y)) {
+                hitIds.push_back(fixture->id);
             }
         }
     }
     return hitIds;
 }
 
-// Expose the raw pointers
-
-
-#ifdef EMSCRIPTEN
-emscripten_val World::getLiveFloatData() {
-    size_t size = 10000*FDATA_EPO;
-    return emscripten_val(emscripten::typed_memory_view(size * sizeof(float), liveFloatData.data()));
-}
-
-emscripten_val World::getLiveIntData() {
-    size_t size = 10000*LIVE_INT_EPO;
-    return emscripten_val(emscripten::typed_memory_view(size * sizeof(int), liveIntData.data()));
-}
-
-emscripten_val World::getEventData() {
-    return emscripten_val(emscripten::typed_memory_view(eventData.size() * sizeof(float), eventData.data()));
-}
+#ifdef __EMSCRIPTEN__
+emscripten_val World::getLiveBodyFloatData() { return emscripten_val(emscripten::typed_memory_view(liveBodyFloatData.size(), liveBodyFloatData.data())); }
+emscripten_val World::getLiveBodyIntData() { return emscripten_val(emscripten::typed_memory_view(liveBodyIntData.size(), liveBodyIntData.data())); }
+emscripten_val World::getLiveFixtureFloatData() { return emscripten_val(emscripten::typed_memory_view(liveFixtureFloatData.size(), liveFixtureFloatData.data())); }
+emscripten_val World::getLiveFixtureIntData() { return emscripten_val(emscripten::typed_memory_view(liveFixtureIntData.size(), liveFixtureIntData.data())); }
+emscripten_val World::getEventData() { return emscripten_val(emscripten::typed_memory_view(eventData.size(), eventData.data())); }
 #endif
 
-int World::getEventCount() {
-    return eventData.size() / 4;
-}
-
-void World::addEvent(int type, int idA, int idB, float impulse) {
+int World::getEventCount() { return eventData.size() / 6; }
+void World::addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB, float impulse) {
     eventData.push_back((float)type);
-    eventData.push_back((float)idA);
-    eventData.push_back((float)idB);
+    eventData.push_back((float)bodyA);
+    eventData.push_back((float)bodyB);
+    eventData.push_back((float)fixtureA);
+    eventData.push_back((float)fixtureB);
     eventData.push_back(impulse);
 }
 
-void World::step() {
-    // Snapshot current state for interpolation before processing the next step
-    for (auto& object : objectsList) {
-        int idx = object->worldIndex * FDATA_EPO;
-        liveFloatData[idx + FDATA_PREV_X] = liveFloatData[idx + FDATA_X];
-        liveFloatData[idx + FDATA_PREV_Y] = liveFloatData[idx + FDATA_Y];
-        liveFloatData[idx + FDATA_PREV_R] = liveFloatData[idx + FDATA_R];
-    }
-
-    eventData.clear();
-    static int frameCount = 0;
-    _doKinematics();
-    _doBroadPhase();
-    _doNarrowPhase();
-    
-    // Joint pre-solving
-    for (auto& pair : jointsMap) {
-        pair.second->preSolve(timeStep);
-    }
-    
-    _doResolution();
-
-    // Contact management is done after resolution so that collision events 
-    // can include the final resolved impulses.
-    _doContactManagement();
-}
-
-// 1. Kinematics.
-void World::_doKinematics(){
-    // Update all objects in the world
-    // TODO: would be cool to have a separate list for only awake objects.
-    // TODO: obvious parallilization opportunity.
-    for (auto& object : objectsList) {
-        
-        if(object->isSleeping){
-            // Check if any external impulses or forces were applied via the live data buffer.
-            int idx = object->worldIndex * FDATA_EPO;
-            if (liveFloatData[idx + FDATA_NIX] != 0.0f || liveFloatData[idx + FDATA_NIY] != 0.0f || liveFloatData[idx + FDATA_NIA] != 0.0f ||
-                liveFloatData[idx + FDATA_NFX] != 0.0f || liveFloatData[idx + FDATA_NFY] != 0.0f) {
-                object->wakeUp();
-            }
-        }
-
-        if(object->isSleeping){
-            continue;
-        }
-        
-        liveIntData[object->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] = 0;
-
-        float m = liveFloatData[object->worldIndex * FDATA_EPO + FDATA_M];
-
-        // Apply gravity.
-        liveFloatData[object->worldIndex * FDATA_EPO + FDATA_NFX] += gravity.x * m;
-        liveFloatData[object->worldIndex * FDATA_EPO + FDATA_NFY] += gravity.y * m;
-        
-        // Physics step.
-        bool moved = object->stepMovement(timeStep);
-
-        // Recompute AABB and update BVH.
-        if(moved){
-            bool treeNeedsUpdate = object->recomputeAabb(0);
-
-            if(treeNeedsUpdate){
-                object->bvhNode = bvh.updateLeaf(object->bvhNode, object->aabb);
-            }
-        }
-    }
-}
-
-// 2. Broad phase collision detection.
-void World::_doBroadPhase(){
-    bvh.detectCollisions();
-}
-
-// 3. Narrow phase collision detection.
-void World::_doNarrowPhase(){
-    collisionSolver.clear();
-    currentPairs.clear();
-    
-    for (auto& pair : bvh.collisionPairs) {
-        PhysicalObject* obj1 = static_cast<PhysicalObject*>(pair.first);
-        PhysicalObject* obj2 = static_cast<PhysicalObject*>(pair.second);
-        
-
-        // Perform narrow phase collision detection between obj1 and obj2
-        auto colliding = collisionSolver.solve(obj1->worldIndex, obj2->worldIndex);
-
-        liveIntData[obj1->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION 
-            | (colliding * HAS_PHYSICAL_COLLISION);
-        liveIntData[obj2->worldIndex * LIVE_INT_EPO + LIVE_INT_HAS_COLLISION] |= HAS_AABB_COLLISION 
-            | (colliding * HAS_PHYSICAL_COLLISION);
-
-        if(colliding){
-            // Add the pair to the current pairs for contact management
-            currentPairs.insert({obj1->id, obj2->id});
-        }
-    }
-}
-
-void World::_doContactManagement(){
-    // Find new contacts (in currentPairs but not in prevPairs)
-    for (const auto& pair : currentPairs) {
-        if (prevPairs.find(pair) == prevPairs.end()) {
-            PhysicalObject* objA = getObject(pair.first);
-            PhysicalObject* objB = getObject(pair.second);
-            if (objA && objB) {
-                objA->addContact(objB);
-                objB->addContact(objA);
-
-                if (objA->wantsEvents || objB->wantsEvents) {
-                    float impulse = 0.0f;
-                    auto it = resolvedImpulses.find(pair);
-                    if (it != resolvedImpulses.end()) {
-                        impulse = it->second;
-                    }
-                    addEvent((int)EventType::COLLISION_START, objA->id, objB->id, impulse);
-                }
-            }
-        }
-    }
-    
-    // Find removed contacts (in prevPairs but not in currentPairs)
-    for (const auto& pair : prevPairs) {
-        if (currentPairs.find(pair) == currentPairs.end()) {
-            PhysicalObject* objA = getObject(pair.first);
-            PhysicalObject* objB = getObject(pair.second);
-            if (objA && objB) {
-                // If both are sleeping, they might still be touching but the BVH optimization 
-                // skipped them. We should keep the contact alive in our tracking so that 
-                // when one wakes up, it can propagate the wake-up to its neighbor.
-                if (objA->isSleeping && objB->isSleeping) {
-                    currentPairs.insert(pair);
-                    continue;
-                }
-                objA->removeContact(objB);
-                objB->removeContact(objA);
-
-                if (objA->wantsEvents || objB->wantsEvents) {
-                    addEvent((int)EventType::COLLISION_END, objA->id, objB->id, 0.0f);
-                }
-            }
-        }
-    }
-    
-    // Update for next iteration
-    prevPairs = currentPairs;
-}
-
-void World::_doResolution(){
-    contactConstraints.clear();
-    for (auto& collisionInfo : collisionSolver.collisions) {
-        PhysicalObject* objA = objectsList[collisionInfo.indexA];
-        PhysicalObject* objB = objectsList[collisionInfo.indexB];
-        float totalInverseMass = objA->getInverseMass() + objB->getInverseMass();
-        if (totalInverseMass == 0.0f) {
-            continue;
-        }
-
-        ContactConstraint c;
-        c.a = objA;
-        c.b = objB;
-        c.point = collisionInfo.contactPoint;
-        c.normal = collisionInfo.normal;
-        c.depth = collisionInfo.penetrationDepth;
-        c.preSolve(timeStep, hasRestitution, hasPenetrationResolution, hasFriction);
-
-        contactConstraints.push_back(c);
-    }
-    bool enableNormal = hasRestitution || hasPenetrationResolution;
-    for (int iter = 0; iter < velocityIterations; ++iter) {
-        for (auto& c : contactConstraints) {
-            c.solve(enableNormal, hasFriction);
-        }
-        
-        // Solve joints interleaved with contacts
-        for (auto& pair : jointsMap) {
-            pair.second->solve();
-        }
-    }
-
-    // Capture the final impulses for use in events
-    resolvedImpulses.clear();
-    for (auto& c : contactConstraints) {
-        resolvedImpulses[{c.a->id, c.b->id}] = c.normalImpulse;
-    }
-}
-
-void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
-    rA = point - a->getPosition();
-    rB = point - b->getPosition();
-
-    float imA = a->getInverseMass();
-    float imB = b->getInverseMass();
-    float iIA = a->getInverseInertia();
-    float iIB = b->getInverseInertia();
-
-    float rnA = rA.x * normal.y - rA.y * normal.x;
-    float rnB = rB.x * normal.y - rB.y * normal.x;
-    float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
-    normalMass = (kNormal > 0.00001f) ? 1.0f / kNormal : 0.0f;
-
-    // Initial rel vel
-    Vec2 tangentialVelocityA(-rA.y * a->getAngularVelocity(), rA.x * a->getAngularVelocity());
-    Vec2 tangentialVelocityB(-rB.y * b->getAngularVelocity(), rB.x * b->getAngularVelocity());
-    Vec2 va = a->getVelocity() + tangentialVelocityA;
-    Vec2 vb = b->getVelocity() + tangentialVelocityB;
-    Vec2 relVel = vb - va;
-    float vn = relVel.dot(normal);
-
-    // Tangent
-    Vec2 tangentialComponent = relVel - normal * vn;
-    float tanMag = tangentialComponent.magnitude();
-    
-    if (tanMag < 0.0001f) {
-        friction = 0.0f;
-        tangent = Vec2(0.0f, 0.0f);
-        tangentMass = 0.0f;
-    } else {
-        tangent = -tangentialComponent / tanMag;
-        float rtA = rA.x * tangent.y - rA.y * tangent.x;
-        float rtB = rB.x * tangent.y - rB.y * tangent.x;
-        float kTangent = imA + imB + iIA * rtA * rtA + iIB * rtB * rtB;
-        tangentMass = (kTangent > 0.00001f) ? 1.0f / kTangent : 0.0f;
-
-        // Friction
-        float sf = a->getStaticFriction() * b->getStaticFriction();
-        float kf = a->getKineticFriction() * b->getKineticFriction();
-        friction = (tanMag < 0.01f) ? sf : kf;
-    }
-
-    if (!enableFriction) friction = 0.0f;
-
-    // Bias
-    float e = 0.0f;
-    if (enableRestitution) {
-        e = std::max(a->getRestitution(), b->getRestitution());
-        if (vn > -0.1f) e = 0.0f; // Increased threshold to settle faster
-    }
-    bias = e * vn;
-    
-    positionBias = 0.0f;
-    if (enablePenetration && depth > 0.01f) {
-        // High-quality stabilization: resolve penetration without introducing physical bounce
-        positionBias = -0.2f / dt * (depth - 0.01f);
-        
-        // Cap the stabilization velocity to prevent "explosions"
-        float maxStabilizationVelocity = 2.0f; // Limit to 2 units per second
-        if (positionBias < -maxStabilizationVelocity) positionBias = -maxStabilizationVelocity;
-    }
-}
-
-void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
-    if (!enableNormal && !enableFriction) return;
-
-    float imA = a->getInverseMass();
-    float imB = b->getInverseMass();
-    float iIA = a->getInverseInertia();
-    float iIB = b->getInverseInertia();
-
-    // Compute current rel vel
-    Vec2 tangentialVelocityA(-rA.y * a->getAngularVelocity(), rA.x * a->getAngularVelocity());
-    Vec2 tangentialVelocityB(-rB.y * b->getAngularVelocity(), rB.x * b->getAngularVelocity());
-    Vec2 va = a->getVelocity() + tangentialVelocityA;
-    Vec2 vb = b->getVelocity() + tangentialVelocityB;
-    Vec2 relVel = vb - va;
-
-    if (enableNormal) {
-        // 1. Solve for real velocity (restitution)
-        float vn = relVel.dot(normal);
-        float dLambda = - (vn + bias) * normalMass;
-        
-        if (std::isfinite(dLambda)) {
-            float old = normalImpulse;
-            normalImpulse = std::max(old + dLambda, 0.0f);
-            dLambda = normalImpulse - old;
-
-            Vec2 impulse = normal * dLambda;
-            if (imA > 0.0f) {
-                a->setVelocity(a->getVelocity() - impulse * imA);
-                float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
-                a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
-            }
-            if (imB > 0.0f) {
-                b->setVelocity(b->getVelocity() + impulse * imB);
-                float torqueB = rB.x * impulse.y - rB.y * impulse.x;
-                b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
-            }
-        }
-
-        // 2. Solve for pseudo-velocity (position correction)
-        if (positionBias < 0.0f) {
-            Vec2 tangentialPseudoVelocityA(-rA.y * a->pseudoAngularVelocity, rA.x * a->pseudoAngularVelocity);
-            Vec2 tangentialPseudoVelocityB(-rB.y * b->pseudoAngularVelocity, rB.x * b->pseudoAngularVelocity);
-            Vec2 vpa = a->pseudoVelocity + tangentialPseudoVelocityA;
-            Vec2 vpb = b->pseudoVelocity + tangentialPseudoVelocityB;
-            float vnp = (vpb - vpa).dot(normal);
-            
-            float dLambdaP = -(vnp + positionBias) * normalMass;
-            if (std::isfinite(dLambdaP)) {
-                float oldP = positionImpulse;
-                positionImpulse = std::max(oldP + dLambdaP, 0.0f);
-                dLambdaP = positionImpulse - oldP;
-                
-                Vec2 impulseP = normal * dLambdaP;
-                if (imA > 0.0f) {
-                    a->pseudoVelocity = a->pseudoVelocity - impulseP * imA;
-                    a->pseudoAngularVelocity += -(rA.x * impulseP.y - rA.y * impulseP.x) * iIA;
-                }
-                if (imB > 0.0f) {
-                    b->pseudoVelocity = b->pseudoVelocity + impulseP * imB;
-                    b->pseudoAngularVelocity += (rB.x * impulseP.y - rB.y * impulseP.x) * iIB;
-                }
-            }
-        }
-    }
-
-    if (enableFriction && friction > 0.0f) {
-        // Recompute relVel
-        tangentialVelocityA = Vec2(-rA.y * a->getAngularVelocity(), rA.x * a->getAngularVelocity());
-        tangentialVelocityB = Vec2(-rB.y * b->getAngularVelocity(), rB.x * b->getAngularVelocity());
-        va = a->getVelocity() + tangentialVelocityA;
-        vb = b->getVelocity() + tangentialVelocityB;
-        relVel = vb - va;
-        float vt = relVel.dot(tangent);
-        float dLambda = - vt * tangentMass;
-        
-        if (std::isfinite(dLambda)) {
-            float maxFriction = friction * normalImpulse;
-            float old = frictionImpulse;
-            frictionImpulse = std::max(-maxFriction, std::min(old + dLambda, maxFriction));
-            float dLambdaFriction = frictionImpulse - old;
-            
-            Vec2 impulse = tangent * dLambdaFriction;
-            if (imA > 0.0f) {
-                a->setVelocity(a->getVelocity() - impulse * imA);
-                float torqueA = -(rA.x * impulse.y - rA.y * impulse.x);
-                a->setAngularVelocity(a->getAngularVelocity() + torqueA * iIA);
-            }
-            if (imB > 0.0f) {
-                b->setVelocity(b->getVelocity() + impulse * imB);
-                float torqueB = rB.x * impulse.y - rB.y * impulse.x;
-                b->setAngularVelocity(b->getAngularVelocity() + torqueB * iIB);
-            }
-        }
-    }
-}
-
-// 5. Constraints.
-void World::_doConstraints(){}
-
-
-void World::setTimeStep(float dt) {
-    timeStep = dt;
-    decayMap[99] = pow(1.0f - 0.99f, dt); // E.g. 99% decay in 1 s, given the fixed time step dt.
-    decayMap[90] = pow(1.0f - 0.90f, dt);
-    decayMap[75] = pow(1.0f - 0.75f, dt);
-    decayMap[50] = pow(1.0f - 0.50f, dt);
-    decayMap[25] = pow(1.0f - 0.25f, dt);
-    decayMap[10] = pow(1.0f - 0.10f, dt);
-    decayMap[5] = pow(1.0f - 0.05f, dt);
-    decayMap[2] = pow(1.0f - 0.02f, dt);
-    decayMap[1] = pow(1.0f - 0.01f, dt);
-}
-
 int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY) {
-    auto itA = objectsMap.find(bodyAId);
-    auto itB = objectsMap.find(bodyBId);
-    
-    if (itA == objectsMap.end() || itB == objectsMap.end()) {
-        return -1;
-    }
-    
-    jointsMap[id] = std::make_unique<HingeJoint>(
-        id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY)
-    );
-    
+    auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
+    if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
+    jointsMap[id] = std::make_unique<HingeJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY));
     return id;
 }
 
 int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length) {
-    auto itA = objectsMap.find(bodyAId);
-    auto itB = objectsMap.find(bodyBId);
-    
-    if (itA == objectsMap.end() || itB == objectsMap.end()) {
-        return -1;
-    }
-    
-    jointsMap[id] = std::make_unique<DistanceJoint>(
-        id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length
-    );
-    
+    auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
+    if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
+    jointsMap[id] = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
     return id;
 }
 
 int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length, float frequencyHz, float dampingRatio) {
-    auto itA = objectsMap.find(bodyAId);
-    auto itB = objectsMap.find(bodyBId);
-    
-    if (itA == objectsMap.end() || itB == objectsMap.end()) {
-        return -1;
-    }
-    
-    jointsMap[id] = std::make_unique<SpringJoint>(
-        id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio
-    );
-    
+    auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
+    if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
+    jointsMap[id] = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
     return id;
 }
 
 int World::createGearJoint(int id, int joint1Id, int joint2Id, float ratio) {
-    auto it1 = jointsMap.find(joint1Id);
-    auto it2 = jointsMap.find(joint2Id);
-    
-    if (it1 == jointsMap.end() || it2 == jointsMap.end()) {
-        return -1;
-    }
-    
+    auto it1 = jointsMap.find(joint1Id); auto it2 = jointsMap.find(joint2Id);
+    if (it1 == jointsMap.end() || it2 == jointsMap.end()) return -1;
     HingeJoint* h1 = dynamic_cast<HingeJoint*>(it1->second.get());
     HingeJoint* h2 = dynamic_cast<HingeJoint*>(it2->second.get());
-    
-    if (!h1 || !h2) {
-        return -1;
-    }
-    
+    if (!h1 || !h2) return -1;
     jointsMap[id] = std::make_unique<GearJoint>(id, h1, h2, ratio);
-    
     return id;
 }
 
-void World::removeJoint(int id) {
-    jointsMap.erase(id);
-}
+void World::removeJoint(int id) { jointsMap.erase(id); }
+Joint* World::getJoint(int id) { auto it = jointsMap.find(id); return it != jointsMap.end() ? it->second.get() : nullptr; }
 
-Joint* World::getJoint(int id) {
-    auto it = jointsMap.find(id);
-    if (it != jointsMap.end()) {
-        return it->second.get();
-    }
-    return nullptr;
-}
-
-// Remove all objects from the world and clean them up.
-// This could be more efficient by just clearing the vector.
-// The downside is added complexity and potential for bugs.
-// Removing the nodes 1 by 1 from the BVH is tried and tested already.
-void World::clear() {
-    collisionSolver.clear();
-
-    while (!objectsList.empty()) {
-        removeObject(objectsList[0]->id);
-    }
-
-    // Clear the lists
-
-    // These should already be cleared by the removeObject function.
-    // But we should add some logging in case something goes wrong.
-    if(objectsList.size() != 0){
-        cout << "World::clear() - objectsList not cleared!" << endl;
-    }
-    if(objectsMap.size() != 0){
-        cout << "World::clear() - objectsMap not cleared!" << endl;
+void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
+    rA = point - a->getPosition();
+    rB = point - b->getPosition();
+    float imA = a->getInverseMass(), imB = b->getInverseMass();
+    float iIA = a->getInverseInertia(), iIB = b->getInverseInertia();
+    float rnA = rA.x * normal.y - rA.y * normal.x;
+    float rnB = rB.x * normal.y - rB.y * normal.x;
+    float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
+    normalMass = (kNormal > 0.00001f) ? 1.0f / kNormal : 0.0f;
+    Vec2 tangentialVelocityA(-rA.y * a->getAngularVelocity(), rA.x * a->getAngularVelocity());
+    Vec2 tangentialVelocityB(-rB.y * b->getAngularVelocity(), rB.x * b->getAngularVelocity());
+    Vec2 relVel = (b->getVelocity() + tangentialVelocityB) - (a->getVelocity() + tangentialVelocityA);
+    float vn = relVel.dot(normal);
+    Vec2 tangentialComponent = relVel - normal * vn;
+    float tanMag = tangentialComponent.magnitude();
+    if (tanMag > 0.0001f) {
+        tangent = -tangentialComponent / tanMag;
+    } else {
+        // Fallback to a vector perpendicular to the normal
+        tangent = Vec2(-normal.y, normal.x);
     }
 
-    // Delete all the object data.
-    liveIntData.clear();
-    liveFloatData.clear();
+    float rtA = rA.x * tangent.y - rA.y * tangent.x;
+    float rtB = rB.x * tangent.y - rB.y * tangent.x;
+    float kTangent = imA + imB + iIA * rtA * rtA + iIB * rtB * rtB;
+    tangentMass = (kTangent > 0.00001f) ? 1.0f / kTangent : 0.0f;
+
+    if (!enableFriction) {
+        staticFriction = 0.0f;
+        kineticFriction = 0.0f;
+    }
+    bias = (enableRestitution && vn < -0.1f) ? restitution * vn : 0.0f; 
+    positionBias = (enablePenetration && depth > 0.01f) ? std::max(-2.0f, -0.2f / dt * (depth - 0.01f)) : 0.0f;
 }
 
-void World::destroy(){
-    delete this;
+void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
+    float imA = a->getInverseMass(), imB = b->getInverseMass();
+    float iIA = a->getInverseInertia(), iIB = b->getInverseInertia();
+    Vec2 vA = a->getVelocity(), vB = b->getVelocity();
+    float wA = a->getAngularVelocity(), wB = b->getAngularVelocity();
+    Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
+    Vec2 relVel = (vB + vrB) - (vA + vrA);
+    if (enableNormal) {
+        float vn = relVel.dot(normal);
+        float dLambda = -(vn + bias) * normalMass;
+        if (std::isfinite(dLambda)) {
+            float old = normalImpulse; normalImpulse = std::max(old + dLambda, 0.0f); dLambda = normalImpulse - old;
+            Vec2 impulse = normal * dLambda;
+            if (imA > 0) { a->setVelocityInternal(a->getVelocity() - impulse * imA); a->setAngularVelocityInternal(a->getAngularVelocity() - rA.cross(impulse) * iIA); }
+            if (imB > 0) { b->setVelocityInternal(b->getVelocity() + impulse * imB); b->setAngularVelocityInternal(b->getAngularVelocity() + rB.cross(impulse) * iIB); }
+        }
+        if (positionBias < 0.0f) {
+            Vec2 tangentialPseudoVelocityA(-rA.y * a->pseudoAngularVelocity, rA.x * a->pseudoAngularVelocity);
+            Vec2 tangentialPseudoVelocityB(-rB.y * b->pseudoAngularVelocity, rB.x * b->pseudoAngularVelocity);
+            float vnp = ((b->pseudoVelocity + tangentialPseudoVelocityB) - (a->pseudoVelocity + tangentialPseudoVelocityA)).dot(normal);
+            float dLambdaP = -(vnp + positionBias) * normalMass;
+            if (std::isfinite(dLambdaP)) {
+                float oldP = positionImpulse; positionImpulse = std::max(oldP + dLambdaP, 0.0f); dLambdaP = positionImpulse - oldP;
+                Vec2 impulseP = normal * dLambdaP;
+                if (imA > 0) { a->pseudoVelocity = a->pseudoVelocity - impulseP * imA; a->pseudoAngularVelocity -= rA.cross(impulseP) * iIA; }
+                if (imB > 0) { b->pseudoVelocity = b->pseudoVelocity + impulseP * imB; b->pseudoAngularVelocity += rB.cross(impulseP) * iIB; }
+            }
+        }
+    }
+
+    if (enableFriction && staticFriction > 0.0f) {
+        // Recalculate relative velocity after normal impulse
+        Vec2 vA_new = a->getVelocity(), vB_new = b->getVelocity();
+        float wA_new = a->getAngularVelocity(), wB_new = b->getAngularVelocity();
+        Vec2 vrA_new(-wA_new * rA.y, wA_new * rA.x), vrB_new(-wB_new * rB.y, wB_new * rB.x);
+        Vec2 relVel_new = (vB_new + vrB_new) - (vA_new + vrA_new);
+
+        float vt = relVel_new.dot(tangent);
+        float dLambdaT = -vt * tangentMass;
+
+        if (std::isfinite(dLambdaT)) {
+            // Coulomb's Law transition: 
+            // 1. Calculate the impulse required for zero relative velocity (static).
+            // 2. If it exceeds the static limit, clamp it to the kinetic limit.
+            float maxStaticFriction = staticFriction * normalImpulse;
+            float maxKineticFriction = kineticFriction * normalImpulse;
+            
+            float oldImpulseT = frictionImpulse;
+            float newImpulseT = oldImpulseT + dLambdaT;
+            
+            if (std::abs(newImpulseT) > maxStaticFriction) {
+                // We've broken static friction, use kinetic limit.
+                frictionImpulse = std::max(-maxKineticFriction, std::min(maxKineticFriction, newImpulseT));
+            } else {
+                // Still within static threshold.
+                frictionImpulse = newImpulseT;
+            }
+            dLambdaT = frictionImpulse - oldImpulseT;
+
+            Vec2 fImpulse = tangent * dLambdaT;
+            if (imA > 0) {
+                a->setVelocityInternal(a->getVelocity() - fImpulse * imA);
+                a->setAngularVelocityInternal(a->getAngularVelocity() - rA.cross(fImpulse) * iIA);
+            }
+            if (imB > 0) {
+                b->setVelocityInternal(b->getVelocity() + fImpulse * imB);
+                b->setAngularVelocityInternal(b->getAngularVelocity() + rB.cross(fImpulse) * iIB);
+            }
+        }
+    }
 }
-
-
-void World::setHasPenetrationResolution(bool value){ hasPenetrationResolution = value; }
-void World::setHasRestitution(bool value){ hasRestitution = value; }
-void World::setHasFriction(bool value){ hasFriction = value; }

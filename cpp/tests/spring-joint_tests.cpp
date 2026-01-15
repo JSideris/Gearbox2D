@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 #include "world.h"
 #include "spring-joint.h"
-#include "physical-object.h"
+#include "body.h"
+#include "fixture.h"
 #include "debug.h"
 
 class SpringJointTest : public ::testing::Test {
@@ -20,8 +21,8 @@ protected:
 };
 
 TEST_F(SpringJointTest, Creation) {
-    world.makeObject(1, createOptions(0, 0));
-    world.makeObject(2, createOptions(2, 0));
+    world.makeBody(1, createOptions(0, 0));
+    world.makeBody(2, createOptions(2, 0));
     
     int jointId = world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
     EXPECT_EQ(jointId, 1);
@@ -38,16 +39,16 @@ TEST_F(SpringJointTest, Creation) {
 
 TEST_F(SpringJointTest, PullsTogether) {
     // Two objects separated by 4 units, spring length 2 units
-    world.makeObject(1, createOptions(0, 0));
-    world.makeObject(2, createOptions(4, 0));
+    world.makeBody(1, createOptions(0, 0));
+    world.makeBody(2, createOptions(4, 0));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
     
     // Step once to see velocity change
     world.step();
     
-    PhysicalObject* obj1 = world.getObject(1);
-    PhysicalObject* obj2 = world.getObject(2);
+    Body* obj1 = world.getBody(1);
+    Body* obj2 = world.getBody(2);
     
     // obj1 should have positive VX, obj2 should have negative VX
     EXPECT_GT(obj1->getVelocity().x, 0.0f);
@@ -56,16 +57,16 @@ TEST_F(SpringJointTest, PullsTogether) {
 
 TEST_F(SpringJointTest, PushesApart) {
     // Two objects separated by 1 unit, spring length 2 units
-    world.makeObject(1, createOptions(0, 0));
-    world.makeObject(2, createOptions(1, 0));
+    world.makeBody(1, createOptions(0, 0));
+    world.makeBody(2, createOptions(1, 0));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
     
     // Step once
     world.step();
     
-    PhysicalObject* obj1 = world.getObject(1);
-    PhysicalObject* obj2 = world.getObject(2);
+    Body* obj1 = world.getBody(1);
+    Body* obj2 = world.getBody(2);
     
     // obj1 should have negative VX, obj2 should have positive VX
     EXPECT_LT(obj1->getVelocity().x, 0.0f);
@@ -74,47 +75,47 @@ TEST_F(SpringJointTest, PushesApart) {
 
 TEST_F(SpringJointTest, Damping) {
     // Check if damping reduces velocity over time
-    world.makeObject(1, createOptions(0, 0, 0.0f)); // Fixed
-    world.getObject(1)->type = ObjectType::FIXED_OBJECT;
+    world.makeBody(1, createOptions(0, 0, 0.0f)); // Fixed
+    world.getBody(1)->type = ObjectType::FIXED_OBJECT;
     
-    world.makeObject(2, createOptions(4, 0, 1.0f));
+    world.makeBody(2, createOptions(4, 0, 1.0f));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 2.0f, 0.1f);
     
     // Run for a bit and check velocity magnitude vs no damping
     for (int i = 0; i < 60; ++i) world.step();
-    float velDamped = world.getObject(2)->getVelocity().magnitude();
+    float velDamped = world.getBody(2)->getVelocity().magnitude();
     
     // Reset and try with more damping
     world.clear();
-    world.makeObject(1, createOptions(0, 0, 0.0f));
-    world.getObject(1)->type = ObjectType::FIXED_OBJECT;
-    world.makeObject(2, createOptions(4, 0, 1.0f));
+    world.makeBody(1, createOptions(0, 0, 0.0f));
+    world.getBody(1)->type = ObjectType::FIXED_OBJECT;
+    world.makeBody(2, createOptions(4, 0, 1.0f));
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 2.0f, 0.9f);
     
     for (int i = 0; i < 60; ++i) world.step();
-    float velMoreDamped = world.getObject(2)->getVelocity().magnitude();
+    float velMoreDamped = world.getBody(2)->getVelocity().magnitude();
     
     EXPECT_LT(velMoreDamped, velDamped);
 }
 
 TEST_F(SpringJointTest, UpdateParametersAtRuntime) {
-    world.makeObject(1, createOptions(0, 0, 0.0f));
-    world.getObject(1)->type = ObjectType::FIXED_OBJECT;
-    world.makeObject(2, createOptions(5, 0, 1.0f));
+    world.makeBody(1, createOptions(0, 0, 0.0f));
+    world.getBody(1)->type = ObjectType::FIXED_OBJECT;
+    world.makeBody(2, createOptions(5, 0, 1.0f));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 5.0f, 5.0f, 0.7f);
     Joint* joint = world.getJoint(1);
     
     // Initial state: at rest
     for (int i = 0; i < 60; ++i) world.step();
-    EXPECT_NEAR(world.getObject(2)->getX(), 5.0f, 0.05f);
+    EXPECT_NEAR(world.getBody(2)->getX(), 5.0f, 0.05f);
     
     // Change length
     joint->setLength(3.0f);
     EXPECT_EQ(joint->getLength(), 3.0f);
     for (int i = 0; i < 120; ++i) world.step();
-    EXPECT_NEAR(world.getObject(2)->getX(), 3.0f, 0.1f);
+    EXPECT_NEAR(world.getBody(2)->getX(), 3.0f, 0.1f);
     
     // Change frequency
     joint->setFrequencyHz(2.0f);

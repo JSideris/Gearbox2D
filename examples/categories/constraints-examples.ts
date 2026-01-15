@@ -21,24 +21,30 @@ export const constraintsExamples = [
         ].join("\n\n"),
         onInit: (world) => {
             nextId = 1;
-            const anchor = world.makeObject(nextId++, {
+            const anchorId = nextId++;
+            const anchor = world.makeBody(anchorId, {
                 x: 5,
                 y: 3,
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ff4444"
             });
+            anchor.addFixture({
+                shape: gearbox.shapes.BOX,
+                width: 1,
+                height: 1,
+            });
 
-            const pendulum = world.makeObject(nextId++, {
+            const pendulumId = nextId++;
+            const pendulum = world.makeBody(pendulumId, {
                 x: 8,
                 y: 3,
+                mass: 0.1,
+                color: "#44ff44"
+            });
+            pendulum.addFixture({
                 shape: gearbox.shapes.BOX,
                 width: 4,
                 height: 0.5,
-                mass: 0.1,
-                color: "#44ff44"
             });
 
             world.createHingeJoint(nextId++, anchor, pendulum, {
@@ -61,27 +67,36 @@ export const constraintsExamples = [
         onInit: (world) => {
             nextId = 1;
             gearbox.debug.showAabbs = false;
+            gearbox.debug.showForceVectors = true;
+
+            world.setGravity(0, 10);
             bridgeJoints = [];
             breakableJoint = null;
             massObject = null;
 
             // 1. Suspension System (higher up and smaller)
-            const anchor = world.makeObject(nextId++, {
+            const anchorId = nextId++;
+            const anchor = world.makeBody(anchorId, {
                 x: 5,
                 y: 1,
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.2,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ff4444"
             });
+            anchor.addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.2,
+            });
 
-            massObject = world.makeObject(nextId++, {
+            const massObjectId = nextId++;
+            massObject = world.makeBody(massObjectId, {
                 x: 5,
                 y: 2.5,
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.4,
                 mass: 0.05,
                 color: "#888888"
+            });
+            massObject.addFixture(massObjectId, {
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.4,
             });
 
             breakableJoint = world.createHingeJoint(nextId++, anchor, massObject, {
@@ -96,36 +111,45 @@ export const constraintsExamples = [
             const segmentWidth = (endX - startX) / segments;
             const segmentHeight = 0.2;
 
-            const bridgeAnchorLeft = world.makeObject(nextId++, {
+            const bridgeAnchorLeftId = nextId++;
+            const bridgeAnchorLeft = world.makeBody(bridgeAnchorLeftId, {
                 x: startX - segmentWidth / 2,
                 y: bridgeY,
-                shape: gearbox.shapes.BOX,
-                width: segmentWidth,
-                height: 0.5,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa"
             });
-
-            const bridgeAnchorRight = world.makeObject(nextId++, {
-                x: endX + segmentWidth / 2,
-                y: bridgeY,
+            bridgeAnchorLeft.addFixture({
                 shape: gearbox.shapes.BOX,
                 width: segmentWidth,
                 height: 0.5,
+            });
+
+            const bridgeAnchorRightId = nextId++;
+            const bridgeAnchorRight = world.makeBody(bridgeAnchorRightId, {
+                x: endX + segmentWidth / 2,
+                y: bridgeY,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#aaaaaa"
+            });
+            bridgeAnchorRight.addFixture({
+                shape: gearbox.shapes.BOX,
+                width: segmentWidth,
+                height: 0.5,
             });
 
             let prevBody = bridgeAnchorLeft;
             for (let i = 0; i < segments; i++) {
-                const segmentBody = world.makeObject(nextId++, {
+                const segmentBodyId = nextId++;
+                const segmentBody = world.makeBody(segmentBodyId, {
                     x: startX + i * segmentWidth + segmentWidth / 2,
                     y: bridgeY,
+                    mass: 0.2, // Slightly heavier for stability
+                    color: "#cd853f",
+                });
+                segmentBody.addFixture({
                     shape: gearbox.shapes.BOX,
                     width: segmentWidth * 0.9,
                     height: segmentHeight,
-                    mass: 0.2, // Slightly heavier for stability
-                    color: "#cd853f",
                     categoryBits: 0x0004,
                     maskBits: ~0x0004 // Don't collide with other bridge segments
                 });
@@ -145,9 +169,6 @@ export const constraintsExamples = [
                 dampingRatio: 1.0
             });
             bridgeJoints.push(lastSj);
-
-            world.setGravity(0, 10);
-            gearbox.debug.showForceVectors = true;
             
             // Apply a side force to make it swing
             massObject.applyImpulse(0.2, 0);
@@ -208,13 +229,16 @@ export const constraintsExamples = [
             const numGears = 5;
             const spacing = 1.5;
             
-            const staticBody = world.makeObject(nextId++, {
+            const staticBodyId = nextId++;
+            const staticBody = world.makeBody(staticBodyId, {
                 x: 5, y: 5,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                color: "#888",
+            });
+            staticBody.addFixture({
                 shape: gearbox.shapes.AABB,
                 width: 6.2,
                 height: 0.2,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                color: "#888",
                 maskBits: 0 // Don't collide with gears
             });
 
@@ -223,13 +247,16 @@ export const constraintsExamples = [
 
             for (let i = 0; i < numGears; i++) {
                 const size = (i % 2 === 0) ? 1.0 : 0.5;
-                const gear = world.makeObject(nextId++, {
+                const gearId = nextId++;
+                const gear = world.makeBody(gearId, {
                     x: startX + i * spacing,
                     y: y,
-                    shape: gearbox.shapes.CIRCLE,
-                    radius: size,
                     mass: size,
                     color: `hsl(${i * 60}, 70%, 60%)`
+                });
+                gear.addFixture({
+                    shape: gearbox.shapes.CIRCLE,
+                    radius: size,
                 });
 
                 const hinge = world.createHingeJoint(nextId++, staticBody, gear, {
@@ -266,31 +293,38 @@ export const constraintsExamples = [
         ].join("\n\n"),
         onInit: (world) => {
             gearbox.debug.showAabbs = false;
+            gearbox.debug.showForceVectors = false;
             nextId = 1;
             const cx = 5;
             const cy = 5;
             const drumRadius = 4;
 
             // The Drum Hub (fixed rotation center)
-            const hub = world.makeObject(nextId++, {
+            const hubId = nextId++;
+            const hub = world.makeBody(hubId, {
                 x: cx,
                 y: cy,
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.5,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ff4444"
             });
+            hub.addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.5,
+            });
 
             // The rotating drum (structure only)
-            drum = world.makeObject(nextId++, {
+            const drumId = nextId++;
+            drum = world.makeBody(drumId, {
                 x: cx,
                 y: cy,
-                shape: gearbox.shapes.CIRCLE,
-                radius: drumRadius,
                 mass: 100,
                 color: "rgba(255, 255, 255, 0.05)",
-                maskBits: 0,
                 angularDamping: 0.5 // Add some damping to stabilize
+            });
+            drum.addFixture(drumId, {
+                shape: gearbox.shapes.CIRCLE,
+                radius: drumRadius,
+                maskBits: 0,
             });
 
             world.createHingeJoint(nextId++, hub, drum, {
@@ -317,15 +351,18 @@ export const constraintsExamples = [
                 // First link (pointing towards center)
                 const shape1X = pinX - Math.cos(angle) * 0.5;
                 const shape1Y = pinY - Math.sin(angle) * 0.5;
-                const shape1 = world.makeObject(nextId++, {
+                const shape1Id = nextId++;
+                const shape1 = world.makeBody(shape1Id, {
                     x: shape1X,
                     y: shape1Y,
+                    mass: 0.5,
+                    color: `hsl(${(i * 360) / numChains}, 70%, 60%)`
+                });
+                shape1.addFixture({
                     shape: i % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.5,
                     height: 0.5,
                     radius: 0.25,
-                    mass: 0.5,
-                    color: `hsl(${(i * 360) / numChains}, 70%, 60%)`
                 });
 
                 // Joint 1: Drum to Shape 1
@@ -339,15 +376,18 @@ export const constraintsExamples = [
                 // Second link (pointing further towards center)
                 const shape2X = shape1X - Math.cos(angle) * linkDist;
                 const shape2Y = shape1Y - Math.sin(angle) * linkDist;
-                const shape2 = world.makeObject(nextId++, {
+                const shape2Id = nextId++;
+                const shape2 = world.makeBody(shape2Id, {
                     x: shape2X,
                     y: shape2Y,
+                    mass: 0.5,
+                    color: `hsl(${(i * 360) / numChains}, 70%, 50%)`
+                });
+                shape2.addFixture({
                     shape: (i + 1) % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.5,
                     height: 0.5,
                     radius: 0.25,
-                    mass: 0.5,
-                    color: `hsl(${(i * 360) / numChains}, 70%, 50%)`
                 });
 
                 // Joint 2: Shape 1 to Shape 2
@@ -360,15 +400,18 @@ export const constraintsExamples = [
                 // Third link (pointing even further towards center)
                 const shape3X = shape2X - Math.cos(angle) * linkDist;
                 const shape3Y = shape2Y - Math.sin(angle) * linkDist;
-                const shape3 = world.makeObject(nextId++, {
+                const shape3Id = nextId++;
+                const shape3 = world.makeBody(shape3Id, {
                     x: shape3X,
                     y: shape3Y,
+                    mass: 0.5,
+                    color: `hsl(${(i * 360) / numChains}, 70%, 40%)`
+                });
+                shape3.addFixture({
                     shape: (i + 2) % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.5,
                     height: 0.5,
                     radius: 0.25,
-                    mass: 0.5,
-                    color: `hsl(${(i * 360) / numChains}, 70%, 40%)`
                 });
 
                 // Joint 3: Shape 2 to Shape 3
@@ -425,6 +468,7 @@ export const constraintsExamples = [
         ].join("\n\n"),
         onInit: (world) => {
             gearbox.debug.showAabbs = false;
+            gearbox.debug.showForceVectors = false;
             nextId = 1;
             const cx = 5;
             const cy = 3;
@@ -432,29 +476,35 @@ export const constraintsExamples = [
             const outerRadius = 3.5;
 
             // Hub (fixed center)
-            const hub = world.makeObject(nextId++, {
+            const hubId = nextId++;
+            const hub = world.makeBody(hubId, {
                 x: cx,
                 y: cy,
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.1,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#666666",
-                maskBits: 0
+            });
+            hub.addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.1,
+                maskBits: 0,
             });
 
             // Central rotating body (Pulley)
-            rotator = world.makeObject(nextId++, {
+            const rotatorId = nextId++;
+            rotator = world.makeBody(rotatorId, {
                 x: cx,
                 y: cy,
                 rs: 2.5,
-                shape: gearbox.shapes.CIRCLE,
-                radius: innerRadius,
-                type: gearbox.bodyTypes.RIGID_BODY,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                 mass: 10,
                 color: "#888888",
+                angularDamping: 0.1
+            });
+            rotator.addFixture(rotatorId, {
+                shape: gearbox.shapes.CIRCLE,
+                radius: innerRadius,
                 sFriction: 1.0,
                 kFriction: 1.0,
-                angularDamping: 0.1
             });
 
             world.createHingeJoint(nextId++, hub, rotator, {
@@ -468,15 +518,18 @@ export const constraintsExamples = [
                 const sx = cx + Math.cos(angle) * outerRadius;
                 const sy = cy + Math.sin(angle) * outerRadius;
 
-                const shape = world.makeObject(nextId++, {
+                const shapeId = nextId++;
+                const shape = world.makeBody(shapeId, {
                     x: sx,
                     y: sy,
+                    mass: 1.5, // Heavier for more stretch
+                    color: `hsl(${(i * 360) / numShapes}, 70%, 60%)`,
+                });
+                shape.addFixture({
                     shape: i % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
                     width: 0.6,
                     height: 0.6,
                     radius: 0.3,
-                    mass: 1.5, // Heavier for more stretch
-                    color: `hsl(${(i * 360) / numShapes}, 70%, 60%)`,
                     sFriction: 0.999,
                     kFriction: 0.99
                 });
@@ -522,6 +575,7 @@ export const constraintsExamples = [
         ].join("\n\n"),
         onInit: (world) => {
             gearbox.debug.showAabbs = false;
+            gearbox.debug.showForceVectors = false;
             nextId = 1;
             const cx = 5;
             const cy = 3;
@@ -531,15 +585,18 @@ export const constraintsExamples = [
             const axelRadius = 0.2;
 
             // Center point (Axel)
-            const center = world.makeObject(nextId++, {
+            const centerId = nextId++;
+            const center = world.makeBody(centerId, {
                 x: cx,
                 y: cy,
-                shape: gearbox.shapes.CIRCLE,
-                radius: axelRadius,
                 mass: 2.0, // Heavier axel for more stability
                 color: "#ff8888",
+            });
+            center.addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: axelRadius,
                 sFriction: 0.9,
-                kFriction: 0.9
+                kFriction: 0.9,
             });
             rotator = center;
             currentImpulse = 0;
@@ -551,15 +608,18 @@ export const constraintsExamples = [
                 const px = cx + Math.cos(angle) * radius;
                 const py = cy + Math.sin(angle) * radius;
 
-                const p = world.makeObject(nextId++, {
+                const pId = nextId++;
+                const p = world.makeBody(pId, {
                     x: px,
                     y: py,
-                    shape: gearbox.shapes.CIRCLE,
-                    radius: 0.2,
                     mass: 0.5,
                     color: "#8888ff",
+                });
+                p.addFixture({
+                    shape: gearbox.shapes.CIRCLE,
+                    radius: 0.2,
                     sFriction: 0.9,
-                    kFriction: 0.9
+                    kFriction: 0.9,
                 });
                 points.push(p);
 
@@ -589,36 +649,42 @@ export const constraintsExamples = [
             });
 
             // Ground - made wider to accommodate movement
-            world.makeObject(nextId++, {
+            const groundId = nextId++;
+            world.makeBody(groundId, {
                 x: 5,
                 y: 10,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                color: "#aaaaaa",
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
                 width: 15,
                 height: 2,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                color: "#aaaaaa",
                 sFriction: 0.9,
-                kFriction: 0.9
+                kFriction: 0.9,
             });
 
             // Barriers to keep the ball from rolling off - taller and thicker
-            world.makeObject(nextId++, {
+            const barrier1Id = nextId++;
+            world.makeBody(barrier1Id, {
                 x: -3.5,
                 y: 4.25,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                color: "#aaaaaa"
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
                 width: 2.0,
                 height: 10,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                color: "#aaaaaa"
             });
-            world.makeObject(nextId++, {
+            const barrier2Id = nextId++;
+            world.makeBody(barrier2Id, {
                 x: 13.5,
                 y: 4.25,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+                color: "#aaaaaa"
+            }).addFixture({
                 shape: gearbox.shapes.BOX,
                 width: 2.0,
                 height: 10,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                color: "#aaaaaa"
             });
 
             world.setGravity(0, 9.81);
