@@ -226,12 +226,47 @@ uiWorld.setGravity(0, 0);gameWorld.step();
 uiWorld.step();
 \`\`\`
 `,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),T=`# Broad Phase
+
+Gearbox2D uses a Dynamic Bounding Volume Hierarchy (BVH) for its broad phase collision detection. To maximize performance, the BVH employs several "logical biasing" techniques during object insertion. These heuristics encourage objects with similar physical properties to cluster together, allowing the engine to prune entire subtrees of potential collisions early in the detection process.
+
+## Biasing Optimizations
+
+The insertion cost is calculated using a Surface Area Heuristic (SAH) combined with several experimental weights.
+
+### 1. Spatial Fit (SAH)
+The fundamental heuristic. Objects prefer to be inserted into branches where they cause the smallest increase in total surface area.
+
+### 2. Sleep Biasing
+Sleeping objects are biased to group with other sleeping objects. 
+*   **Why?** The engine can skip self-collision checks for subtrees containing only sleeping objects ($O(1)$ pruning).
+
+### 3. Mask & Category Biasing
+Objects with similar collision filters (user-defined categories and masks) prefer to cluster.
+*   **Why?** If a dynamic object is spatially near a static object but their masks don't allow interaction, logical biasing keeps them in separate branches to avoid unnecessary AABB tests.
+
+### 4. Static Island Biasing
+Static level geometry is strongly encouraged to form "pure" static branches.
+*   **Why?** Static-vs-Static checks are common and entirely unnecessary. Pure static branches can be skipped globally during broadphase.
+
+### 5. Body Biasing
+Multiple fixtures belonging to the same physical \`Body\` are biased to stay together.
+*   **Why?** Fixtures on the same body almost never collide with each other. Grouping them allows for massive early pruning.
+
+### 6. Sensor Biasing
+Triggers and sensors are grouped separately from rigid physical bodies.
+*   **Why?** Sensors often have unique collision rules (e.g., they might ignore environment tiles but look for players).
+
+### 7. Velocity Biasing
+Objects moving in similar directions or at similar speeds are encouraged to cluster.
+*   **Why?** This improves the efficiency of "Fat AABBs" and can be a precursor to advanced continuous collision detection (CCD) optimizations.
+
+## Experimental Tuning
+
+All bias weights are internally adjustable, allowing for fine-grained performance tuning based on the specific needs of a simulation (e.g., high body counts vs. high particle counts).
+`,B=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
 TODO
 
-`,C=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),B=`# Collision Filtering
-TODO
-
-`,I=Object.freeze(Object.defineProperty({__proto__:null,default:B},Symbol.toStringTag,{value:"Module"})),O=`# Narrow Phase
+`,I=Object.freeze(Object.defineProperty({__proto__:null,default:C},Symbol.toStringTag,{value:"Module"})),O=`# Narrow Phase
 TODO
 
 `,k=Object.freeze(Object.defineProperty({__proto__:null,default:O},Symbol.toStringTag,{value:"Module"})),P=`# Core Concepts
@@ -376,7 +411,7 @@ npm run test:ts
 - **WASM loading errors**: Ensure you are serving files via a web server (HTTP/HTTPS), as browsers block WASM loading from \`file://\` URLs.
 - **Build failures**: Try \`npm run clean && npm run build\` to rebuild from scratch.
 
-`,W=Object.freeze(Object.defineProperty({__proto__:null,default:E},Symbol.toStringTag,{value:"Module"})),M=`# Events
+`,W=Object.freeze(Object.defineProperty({__proto__:null,default:E},Symbol.toStringTag,{value:"Module"})),F=`# Events
 
 Gearbox2D provides an event system to react to changes in the physics world, such as collisions and sleep state transitions.
 
@@ -452,7 +487,7 @@ While you can always check the \`isSleeping\` state of an object by reading its 
 3.  **Integration**: Events fit well into reactive UI frameworks or state management systems.
 
 Note: Reading \`obj.isSleeping\` is still useful for logic that needs to know the current state at any time without tracking transitions.
-`,F=Object.freeze(Object.defineProperty({__proto__:null,default:M},Symbol.toStringTag,{value:"Module"})),R=`# Your First Simulation
+`,M=Object.freeze(Object.defineProperty({__proto__:null,default:F},Symbol.toStringTag,{value:"Module"})),z=`# Your First Simulation
 
 This guide will walk you through creating a simple physics simulation: a box falling onto a static floor.
 
@@ -594,7 +629,7 @@ You must serve your files using a web server to allow the browser to load the \`
 \`\`\`bash
 npx http-server .
 \`\`\`Open your browser to \`http://localhost:8080\`, and you should see a red box fall and bounce on the floor!
-`,z=Object.freeze(Object.defineProperty({__proto__:null,default:R},Symbol.toStringTag,{value:"Module"})),J=`# The Simulation Loop
+`,R=Object.freeze(Object.defineProperty({__proto__:null,default:z},Symbol.toStringTag,{value:"Module"})),H=`# The Simulation Loop
 
 For a physics engine, how you advance time is just as important as the physics calculations themselves. This guide covers the best practices for setting up a stable and smooth simulation loop in Gearbox2D.
 
@@ -701,10 +736,10 @@ while (accumulator >= dt) {
 ## Engine Specifics: Internal Damping
 
 Gearbox2D uses a precomputed \`decayMap\` to ensure that velocities decay consistently regardless of the chosen timestep. When you call \`world.setTimeStep(dt)\`, the engine recalculates these multipliers so that "10% friction per second" feels the same at 60Hz as it does at 120Hz.
-`,H=Object.freeze(Object.defineProperty({__proto__:null,default:J},Symbol.toStringTag,{value:"Module"})),L=`# Debug Graphics
+`,J=Object.freeze(Object.defineProperty({__proto__:null,default:H},Symbol.toStringTag,{value:"Module"})),L=`# Debug Graphics
 TODO
 
-`,G=Object.freeze(Object.defineProperty({__proto__:null,default:L},Symbol.toStringTag,{value:"Module"})),q=`# Installation
+`,G=Object.freeze(Object.defineProperty({__proto__:null,default:L},Symbol.toStringTag,{value:"Module"})),V=`# Installation
 
 Gearbox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
 
@@ -781,10 +816,10 @@ npx http-server .
 
 Once you have the engine installed, check out [Your First Simulation](#first-simulation) to build a falling box demo.
 
-`,V=Object.freeze(Object.defineProperty({__proto__:null,default:q},Symbol.toStringTag,{value:"Module"})),N=`# Spatial Queries
+`,q=Object.freeze(Object.defineProperty({__proto__:null,default:V},Symbol.toStringTag,{value:"Module"})),N=`# Spatial Queries
 TODO
 
-`,U=Object.freeze(Object.defineProperty({__proto__:null,default:N},Symbol.toStringTag,{value:"Module"})),X=`# Introduction
+`,X=Object.freeze(Object.defineProperty({__proto__:null,default:N},Symbol.toStringTag,{value:"Module"})),U=`# Introduction
 
 **Gearbox2D** is a high-performance 2D physics and AI engine written in C++, compiled to WebAssembly, and designed for the modern web. 
 
@@ -820,6 +855,7 @@ Gearbox2D introduces several architectural advancements designed for modern, lar
 *   **The "Big World" Solver**: Specialized handling for microscopic and galactic scales solves the precision issues common in standard engines, enabling massive-scale simulations without coordinate jitter or "big world" floating-point errors.
 *   **Hybrid Soft Constraints**: Leverage per-object Baumgarte bias factors to create "squishy" interactions and soft joints without the performance penalty of a dedicated soft-body engine.
 *   **Speed-Adaptive Bounding**: Bounding volume padding that scales with velocity and angular momentum, preventing "tunneling" for high-speed objects while keeping the broad-phase tight for slow-moving ones.
+*   **Kinematic Restitution Balancing (KRB)**: A mathematically rigorous "energy audit" that eliminates artificial energy gain in bouncy objects by analytically taxing launch speeds to pay for solver-induced position correction.
 
 ## Project Status
 Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
@@ -832,7 +868,7 @@ Gearbox2D has been in development since 2023 and was first published to npm in J
 1.  **[Installation Guide](#installation)** - Get the engine running in your project.
 2.  **[Core Concepts](#core-concepts)** - Learn about the World, Ticks, and Forces.
 3.  **[Your First Simulation](#first-simulation)** - Build a basic world in minutes.
-`,Y=Object.freeze(Object.defineProperty({__proto__:null,default:X},Symbol.toStringTag,{value:"Module"})),$="# Distance Joint\n\nA **Distance Joint** maintains a fixed distance between two points on two separate bodys. It prevents the objects from moving closer together or further apart than the specified length.\n\nFor general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).\n\n## Creation\n\nTo create a distance joint, use the `world.createDistanceJoint` method.\n\n```javascript\nconst joint = world.createDistanceJoint(id, bodyA, bodyB, {\n    worldAnchorA: { x: 2, y: 5 },\n    worldAnchorB: { x: 8, y: 5 }\n});\n```\n\n### Options\n\n| Property | Type | Description |\n| :--- | :--- | :--- |\n| `worldAnchorA` | `Vec2` | World coordinate for anchor on `bodyA`. |\n| `worldAnchorB` | `Vec2` | World coordinate for anchor on `bodyB`. |\n| `anchorA` | `Vec2` | Local anchor relative to `bodyA`. |\n| `anchorB` | `Vec2` | Local anchor relative to `bodyB`. |\n| `length` | `number` | The target distance. If omitted, it's calculated from anchors at creation. |\n\n## Properties\n\nIn addition to the [common joint properties](./joints-overview.md#common-properties), the Distance Joint provides:\n\n| Property | Type | Access | Description |\n| :--- | :--- | :--- | :--- |\n| `length` | `number` | Read/Write | The current target distance for the joint. |\n| `localAnchorA` | `Vec2` | Read/Write | Local anchor point on `bodyA`. |\n| `localAnchorB` | `Vec2` | Read/Write | Local anchor point on `bodyB`. |\n\n## Example: Rigid Rod\n\n```javascript\nconst ball1 = world.makeBody(1, { x: 5, y: 5 });\nconst ball2 = world.makeBody(2, { x: 10, y: 5 });// Connect with a 5m rigid rod\nball1.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nball2.addFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nworld.createDistanceJoint(101, ball1, ball2, {\n    length: 5\n});\n```\n",K=Object.freeze(Object.defineProperty({__proto__:null,default:$},Symbol.toStringTag,{value:"Module"})),Q=`# Gear Joint
+`,$=Object.freeze(Object.defineProperty({__proto__:null,default:U},Symbol.toStringTag,{value:"Module"})),Y="# Distance Joint\n\nA **Distance Joint** maintains a fixed distance between two points on two separate bodys. It prevents the objects from moving closer together or further apart than the specified length.\n\nFor general information on how joints work in Gearbox2D, see the [Joints Overview](./joints-overview.md).\n\n## Creation\n\nTo create a distance joint, use the `world.createDistanceJoint` method.\n\n```javascript\nconst joint = world.createDistanceJoint(id, bodyA, bodyB, {\n    worldAnchorA: { x: 2, y: 5 },\n    worldAnchorB: { x: 8, y: 5 }\n});\n```\n\n### Options\n\n| Property | Type | Description |\n| :--- | :--- | :--- |\n| `worldAnchorA` | `Vec2` | World coordinate for anchor on `bodyA`. |\n| `worldAnchorB` | `Vec2` | World coordinate for anchor on `bodyB`. |\n| `anchorA` | `Vec2` | Local anchor relative to `bodyA`. |\n| `anchorB` | `Vec2` | Local anchor relative to `bodyB`. |\n| `length` | `number` | The target distance. If omitted, it's calculated from anchors at creation. |\n\n## Properties\n\nIn addition to the [common joint properties](./joints-overview.md#common-properties), the Distance Joint provides:\n\n| Property | Type | Access | Description |\n| :--- | :--- | :--- | :--- |\n| `length` | `number` | Read/Write | The current target distance for the joint. |\n| `localAnchorA` | `Vec2` | Read/Write | Local anchor point on `bodyA`. |\n| `localAnchorB` | `Vec2` | Read/Write | Local anchor point on `bodyB`. |\n\n## Example: Rigid Rod\n\n```javascript\nconst ball1 = world.makeBody(1, { x: 5, y: 5 });\nconst ball2 = world.makeBody(2, { x: 10, y: 5 });// Connect with a 5m rigid rod\nball1.addFixture(1, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nball2.addFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });\nworld.createDistanceJoint(101, ball1, ball2, {\n    length: 5\n});\n```\n",K=Object.freeze(Object.defineProperty({__proto__:null,default:Y},Symbol.toStringTag,{value:"Module"})),Q=`# Gear Joint
 
 A **Gear Joint** links the rotation of two bodys by constraining their relative angles via two existing [Hinge Joints](./joints-hinge.md).
 
@@ -1254,7 +1290,7 @@ TODO
 `,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Planned Shapes
 TODO
 
-`,Ce=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Be=`# Plan:
+`,Be=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Ce=`# Plan:
 
 ## Shapes, Kinematics, Collisions
 - [x] Setup and test Rust w/ web assembly target.
@@ -1344,6 +1380,8 @@ TODO
 - [x] Distance.
 - [x] Spring.
 - [x] Gear constraint.
+	- [ ] Mechanical friction.
+
 
 ## Interactions
 - [x] Spatial picking (query BVH).
@@ -1369,6 +1407,8 @@ TODO
 - [ ] On post-solve (optional).
 
 ## Fluid Dynamics
+- [X] Simple linear dampening.
+- [X] Simple rotational dampening.
 - [ ] Wind.
 - [ ] Advanced drag.
 - [ ] Under water / liquid.
@@ -1384,6 +1424,9 @@ TODO
 - [x] Implement collision masks.
 - [ ] Focus areas & resolution.
 
+### High-Fidelity Optimizations
+- [X] Kinematic restitution balancing (novel).
+
 ### Broad Phase Optimizations
 - [x] Broad phase using AABBs.
 - [x] Do not recompute AABB when no movement happens.
@@ -1391,9 +1434,15 @@ TODO
 - [x] Speed-dependant bounding area padding.
 - [ ] Spin-dependant bounding area padding.
 - [x] Bounding volume hierarchy (BVH).
-- [x] BVH sleep biasing.
-- [ ] BVH particle biasing.
-- [x] BVH collision mask biasing (novel).
+- [X] BVH heuristic biasing.
+	- [x] BVH sleep biasing.
+	- [x] BVH collision mask biasing (novel).
+	- [X] BVH particle biasing.
+	- [X] Static island biasing.
+	- [X] Same-body biasing.
+	- [X] Velocity biasing.
+	- [X] Sensor biasing.
+	- [ ] Experimentally fine-tune BVH biases.
 - [ ] Rebalance BVH.
 - [ ] Experimental: Caching previous broad-phase collisions.
 - [ ] Experimental: Instead of reinserting on movement, consider tree traversal.
@@ -1407,8 +1456,9 @@ TODO
 - [ ] Experimental: Re-insert into BVH upon sleep.
 - [ ] Experimental: Sleep drift (sleeping at terminal velocity).
 
-### SIMD
+### Parallelization (Do Last)
 - [ ] Find opportunities to optimize using SIMD.
+- [ ] Find opportunities to optimize using multi-threading.
 
 ## Advanced Features
 - [ ] Smart anti-tunelling.
@@ -1436,5 +1486,5 @@ TODO
 - Piles of objects don't go to sleep as easily as they should (regression).
 - Fleas example sometimes shows instances of objects escaping the scene.
 - Sliding objects never come to rest.
-- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Be},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":C,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":W,"../docs/events.md":F,"../docs/first-simulation.md":z,"../docs/game-loop.md":H,"../docs/graphics-debug.md":G,"../docs/installation.md":V,"../docs/interaction-queries.md":U,"../docs/introduction.md":Y,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":ue,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Ce,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
+- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Ce},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":B,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":W,"../docs/events.md":M,"../docs/first-simulation.md":R,"../docs/game-loop.md":J,"../docs/graphics-debug.md":G,"../docs/installation.md":q,"../docs/interaction-queries.md":X,"../docs/introduction.md":$,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":ue,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Be,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
 `),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const h=ke(Oe),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){h.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function u(){const n=window.location.hash.substring(1),o=n?`${n}.md`:h[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=y.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(g=>g.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",u);De();u();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!m.contains(n.target)&&a.classList.add("collapsed")});
