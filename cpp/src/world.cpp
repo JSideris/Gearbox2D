@@ -492,6 +492,39 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     Vec2 tangentialVelocityB(-rB.y * b->getAngularVelocity(), rB.x * b->getAngularVelocity());
     Vec2 relVel = (b->getVelocity() + tangentialVelocityB) - (a->getVelocity() + tangentialVelocityA);
     float vn = relVel.dot(normal);
+
+    // Restitution compensation for external forces (gravity, etc.)
+    float forceVn = (b->forceVelocity - a->forceVelocity).dot(normal);
+    float relativeVn = vn - forceVn;
+
+    // --- High-Fidelity Kinematic Energy Compensation ---
+    // Correct for "free" potential energy gained by the solver teleporting objects out of overlaps.
+    Vec2 grav = a->world.getGravity();
+    float gMag = grav.magnitude();
+    
+    if (enableRestitution && relativeVn < -0.1f) {
+        float targetBounceSpeed = restitution * (-relativeVn);
+        
+        if (gMag > 0.0001f && enablePenetration && depth > 0.01f) {
+            Vec2 gDir = grav / gMag;
+            float imA = a->getInverseMass();
+            float imB = b->getInverseMass();
+            
+            // Calculate how much the position correction (Baumgarte) will lift the objects against gravity
+            // We use 0.2f because that's the factor used in positionBias calculation
+            float lift = (imA - imB) * normal.dot(gDir) * (depth - 0.01f) * 0.2f / (imA + imB);
+            
+            // v_launch^2 = (e * v_impact)^2 - 2gh. Tax the speed to pay for the free height.
+            float speedSq = targetBounceSpeed * targetBounceSpeed;
+            float compensatedSpeedSq = speedSq - 2.0f * gMag * lift;
+            targetBounceSpeed = std::sqrt(std::max(0.0f, compensatedSpeedSq));
+        }
+        bias = -targetBounceSpeed;
+    } else {
+        bias = 0.0f;
+    }
+    // -------------------------------------------------------
+
     Vec2 tangentialComponent = relVel - normal * vn;
     float tanMag = tangentialComponent.magnitude();
     if (tanMag > 0.0001f) {
@@ -510,7 +543,6 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         staticFriction = 0.0f;
         kineticFriction = 0.0f;
     }
-    bias = (enableRestitution && vn < -0.1f) ? restitution * vn : 0.0f; 
     positionBias = (enablePenetration && depth > 0.01f) ? std::max(-2.0f, -0.2f / dt * (depth - 0.01f)) : 0.0f;
 }
 

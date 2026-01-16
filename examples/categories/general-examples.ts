@@ -371,7 +371,8 @@ export const generalExamples = [
         key: "bounce",
         description: [
             "This example demonstrates **Restitution** (bounciness).",
-            "The central ball is configured with `restitution: 1.0`, meaning it loses no energy during collisions with the fixed walls, creating a perfectly elastic bounce."
+            "The central ball is configured with `restitution: 1.0`, meaning it loses no energy during collisions with the fixed walls, creating a perfectly elastic bounce.",
+            "Gearbox2D handles restitution differently than many other engines to prevent numerical energy gain. Check out the documentation to learn more about **Kinematic Restitution Balancing**."
         ].join("\n\n"),
         onInit: (world)=>{
             // Gravity

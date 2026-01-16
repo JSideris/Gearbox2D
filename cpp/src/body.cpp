@@ -209,7 +209,8 @@ void Body::integrateVelocities(float dt) {
         acc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
     }
     
-    vel = vel + acc * dt;
+    forceVelocity = acc * dt;
+    vel = vel + forceVelocity;
     
     // Velocity clamping for stability
     const float maxVel = 1000.0f;

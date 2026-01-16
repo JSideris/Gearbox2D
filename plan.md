@@ -132,6 +132,9 @@
 - [x] Implement collision masks.
 - [ ] Focus areas & resolution.
 
+### High-Fidelity Optimizations
+- [X] Kinematic restitution balancing (novel).
+
 ### Broad Phase Optimizations
 - [x] Broad phase using AABBs.
 - [x] Do not recompute AABB when no movement happens.

@@ -120,6 +120,7 @@ public:
     void setHasRestitution(bool value);
     void setHasFriction(bool value);
     void setGravity(float x, float y);
+    Vec2 getGravity() const { return gravity; }
 
     std::vector<int> queryBodiesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
     std::vector<int> queryFixturesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);

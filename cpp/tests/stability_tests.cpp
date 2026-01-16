@@ -133,5 +133,55 @@ TEST(StabilityTest, VelocityClamping) {
     EXPECT_LE(obj->getVelocityX(), 1000.1f);
 }
 
+TEST(StabilityTest, RestitutionEnergyConservation) {
+    World world;
+    world.setGravity(0.0f, 10.0f);
+    world.setTimeStep(1.0f / 60.0f);
+    // world.setHasPenetrationResolution(false); // Enable penetration resolution for realistic testing
+    
+    // 1. Create a fixed floor at y=10
+    emscripten_val floorOptions = createTestOptions(0.0f, 10.0f, 0.0f);
+    floorOptions.properties["type"] = (int)ObjectType::FIXED_OBJECT;
+    floorOptions.properties["width"] = 20.0f;
+    floorOptions.properties["height"] = 1.0f;
+    floorOptions.properties["restitution"] = 1.0f;
+    world.makeBody(1, floorOptions);
+
+    // 2. Create a bouncy ball starting at y=0 (10 units above floor)
+    emscripten_val ballOptions = createTestOptions(0.0f, 0.0f, 1.0f);
+    ballOptions.properties["shape"] = (int)ObjectShape::CIRCLE;
+    ballOptions.properties["radius"] = 0.5f;
+    ballOptions.properties["restitution"] = 1.0f;
+    ballOptions.properties["linearDamping"] = 0.0f; // No air resistance
+    world.makeBody(2, ballOptions);
+    Body* ball = world.getBody(2);
+
+    float initialHeight = ball->getY();
+    float minObservedY = initialHeight;
+
+    // Run for 5 seconds and record max height
+    for (int i = 0; i < 300; ++i) {
+        world.step();
+        if (ball->getY() < minObservedY) minObservedY = ball->getY();
+    }
+    float peakAt5s = minObservedY;
+
+    // Run for another 5 seconds
+    for (int i = 0; i < 300; ++i) {
+        world.step();
+        if (ball->getY() < minObservedY) minObservedY = ball->getY();
+    }
+    float peakAt10s = minObservedY;
+
+    // Assertions
+    // 1. It shouldn't have gained much energy (O(dt^2) error from penetration resolution is okay, O(dt) gain from restitution is not)
+    // With kinematic compensation, this should be very close to initialHeight (0.0f)
+    EXPECT_GE(peakAt10s, initialHeight - 0.001f); 
+    
+    // 2. The energy should not be runaway. Numerical drift is expected in discrete engines.
+    // We expect it to be EXTREMELY stable now.
+    EXPECT_GE(peakAt10s, peakAt5s - 0.0001f);
+}
+
 
 
