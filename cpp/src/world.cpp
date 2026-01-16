@@ -69,6 +69,8 @@ int World::addFixture(int bodyId, int fixtureId, emscripten_val options) {
     props.systemCategory = fixture->getSystemCategory();
     props.isRigid = !fixture->isSensor();
     props.isSleeping = body->isSleeping;
+    props.bodyId = body->id;
+    props.velocity = body->getVelocity();
 
     fixture->bvhNode = bvh.insert(fixture->aabb, fixture, props);
 

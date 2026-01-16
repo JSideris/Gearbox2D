@@ -28,13 +28,17 @@ struct CollisionProperties {
     uint32_t systemCategory;    // Internal engine category (Static, Dynamic, Point, etc.)
     bool isSleeping;
     bool isRigid;               // For sensor filtering
+    int32_t bodyId;             // The ID of the body this fixture belongs to
+    Vec2 velocity;              // Current velocity of the body
     
     CollisionProperties() 
         : userCategory(0xFFFFFFFF), 
           userMask(0xFFFFFFFF),
           systemCategory(CATEGORY_DYNAMIC),
           isSleeping(false),
-          isRigid(true) {}
+          isRigid(true),
+          bodyId(-1),
+          velocity(0, 0) {}
     
     bool canCollideWith(const CollisionProperties& other) const {
         // Sleeping objects don't collide with each other
@@ -62,21 +66,46 @@ struct AggregatedProperties {
     uint32_t containsUserCategories;   // OR of all child user categories
     uint32_t mayCollideWithUserMask;   // OR of all child user masks
     bool containsAwake;                // Any awake objects in subtree?
+    bool containsSleep;                // Any sleeping objects in subtree?
     bool containsRigid;                // Any rigid objects in subtree?
+    int32_t bodyId;                    // The ID if all objects belong to same body, else -1
+    bool isMultiBody;                  // True if contains objects from multiple bodies
+    Vec2 avgVelocity;                  // Average velocity of all objects in subtree
+    int leafCount;                     // Number of leaves in subtree
     
     AggregatedProperties() 
         : containsSystemCategories(0), 
           containsUserCategories(0),
           mayCollideWithUserMask(0),
           containsAwake(false),
-          containsRigid(false) {}
+          containsSleep(false),
+          containsRigid(false),
+          bodyId(-1),
+          isMultiBody(false),
+          avgVelocity(0, 0),
+          leafCount(0) {}
     
     void mergeWith(const AggregatedProperties& other) {
         containsSystemCategories |= other.containsSystemCategories;
         containsUserCategories |= other.containsUserCategories;
         mayCollideWithUserMask |= other.mayCollideWithUserMask;
         containsAwake |= other.containsAwake;
+        containsSleep |= other.containsSleep;
         containsRigid |= other.containsRigid;
+
+        if (leafCount == 0) {
+            bodyId = other.bodyId;
+            isMultiBody = other.isMultiBody;
+            avgVelocity = other.avgVelocity;
+        } else if (other.leafCount > 0) {
+            if (isMultiBody || other.isMultiBody || bodyId != other.bodyId) {
+                isMultiBody = true;
+                bodyId = -1;
+            }
+            // Running weighted average
+            avgVelocity = (avgVelocity * (float)leafCount + other.avgVelocity * (float)other.leafCount) / (float)(leafCount + other.leafCount);
+        }
+        leafCount += other.leafCount;
     }
     
     static AggregatedProperties fromLeaf(const CollisionProperties& props) {
@@ -85,7 +114,12 @@ struct AggregatedProperties {
         agg.containsUserCategories = props.userCategory;
         agg.mayCollideWithUserMask = props.userMask;
         agg.containsAwake = !props.isSleeping;
+        agg.containsSleep = props.isSleeping;
         agg.containsRigid = props.isRigid;
+        agg.bodyId = props.bodyId;
+        agg.isMultiBody = false;
+        agg.avgVelocity = props.velocity;
+        agg.leafCount = 1;
         return agg;
     }
     
@@ -243,13 +277,24 @@ public:
 
 class Bvh {
 public:
+    struct Config {
+        float maskWeight = 1.0f;
+        float sleepWeight = 1.0f;
+        float staticWeight = 0.2f;
+        float bodyWeight = 0.3f;
+        float sensorWeight = 0.2f;
+        float velocityWeight = 0.1f;
+    };
+
+    Config config;
+
     // Public collision results - contains pairs of Fixture pointers
     std::vector<std::pair<void*, void*>> collisionPairs;
 
 private:
     BvhNode* root;
     
-    // Surface Area Heuristic for insertion cost calculation with mask biasing
+    // Surface Area Heuristic for insertion cost calculation with multi-factor biasing
     float computeInsertionCost(BvhNode* node, const Aabb& newBounds, const CollisionProperties& newProps) const {
         if (!node) return std::numeric_limits<float>::max();
         
@@ -260,20 +305,44 @@ private:
         float currentArea = node->bounds.getSurfaceArea();
         float spatialCost = combinedArea - currentArea;
 
-        // Mask Biasing: penalize "polluting" a subtree with new categories or masks.
-        // This encourages objects with similar collision profiles to cluster together.
+        // Mask Biasing: Logical separation of user-defined categories
+        // We exclude internal system categories from general mask pollution
         uint32_t newCats = newProps.userCategory & ~node->aggregated.containsUserCategories;
         uint32_t newMasks = newProps.userMask & ~node->aggregated.mayCollideWithUserMask;
-        uint32_t newSystemCats = newProps.systemCategory & ~node->aggregated.containsSystemCategories;
+        int maskPollution = __builtin_popcount(newCats) + __builtin_popcount(newMasks);
+        float maskCost = maskPollution * config.maskWeight;
+
+        // Static Biasing: Strong-arm static objects into their own pure branches
+        bool isNewStatic = (newProps.systemCategory & CATEGORY_STATIC) != 0;
+        bool isSubtreePureStatic = (node->aggregated.containsSystemCategories == CATEGORY_STATIC);
+        float staticCost = (isNewStatic != isSubtreePureStatic ? 1.0f : 0.0f) * config.staticWeight;
+
+        // Sensor Biasing: Keep sensors grouped to skip rigid collision checks
+        bool isNewSensor = (newProps.systemCategory & CATEGORY_SENSOR) != 0;
+        bool isSubtreePureSensor = (node->aggregated.containsSystemCategories == CATEGORY_SENSOR);
+        float sensorCost = (isNewSensor != isSubtreePureSensor ? 1.0f : 0.0f) * config.sensorWeight;
+
+        // Sleep Biasing: penalize "polluting" a subtree with different sleep states.
+        bool addsAwake = !newProps.isSleeping && !node->aggregated.containsAwake;
+        bool addsSleep = newProps.isSleeping && !node->aggregated.containsSleep;
+        float sleepCost = ((addsAwake ? 1.0f : 0.0f) + (addsSleep ? 1.0f : 0.0f)) * config.sleepWeight;
+
+        // Body Biasing: Encourage fixtures from the same body to stay together
+        float bodyCost = 0.0f;
+        if (node->aggregated.leafCount > 0) {
+            if (node->aggregated.isMultiBody || node->aggregated.bodyId != newProps.bodyId) {
+                bodyCost = config.bodyWeight;
+            }
+        }
+
+        // Velocity Biasing: Group objects moving in similar directions/speeds
+        float velocityCost = 0.0f;
+        if (node->aggregated.leafCount > 0) {
+            float vDiff = (newProps.velocity - node->aggregated.avgVelocity).magnitude();
+            velocityCost = vDiff * config.velocityWeight;
+        }
         
-        int pollution = __builtin_popcount(newCats) + __builtin_popcount(newMasks) + __builtin_popcount(newSystemCats);
-        
-        // Empirical weight for mask purity vs spatial fit.
-        // Weight 1.0f was found to be the "golden ratio" in performance studies.
-        const float maskWeight = 1.0f;
-        float maskCost = pollution * maskWeight;
-        
-        return spatialCost + maskCost;
+        return spatialCost + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
     }
     
     // Find the best place to insert a new leaf

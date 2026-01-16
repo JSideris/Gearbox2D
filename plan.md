@@ -88,6 +88,8 @@
 - [x] Distance.
 - [x] Spring.
 - [x] Gear constraint.
+	- [ ] Mechanical friction.
+
 
 ## Interactions
 - [x] Spatial picking (query BVH).
@@ -113,6 +115,8 @@
 - [ ] On post-solve (optional).
 
 ## Fluid Dynamics
+- [X] Simple linear dampening.
+- [X] Simple rotational dampening.
 - [ ] Wind.
 - [ ] Advanced drag.
 - [ ] Under water / liquid.
@@ -135,9 +139,15 @@
 - [x] Speed-dependant bounding area padding.
 - [ ] Spin-dependant bounding area padding.
 - [x] Bounding volume hierarchy (BVH).
-- [x] BVH sleep biasing.
-- [ ] BVH particle biasing.
-- [x] BVH collision mask biasing (novel).
+- [X] BVH heuristic biasing.
+	- [x] BVH sleep biasing.
+	- [x] BVH collision mask biasing (novel).
+	- [X] BVH particle biasing.
+	- [X] Static island biasing.
+	- [X] Same-body biasing.
+	- [X] Velocity biasing.
+	- [X] Sensor biasing.
+	- [ ] Experimentally fine-tune BVH biases.
 - [ ] Rebalance BVH.
 - [ ] Experimental: Caching previous broad-phase collisions.
 - [ ] Experimental: Instead of reinserting on movement, consider tree traversal.
@@ -151,8 +161,9 @@
 - [ ] Experimental: Re-insert into BVH upon sleep.
 - [ ] Experimental: Sleep drift (sleeping at terminal velocity).
 
-### SIMD
+### Parallelization (Do Last)
 - [ ] Find opportunities to optimize using SIMD.
+- [ ] Find opportunities to optimize using multi-threading.
 
 ## Advanced Features
 - [ ] Smart anti-tunelling.
