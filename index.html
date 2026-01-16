@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
         :root {
             --bg-deep: #050505;
@@ -243,6 +244,60 @@
         .string { color: #a5d6ff; }
         .comment { color: #8b949e; }
 
+        /* Authorship & Socials */
+        .author-remark {
+            max-width: 800px;
+            margin: 40px auto 0 auto;
+            padding: 30px 20px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .author-remark p {
+            font-size: 0.95em;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .author-remark a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            font-weight: 700;
+            transition: color 0.2s;
+        }
+
+        .author-remark a:hover {
+            color: var(--accent-purple);
+        }
+
+        .author-socials {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .author-socials a {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-main);
+            opacity: 0.7;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .author-socials a:hover {
+            opacity: 1;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 2.5em; }
             header { padding: 60px 20px; }
@@ -371,12 +426,27 @@
 </section>
 
 <footer class="footer">
-    <p>&copy; 2024 Gearbox2D Protocol. All rights reserved.</p>
-    <p>
-        <a href="#features">Features</a> |
-        <a href="https://github.com/your-repo-url">GitHub</a> |
-        <a href="https://npmjs.com/package/gearbox2d">npm</a>
-    </p>
+    <div class="author-remark">
+        <p>
+            Developed by <a href="https://github.com/JSideris" target="_blank">Joshua Sideris</a> for the upcoming web-first 
+            <a href="https://gear3engine.com" target="_blank">Gear3Engine</a> and the GPU-powered 
+            particle-based <strong>Alchemy Engine</strong> (in development).
+        </p>
+        <div class="author-socials">
+            <a href="https://x.com/joshsideris" target="_blank"><i class="fab fa-x-twitter"></i> X</a>
+            <a href="https://github.com/JSideris" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+            <a href="https://www.linkedin.com/in/jsideris/" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>
+        </div>
+    </div>
+
+    <div style="margin-top: 60px; font-size: 0.85em; opacity: 0.8;">
+        <p>&copy; 2026 Gearbox2D Protocol. All rights reserved.</p>
+        <p>
+            <a href="#features">Features</a> |
+            <a href="https://github.com/JSideris/Gearbox2D">GitHub</a> |
+            <a href="https://npmjs.com/package/gearbox2d">npm</a>
+        </p>
+    </div>
 </footer>
 
 </body>
