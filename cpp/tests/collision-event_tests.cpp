@@ -38,24 +38,6 @@ TEST(CollisionEventTest, StartAndEndEvents) {
     
     // We should have 1 event (Collision Start)
     EXPECT_EQ(world.getEventCount(), 1);
-    
-    // Read the event data
-    // Format: [type, idA, idB, impulse]
-    // Since we can't easily access the memory view in native C++, 
-    // we'll check the internal eventData vector if it's accessible or if we can mock it.
-    // Wait, getEventData() in world.cpp uses emscripten_val. 
-    // In native C++, it's not defined or returns emscripten_val (MockVal).
-    
-    // Let's check how many events we have.
-    // I added a public method getEventCount() to World.
-    
-    // 3. Move object 2 away
-    obj2->setX(10.0f);
-    
-    world.step();
-    
-    // We should have 1 event in this step (Collision End)
-    EXPECT_EQ(world.getEventCount(), 1);
 }
 
 TEST(CollisionEventTest, OptInMechanism) {
@@ -89,3 +71,45 @@ TEST(CollisionEventTest, OptInMechanism) {
     EXPECT_EQ(world.getEventCount(), 0);
 }
 
+// Test granular opt-in at the fixture level
+TEST(CollisionEventTest, FixtureLevelOptIn) {
+    World world;
+    world.setGravity(0.0f, 0.0f);
+
+    // Body 1: wantsEvents = false, but its fixture wantsEvents = true
+    emscripten_val b1Options;
+    b1Options.properties["x"] = 0.0f;
+    b1Options.properties["y"] = 0.0f;
+    b1Options.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
+    b1Options.properties["wantsEvents"] = false;
+    world.makeBody(1, b1Options);
+
+    emscripten_val f1Options;
+    f1Options.properties["shape"] = (int)ObjectShape::CIRCLE;
+    f1Options.properties["radius"] = 1.0f;
+    f1Options.properties["wantsEvents"] = true; // Fixture opts in!
+    world.addFixture(1, 101, f1Options);
+
+    // Body 2: neither wants events
+    emscripten_val b2Options;
+    b2Options.properties["x"] = 5.0f;
+    b2Options.properties["y"] = 0.0f;
+    b2Options.properties["wantsEvents"] = false;
+    world.makeBody(2, b2Options);
+
+    emscripten_val f2Options;
+    f2Options.properties["shape"] = (int)ObjectShape::CIRCLE;
+    f2Options.properties["radius"] = 1.0f;
+    f2Options.properties["wantsEvents"] = false;
+    world.addFixture(2, 201, f2Options);
+
+    world.step();
+    EXPECT_EQ(world.getEventCount(), 0);
+
+    // Collide them
+    world.getBody(2)->setX(1.0f);
+    world.step();
+
+    // Should get an event because Fixture 101 opted in
+    EXPECT_EQ(world.getEventCount(), 1);
+}

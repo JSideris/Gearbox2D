@@ -8,7 +8,7 @@ import {
     BODY_IY_OFFSET, BODY_IA_OFFSET, BODY_NFX_OFFSET, BODY_NFY_OFFSET,
     BODY_NIX_OFFSET, BODY_NIY_OFFSET, BODY_NIA_OFFSET, BODY_INV_INERTIA_OFFSET,
     BODY_PREV_X_OFFSET, BODY_PREV_Y_OFFSET, BODY_PREV_R_OFFSET,
-    BODY_TYPES
+    BODY_TYPES, WANTS_EVENTS
 } from './constants.js';
 import type { World, FixtureOptions } from './world.js';
 import type { Fixture } from './Fixture.js';
@@ -39,6 +39,15 @@ export class Body {
 
     get type() { return this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_TYPE_OFFSET]; }
     get flags() { return this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_FLAGS_OFFSET]; }
+
+    get wantsEvents() { return (this.flags & WANTS_EVENTS) !== 0; }
+    set wantsEvents(v: boolean) {
+        if (v) {
+            this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_FLAGS_OFFSET] |= WANTS_EVENTS;
+        } else {
+            this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_FLAGS_OFFSET] &= ~WANTS_EVENTS;
+        }
+    }
 
     get x() { return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_X_OFFSET]; }
     set x(v) { this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_X_OFFSET] = v; this.wakeUp(); }

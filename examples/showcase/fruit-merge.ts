@@ -81,7 +81,7 @@ export const fruitMergeExample = new Example({
             x: bx, y: by + bh / 2 + thickness / 2,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
-        }).addFixture(bucketBottomId, {
+        }).addFixture({
             shape: gearbox.shapes.BOX,
             width: bw + thickness * 2, height: thickness,
         });
@@ -92,7 +92,7 @@ export const fruitMergeExample = new Example({
             x: bx - bw / 2 - thickness / 2, y: by,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
-        }).addFixture(leftWallId, {
+        }).addFixture({
             shape: gearbox.shapes.BOX,
             width: thickness, height: bh,
         });
@@ -103,7 +103,7 @@ export const fruitMergeExample = new Example({
             x: bx + bw / 2 + thickness / 2, y: by,
             type: gearbox.bodyTypes.FIXED_OBJECT,
             color: "#664422"
-        }).addFixture(rightWallId, {
+        }).addFixture({
             shape: gearbox.shapes.BOX,
             width: thickness, height: bh,
         });
@@ -118,7 +118,7 @@ export const fruitMergeExample = new Example({
                 mass: fruitDef.mass,
                 color: fruitDef.color,
             });
-            fruit.addFixture(id, {
+            fruit.addFixture({
                 shape: gearbox.shapes.CIRCLE,
                 radius: fruitDef.radius,
                 restitution: 0.2,
@@ -238,11 +238,11 @@ export const fruitMergeExample = new Example({
         }
 
         // Draw Score
-        gearbox.debug.addLabel({ text: `Score: ${gameState.score}`, x: 0.5, y: 0.5, fontSize: "24px Arial", color: "#fff", textAlign: "left" });
+        gearbox.debug.addLabel({ text: `Score: ${gameState.score}`, x: 0.5, y: 0.5, fontSize: "24px Arial", color: "#fff", position: "on-top" });
 
         // Draw Next Fruit Preview
         const nextFruit = FRUIT_LEVELS[gameState.nextFruitLevel];
-        gearbox.debug.addLabel({ text: `Next: ${nextFruit.name}`, x: 8.0, y: 0.5, fontSize: "18px Arial", color: nextFruit.color, textAlign: "right" });
+        gearbox.debug.addLabel({ text: `Next: ${nextFruit.name}`, x: 8.0, y: 0.5, fontSize: "18px Arial", color: nextFruit.color, position: "on-top" });
 
         // Draw Drop Guide / Preview
         const previewY = 1.5;

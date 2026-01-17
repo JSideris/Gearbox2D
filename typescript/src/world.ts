@@ -37,6 +37,7 @@ export interface BodyOptions {
     kFriction?: number;
     density?: number;
     isSensor?: boolean;
+    wantsEvents?: boolean;
     fixtures?: FixtureOptions[];
 }
 
@@ -55,6 +56,7 @@ export interface FixtureOptions {
     kFriction?: number;
     density?: number;
     isSensor?: boolean;
+    wantsEvents?: boolean;
 }
 
 export interface JointOptions {

@@ -35,6 +35,15 @@ export class Fixture {
         }
     }
 
+    get wantsEvents() { return (this.flags & FIXTURE_FLAGS.WANTS_EVENTS) !== 0; }
+    set wantsEvents(v: boolean) {
+        if (v) {
+            this.body.world.liveFixtureIntData[this.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET] |= FIXTURE_FLAGS.WANTS_EVENTS;
+        } else {
+            this.body.world.liveFixtureIntData[this.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET] &= ~FIXTURE_FLAGS.WANTS_EVENTS;
+        }
+    }
+
     get localX() { return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_LOCAL_X_OFFSET]; }
     get localY() { return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_LOCAL_Y_OFFSET]; }
     get localR() { return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_LOCAL_R_OFFSET]; }

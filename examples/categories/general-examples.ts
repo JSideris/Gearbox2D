@@ -72,7 +72,7 @@ const onMouseUp = (e: MouseEvent, world: any) => {
 };
 
 export const generalExamples = [
-    new Example({
+    new Example({ // Interactive Sandbox
         name: "Interactive Sandbox",
         key: "sandbox",
         description: [

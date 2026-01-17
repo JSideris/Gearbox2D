@@ -4,18 +4,50 @@ Gearbox2D provides an event system to react to changes in the physics world, suc
 
 ## Enabling Events
 
-To improve performance, events are opt-in per object. You must set `wantsEvents: true` when creating an object to receive events for it.
+To improve performance, events are opt-in per object. You must set `wantsEvents: true` on either a `Body` or a specific `Fixture` to receive events for it.
+
+### Body Opt-in
+
+If you set `wantsEvents: true` on a body, you will receive events for all collisions involving any of its fixtures.
 
 ```typescript
 const obj = world.makeBody(id, {
   type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-  x: 5, y: 5
+  x: 5, y: 5,
+  wantsEvents: true // Enable for all fixtures on this body
 });
-obj.addFixture(id, {
+obj.addFixture({
   shape: gearbox.shapes.CIRCLE,
   radius: 1,
 });
-// Note: Events are currently enabled globally on the World instance.
+```
+
+### Fixture Opt-in
+
+Alternatively, you can enable events only for specific fixtures. This is useful for large objects where you only care about certain parts (e.g., a car bumper or a character's feet).
+
+```typescript
+const obj = world.makeBody(id, { x: 5, y: 5 });
+obj.addFixture({
+  shape: gearbox.shapes.CIRCLE,
+  radius: 1,
+  wantsEvents: true // Only collisions with this fixture trigger events
+});
+```
+
+### Collision Logic
+
+A collision event is generated if **any** of the participants have opted in:
+- Body A OR Fixture A has `wantsEvents: true`
+- OR Body B OR Fixture B has `wantsEvents: true`
+
+### Dynamic Toggling
+
+You can enable or disable events at any time after creation:
+
+```typescript
+obj.wantsEvents = true; // Start receiving events
+fixture.wantsEvents = false; // Stop receiving events for this part
 ```
 
 ## Global Event Handlers
@@ -53,8 +85,8 @@ world.onWake = (id) => {
 Alternatively, you can set event handlers directly on `Body` instances.
 
 ```typescript
-const obj = world.makeBody(id, { x: 5, y: 5 });
-obj.addFixture(id, { shape: gearbox.shapes.CIRCLE, radius: 1 });
+const obj = world.makeBody(id, { x: 5, y: 5, wantsEvents: true });
+obj.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 1 });
 
 obj.onSleep = () => {
   console.log("I am going to sleep!");

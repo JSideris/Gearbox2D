@@ -64,6 +64,8 @@ export const FIXTURE_DENSITY_OFFSET = 13;
 export const HAS_AABB_COLLISION = 0x1;
 export const HAS_PHYSICAL_COLLISION = 0x2;
 export const IS_SLEEPING = 0x4;
+export const HAS_FIXED_MASS = 0x8;
+export const WANTS_EVENTS = 0x10;
 
 export const EVENT_TYPES = {
 	COLLISION_START: 0,
@@ -89,7 +91,8 @@ export const BODY_TYPES = {
 };
 
 export const FIXTURE_FLAGS = {
-	IS_SENSOR: 0x4
+	IS_SENSOR: 0x4,
+	WANTS_EVENTS: 0x8
 };
 
 export const JOINT_TYPES = {
