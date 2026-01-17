@@ -225,7 +225,7 @@ gameWorld.setGravity(0, 9.81);
 uiWorld.setGravity(0, 0);gameWorld.step();
 uiWorld.step();
 \`\`\`
-`,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),T=`# Broad Phase
+`,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),B=`# Broad Phase
 
 Gearbox2D uses a Dynamic Bounding Volume Hierarchy (BVH) for its broad phase collision detection. To maximize performance, the BVH employs several "logical biasing" techniques during object insertion. These heuristics encourage objects with similar physical properties to cluster together, allowing the engine to prune entire subtrees of potential collisions early in the detection process.
 
@@ -263,7 +263,7 @@ Objects moving in similar directions or at similar speeds are encouraged to clus
 ## Experimental Tuning
 
 All bias weights are internally adjustable, allowing for fine-grained performance tuning based on the specific needs of a simulation (e.g., high body counts vs. high particle counts).
-`,B=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
+`,T=Object.freeze(Object.defineProperty({__proto__:null,default:B},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
 TODO
 
 `,I=Object.freeze(Object.defineProperty({__proto__:null,default:C},Symbol.toStringTag,{value:"Module"})),O=`# Narrow Phase
@@ -411,24 +411,56 @@ npm run test:ts
 - **WASM loading errors**: Ensure you are serving files via a web server (HTTP/HTTPS), as browsers block WASM loading from \`file://\` URLs.
 - **Build failures**: Try \`npm run clean && npm run build\` to rebuild from scratch.
 
-`,W=Object.freeze(Object.defineProperty({__proto__:null,default:E},Symbol.toStringTag,{value:"Module"})),F=`# Events
+`,F=Object.freeze(Object.defineProperty({__proto__:null,default:E},Symbol.toStringTag,{value:"Module"})),W=`# Events
 
 Gearbox2D provides an event system to react to changes in the physics world, such as collisions and sleep state transitions.
 
 ## Enabling Events
 
-To improve performance, events are opt-in per object. You must set \`wantsEvents: true\` when creating an object to receive events for it.
+To improve performance, events are opt-in per object. You must set \`wantsEvents: true\` on either a \`Body\` or a specific \`Fixture\` to receive events for it.
+
+### Body Opt-in
+
+If you set \`wantsEvents: true\` on a body, you will receive events for all collisions involving any of its fixtures.
 
 \`\`\`typescript
 const obj = world.makeBody(id, {
   type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-  x: 5, y: 5
+  x: 5, y: 5,
+  wantsEvents: true // Enable for all fixtures on this body
 });
-obj.addFixture(id, {
+obj.addFixture({
   shape: gearbox.shapes.CIRCLE,
   radius: 1,
 });
-// Note: Events are currently enabled globally on the World instance.
+\`\`\`
+
+### Fixture Opt-in
+
+Alternatively, you can enable events only for specific fixtures. This is useful for large objects where you only care about certain parts (e.g., a car bumper or a character's feet).
+
+\`\`\`typescript
+const obj = world.makeBody(id, { x: 5, y: 5 });
+obj.addFixture({
+  shape: gearbox.shapes.CIRCLE,
+  radius: 1,
+  wantsEvents: true // Only collisions with this fixture trigger events
+});
+\`\`\`
+
+### Collision Logic
+
+A collision event is generated if **any** of the participants have opted in:
+- Body A OR Fixture A has \`wantsEvents: true\`
+- OR Body B OR Fixture B has \`wantsEvents: true\`
+
+### Dynamic Toggling
+
+You can enable or disable events at any time after creation:
+
+\`\`\`typescript
+obj.wantsEvents = true; // Start receiving events
+fixture.wantsEvents = false; // Stop receiving events for this part
 \`\`\`
 
 ## Global Event Handlers
@@ -466,8 +498,8 @@ world.onWake = (id) => {
 Alternatively, you can set event handlers directly on \`Body\` instances.
 
 \`\`\`typescript
-const obj = world.makeBody(id, { x: 5, y: 5 });
-obj.addFixture(id, { shape: gearbox.shapes.CIRCLE, radius: 1 });
+const obj = world.makeBody(id, { x: 5, y: 5, wantsEvents: true });
+obj.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 1 });
 
 obj.onSleep = () => {
   console.log("I am going to sleep!");
@@ -487,7 +519,7 @@ While you can always check the \`isSleeping\` state of an object by reading its 
 3.  **Integration**: Events fit well into reactive UI frameworks or state management systems.
 
 Note: Reading \`obj.isSleeping\` is still useful for logic that needs to know the current state at any time without tracking transitions.
-`,M=Object.freeze(Object.defineProperty({__proto__:null,default:F},Symbol.toStringTag,{value:"Module"})),z=`# Your First Simulation
+`,M=Object.freeze(Object.defineProperty({__proto__:null,default:W},Symbol.toStringTag,{value:"Module"})),R=`# Your First Simulation
 
 This guide will walk you through creating a simple physics simulation: a box falling onto a static floor.
 
@@ -629,7 +661,7 @@ You must serve your files using a web server to allow the browser to load the \`
 \`\`\`bash
 npx http-server .
 \`\`\`Open your browser to \`http://localhost:8080\`, and you should see a red box fall and bounce on the floor!
-`,R=Object.freeze(Object.defineProperty({__proto__:null,default:z},Symbol.toStringTag,{value:"Module"})),H=`# The Simulation Loop
+`,z=Object.freeze(Object.defineProperty({__proto__:null,default:R},Symbol.toStringTag,{value:"Module"})),H=`# The Simulation Loop
 
 For a physics engine, how you advance time is just as important as the physics calculations themselves. This guide covers the best practices for setting up a stable and smooth simulation loop in Gearbox2D.
 
@@ -860,7 +892,7 @@ Gearbox2D introduces several architectural advancements designed for modern, lar
 ## Project Status
 Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
 
-[View the Development Roadmap →](https://github.com/JSideris/Gearbox2D/blob/master/plan.md)
+[View the Development Roadmap →](#plan)
 
 ---
 
@@ -1266,10 +1298,10 @@ This allows you to easily control the total weight of an object (e.g., "this car
 ### Automatic Mass Calculation
 
 If you do not specify a mass for the body (or set it to \`0\`), the engine will automatically calculate the body's total mass as the sum of the masses of all its fixtures. In this mode, changing a fixture's density or size will automatically update the body's total mass.
-`,pe=Object.freeze(Object.defineProperty({__proto__:null,default:de},Symbol.toStringTag,{value:"Module"})),he=`# State Management
+`,pe=Object.freeze(Object.defineProperty({__proto__:null,default:de},Symbol.toStringTag,{value:"Module"})),ue=`# State Management
 TODO
 
-`,ue=Object.freeze(Object.defineProperty({__proto__:null,default:he},Symbol.toStringTag,{value:"Module"})),me=`# Performance Optimizations
+`,he=Object.freeze(Object.defineProperty({__proto__:null,default:ue},Symbol.toStringTag,{value:"Module"})),me=`# Performance Optimizations
 TODO
 
 `,ge=Object.freeze(Object.defineProperty({__proto__:null,default:me},Symbol.toStringTag,{value:"Module"})),ye=`# Performance Tips
@@ -1287,10 +1319,10 @@ TODO
 `,_e=Object.freeze(Object.defineProperty({__proto__:null,default:je},Symbol.toStringTag,{value:"Module"})),Se=`# Supported Shapes
 TODO
 
-`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Planned Shapes
+`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Be=`# Planned Shapes
 TODO
 
-`,Be=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Ce=`# Plan:
+`,Te=Object.freeze(Object.defineProperty({__proto__:null,default:Be},Symbol.toStringTag,{value:"Module"})),Ce=`# Plan:
 
 ## Shapes, Kinematics, Collisions
 - [x] Setup and test Rust w/ web assembly target.
@@ -1380,7 +1412,7 @@ TODO
 - [x] Distance.
 - [x] Spring.
 - [x] Gear constraint.
-	- [ ] Mechanical friction.
+	- [ ] Mechanical friction (optional).
 
 
 ## Interactions
@@ -1419,7 +1451,7 @@ TODO
 ### General Optimizations
 - [x] Cache inverse mass.
 - [x] Cache inverse inertia.
-- [ ] Cache inverse dt.
+- [x] Cache inverse dt.
 - [x] Cache exponential decay factor when dt is set.
 - [x] Implement collision masks.
 - [ ] Focus areas & resolution.
@@ -1484,7 +1516,6 @@ TODO
 
 ## Known Issues
 - Piles of objects don't go to sleep as easily as they should (regression).
-- Fleas example sometimes shows instances of objects escaping the scene.
-- Sliding objects never come to rest.
-- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Ce},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":B,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":W,"../docs/events.md":M,"../docs/first-simulation.md":R,"../docs/game-loop.md":J,"../docs/graphics-debug.md":G,"../docs/installation.md":q,"../docs/interaction-queries.md":X,"../docs/introduction.md":$,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":ue,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Be,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
-`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const h=ke(Oe),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){h.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function u(){const n=window.location.hash.substring(1),o=n?`${n}.md`:h[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=y.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(g=>g.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",u);De();u();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!m.contains(n.target)&&a.classList.add("collapsed")});
+- Sleep island example exhibits some solver flaws - objects collapsing into each other, etc (regression).
+- Spring joints can't be adjusted at runtime - see the commented-out spring test case.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Ce},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":T,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":F,"../docs/events.md":M,"../docs/first-simulation.md":z,"../docs/game-loop.md":J,"../docs/graphics-debug.md":G,"../docs/installation.md":q,"../docs/interaction-queries.md":X,"../docs/introduction.md":$,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":he,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Te,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
+`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const u=ke(Oe),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){u.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function h(){const n=window.location.hash.substring(1),o=n?`${n}.md`:u[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=y.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(g=>g.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",h);De();h();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!m.contains(n.target)&&a.classList.add("collapsed")});
