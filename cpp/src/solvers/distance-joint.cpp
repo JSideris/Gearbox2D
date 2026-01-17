@@ -1,5 +1,6 @@
 #include "distance-joint.h"
 #include "body.h"
+#include "world.h"
 #include <cmath>
 
 DistanceJoint::DistanceJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length)
@@ -21,7 +22,7 @@ void DistanceJoint::preSolve(float dt) {
     float rnA = rA.cross(normal), rnB = rB.cross(normal);
     float k = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
     mass = (k > 0.0f) ? 1.0f / k : 0.0f;
-    bias = (dMag - length) * (0.2f / dt);
+    bias = (dMag - length) * (0.2f * bodyA->world.invTimeStep);
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(p) * iIA);

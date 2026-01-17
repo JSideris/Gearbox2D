@@ -11,7 +11,8 @@
 BvhMetrics g_bvhMetrics;
 
 World::World() : collisionSolver(*this) {
-    setTimeStep(1.0f / 60.0f);
+    timeStep = 1.0f / 60.0f;
+    invTimeStep = 60.0f;
     int maxSize = 10000;
     liveBodyFloatData.reserve(maxSize * BODY_FDATA_EPO);
     liveBodyIntData.reserve(maxSize * BODY_IDATA_EPO);
@@ -385,6 +386,7 @@ int World::findFixtureIndex(int id) {
 
 void World::setTimeStep(float dt) {
     timeStep = dt;
+    invTimeStep = (dt > 0.0f) ? 1.0f / dt : 0.0f;
     decayMap[99] = pow(1.0f - 0.99f, dt);
 }
 
@@ -543,7 +545,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         staticFriction = 0.0f;
         kineticFriction = 0.0f;
     }
-    positionBias = (enablePenetration && depth > 0.01f) ? std::max(-2.0f, -0.2f / dt * (depth - 0.01f)) : 0.0f;
+    positionBias = (enablePenetration && depth > 0.01f) ? std::max(-2.0f, -0.2f * a->world.invTimeStep * (depth - 0.01f)) : 0.0f;
 }
 
 void ContactConstraint::solve(bool enableNormal, bool enableFriction) {

@@ -88,7 +88,7 @@
 - [x] Distance.
 - [x] Spring.
 - [x] Gear constraint.
-	- [ ] Mechanical friction.
+	- [ ] Mechanical friction (optional).
 
 
 ## Interactions
@@ -127,7 +127,7 @@
 ### General Optimizations
 - [x] Cache inverse mass.
 - [x] Cache inverse inertia.
-- [ ] Cache inverse dt.
+- [x] Cache inverse dt.
 - [x] Cache exponential decay factor when dt is set.
 - [x] Implement collision masks.
 - [ ] Focus areas & resolution.
@@ -192,6 +192,5 @@
 
 ## Known Issues
 - Piles of objects don't go to sleep as easily as they should (regression).
-- Fleas example sometimes shows instances of objects escaping the scene.
-- Sliding objects never come to rest.
-- AABBs seem to sink into other objects, like circles, boxes, and other AABBs.
+- Sleep island example exhibits some solver flaws - objects collapsing into each other, etc (regression).
+- Spring joints can't be adjusted at runtime - see the commented-out spring test case.

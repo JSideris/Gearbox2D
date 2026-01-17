@@ -1,5 +1,6 @@
 #include "hinge-joint.h"
 #include "body.h"
+#include "world.h"
 #include <cmath>
 
 HingeJoint::HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB)
@@ -30,7 +31,7 @@ void HingeJoint::preSolve(float dt) {
     }
     Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
     Vec2 C = (posB + rB) - (posA + rA);
-    bias = C * (0.2f / dt);
+    bias = C * (0.2f * bodyA->world.invTimeStep);
     float maxStabilizationVelocity = 10.0f;
     float biasMag = bias.magnitude();
     if (biasMag > maxStabilizationVelocity) bias = bias * (maxStabilizationVelocity / biasMag);

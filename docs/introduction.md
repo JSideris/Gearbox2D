@@ -39,7 +39,7 @@ Gearbox2D introduces several architectural advancements designed for modern, lar
 ## Project Status
 Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
 
-[View the Development Roadmap →](https://github.com/JSideris/Gearbox2D/blob/master/plan.md)
+[View the Development Roadmap →](#plan)
 
 ---
 

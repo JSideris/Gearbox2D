@@ -94,6 +94,7 @@ private:
 
 public:
     Bvh bvh;
+    float invTimeStep;
     std::vector<float> liveBodyFloatData;
     std::vector<int> liveBodyIntData;
     std::vector<float> liveFixtureFloatData;
