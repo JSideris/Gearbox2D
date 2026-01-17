@@ -176,12 +176,16 @@ export class World {
         const bodyCount = this.world.getBodyCount();
         for (let i = 0; i < bodyCount; i++) {
             const id = this.liveBodyIntData[i * BODY_SIZE_I + BODY_ID_OFFSET];
-            if (this.bodiesById[id]) this.bodiesById[id].index = i;
+            if (this.bodiesById[id]) {
+                this.bodiesById[id].index = i;
+            }
         }
         const fixtureCount = this.world.getFixtureCount();
         for (let i = 0; i < fixtureCount; i++) {
             const id = this.liveFixtureIntData[i * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
-            if (this.fixturesById[id]) this.fixturesById[id].index = i;
+            if (this.fixturesById[id]) {
+                this.fixturesById[id].index = i;
+            }
         }
     }
 
@@ -367,6 +371,9 @@ export class World {
     step() {
         this.world.step();
         this.stepCount++;
+
+        // Always refresh views after step because eventData growth might have triggered heap growth or vector reallocation
+        this.refreshViews();
 
         // Process events
         const eventCount = this.world.getEventCount();

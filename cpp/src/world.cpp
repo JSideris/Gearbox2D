@@ -18,7 +18,7 @@ World::World() : collisionSolver(*this) {
     liveBodyIntData.reserve(maxSize * BODY_IDATA_EPO);
     liveFixtureFloatData.reserve(maxSize * FIXTURE_FDATA_EPO);
     liveFixtureIntData.reserve(maxSize * FIXTURE_IDATA_EPO);
-    contactConstraints.reserve(100);
+    contactConstraints.reserve(1000);
     velocityIterations = 50;
 }
 
@@ -83,6 +83,7 @@ int World::removeObject(int id) {
     if (itBody == bodiesMap.end()) return -1;
 
     Body* body = itBody->second;
+    int bIdx = body->worldIndex;
     
     // Remove joints
     std::vector<int> jointsToRemove;
@@ -100,6 +101,7 @@ int World::removeObject(int id) {
         
         int fIdx = fixture->worldIndex;
         if (fIdx != -1 && fIdx < fixturesList.size()) {
+            // Swap this fixture with the last one in the list
             std::iter_swap(fixturesList.begin() + fIdx, fixturesList.end() - 1);
             
             for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) {
@@ -111,7 +113,10 @@ int World::removeObject(int id) {
                                liveFixtureFloatData.begin() + (fixturesList.size() - 1) * FIXTURE_FDATA_EPO + i);
             }
             
+            // Update the index of the fixture that was moved from the end to fIdx
             fixturesList[fIdx]->worldIndex = fIdx;
+            
+            // Remove the last element (which is the fixture we want to delete)
             fixturesList.pop_back();
             for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) liveFixtureIntData.pop_back();
             for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) liveFixtureFloatData.pop_back();
@@ -119,25 +124,34 @@ int World::removeObject(int id) {
         fixturesMap.erase(fixture->id);
         delete fixture;
     }
+    body->fixtures.clear(); // Important: prevent dangling pointers
 
-    int bIdx = body->worldIndex;
+    // Remove body
     if (bIdx != -1 && bIdx < bodiesList.size()) {
-        std::iter_swap(bodiesList.begin() + bIdx, bodiesList.end() - 1);
-        for (int i = 0; i < BODY_IDATA_EPO; ++i) {
-            std::iter_swap(liveBodyIntData.begin() + bIdx * BODY_IDATA_EPO + i,
-                           liveBodyIntData.begin() + (bodiesList.size() - 1) * BODY_IDATA_EPO + i);
-        }
-        for (int i = 0; i < BODY_FDATA_EPO; ++i) {
-            std::iter_swap(liveBodyFloatData.begin() + bIdx * BODY_FDATA_EPO + i,
-                           liveBodyFloatData.begin() + (bodiesList.size() - 1) * BODY_FDATA_EPO + i);
-        }
-        bodiesList[bIdx]->worldIndex = bIdx;
+        bool isLast = (bIdx == bodiesList.size() - 1);
         
-        // Update all fixtures of the moved body to point to the new body index
-        for (auto* f : bodiesList[bIdx]->fixtures) {
-            liveFixtureIntData[f->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX] = bIdx;
+        if (!isLast) {
+            // Swap this body with the last one in the list
+            std::iter_swap(bodiesList.begin() + bIdx, bodiesList.end() - 1);
+            for (int i = 0; i < BODY_IDATA_EPO; ++i) {
+                std::iter_swap(liveBodyIntData.begin() + bIdx * BODY_IDATA_EPO + i,
+                               liveBodyIntData.begin() + (bodiesList.size() - 1) * BODY_IDATA_EPO + i);
+            }
+            for (int i = 0; i < BODY_FDATA_EPO; ++i) {
+                std::iter_swap(liveBodyFloatData.begin() + bIdx * BODY_FDATA_EPO + i,
+                               liveBodyFloatData.begin() + (bodiesList.size() - 1) * BODY_FDATA_EPO + i);
+            }
+            
+            // Update the index of the body that was moved from the end to bIdx
+            bodiesList[bIdx]->worldIndex = bIdx;
+            
+            // Update all fixtures of the moved body to point to the new body index
+            for (auto* f : bodiesList[bIdx]->fixtures) {
+                liveFixtureIntData[f->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX] = bIdx;
+            }
         }
 
+        // Remove the last element (which is the body we want to delete)
         bodiesList.pop_back();
         for (int i = 0; i < BODY_IDATA_EPO; ++i) liveBodyIntData.pop_back();
         for (int i = 0; i < BODY_FDATA_EPO; ++i) liveBodyFloatData.pop_back();
