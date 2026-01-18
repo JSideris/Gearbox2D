@@ -575,4 +575,48 @@ export const issuesExamples = [
         onTick: (world, dt)=>{
         }
     }),
+
+    new Example({
+        name: "TC-14 (REGRESSION)",
+        key: "tc-14",
+        description: [
+            "**Test Case 14**: Sliding pile regression.",
+            "A stack of boxes should remain stationary when high friction is present. This test verifies if piles of objects exhibit 'random slow sliding' and fail to enter the sleep state."
+        ].join("\n\n"),
+        onInit: (world)=>{
+            world.setGravity(0, 20); // Higher gravity to emphasize pressure
+            
+            let id = 1;
+            // Ground
+            world.makeBody(id++, {
+                x: 5,
+                y: 9,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
+                width: 10,
+                height: 1,
+                sFriction: 10,
+                kFriction: 10,
+            });
+
+            // Stack of boxes
+            for (let i = 0; i < 4; i++) {
+                world.makeBody(id++, {
+                    x: 5,
+                    y: 7 - i * 1.1,
+                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                    mass: 1,
+                }).addFixture({
+                    shape: gearbox.shapes.BOX,
+                    width: 2,
+                    height: 1,
+                    sFriction: 10,
+                    kFriction: 10,
+                });
+            }
+        },
+        onTick: (world, dt)=>{
+        }
+    }),
 ];

@@ -231,11 +231,11 @@ bool Body::integratePositions(float dt) {
 
     // Settling and rotational damping (only for dynamic objects)
     if (type == ObjectType::DYNAMIC_OBJECT) {
-        if (std::abs(vel.x) < SLEEP_VELOCITY_THRESHOLD * 0.1f) vel.x *= 0.95f;
-        if (std::abs(vel.y) < SLEEP_VELOCITY_THRESHOLD * 0.1f) vel.y *= 0.95f;
+        if (std::abs(vel.x) < SLEEP_VELOCITY_THRESHOLD) vel.x *= 0.90f;
+        if (std::abs(vel.y) < SLEEP_VELOCITY_THRESHOLD) vel.y *= 0.90f;
         
         rs *= (1.0f - getRotationalDamping() * dt);
-        if (std::abs(rs) < SLEEP_ANGULAR_VELOCITY_THRESHOLD * 0.5f) rs *= 0.8f;
+        if (std::abs(rs) < SLEEP_ANGULAR_VELOCITY_THRESHOLD) rs *= 0.90f;
     }
 
     Vec2 pos = getPosition() + vel * dt;
@@ -276,8 +276,13 @@ bool Body::integratePositions(float dt) {
     
     bool moved = dx != 0 || dy != 0 || dr != 0;
     if (moved && (std::abs(sleepErrAccumulatorX) > WAKE_MOVEMENT_THRESHOLD || std::abs(sleepErrAccumulatorY) > WAKE_MOVEMENT_THRESHOLD || std::abs(sleepErrAccumulatorR) > WAKE_MOVEMENT_THRESHOLD)) {
-        sleepTimer = 0;
-        sleepErrAccumulatorX = 0; sleepErrAccumulatorY = 0; sleepErrAccumulatorR = 0;
+        // Only reset sleep timer if there is also significant velocity
+        Vec2 velocity(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]);
+        float angularVelocity = world.liveBodyFloatData[idx + BODY_FDATA_RS];
+        if (velocity.magnitudeSquared() > SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD || std::abs(angularVelocity) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+            sleepTimer = 0;
+            sleepErrAccumulatorX = 0; sleepErrAccumulatorY = 0; sleepErrAccumulatorR = 0;
+        }
     } else {
         sleepTimer += dt;
         if (sleepTimer > sleepTimeRequired) sleep();
@@ -389,6 +394,8 @@ void Body::recomputeMassProperties() {
             int idx = worldIndex * BODY_FDATA_EPO;
             world.liveBodyFloatData[idx + BODY_FDATA_X] += worldCenterShift.x;
             world.liveBodyFloatData[idx + BODY_FDATA_Y] += worldCenterShift.y;
+            lastX += worldCenterShift.x;
+            lastY += worldCenterShift.y;
 
             // Update fixture local positions
             for (auto* f : fixtures) {

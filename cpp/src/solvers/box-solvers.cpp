@@ -18,8 +18,14 @@ bool CollisionSolver::_solveBoxBox() {
         float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
         float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
         float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        
         float cosR = cos(br), sinR = sin(br);
-        return make_pair(Vec2(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR)), br + lr);
+        Vec2 worldPos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
+        
+        int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+        float worldRot = (shape == (int)ObjectShape::AABB) ? 0.0f : (br + lr);
+        
+        return make_pair(worldPos, worldRot);
     };
 
     auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
@@ -157,8 +163,14 @@ bool CollisionSolver::_solveBoxPoint() {
         float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
         float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
         float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        
         float cosR = cos(br), sinR = sin(br);
-        return make_pair(Vec2(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR)), br + lr);
+        Vec2 worldPos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
+        
+        int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+        float worldRot = (shape == (int)ObjectShape::AABB) ? 0.0f : (br + lr);
+        
+        return make_pair(worldPos, worldRot);
     };
 
     auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
@@ -217,8 +229,14 @@ bool CollisionSolver::_solveCircleBox() {
         float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
         float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
         float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        
         float cosR = cos(br), sinR = sin(br);
-        return make_pair(Vec2(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR)), br + lr);
+        Vec2 worldPos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
+        
+        int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+        float worldRot = (shape == (int)ObjectShape::AABB) ? 0.0f : (br + lr);
+        
+        return make_pair(worldPos, worldRot);
     };
 
     auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);

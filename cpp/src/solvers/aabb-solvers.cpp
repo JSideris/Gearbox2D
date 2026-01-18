@@ -6,163 +6,145 @@
 
 using namespace std;
 
+// Helper to get true world properties for an AABB fixture
+struct AabbProps {
+    Vec2 center;
+    Vec2 halfDim;
+    Vec2 bodyPos;
+    float bodyAngVel;
+    Vec2 bodyVel;
+};
+
+AabbProps getAabbProps(World& world, int fIdx) {
+    int bIdx = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
+    float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
+    float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
+    float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    float w = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
+    float h = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+
+    float cosR = cos(br), sinR = sin(br);
+    Vec2 center(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
+
+    return {
+        center,
+        Vec2(w * 0.5f, h * 0.5f),
+        Vec2(bx, by),
+        world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_RS],
+        Vec2(world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_VY])
+    };
+}
+
+Vec2 getVelocityAt(const AabbProps& props, Vec2 p) {
+    Vec2 r = p - props.bodyPos;
+    return props.bodyVel + Vec2(-r.y * props.bodyAngVel, r.x * props.bodyAngVel);
+}
+
 bool CollisionSolver::_solveAabbAabb() {
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    AabbProps pA = getAabbProps(world, _indexA);
+    AabbProps pB = getAabbProps(world, _indexB);
 
-    float x1A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX1];
-    float y1A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY1];
-    float x2A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX2];
-    float y2A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY2];
-
-    float x1B = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX1];
-    float y1B = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY1];
-    float x2B = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX2];
-    float y2B = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY2];
+    float x1A = pA.center.x - pA.halfDim.x, x2A = pA.center.x + pA.halfDim.x;
+    float y1A = pA.center.y - pA.halfDim.y, y2A = pA.center.y + pA.halfDim.y;
+    float x1B = pB.center.x - pB.halfDim.x, x2B = pB.center.x + pB.halfDim.x;
+    float y1B = pB.center.y - pB.halfDim.y, y2B = pB.center.y + pB.halfDim.y;
 
     if (x1A < x2B && x2A > x1B && y1A < y2B && y2A > y1B) {
         float overlapX = min(x2A, x2B) - max(x1A, x1B);
         float overlapY = min(y2A, y2B) - max(y1A, y1B);
         Vec2 normal;
-        float penetrationDepth;
+        float depth;
         bool horizontal = overlapX < overlapY;
 
         if (horizontal) {
-            penetrationDepth = overlapX;
-            normal = (x1A + x2A < x1B + x2B) ? Vec2(1, 0) : Vec2(-1, 0);
+            depth = overlapX;
+            normal = (pA.center.x < pB.center.x) ? Vec2(1, 0) : Vec2(-1, 0);
         } else {
-            penetrationDepth = overlapY;
-            normal = (y1A + y2A < y1B + y2B) ? Vec2(0, 1) : Vec2(0, -1);
+            depth = overlapY;
+            normal = (pA.center.y < pB.center.y) ? Vec2(0, 1) : Vec2(0, -1);
         }
 
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        Vec2 contactPoint((max(x1A, x1B) + min(x2A, x2B)) * 0.5f, (max(y1A, y1B) + min(y2A, y2B)) * 0.5f);
+        Vec2 relVel = getVelocityAt(pB, contactPoint) - getVelocityAt(pA, contactPoint);
 
-        if (horizontal) {
-            float yOverlapCenter = (max(y1A, y1B) + min(y2A, y2B)) / 2;
-            float cpX = (max(x1A, x1B) + min(x2A, x2B)) / 2;
-            collisions.push_back(CollisionInfo{true, Vec2(cpX, yOverlapCenter), normal, penetrationDepth, _indexA, _indexB, vB - vA, 0.0f});
-        } else {
-            float xOverlapCenter = (max(x1A, x1B) + min(x2A, x2B)) / 2;
-            float cpY = (max(y1A, y1B) + min(y2A, y2B)) / 2;
-            collisions.push_back(CollisionInfo{true, Vec2(xOverlapCenter, cpY), normal, penetrationDepth, _indexA, _indexB, vB - vA, 0.0f});
-        }
-
+        collisions.push_back(CollisionInfo{true, contactPoint, normal, depth, _indexA, _indexB, relVel, 0.0f});
         return true;
     }
     return false;
 }
 
 bool CollisionSolver::_solveAabbPoint() {
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    AabbProps pA = getAabbProps(world, _indexA);
     int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-
-    float x1A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX1];
-    float y1A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY1];
-    float x2A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX2];
-    float y2A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY2];
-
-    float bXB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
-    float bYB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
-    float bRB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
-    float lXB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-    float lYB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    float bxB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X], byB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y], brB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lxB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X], lyB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
     
-    float cosB = cos(bRB), sinB = sin(bRB);
-    Vec2 pB(bXB + (lXB * cosB - lYB * sinB), bYB + (lXB * sinB + lYB * cosB));
+    float cosB = cos(brB), sinB = sin(brB);
+    Vec2 pointWorld(bxB + (lxB * cosB - lyB * sinB), byB + (lxB * sinB + lyB * cosB));
 
-    if (pB.x >= x1A && pB.x <= x2A && pB.y >= y1A && pB.y <= y2A) {
-        float d1 = pB.x - x1A;
-        float d2 = x2A - pB.x;
-        float d3 = pB.y - y1A;
-        float d4 = y2A - pB.y;
+    float x1 = pA.center.x - pA.halfDim.x, x2 = pA.center.x + pA.halfDim.x;
+    float y1 = pA.center.y - pA.halfDim.y, y2 = pA.center.y + pA.halfDim.y;
+
+    if (pointWorld.x >= x1 && pointWorld.x <= x2 && pointWorld.y >= y1 && pointWorld.y <= y2) {
+        float d[4] = { pointWorld.x - x1, x2 - pointWorld.x, pointWorld.y - y1, y2 - pointWorld.y };
+        float minDist = d[0]; int axis = 0;
+        for(int i=1; i<4; ++i) if(d[i] < minDist) { minDist = d[i]; axis = i; }
         
-        float minDist = min({d1, d2, d3, d4});
-        Vec2 normal;
-        if (minDist == d1) normal = Vec2(-1, 0);
-        else if (minDist == d2) normal = Vec2(1, 0);
-        else if (minDist == d3) normal = Vec2(0, -1);
-        else normal = Vec2(0, 1);
-        
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        
-        collisions.push_back(CollisionInfo{true, pB, normal, minDist, _indexA, _indexB, vB - vA, 0.0f});
+        Vec2 normal = (axis == 0) ? Vec2(-1, 0) : (axis == 1) ? Vec2(1, 0) : (axis == 2) ? Vec2(0, -1) : Vec2(0, 1);
+        Vec2 relVel = Vec2(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]) - getVelocityAt(pA, pointWorld);
+
+        collisions.push_back(CollisionInfo{true, pointWorld, normal, minDist, _indexA, _indexB, relVel, 0.0f});
         return true;
     }
     return false;
 }
 
 bool CollisionSolver::_solveAabbCircle() {
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    AabbProps pA = getAabbProps(world, _indexA);
     int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-
-    float x1A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX1];
-    float y1A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY1];
-    float x2A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AX2];
-    float y2A = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_AY2];
-
     float rB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
-    float bXB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
-    float bYB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
-    float bRB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
-    float lXB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-    float lYB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    float bxB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X], byB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y], brB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
+    float lxB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X], lyB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
     
-    float cosB = cos(bRB), sinB = sin(bRB);
-    Vec2 pB(bXB + (lXB * cosB - lYB * sinB), bYB + (lXB * sinB + lYB * cosB));
+    float cosB = cos(brB), sinB = sin(brB);
+    Vec2 centerB(bxB + (lxB * cosB - lyB * sinB), byB + (lxB * sinB + lyB * cosB));
 
-    // Closest point on AABB to circle center
-    float closestX = max(x1A, min(pB.x, x2A));
-    float closestY = max(y1A, min(pB.y, y2A));
+    float x1 = pA.center.x - pA.halfDim.x, x2 = pA.center.x + pA.halfDim.x;
+    float y1 = pA.center.y - pA.halfDim.y, y2 = pA.center.y + pA.halfDim.y;
 
-    Vec2 closestPoint(closestX, closestY);
-    Vec2 diff = pB - closestPoint;
+    float closestX = max(x1, min(centerB.x, x2));
+    float closestY = max(y1, min(centerB.y, y2));
+    Vec2 closest(closestX, closestY);
+    Vec2 diff = centerB - closest;
     float distSq = diff.magnitudeSquared();
 
-    bool inside = false;
-    if (distSq == 0) {
-        // Circle center is inside or on the edge of the AABB
-        inside = true;
-        float d1 = pB.x - x1A;
-        float d2 = x2A - pB.x;
-        float d3 = pB.y - y1A;
-        float d4 = y2A - pB.y;
-        
-        float minDist = min({d1, d2, d3, d4});
-        if (minDist == d1) { closestPoint.x = x1A; diff = Vec2(-1, 0); }
-        else if (minDist == d2) { closestPoint.x = x2A; diff = Vec2(1, 0); }
-        else if (minDist == d3) { closestPoint.y = y1A; diff = Vec2(0, -1); }
-        else { closestPoint.y = y2A; diff = Vec2(0, 1); }
-        
+    bool inside = (distSq == 0);
+    if (inside) {
+        float d[4] = { centerB.x - x1, x2 - centerB.x, centerB.y - y1, y2 - centerB.y };
+        float minDist = d[0]; int axis = 0;
+        for(int i=1; i<4; ++i) if(d[i] < minDist) { minDist = d[i]; axis = i; }
+        if (axis == 0) { closest.x = x1; diff = Vec2(-1, 0); }
+        else if (axis == 1) { closest.x = x2; diff = Vec2(1, 0); }
+        else if (axis == 2) { closest.y = y1; diff = Vec2(0, -1); }
+        else { closest.y = y2; diff = Vec2(0, 1); }
         distSq = minDist * minDist;
     }
 
     if (distSq < rB * rB || inside) {
-        float distance = sqrt(distSq);
-        Vec2 normal;
-        float penetrationDepth;
+        float dist = sqrt(distSq);
+        Vec2 normal = inside ? diff : diff / dist;
+        float depth = inside ? rB + dist : rB - dist;
 
-        if (inside) {
-            normal = diff; // diff was set to normal-like direction
-            penetrationDepth = rB + distance;
-        } else {
-            normal = diff / distance;
-            penetrationDepth = rB - distance;
-        }
-
-        Vec2 contactPoint = closestPoint;
-
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
+        Vec2 vB = Vec2(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
         float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
-        
-        Vec2 rB_vec = contactPoint - pB;
-        Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
-        
-        collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - vA, 0.0f});
+        Vec2 rB_vec = closest - centerB;
+        Vec2 totalVelB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
+        Vec2 relVel = totalVelB - getVelocityAt(pA, closest);
+
+        collisions.push_back(CollisionInfo{true, closest, normal, depth, _indexA, _indexB, relVel, 0.0f});
         return true;
     }
-
     return false;
 }

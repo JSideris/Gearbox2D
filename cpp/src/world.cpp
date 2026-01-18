@@ -93,7 +93,9 @@ int World::removeObject(int id) {
     for (int jId : jointsToRemove) removeJoint(jId);
 
     // Remove fixtures
+    std::vector<int> fixtureIds;
     for (auto* fixture : body->fixtures) {
+        fixtureIds.push_back(fixture->id);
         if (fixture->bvhNode) {
             bvh.remove(fixture->bvhNode);
             fixture->bvhNode = nullptr;
@@ -123,6 +125,26 @@ int World::removeObject(int id) {
         }
         fixturesMap.erase(fixture->id);
         delete fixture;
+    }
+
+    // Scrub contact tracking state for this body and its fixtures
+    for (auto it = bodyContactCounts.begin(); it != bodyContactCounts.end(); ) {
+        if (it->first.first == id || it->first.second == id) it = bodyContactCounts.erase(it);
+        else ++it;
+    }
+    for (int fId : fixtureIds) {
+        for (auto it = currentPairs.begin(); it != currentPairs.end(); ) {
+            if (it->first == fId || it->second == fId) it = currentPairs.erase(it);
+            else ++it;
+        }
+        for (auto it = prevPairs.begin(); it != prevPairs.end(); ) {
+            if (it->first == fId || it->second == fId) it = prevPairs.erase(it);
+            else ++it;
+        }
+        for (auto it = resolvedImpulses.begin(); it != resolvedImpulses.end(); ) {
+            if (it->first.first == fId || it->first.second == fId) it = resolvedImpulses.erase(it);
+            else ++it;
+        }
     }
     body->fixtures.clear(); // Important: prevent dangling pointers
 
@@ -382,9 +404,39 @@ void World::_doResolution() {
 }
 
 void World::clear() {
-    while (!bodiesList.empty()) removeObject(bodiesList[0]->id);
-    liveBodyFloatData.clear(); liveBodyIntData.clear();
-    liveFixtureFloatData.clear(); liveFixtureIntData.clear();
+    // 1. Clear joints first (they depend on bodies)
+    jointsMap.clear();
+
+    // 2. Clear all tracking maps to prevent stale collision state
+    currentPairs.clear();
+    prevPairs.clear();
+    bodyContactCounts.clear();
+    resolvedImpulses.clear();
+
+    // 3. Clear BVH and fixtures
+    bvh.clear();
+    for (auto* fixture : fixturesList) {
+        delete fixture;
+    }
+    fixturesList.clear();
+    fixturesMap.clear();
+
+    // 4. Clear bodies
+    for (auto* body : bodiesList) {
+        delete body;
+    }
+    bodiesList.clear();
+    bodiesMap.clear();
+
+    // 5. Clear live data vectors and events
+    liveBodyFloatData.clear();
+    liveBodyIntData.clear();
+    liveFixtureFloatData.clear();
+    liveFixtureIntData.clear();
+    eventData.clear();
+
+    // 6. Reset ID counters
+    nextFixtureId = 1;
 }
 
 Body* World::getBody(int id) const { auto it = bodiesMap.find(id); return it != bodiesMap.end() ? it->second : nullptr; }
@@ -492,7 +544,23 @@ int World::createGearJoint(int id, int joint1Id, int joint2Id, float ratio) {
     return id;
 }
 
-void World::removeJoint(int id) { jointsMap.erase(id); }
+void World::removeJoint(int id) {
+    // 1. Find and remove any joints that depend on this joint (e.g. GearJoints)
+    // We use a separate list to avoid iterator invalidation during recursion
+    std::vector<int> dependentJoints;
+    for (auto& pair : jointsMap) {
+        GearJoint* gj = dynamic_cast<GearJoint*>(pair.second.get());
+        if (gj && (gj->joint1->id == id || gj->joint2->id == id)) {
+            dependentJoints.push_back(pair.first);
+        }
+    }
+    for (int djId : dependentJoints) {
+        removeJoint(djId);
+    }
+
+    // 2. Remove the joint itself
+    jointsMap.erase(id);
+}
 Joint* World::getJoint(int id) { auto it = jointsMap.find(id); return it != jointsMap.end() ? it->second.get() : nullptr; }
 
 void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
@@ -521,14 +589,14 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     if (enableRestitution && relativeVn < -0.1f) {
         float targetBounceSpeed = restitution * (-relativeVn);
         
-        if (gMag > 0.0001f && enablePenetration && depth > 0.01f) {
+        if (gMag > 0.0001f && enablePenetration && depth > 0.004f) {
             Vec2 gDir = grav / gMag;
             float imA = a->getInverseMass();
             float imB = b->getInverseMass();
             
             // Calculate how much the position correction (Baumgarte) will lift the objects against gravity
             // We use 0.2f because that's the factor used in positionBias calculation
-            float lift = (imA - imB) * normal.dot(gDir) * (depth - 0.01f) * 0.2f / (imA + imB);
+            float lift = (imA - imB) * normal.dot(gDir) * (depth - 0.004f) * 0.2f / (imA + imB);
             
             // v_launch^2 = (e * v_impact)^2 - 2gh. Tax the speed to pay for the free height.
             float speedSq = targetBounceSpeed * targetBounceSpeed;
@@ -559,7 +627,8 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         staticFriction = 0.0f;
         kineticFriction = 0.0f;
     }
-    positionBias = (enablePenetration && depth > 0.01f) ? std::max(-2.0f, -0.2f * a->world.invTimeStep * (depth - 0.01f)) : 0.0f;
+    // Set slop to 0.004 and increase cap from -2.0 to -30.0
+    positionBias = (enablePenetration && depth > 0.004f) ? std::max(-30.0f, -0.2f * a->world.invTimeStep * (depth - 0.004f)) : 0.0f;
 }
 
 void ContactConstraint::solve(bool enableNormal, bool enableFriction) {

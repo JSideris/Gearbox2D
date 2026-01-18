@@ -80,6 +80,8 @@ export const generalExamples = [
             "### Features",
             "- **Point Query**: The engine detects which object is under the mouse using **BVH** and precise shape tests.",
             "- **Mouse Joint**: Uses a `SpringJoint` to pull objects toward the mouse cursor.",
+            "- **Multi-Fixture Bodies**: Some objects are composed of multiple shapes (circles and boxes) attached to a single body.",
+            "- **Jointed Compounds**: Some objects are connected by **Hinge**, **Distance**, and **Spring** joints to create complex assemblies.",
             "- **Collision Filtering**: The mouse 'anchor' object is a sensor that doesn't collide with other objects."
         ].join("\n\n"),
         onInit: (world) => {
@@ -140,23 +142,23 @@ export const generalExamples = [
             });
 
             // Grid of shapes to prevent initial overlap
-            const colors = ["#ff4444", "#44ff44", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
+            const colors = ["#ff4444", "#44ff44", "#4444ff", "#ffff44", "#ff44ff", "#44ffff", "#ff8844", "#88ff44", "#4488ff"];
             const cols = 8;
-            const rows = 5;
+            const rows = 4;
             const spacingX = 1.0;
-            const spacingY = 1.2;
+            const spacingY = 1.0;
             const startX = 5 - ((cols - 1) * spacingX) / 2;
-            const startY = 2.0;
+            const startY = 1.8;
             
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
-                    const x = startX + c * spacingX;
-                    const y = startY + r * spacingY;
+                    const x = startX + c * spacingX + (Math.random() - 0.5) * 0.2;
+                    const y = startY + r * spacingY + (Math.random() - 0.5) * 0.2;
                     const color = colors[(r * cols + c) % colors.length];
                     
                     const commonProps = {
                         x, y,
-                        mass: 1.0,
+                        mass: 0.5 + Math.random() * 1.5,
                         color,
                         linearDamping: 0.5,
                         angularDamping: 1.5
@@ -170,19 +172,107 @@ export const generalExamples = [
                             r: Math.random() * Math.PI,
                         }).addFixture({
                             shape: gearbox.shapes.CIRCLE,
-                            radius: 0.2 + Math.random() * 0.2,
+                            radius: 0.1 + Math.random() * 0.3,
                         });
-                    } else {
+                    } else{
                         // Box
                         world.makeBody(nextId++, {
                             ...commonProps,
                             r: Math.random() * Math.PI,
                         }).addFixture({
                             shape: gearbox.shapes.BOX,
-                            width: 0.4 + Math.random() * 0.4,
-                            height: 0.4 + Math.random() * 0.4,
+                            width: 0.2 + Math.random() * 0.6,
+                            height: 0.2 + Math.random() * 0.6,
+                        });
+                    } 
+                }
+            }
+
+            // --- Multi-Fixture Composite Bodies ---
+            for (let i = 0; i < 6; i++) {
+                const x = 1.5 + Math.random() * 7;
+                const y = 5.5 + Math.random() * 1.5;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                const body = world.makeBody(nextId++, {
+                    x, y,
+                    mass: 1.0 + Math.random() * 3.0,
+                    color,
+                    linearDamping: 0.5,
+                    angularDamping: 1.0
+                });
+                
+                const numFixtures = 2 + Math.floor(Math.random() * 4); // 2-6 fixtures
+                for (let j = 0; j < numFixtures; j++) {
+                    const shapeType = Math.random();
+                    const offsetX = (Math.random() - 0.5) * 1.2;
+                    const offsetY = (Math.random() - 0.5) * 1.2;
+                    
+                    if (shapeType < 0.4) {
+                        body.addFixture({
+                            shape: gearbox.shapes.CIRCLE,
+                            radius: 0.1 + Math.random() * 0.25,
+                            localX: offsetX,
+                            localY: offsetY
+                        });
+                    } else {
+                        body.addFixture({
+                            shape: gearbox.shapes.BOX,
+                            width: 0.2 + Math.random() * 0.5,
+                            height: 0.2 + Math.random() * 0.5,
+                            localX: offsetX,
+                            localY: offsetY,
+                            localR: Math.random() * Math.PI
                         });
                     }
+                }
+            }
+
+            // --- Compound Objects (Bodies + Joints) ---
+            const jointTypes = ['hinge', 'distance', 'spring'];
+            for (let i = 0; i < 8; i++) {
+                const x = 1.5 + Math.random() * 6;
+                const y = 7.5 + Math.random() * 1.0;
+                const jType = jointTypes[Math.floor(Math.random() * jointTypes.length)];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                const b1 = world.makeBody(nextId++, {
+                    x, y, mass: 0.5 + Math.random(), color, linearDamping: 0.5, angularDamping: 0.5
+                });
+                
+                const s1 = Math.random();
+                if (s1 < 0.5) b1.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.15 + Math.random() * 0.2 });
+                else b1.addFixture({ shape: gearbox.shapes.BOX, width: 0.3 + Math.random() * 0.4, height: 0.3 + Math.random() * 0.4 });
+                
+                const b2 = world.makeBody(nextId++, {
+                    x: x + 0.5 + Math.random() * 0.5, 
+                    y: y + (Math.random() - 0.5) * 0.5, 
+                    mass: 0.5 + Math.random(), 
+                    color, 
+                    linearDamping: 0.5, 
+                    angularDamping: 0.5
+                });
+
+                const s2 = Math.random();
+                if (s2 < 0.5) b2.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.15 + Math.random() * 0.2 });
+                else b2.addFixture({ shape: gearbox.shapes.BOX, width: 0.3 + Math.random() * 0.4, height: 0.3 + Math.random() * 0.4 });
+                
+                if (jType === 'hinge') {
+                    world.createHingeJoint(nextId++, b1, b2, {
+                        worldAnchor: { x: (b1.x + b2.x) / 2, y: (b1.y + b2.y) / 2 }
+                    });
+                } else if (jType === 'distance') {
+                    world.createDistanceJoint(nextId++, b1, b2, {
+                        anchorA: { x: 0, y: 0 },
+                        anchorB: { x: 0, y: 0 }
+                    });
+                } else {
+                    world.createSpringJoint(nextId++, b1, b2, {
+                        anchorA: { x: 0, y: 0 },
+                        anchorB: { x: 0, y: 0 },
+                        frequencyHz: 2.0 + Math.random() * 4.0,
+                        dampingRatio: 0.5 + Math.random() * 0.5
+                    });
                 }
             }
 
