@@ -300,6 +300,9 @@ void World::_doNarrowPhase() {
 }
 
 void World::_doContactManagement() {
+    // Pairwise contact persistence / Persistent Manifold
+
+    // Process all newly active pairs
     for (const auto& pair : currentPairs) {
         if (prevPairs.find(pair) == prevPairs.end()) {
             Fixture* fA = getFixture(pair.first);
@@ -307,21 +310,25 @@ void World::_doContactManagement() {
             if (fA && fB) {
                 Body* bA = fA->body;
                 Body* bB = fB->body;
-                
+
+                // Ensure unique ordering for body pair (unordered pair hashing).
                 std::pair<int, int> bodyPair = {bA->id, bB->id};
                 if (bodyPair.first > bodyPair.second) std::swap(bodyPair.first, bodyPair.second);
-                
-                if (bodyContactCounts[bodyPair]++ == 0) {
+
+                // Reference Counting for multi-fixture body pairs
+                if (bodyContactCounts[bodyPair]++ == 0) { // first contact between these bodies
                     bA->addContact(bB);
                     bB->addContact(bA);
                 }
-                
+
+                // Collision Event Dispatch / Contact Listener pattern
                 if (bA->wantsEvents() || bB->wantsEvents() || fA->wantsEvents() || fB->wantsEvents()) {
                     addEvent((int)EventType::COLLISION_START, bA->id, bB->id, fA->id, fB->id, resolvedImpulses[pair]);
                 }
             }
         }
     }
+    // Process all pairs that were present last frame but not in currentPairs (i.e., ended this frame)
     for (const auto& pair : prevPairs) {
         if (currentPairs.find(pair) == currentPairs.end()) {
             Fixture* fA = getFixture(pair.first);
@@ -329,25 +336,29 @@ void World::_doContactManagement() {
             if (fA && fB) {
                 Body* bA = fA->body;
                 Body* bB = fB->body;
+                // Sleep islands: sleeping pairs are skipped from exit events and contact removal
                 if (bA->isSleeping && bB->isSleeping) {
                     currentPairs.insert(pair);
                     continue;
                 }
-                
+
                 std::pair<int, int> bodyPair = {bA->id, bB->id};
                 if (bodyPair.first > bodyPair.second) std::swap(bodyPair.first, bodyPair.second);
-                
+
+                // Reference Counting for removing body contacts when last fixture is gone
                 if (--bodyContactCounts[bodyPair] == 0) {
                     bA->removeContact(bB);
                     bB->removeContact(bA);
                 }
-                
+
+                // Collision Event Dispatch on contact end
                 if (bA->wantsEvents() || bB->wantsEvents() || fA->wantsEvents() || fB->wantsEvents()) {
                     addEvent((int)EventType::COLLISION_END, bA->id, bB->id, fA->id, fB->id, 0);
                 }
             }
         }
     }
+    // Swap pairs for next frame (contact state swapping / flip-flop pattern)
     prevPairs = currentPairs;
 }
 

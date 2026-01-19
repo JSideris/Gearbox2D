@@ -100,7 +100,7 @@
 - [x] Support changing the center of mass.
 - [x] Live data buffers (Direct Wasm/TS memory mapping).
 - [x] Per-fixture material properties (Friction, Restitution, Density).
-- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization.
+- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization (optional).
 
 
 ## Events
