@@ -3,15 +3,15 @@ import { resolve } from 'path';
 import rawExamplesPlugin from './scripts/vite-plugin-raw-examples.js';
 
 export default defineConfig({
-  root: 'examples',
+  root: 'site',
   base: './',
   plugins: [rawExamplesPlugin()],
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'examples/index.html'),
-        examples: resolve(__dirname, 'examples/examples.html'),
-        docs: resolve(__dirname, 'examples/docs.html'),
+        main: resolve(__dirname, 'site/index.html'),
+        showcase: resolve(__dirname, 'site/showcase.html'),
+        documentation: resolve(__dirname, 'site/documentation.html'),
       },
     },
     outDir: '../dist/site',

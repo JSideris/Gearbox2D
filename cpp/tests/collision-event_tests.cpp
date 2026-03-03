@@ -38,6 +38,24 @@ TEST(CollisionEventTest, StartAndEndEvents) {
     
     // We should have 1 event (Collision Start)
     EXPECT_EQ(world.getEventCount(), 1);
+    
+    // Read the event data
+    // Format: [type, idA, idB, impulse]
+    // Since we can't easily access the memory view in native C++, 
+    // we'll check the internal eventData vector if it's accessible or if we can mock it.
+    // Wait, getEventData() in world.cpp uses emscripten_val. 
+    // In native C++, it's not defined or returns emscripten_val (MockVal).
+    
+    // Let's check how many events we have.
+    // I added a public method getEventCount() to World.
+    
+    // 3. Move object 2 away
+    obj2->setX(10.0f);
+    
+    world.step();
+    
+    // We should have 1 event in this step (Collision End)
+    EXPECT_EQ(world.getEventCount(), 1);
 }
 
 TEST(CollisionEventTest, OptInMechanism) {
@@ -71,7 +89,6 @@ TEST(CollisionEventTest, OptInMechanism) {
     EXPECT_EQ(world.getEventCount(), 0);
 }
 
-// Test granular opt-in at the fixture level
 TEST(CollisionEventTest, FixtureLevelOptIn) {
     World world;
     world.setGravity(0.0f, 0.0f);

@@ -1,4 +1,4 @@
-import Example from '../example.js';
+import Example from '../engine-wrapper.js';
 import gearbox from 'gearbox2d';
 
 let nextId = 1;
@@ -362,25 +362,25 @@ export const motorcycleExample = new Example({
             const height = 1.2;
             const angle = (Math.random() - 0.5) * 0.5;
             
-            // Connect middle-right of last box to middle-left of new box
+            // Connect top-right of last box to top-left of new box
             const gap = Math.random() < 0.2 ? 1.5 : 0; 
             
-            // Get middle-right point of previous box in world space
-            const lastMR = lastBox.localToWorld({ x: lastBox.fixtures[0].width / 2, y: 0 });
+            // Get top-right point of previous box in world space
+            const lastTR = lastBox.localToWorld({ x: lastBox.fixtures[0].width / 2, y: -lastBox.fixtures[0].height / 2 });
             
-            // Target position for the middle-left point of the new box
-            const targetX = lastMR.x + gap;
+            // Target position for the top-left point of the new box
+            const targetX = lastTR.x + gap;
             // Vertical variety only if there is a gap, otherwise they connect exactly
-            let targetY = lastMR.y + (gap > 0 ? (Math.random() - 0.5) * 3 : 0);
+            let targetY = lastTR.y + (gap > 0 ? (Math.random() - 0.5) * 3 : 0);
             
             // Clamp targetY to keep the course playable
             targetY = Math.max(2, Math.min(8, targetY));
 
-            // Calculate center of new box such that its middle-left (-w/2, 0) is at (targetX, targetY)
+            // Calculate center of new box such that its top-left (-w/2, -h/2) is at (targetX, targetY)
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
-            const nextX = targetX + (width / 2) * cos;
-            const nextY = targetY + (width / 2) * sin;
+            const nextX = targetX + (width / 2) * cos - (height / 2) * sin;
+            const nextY = targetY + (width / 2) * sin + (height / 2) * cos;
 
             const boxId = nextId++;
             const box = world.makeBody(boxId, {

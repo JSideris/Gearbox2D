@@ -10,7 +10,7 @@ export default function rawExamplesPlugin() {
     enforce: 'pre',
     transform(code, id) {
       // Only target the example files in categories and showcase
-      if (!id.includes('examples/') || id.includes('example.ts') || !id.endsWith('.ts')) {
+      if (!id.includes('site/examples/') || id.includes('engine-wrapper.ts') || !id.endsWith('.ts')) {
         return null;
       }
 

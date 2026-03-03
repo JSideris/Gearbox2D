@@ -14,9 +14,9 @@
     "test:ts": "jest --config jest.config.js",
     "test:cpp": "make test -B",
     "test": "npm run test:cpp && npm run test:ts",
-    "examples": "vite",
-    "examples:build": "vite build",
-    "start": "vite",
+    "site": "vite",
+    "site:build": "vite build",
+    "start": "npm run site",
     "prepublishOnly": "npm run build"
   },
   "repository": {

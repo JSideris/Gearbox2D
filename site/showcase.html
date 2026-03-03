@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-    <link rel="stylesheet" href="./examples-styles.css">
+    <link rel="stylesheet" href="./styles/examples-styles.css">
 </head>
 <body>
     <div id="sidebar">
@@ -111,12 +111,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
     <script type="module">
         import gearbox from 'gearbox2d';
-        import { generalExamples } from './categories/general-examples.ts';
-        import { constraintsExamples } from './categories/constraints-examples.ts';
-        import { optimizationExamples } from './categories/optimization-examples.ts';
-        import { stressTestExamples } from './categories/stress-test-examples.ts';
-        import { issuesExamples } from './categories/issues-examples.ts';
-        import { showcaseExamples } from './categories/showcase-examples.ts';
+        import { generalExamples } from './examples/categories/general-examples.ts';
+        import { constraintsExamples } from './examples/categories/constraints-examples.ts';
+        import { optimizationExamples } from './examples/categories/optimization-examples.ts';
+        import { stressTestExamples } from './examples/categories/stress-test-examples.ts';
+        import { issuesExamples } from './examples/categories/issues-examples.ts';
+        import { showcaseExamples } from './examples/categories/showcase-examples.ts';
         import MarkdownParser from './utils/markdown.ts';
         
         const isProduction = !['localhost', '127.0.0.1'].includes(window.location.hostname);

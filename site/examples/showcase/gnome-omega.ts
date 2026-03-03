@@ -1,4 +1,4 @@
-import Example from '../example.js';
+import Example from '../engine-wrapper.js';
 import gearbox from 'gearbox2d';
 
 let nextId = 1;
