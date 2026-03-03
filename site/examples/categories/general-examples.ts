@@ -616,7 +616,7 @@ export const generalExamples = [
 
     new Example({ // Friction
         // TODO: 2 of the boxes here never sleep.
-        name: "⚠ Friction",
+        name: "Friction",
         key: "friction",
         description: [
             "**Friction** is applied as the last step of collision resolution. It handles both **static** and **dynamic** friction, applied as impulses at the point of contact.",
@@ -971,6 +971,7 @@ export const generalExamples = [
                 x: 5, y: 8.8,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "rgba(0, 255, 100, 0.15)",
+                wantsEvents: true,
             });
             recycler.addFixture({
                 width: 4, height: 1.2,
