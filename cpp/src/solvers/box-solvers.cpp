@@ -145,7 +145,17 @@ bool CollisionSolver::_solveBoxBox() {
             Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * rsA, rA_vec.x * rsA);
             Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * rsB, rB_vec.x * rsB);
 
-            collisions.push_back(CollisionInfo{true, contactPoint, normal, penetration, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
+            ContactID id;
+            id.features.indexA = i; // which clipped vertex
+            id.features.indexB = bestAxis; // which reference face
+            id.features.typeA = 0; // vertex
+            id.features.typeB = 1; // face
+            if (!aIsReference) {
+                std::swap(id.features.indexA, id.features.indexB);
+                std::swap(id.features.typeA, id.features.typeB);
+            }
+
+            collisions.push_back(CollisionInfo{true, contactPoint, normal, penetration, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f, id});
         }
     }
 
@@ -211,7 +221,13 @@ bool CollisionSolver::_solveBoxPoint() {
         Vec2 rA_vec = pB - pA;
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
         
-        collisions.push_back(CollisionInfo{true, pB, normal, minDist, _indexA, _indexB, vB - totalVelocityA, 0.0f});
+        ContactID id;
+        id.features.indexA = 0; // point
+        id.features.indexB = (minDist == d1) ? 0 : (minDist == d2) ? 1 : (minDist == d3) ? 2 : 3;
+        id.features.typeA = 0; // vertex
+        id.features.typeB = 1; // face
+        
+        collisions.push_back(CollisionInfo{true, pB, normal, minDist, _indexA, _indexB, vB - totalVelocityA, 0.0f, id});
         return true;
     }
     return false;
@@ -261,14 +277,16 @@ bool CollisionSolver::_solveCircleBox() {
     float distSq = diffLocal.magnitudeSquared();
 
     bool inside = false;
+    float minDist = 0;
+    float d1 = 0, d2 = 0, d3 = 0, d4 = 0;
     if (distSq == 0) {
         inside = true;
-        float d1 = localPos.x - (-halfW);
-        float d2 = halfW - localPos.x;
-        float d3 = localPos.y - (-halfH);
-        float d4 = halfH - localPos.y;
+        d1 = localPos.x - (-halfW);
+        d2 = halfW - localPos.x;
+        d3 = localPos.y - (-halfH);
+        d4 = halfH - localPos.y;
         
-        float minDist = min({d1, d2, d3, d4});
+        minDist = min({d1, d2, d3, d4});
         if (minDist == d1) { closestPointLocal.x = -halfW; diffLocal = Vec2(-1, 0); }
         else if (minDist == d2) { closestPointLocal.x = halfW; diffLocal = Vec2(1, 0); }
         else if (minDist == d3) { closestPointLocal.y = -halfH; diffLocal = Vec2(0, -1); }
@@ -304,7 +322,15 @@ bool CollisionSolver::_solveCircleBox() {
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
         Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
         
-        collisions.push_back(CollisionInfo{true, contactPoint, normal * -1.0f, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
+        ContactID id;
+        id.features.indexA = 0; // circle
+        id.features.indexB = inside ? 
+            ((minDist == d1) ? 0 : (minDist == d2) ? 1 : (minDist == d3) ? 2 : 3) : 
+            0; // simplistic for now: inside gets face id, outside gets closest vertex id
+        id.features.typeA = 0; // vertex
+        id.features.typeB = inside ? 1 : 0; // face if inside, vertex if outside
+        
+        collisions.push_back(CollisionInfo{true, contactPoint, normal * -1.0f, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f, id});
         return true;
     }
 

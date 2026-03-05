@@ -1,9 +1,23 @@
 #pragma once
 
 #include <vector>
+#include <cstdint>
 #include "vec2.h"
 
 class World;
+
+union ContactID {
+    struct {
+        uint8_t indexA;
+        uint8_t indexB;
+        uint8_t typeA; // 0 = vertex, 1 = face
+        uint8_t typeB;
+    } features;
+    uint32_t key;
+    
+    ContactID() : key(0) {}
+    ContactID(uint32_t k) : key(k) {}
+};
 
 struct CollisionInfo {
     bool isColliding;
@@ -14,6 +28,7 @@ struct CollisionInfo {
     int indexB; // Fixture index
     Vec2 relativeVelocity;
     float normalImpulseMagnitude;
+    ContactID id;
 };
 
 class CollisionSolver {

@@ -19,7 +19,7 @@ World::World() : collisionSolver(*this) {
     liveFixtureFloatData.reserve(maxSize * FIXTURE_FDATA_EPO);
     liveFixtureIntData.reserve(maxSize * FIXTURE_IDATA_EPO);
     contactConstraints.reserve(1000);
-    velocityIterations = 50;
+    nextFixtureId = 1;
 }
 
 World::~World() {
@@ -145,6 +145,10 @@ int World::removeObject(int id) {
             if (it->first.first == fId || it->first.second == fId) it = resolvedImpulses.erase(it);
             else ++it;
         }
+        for (auto it = warmStartImpulses.begin(); it != warmStartImpulses.end(); ) {
+            if (it->first.first == fId || it->first.second == fId) it = warmStartImpulses.erase(it);
+            else ++it;
+        }
     }
     body->fixtures.clear(); // Important: prevent dangling pointers
 
@@ -210,20 +214,65 @@ void World::step() {
     }
 
     eventData.clear();
-    _doIntegrateVelocities();
-    _doBroadPhase();
-    _doNarrowPhase();
+
+    float subStepDt = timeStep / velocitySubSteps;
+        // Clear AT THE BEGINNING of the step, so that the FIRST substep 
+    // uses warm starts from the LAST substep of the previous frame.
+    // WAIT! If we clear it at the beginning of the step, the first substep gets NOTHING!
+    // We should NOT clear it at the beginning of the step! We should clear it at the start of _doResolution?
+    // No, _doResolution CLEARS it AFTER the solver loop to populate it with the NEW impulses!
+    // So it should never be cleared at the beginning of `step()`, except when the world is reset or a body is removed.
+    // REMOVED: warmStartImpulses.clear(); 
+    // Note: Warm starting the full impulse from the previous frame in each substep
+    // can inject too much energy. If we take 4 substeps, we probably want to apply 1/4 of the warm start impulse?
+    // Actually, usually you apply the *full* warm start impulse on the *first* substep, or you carry over the impulse
+    // from the same substep index in the previous frame. 
+    // Wait! Since `warmStartImpulses` is populated in `_doResolution` and NOT cleared until the next call to `_doResolution`,
+    // it IS being carried from the previous frame's last substep, and then cleared and populated for the NEXT substep!
+    // So substep 1 gets warm start from previous frame's substep N. Substep 2 gets from substep 1. This is perfect!
     
-    for (auto& pair : jointsMap) {
-        if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
-        pair.second->preSolve(timeStep);
+    // Apply position integration per substep as well
+    for (int i = 0; i < velocitySubSteps; ++i) {
+        _doIntegrateVelocitiesSubStep(subStepDt);
+        _doBroadPhase();
+        _doNarrowPhase();
+        
+        for (auto& pair : jointsMap) {
+            if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
+            pair.second->preSolve(subStepDt);
+        }
+        _doResolution(subStepDt);
+        _doIntegratePositionsSubStep(subStepDt);
+        
+        // --- Position Solver Loop ---
+        for (int p = 0; p < positionIterations; ++p) {
+            for (auto& c : contactConstraints) {
+                c.solvePosition();
+            }
+            // If joints also had solvePosition, they'd go here.
+        }
+        
+        // Re-synchronize AABBs after position correction
+        if (positionIterations > 0) {
+            for (auto* body : bodiesList) {
+                if (body->isSleeping) continue;
+                float pr = body->getRotation();
+                float cosR = cos(pr);
+                float sinR = sin(pr);
+                for (auto* fixture : body->fixtures) {
+                    Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
+                    if (!fixture->aabb.contains(tightAabb)) {
+                        fixture->updateAabb(cosR, sinR, 0);
+                        fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb);
+                    }
+                }
+            }
+        }
     }
-    _doResolution();
-    _doIntegratePositions();
     _doContactManagement();
 }
 
-void World::_doIntegrateVelocities() {
+void World::_doIntegrateVelocitiesSubStep(float dt) {
     for (auto* body : bodiesList) {
         if (body->isSleeping) {
             int idx = body->worldIndex * BODY_FDATA_EPO;
@@ -238,15 +287,15 @@ void World::_doIntegrateVelocities() {
         float m = body->getMass();
         float gScale = body->getGravityScale();
         body->applyForce(gravity.x * m * gScale, gravity.y * m * gScale);
-        body->integrateVelocities(timeStep);
+        body->integrateVelocities(dt);
     }
 }
 
-void World::_doIntegratePositions() {
+void World::_doIntegratePositionsSubStep(float dt) {
     for (auto* body : bodiesList) {
         if (body->isSleeping) continue;
 
-        bool moved = body->integratePositions(timeStep);
+        bool moved = body->integratePositions(dt);
 
         if (moved) {
             float pr = body->getRotation();
@@ -288,6 +337,16 @@ void World::_doNarrowPhase() {
 
         if (colliding) {
             currentPairs.insert({f1->id, f2->id});
+
+            // If one body is awake and dynamic/kinematic, and the other is sleeping, wake up the sleeping one
+            if (f1->body->isSleeping != f2->body->isSleeping) {
+                Body* awake = f1->body->isSleeping ? f2->body : f1->body;
+                Body* sleeping = f1->body->isSleeping ? f1->body : f2->body;
+                if (awake->type != ObjectType::FIXED_OBJECT) {
+                    sleeping->wakeUp();
+                }
+            }
+
             // Mark fixtures as colliding for debug graphics
             liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
             liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
@@ -362,7 +421,7 @@ void World::_doContactManagement() {
     prevPairs = currentPairs;
 }
 
-void World::_doResolution() {
+void World::_doResolution(float dt) {
     contactConstraints.clear();
     for (auto& col : collisionSolver.collisions) {
         // Col indices are fixture indices. We need to look up body from fixture.
@@ -393,8 +452,56 @@ void World::_doResolution() {
         float kFricA = fA->getKineticFriction();
         float kFricB = fB->getKineticFriction();
         c.kineticFriction = std::sqrt(kFricA * kFricB);
+        c.id = col.id;
 
-        c.preSolve(timeStep, hasRestitution, hasPenetrationResolution, hasFriction);
+        c.preSolve(dt, hasRestitution, hasPenetrationResolution, hasFriction);
+
+        // Warm Starting
+#if 1
+        std::pair<int, int> fPair = {fA->id, fB->id};
+        if (fPair.first > fPair.second) std::swap(fPair.first, fPair.second);
+
+        auto it = warmStartImpulses.find(fPair);
+        if (it != warmStartImpulses.end()) {
+            int bestMatchIdx = -1;
+            for (size_t i = 0; i < it->second.size(); ++i) {
+                if (it->second[i].id.key == c.id.key) {
+                    bestMatchIdx = i;
+                    break;
+                }
+            }
+            if (bestMatchIdx != -1) {
+                // When substepping, warm start impulse needs to be scaled by the timestep fraction
+                // Since warmStartImpulses from the *previous frame* (accumulated over the full dt) is applied at each substep, 
+                // it needs to be scaled by (1.0f / velocitySubSteps).
+                // Wait, actually, if the warm start impulse is carried over from the PREVIOUS frame's final step, 
+                // it represents an impulse applied over the SUBSTEP dt, because we overwrite it in every substep.
+                // So the warm start impulse stored is ALREADY scaled to the substep dt!
+                c.normalImpulse = it->second[bestMatchIdx].normalImpulse * 0.50f;
+                // Just use scaled down normal impulse
+                c.frictionImpulse = it->second[bestMatchIdx].frictionImpulse * 0.50f;
+                
+                // Keep the impulse so it can be used in subsequent substeps of the same frame!
+                // Wait! If we keep it, we use the SAME warm start impulse on EVERY substep?
+                // Yes, because at the end of the substep we overwrite warmStartImpulses with the NEW impulses.
+                // Ah! We OVERWRITE it in `_doResolution` after the solver loop! 
+                // So Substep 2 uses the warm start impulses generated by Substep 1. 
+                // So we SHOULD NOT erase it during the loop if there are multiple contacts matching the same feature ID, 
+                // but erasing it is safer to prevent double-applying within the same substep.
+                // Actually if a feature ID is shared, maybe erasing it makes the other one miss out? 
+                // Let's NOT erase it, but let's just make sure feature IDs are unique per contact in a pair.
+                // Wait, if we DO NOT erase it, we might double apply the same impulse if the same feature ID appears twice (e.g. bug in contact generation).
+                // Let's just apply it.
+                c.normalImpulse = it->second[bestMatchIdx].normalImpulse * 1.0f;
+                // Just use full normal impulse
+                c.frictionImpulse = it->second[bestMatchIdx].frictionImpulse * 1.0f;
+                
+                it->second.erase(it->second.begin() + bestMatchIdx);
+            }
+        }
+#endif
+        // ---------------------
+
         contactConstraints.push_back(c);
     }
 
@@ -407,10 +514,19 @@ void World::_doResolution() {
     }
 
     resolvedImpulses.clear();
+    // It's probably safer to just accumulate or overwrite.
     for (auto& c : contactConstraints) {
         std::pair<int, int> pair = {c.fA->id, c.fB->id};
         if (pair.first > pair.second) std::swap(pair.first, pair.second);
         resolvedImpulses[pair] += c.normalImpulse;
+        
+        Body* bFirst = (c.fA->id < c.fB->id) ? c.a : c.b;
+        float prFirst = bFirst->getRotation();
+        float cosFirst = cos(-prFirst), sinFirst = sin(-prFirst);
+        Vec2 rFirst_world = c.point - bFirst->getPosition();
+        Vec2 localPointFirst(rFirst_world.x * cosFirst - rFirst_world.y * sinFirst, rFirst_world.x * sinFirst + rFirst_world.y * cosFirst);
+        
+        warmStartImpulses[pair].push_back({c.id, localPointFirst, c.normalImpulse, c.frictionImpulse});
     }
 }
 
@@ -423,6 +539,7 @@ void World::clear() {
     prevPairs.clear();
     bodyContactCounts.clear();
     resolvedImpulses.clear();
+    warmStartImpulses.clear();
 
     // 3. Clear BVH and fixtures
     bvh.clear();
@@ -620,6 +737,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     }
     // -------------------------------------------------------
 
+#if 0
     Vec2 tangentialComponent = relVel - normal * vn;
     float tanMag = tangentialComponent.magnitude();
     if (tanMag > 0.0001f) {
@@ -628,6 +746,10 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         // Fallback to a vector perpendicular to the normal
         tangent = Vec2(-normal.y, normal.x);
     }
+#else
+    // Use a strictly normal-based tangent for consistent friction direction
+    tangent = Vec2(-normal.y, normal.x);
+#endif
 
     float rtA = rA.x * tangent.y - rA.y * tangent.x;
     float rtB = rB.x * tangent.y - rB.y * tangent.x;
@@ -638,8 +760,14 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         staticFriction = 0.0f;
         kineticFriction = 0.0f;
     }
-    // Set slop to 0.004 and increase cap from -2.0 to -30.0
-    positionBias = (enablePenetration && depth > 0.004f) ? std::max(-30.0f, -0.2f * a->world.invTimeStep * (depth - 0.004f)) : 0.0f;
+
+    float thetaA = a->getRotation();
+    float cA = std::cos(-thetaA), sA = std::sin(-thetaA);
+    localAnchorA = Vec2(rA.x * cA - rA.y * sA, rA.x * sA + rA.y * cA);
+
+    float thetaB = b->getRotation();
+    float cB = std::cos(-thetaB), sB = std::sin(-thetaB);
+    localAnchorB = Vec2(rB.x * cB - rB.y * sB, rB.x * sB + rB.y * cB);
 }
 
 void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
@@ -658,18 +786,6 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
             if (imA > 0) { a->setVelocityInternal(a->getVelocity() - impulse * imA); a->setAngularVelocityInternal(a->getAngularVelocity() - rA.cross(impulse) * iIA); }
             if (imB > 0) { b->setVelocityInternal(b->getVelocity() + impulse * imB); b->setAngularVelocityInternal(b->getAngularVelocity() + rB.cross(impulse) * iIB); }
         }
-        if (positionBias < 0.0f) {
-            Vec2 tangentialPseudoVelocityA(-rA.y * a->pseudoAngularVelocity, rA.x * a->pseudoAngularVelocity);
-            Vec2 tangentialPseudoVelocityB(-rB.y * b->pseudoAngularVelocity, rB.x * b->pseudoAngularVelocity);
-            float vnp = ((b->pseudoVelocity + tangentialPseudoVelocityB) - (a->pseudoVelocity + tangentialPseudoVelocityA)).dot(normal);
-            float dLambdaP = -(vnp + positionBias) * normalMass;
-            if (std::isfinite(dLambdaP)) {
-                float oldP = positionImpulse; positionImpulse = std::max(oldP + dLambdaP, 0.0f); dLambdaP = positionImpulse - oldP;
-                Vec2 impulseP = normal * dLambdaP;
-                if (imA > 0) { a->pseudoVelocity = a->pseudoVelocity - impulseP * imA; a->pseudoAngularVelocity -= rA.cross(impulseP) * iIA; }
-                if (imB > 0) { b->pseudoVelocity = b->pseudoVelocity + impulseP * imB; b->pseudoAngularVelocity += rB.cross(impulseP) * iIB; }
-            }
-        }
     }
 
     if (enableFriction && staticFriction > 0.0f) {
@@ -686,6 +802,7 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
             // Coulomb's Law transition: 
             // 1. Calculate the impulse required for zero relative velocity (static).
             // 2. If it exceeds the static limit, clamp it to the kinetic limit.
+            // Using maxStaticFriction relative to normalImpulse.
             float maxStaticFriction = staticFriction * normalImpulse;
             float maxKineticFriction = kineticFriction * normalImpulse;
             
@@ -695,6 +812,12 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
             if (std::abs(newImpulseT) > maxStaticFriction) {
                 // We've broken static friction, use kinetic limit.
                 frictionImpulse = std::max(-maxKineticFriction, std::min(maxKineticFriction, newImpulseT));
+                
+                // IMPORTANT: When breaking static friction, we often drop the kinetic impulse heavily.
+                // In some engines, they just do: frictionImpulse = Math.sign(newImpulseT) * maxKineticFriction;
+                // Wait, std::max(-M, std::min(M, X)) does exactly this clamping. But wait, if newImpulseT was huge, 
+                // we set it to maxKineticFriction.
+                // Is this right? Yes, that's standard.
             } else {
                 // Still within static threshold.
                 frictionImpulse = newImpulseT;
@@ -711,5 +834,61 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
                 b->setAngularVelocityInternal(b->getAngularVelocity() + rB.cross(fImpulse) * iIB);
             }
         }
+
+    }
+}
+
+void ContactConstraint::solvePosition() {
+    float imA = a->getInverseMass(), imB = b->getInverseMass();
+    float iIA = a->getInverseInertia(), iIB = b->getInverseInertia();
+    
+    // Total mass should be greater than 0
+    if (imA == 0.0f && imB == 0.0f) return;
+
+    // Current transformations
+    Vec2 pA = a->getPosition();
+    float thetaA = a->getRotation();
+    Vec2 pB = b->getPosition();
+    float thetaB = b->getRotation();
+
+    // Recompute local to world
+    float cA = std::cos(thetaA), sA = std::sin(thetaA);
+    Vec2 rA_curr(localAnchorA.x * cA - localAnchorA.y * sA, localAnchorA.x * sA + localAnchorA.y * cA);
+
+    float cB = std::cos(thetaB), sB = std::sin(thetaB);
+    Vec2 rB_curr(localAnchorB.x * cB - localAnchorB.y * sB, localAnchorB.x * sB + localAnchorB.y * cB);
+
+    // Current separation
+    Vec2 separation_vec = (pB + rB_curr) - (pA + rA_curr);
+    float current_depth = depth - separation_vec.dot(normal);
+
+    float slop = 0.004f;
+    if (current_depth <= slop) {
+        return; // Nothing to correct
+    }
+
+    // Baumgarte position correction
+    float baumgarte = 0.2f;
+    float maxCorrection = 0.2f; // Box2D limits position correction to 0.2 units per step
+    float correction = std::min(current_depth - slop, maxCorrection) * baumgarte;
+
+    float rnA = rA_curr.x * normal.y - rA_curr.y * normal.x;
+    float rnB = rB_curr.x * normal.y - rB_curr.y * normal.x;
+    float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
+    
+    if (kNormal < 0.00001f) return;
+
+    float impulse = correction / kNormal;
+    Vec2 P = normal * impulse;
+
+    if (imA > 0) {
+        a->world.liveBodyFloatData[a->worldIndex * BODY_FDATA_EPO + BODY_FDATA_X] = pA.x - P.x * imA;
+        a->world.liveBodyFloatData[a->worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y] = pA.y - P.y * imA;
+        a->world.liveBodyFloatData[a->worldIndex * BODY_FDATA_EPO + BODY_FDATA_R] = thetaA - rA_curr.cross(P) * iIA;
+    }
+    if (imB > 0) {
+        b->world.liveBodyFloatData[b->worldIndex * BODY_FDATA_EPO + BODY_FDATA_X] = pB.x + P.x * imB;
+        b->world.liveBodyFloatData[b->worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y] = pB.y + P.y * imB;
+        b->world.liveBodyFloatData[b->worldIndex * BODY_FDATA_EPO + BODY_FDATA_R] = thetaB + rB_curr.cross(P) * iIB;
     }
 }

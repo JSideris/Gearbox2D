@@ -33,8 +33,6 @@ public:
     float sleepErrAccumulatorY = 0.0f;
     float sleepErrAccumulatorR = 0.0f;
     
-    Vec2 pseudoVelocity = Vec2(0.0f, 0.0f);
-    float pseudoAngularVelocity = 0.0f;
     Vec2 forceVelocity = Vec2(0.0f, 0.0f);
 
     Body(World& world, int id, emscripten_val options);

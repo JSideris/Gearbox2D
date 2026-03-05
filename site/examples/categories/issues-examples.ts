@@ -601,10 +601,10 @@ export const issuesExamples = [
             });
 
             // Stack of boxes
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 2; i++) {
                 world.makeBody(id++, {
                     x: 5,
-                    y: 7 - i * 1.1,
+                    y: 8 - i * 1.1,
                     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: 1,
                 }).addFixture({

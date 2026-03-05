@@ -69,7 +69,13 @@ bool CollisionSolver::_solveAabbAabb() {
         Vec2 contactPoint((max(x1A, x1B) + min(x2A, x2B)) * 0.5f, (max(y1A, y1B) + min(y2A, y2B)) * 0.5f);
         Vec2 relVel = getVelocityAt(pB, contactPoint) - getVelocityAt(pA, contactPoint);
 
-        collisions.push_back(CollisionInfo{true, contactPoint, normal, depth, _indexA, _indexB, relVel, 0.0f});
+        ContactID id;
+        id.features.indexA = horizontal ? ((pA.center.x < pB.center.x) ? 1 : 3) : ((pA.center.y < pB.center.y) ? 2 : 0); // simplistic ID for AABB faces
+        id.features.indexB = horizontal ? ((pA.center.x < pB.center.x) ? 3 : 1) : ((pA.center.y < pB.center.y) ? 0 : 2);
+        id.features.typeA = 1; // face
+        id.features.typeB = 1; // face
+
+        collisions.push_back(CollisionInfo{true, contactPoint, normal, depth, _indexA, _indexB, relVel, 0.0f, id});
         return true;
     }
     return false;
@@ -95,7 +101,13 @@ bool CollisionSolver::_solveAabbPoint() {
         Vec2 normal = (axis == 0) ? Vec2(-1, 0) : (axis == 1) ? Vec2(1, 0) : (axis == 2) ? Vec2(0, -1) : Vec2(0, 1);
         Vec2 relVel = Vec2(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]) - getVelocityAt(pA, pointWorld);
 
-        collisions.push_back(CollisionInfo{true, pointWorld, normal, minDist, _indexA, _indexB, relVel, 0.0f});
+        ContactID id;
+        id.features.indexA = axis; // Which AABB face
+        id.features.indexB = 0; // Point
+        id.features.typeA = 1; // Face
+        id.features.typeB = 0; // Vertex
+
+        collisions.push_back(CollisionInfo{true, pointWorld, normal, minDist, _indexA, _indexB, relVel, 0.0f, id});
         return true;
     }
     return false;
@@ -121,9 +133,10 @@ bool CollisionSolver::_solveAabbCircle() {
     float distSq = diff.magnitudeSquared();
 
     bool inside = (distSq == 0);
+    int axis = 0;
     if (inside) {
         float d[4] = { centerB.x - x1, x2 - centerB.x, centerB.y - y1, y2 - centerB.y };
-        float minDist = d[0]; int axis = 0;
+        float minDist = d[0];
         for(int i=1; i<4; ++i) if(d[i] < minDist) { minDist = d[i]; axis = i; }
         if (axis == 0) { closest.x = x1; diff = Vec2(-1, 0); }
         else if (axis == 1) { closest.x = x2; diff = Vec2(1, 0); }
@@ -143,7 +156,13 @@ bool CollisionSolver::_solveAabbCircle() {
         Vec2 totalVelB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
         Vec2 relVel = totalVelB - getVelocityAt(pA, closest);
 
-        collisions.push_back(CollisionInfo{true, closest, normal, depth, _indexA, _indexB, relVel, 0.0f});
+        ContactID id;
+        id.features.indexA = inside ? axis : 0; // AABB face if inside, else simplistic 0
+        id.features.indexB = 0; // Circle center
+        id.features.typeA = inside ? 1 : 0; // Face if inside, vertex (closest point) if outside
+        id.features.typeB = 0; // Vertex (circle center)
+
+        collisions.push_back(CollisionInfo{true, closest, normal, depth, _indexA, _indexB, relVel, 0.0f, id});
         return true;
     }
     return false;

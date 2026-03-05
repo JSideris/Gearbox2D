@@ -50,7 +50,13 @@ bool CollisionSolver::_solveCircleCircle() {
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
         Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
         
-        collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
+        ContactID id;
+        id.features.indexA = 0; // Circle center
+        id.features.indexB = 0; // Circle center
+        id.features.typeA = 0; // Vertex
+        id.features.typeB = 0; // Vertex
+        
+        collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f, id});
         return true;
     }
     return false;
@@ -93,7 +99,13 @@ bool CollisionSolver::_solveCirclePoint() {
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
         Vec2 totalVelocityB = vB; // Point has no rotation effects usually or we can add if needed
         
-        collisions.push_back(CollisionInfo{true, pB, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f});
+        ContactID id;
+        id.features.indexA = 0; // Circle center
+        id.features.indexB = 0; // Point
+        id.features.typeA = 0; // Vertex
+        id.features.typeB = 0; // Vertex
+        
+        collisions.push_back(CollisionInfo{true, pB, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f, id});
         return true;
     }
     return false;

@@ -38,13 +38,23 @@ struct ContactConstraint {
     float staticFriction, kineticFriction;
     float bias;
     float restitution;
-    float positionBias;
-    float normalImpulse, frictionImpulse, positionImpulse;
+    float normalImpulse, frictionImpulse;
+    ContactID id;
+    
+    Vec2 localAnchorA, localAnchorB;
 
     void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
     void solve(bool enableNormal, bool enableFriction);
+    void solvePosition();
 
-    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), positionImpulse(0.0f), staticFriction(0.0f), kineticFriction(0.0f) {}
+    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), staticFriction(0.0f), kineticFriction(0.0f) {}
+};
+
+struct StoredImpulse {
+    ContactID id;
+    Vec2 localPointA;
+    float normalImpulse;
+    float frictionImpulse;
 };
 
 class World {
@@ -65,7 +75,9 @@ private:
     bool hasFriction = true;
     std::vector<ContactConstraint> contactConstraints;
     std::vector<float> eventData;
-    int velocityIterations;
+    int velocityIterations = 50;
+    int positionIterations = 0;
+    int velocitySubSteps = 1;
     int nextFixtureId = 1;
 
     struct PairHash {
@@ -91,6 +103,7 @@ private:
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> prevPairs;
     std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual> bodyContactCounts;
     std::unordered_map<std::pair<int, int>, float, PairHash, PairEqual> resolvedImpulses;
+    std::unordered_map<std::pair<int, int>, std::vector<StoredImpulse>, PairHash, PairEqual> warmStartImpulses;
 
 public:
     Bvh bvh;
@@ -104,6 +117,13 @@ public:
 
     World();
     ~World();
+
+    void setVelocitySubSteps(int substeps) { velocitySubSteps = std::max(1, substeps); }
+    int getVelocitySubSteps() const { return velocitySubSteps; }
+    void setVelocityIterations(int iterations) { velocityIterations = std::max(1, iterations); }
+    int getVelocityIterations() const { return velocityIterations; }
+    void setPositionIterations(int iterations) { positionIterations = std::max(0, iterations); }
+    int getPositionIterations() const { return positionIterations; }
 
     int makeBody(int id, emscripten_val options);
     int addFixture(int bodyId, int fixtureId, emscripten_val options);
@@ -144,11 +164,13 @@ public:
 
     void step();
     void _doIntegrateVelocities();
+    void _doIntegrateVelocitiesSubStep(float dt);
     void _doIntegratePositions();
+    void _doIntegratePositionsSubStep(float dt);
     void _doBroadPhase();
     void _doNarrowPhase();
     void _doContactManagement();
-    void _doResolution();
+    void _doResolution(float dt);
     void clear();
 };
 
