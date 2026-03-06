@@ -1,5 +1,24 @@
 # Plan:
 
+## Solvers & Physics Loop
+- [x] High-level physics loop implementation (`step`).
+	- [x] Substepping (Velocity Substeps).
+	- [x] Velocity Integration.
+	- [x] Position Integration.
+- [x] **Collision Solver** (Geometric Narrow Phase).
+	- [x] Geometric intersection tests.
+	- [x] Contact manifold generation (Point, Normal, Depth).
+- [x] **Velocity Solver** (Sequential Impulse).
+	- [x] Iterative solver for contact constraints.
+	- [x] Friction resolution (Static & Kinetic).
+	- [x] Warmstarting.
+- [x] **Position Solver** (Non-linear Gauss-Seidel).
+	- [x] Iterative penetration resolution.
+	- [x] Baumgarte stabilization (with multi-fixture scaling).
+- [x] **Joint Solver**.
+	- [x] Pre-solve and solve phases.
+	- [x] Integration with global iterative solver.
+
 ## Shapes, Kinematics, Collisions
 - [x] Setup and test Rust w/ web assembly target.
 - [x] Define basic starting classes for the physics module.
@@ -22,7 +41,7 @@
 - [x] Composite objects (Multi-fixture bodies).
 - [x] Add rotations.
 - [x] Compute/track AABB for each object.
-- [x] Implement VBH.
+- [x] Implement BVH.
 - [x] Implement broad phase collision detection using BVH.
 - [x] Implement narrow phase collision detection.
 	- [x] AABB-AABB.
@@ -36,13 +55,6 @@
 	- [ ] Circle-Capsule.
 	- [x] Circle-Circle.
 	- [ ] Convex-AABB.
-	- [ ] Convex-Box.
-	- [ ] Convex-Capsule.
-	- [ ] Convex-Circle.
-	- [ ] Convex-Convex.
-	- [ ] Concave-AABB.
-	- [ ] Concave-Box.
-	- [ ] Concave-Capsule. 
 	- [ ] Ellipse-Convex.
 	- [ ] Ellipse-Ellipse.
 	- [ ] Line-AABB.
@@ -64,9 +76,19 @@
 	- [x] Point-Point.
 	- [ ] Convave polygons?
 - [x] Collision resolvers.
-	- [x] Penetration resolution.
-	- [x] Collision impulse.
-	- [x] Collision friction.
+	- [x] **Collision Solver** (Geometric Narrow Phase).
+		- [x] Geometric intersection tests.
+		- [x] Contact manifold generation (Point, Normal, Depth).
+	- [x] **Velocity Solver** (Sequential Impulse).
+		- [x] Iterative solver for contact constraints.
+		- [x] Friction resolution (Static & Kinetic).
+		- [x] Warmstarting.
+	- [x] **Position Solver** (Non-linear Gauss-Seidel).
+		- [x] Iterative penetration resolution.
+		- [x] Baumgarte stabilization (with multi-fixture scaling).
+	- [x] **Joint Solver**.
+		- [x] Pre-solve and solve phases.
+		- [x] Integration with global iterative solver.
 - [x] Implement collision events.
 	- [X] Body-body collision events.
 	- [X] Fixture-fixture collision events.
@@ -130,6 +152,7 @@
 - [x] Cache inverse dt.
 - [x] Cache exponential decay factor when dt is set.
 - [x] Implement collision masks.
+- [X] Warmstarting.
 - [ ] Focus areas & resolution.
 
 ### High-Fidelity Optimizations
@@ -158,7 +181,7 @@
 
 ### Sleep Optimizations
 - [x] Sleeping objects.
-- [X] Islands.
+- [ ] Islands.
 - [x] Shrinkwrap AABB on sleep.
 - [ ] Experimental: Separate vectors for sleeping/awake objects.
 - [ ] Experimental: Re-insert into BVH upon sleep.
@@ -192,5 +215,4 @@
 
 ## Known Issues
 - Piles of objects don't go to sleep as easily as they should (regression).
-- Sleep island example exhibits some solver flaws - objects collapsing into each other, etc (regression).
 - Spring joints can't be adjusted at runtime - see the commented-out spring test case.

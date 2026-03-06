@@ -37,6 +37,9 @@ struct CollisionProperties {
           velocity(0, 0) {}
     
     bool canCollideWith(const CollisionProperties& other) const {
+        // Skip fixtures belonging to the same body
+        if (bodyId != -1 && bodyId == other.bodyId) return false;
+
         // Sleeping objects don't collide with each other
         if (isSleeping && other.isSleeping) return false;
         
@@ -120,6 +123,11 @@ struct AggregatedProperties {
     }
     
     bool canPotentiallyCollideWith(const AggregatedProperties& other) const {
+        // Optimization: Skip if both subtrees only contain fixtures from the same body
+        if (bodyId != -1 && bodyId == other.bodyId && !isMultiBody && !other.isMultiBody) {
+            return false;
+        }
+
         // If both subtrees contain only sleeping objects, skip
         if (!containsAwake && !other.containsAwake) return false;
         

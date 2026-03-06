@@ -889,7 +889,7 @@ void ContactConstraint::solvePosition() {
     Vec2 rB_curr(localAnchorB.x * cB - localAnchorB.y * sB, localAnchorB.x * sB + localAnchorB.y * cB);
     Vec2 separation_vec = (pB + rB_curr) - (pA + rA_curr);
     float current_depth = depth - separation_vec.dot(normal);
-    float slop = 0.004f;
+    float slop = 0.008f;
     if (current_depth <= slop) return;
 
     float baumgarte = 0.2f;
