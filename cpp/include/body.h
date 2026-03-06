@@ -93,9 +93,20 @@ public:
     void wakeUp();
     void addContact(Body* other);
     void removeContact(Body* other);
+    int getContactCount() const { return (int)contacts.size(); }
     void updateInverseInertia();
     void recomputeMassProperties();
-    
+
+    // Internal fast access
+    struct SolverData {
+        Vec2 v;
+        float w;
+        float im;
+        float iI;
+    };
+    SolverData getSolverData() const;
+    void setSolverData(const SolverData& data);
+
     void addFixture(Fixture* fixture);
     int createFixture(emscripten_val options);
 };

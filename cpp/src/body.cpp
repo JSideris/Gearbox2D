@@ -9,9 +9,14 @@
 #define SLEEP_ANGULAR_VELOCITY_THRESHOLD 0.005f
 
 Body::Body(World& world, int id, emscripten_val options)
-    : world(world), id(id),
-      type(!options["type"].isUndefined() ? static_cast<ObjectType>(options["type"].as<int>()) : ObjectType::DYNAMIC_OBJECT)
+    : world(world), id(id)
 {
+    if (!options["type"].isUndefined()) {
+        type = static_cast<ObjectType>(options["type"].as<int>());
+    } else {
+        type = ObjectType::DYNAMIC_OBJECT;
+    }
+
     int flags = 0;
     float mass = (type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT && !options["mass"].isUndefined()) ? options["mass"].as<float>() : 0.0f;
     if (mass > 0.0f) flags |= HAS_FIXED_MASS;
@@ -49,7 +54,7 @@ Body::Body(World& world, int id, emscripten_val options)
     world.liveBodyFloatData.push_back(0.0f); // SleepTimer
     world.liveBodyFloatData.push_back(0.0f); // ErrAccX
     world.liveBodyFloatData.push_back(0.0f); // ErrAccR
-
+    
     lastX = initX;
     lastY = initY;
     lastR = initR;
@@ -81,11 +86,8 @@ void Body::setMass(float m) {
     int idx = worldIndex * BODY_FDATA_EPO;
     world.liveBodyFloatData[idx + BODY_FDATA_M] = m;
     world.liveBodyFloatData[idx + BODY_FDATA_IM] = (m > 0) ? 1.0f / m : 0.0f;
-    if (m > 0.0f) {
-        world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_FIXED_MASS;
-    } else {
-        world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~HAS_FIXED_MASS;
-    }
+    if (m > 0.0f) world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_FIXED_MASS;
+    else world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~HAS_FIXED_MASS;
     updateInverseInertia();
 }
 float Body::getInverseMass() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_IM]; }
@@ -104,32 +106,18 @@ void Body::setForceX(float fx) { world.liveBodyFloatData[worldIndex * BODY_FDATA
 float Body::getForceY() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_FY]; }
 void Body::setForceY(float fy) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_FY] = fy; }
 
-void Body::setCategoryBits(uint32_t bits) {
-    for (auto* f : fixtures) f->setCategoryBits(bits);
-}
-
-void Body::setMaskBits(uint32_t bits) {
-    for (auto* f : fixtures) f->setMaskBits(bits);
-}
-
-bool Body::wantsEvents() const {
-    return (world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & WANTS_EVENTS) != 0;
-}
-
-bool Body::testPoint(float x, float y) const {
-    for (auto* f : fixtures) if (f->testPoint(x, y)) return true;
-    return false;
-}
+void Body::setCategoryBits(uint32_t bits) { for (auto* f : fixtures) f->setCategoryBits(bits); }
+void Body::setMaskBits(uint32_t bits) { for (auto* f : fixtures) f->setMaskBits(bits); }
+bool Body::wantsEvents() const { return (world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & WANTS_EVENTS) != 0; }
+bool Body::testPoint(float x, float y) const { for (auto* f : fixtures) if (f->testPoint(x, y)) return true; return false; }
 
 void Body::recomputeAabb(int mode) {
     float pr = getRotation();
-    float cosR = cos(pr);
-    float sinR = sin(pr);
+    float cosR = std::cos(pr);
+    float sinR = std::sin(pr);
     for (auto* f : fixtures) {
         f->updateAabb(cosR, sinR, mode);
-        if (f->bvhNode) {
-            f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb);
-        }
+        if (f->bvhNode) f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb);
     }
 }
 
@@ -142,9 +130,7 @@ void Body::setVelocityInternal(Vec2 v) {
     world.liveBodyFloatData[idx + BODY_FDATA_VX] = v.x;
     world.liveBodyFloatData[idx + BODY_FDATA_VY] = v.y;
 }
-void Body::setAngularVelocityInternal(float rs) {
-    world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_RS] = rs;
-}
+void Body::setAngularVelocityInternal(float rs) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_RS] = rs; }
 
 void Body::applyForce(const Vec2& force) { applyForce(force.x, force.y); }
 void Body::applyForce(float x, float y) {
@@ -184,102 +170,64 @@ void Body::applyAngularImpulse(float torque) {
 void Body::integrateVelocities(float dt) {
     int idx = worldIndex * BODY_FDATA_EPO;
     float im = getInverseMass();
-    
-    // Apply accumulated impulses
     applyImpulse(world.liveBodyFloatData[idx + BODY_FDATA_NIX], world.liveBodyFloatData[idx + BODY_FDATA_NIY], 0, 0);
     world.liveBodyFloatData[idx + BODY_FDATA_NIX] = 0;
     world.liveBodyFloatData[idx + BODY_FDATA_NIY] = 0;
-    
     applyAngularImpulse(world.liveBodyFloatData[idx + BODY_FDATA_NIA]);
     world.liveBodyFloatData[idx + BODY_FDATA_NIA] = 0;
-
     Vec2 vel(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]);
-    
-    // Apply accumulated forces
     applyForce(world.liveBodyFloatData[idx + BODY_FDATA_NFX], world.liveBodyFloatData[idx + BODY_FDATA_NFY]);
     world.liveBodyFloatData[idx + BODY_FDATA_NFX] = 0;
     world.liveBodyFloatData[idx + BODY_FDATA_NFY] = 0;
-
-    // Damping
     applyForce(vel * -getDamping());
-    
     Vec2 acc(0, 0);
     if (im > 0) {
         acc.x = world.liveBodyFloatData[idx + BODY_FDATA_FX] * im;
         acc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
     }
-    
     forceVelocity = acc * dt;
     vel = vel + forceVelocity;
-    
-    // Velocity clamping for stability
     const float maxVel = 1000.0f;
     float speedSq = vel.magnitudeSquared();
-    if (speedSq > maxVel * maxVel) {
-        vel = vel * (maxVel / sqrt(speedSq));
-    }
-
+    if (speedSq > maxVel * maxVel) vel = vel * (maxVel / std::sqrt(speedSq));
     world.liveBodyFloatData[idx + BODY_FDATA_VX] = vel.x;
     world.liveBodyFloatData[idx + BODY_FDATA_VY] = vel.y;
 }
 
 bool Body::integratePositions(float dt) {
     int idx = worldIndex * BODY_FDATA_EPO;
-    
     Vec2 vel(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]);
     float rs = world.liveBodyFloatData[idx + BODY_FDATA_RS];
-
-    // Settling and rotational damping (only for dynamic objects)
-    if (type == ObjectType::DYNAMIC_OBJECT) {
-        rs *= (1.0f - getRotationalDamping() * dt);
-    }
-
+    if (type == ObjectType::DYNAMIC_OBJECT) rs *= (1.0f - getRotationalDamping() * dt);
     Vec2 pos = getPosition() + vel * dt;
     float currentR = world.liveBodyFloatData[idx + BODY_FDATA_R];
-    
-    // NaN recovery
-    if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(currentR) || 
-        !std::isfinite(vel.x) || !std::isfinite(vel.y) || !std::isfinite(rs)) {
-        pos = Vec2(lastX, lastY);
-        currentR = lastR;
-        vel = Vec2(0, 0);
-        rs = 0;
+    if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(currentR) || !std::isfinite(vel.x) || !std::isfinite(vel.y) || !std::isfinite(rs)) {
+        pos = Vec2(lastX, lastY); currentR = lastR; vel = Vec2(0, 0); rs = 0;
         world.liveBodyFloatData[idx + BODY_FDATA_R] = currentR;
     }
-
-    float nextR = currentR;
-
     world.liveBodyFloatData[idx + BODY_FDATA_X] = pos.x;
     world.liveBodyFloatData[idx + BODY_FDATA_Y] = pos.y;
     world.liveBodyFloatData[idx + BODY_FDATA_VX] = vel.x;
     world.liveBodyFloatData[idx + BODY_FDATA_VY] = vel.y;
     world.liveBodyFloatData[idx + BODY_FDATA_RS] = rs;
-    world.liveBodyFloatData[idx + BODY_FDATA_R] = nextR + rs * dt;
-
-    float dx = pos.x - lastX;
-    float dy = pos.y - lastY;
-    float dr = world.liveBodyFloatData[idx + BODY_FDATA_R] - lastR;
-    
-    sleepErrAccumulatorX += dx;
-    sleepErrAccumulatorY += dy;
-    sleepErrAccumulatorR += dr;
-    
+    world.liveBodyFloatData[idx + BODY_FDATA_R] = currentR + rs * dt;
+    float dx = pos.x - lastX; float dy = pos.y - lastY; float dr = world.liveBodyFloatData[idx + BODY_FDATA_R] - lastR;
+    sleepErrAccumulatorX += dx; sleepErrAccumulatorY += dy; sleepErrAccumulatorR += dr;
     lastX = pos.x; lastY = pos.y; lastR = world.liveBodyFloatData[idx + BODY_FDATA_R];
-    
     bool moved = dx != 0 || dy != 0 || dr != 0;
-
     if (moved && (std::abs(sleepErrAccumulatorX) > WAKE_MOVEMENT_THRESHOLD || std::abs(sleepErrAccumulatorY) > WAKE_MOVEMENT_THRESHOLD || std::abs(sleepErrAccumulatorR) > WAKE_MOVEMENT_THRESHOLD)) {
-        // Only reset sleep timer if there is also significant velocity
-        Vec2 velocity(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]);
-        float angularVelocity = world.liveBodyFloatData[idx + BODY_FDATA_RS];
-        if (velocity.magnitudeSquared() > SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD || std::abs(angularVelocity) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
-            sleepTimer = 0;
-            sleepErrAccumulatorX = 0; sleepErrAccumulatorY = 0; sleepErrAccumulatorR = 0;
+        if (vel.magnitudeSquared() > SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD || std::abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+            sleepTimer = 0; sleepErrAccumulatorX = 0; sleepErrAccumulatorY = 0; sleepErrAccumulatorR = 0;
+        } else {
+            // Significant movement but low velocity - likely position solver correction.
+            // Still increment sleep timer so the body can eventually rest.
+            sleepTimer += dt;
         }
     } else {
         sleepTimer += dt;
-        if (sleepTimer > sleepTimeRequired) sleep();
     }
+    
+    if (sleepTimer > sleepTimeRequired) sleep();
     return moved;
 }
 
@@ -289,18 +237,12 @@ void Body::sleep() {
         world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= IS_SLEEPING;
         setVelocityInternal(Vec2(0, 0));
         setAngularVelocityInternal(0);
-        if (wantsEvents()) {
-            world.addEvent((int)EventType::SLEEP, id, -1, -1, -1, 0.0f);
-        }
-        
-        // Force shrink-wrap optimization
-        float pr = getRotation();
-        float cosR = cos(pr);
-        float sinR = sin(pr);
+        if (wantsEvents()) world.addEvent((int)EventType::SLEEP, id, -1, -1, -1, 0.0f);
+        float pr = getRotation(); float cosR = std::cos(pr); float sinR = std::sin(pr);
         for (auto* f : fixtures) {
             if (f->bvhNode) {
                 f->bvhNode->properties.isSleeping = true;
-                f->updateAabb(cosR, sinR, 1); // Mode 1 = tight AABB
+                f->updateAabb(cosR, sinR, 1);
                 f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb);
             }
         }
@@ -312,16 +254,8 @@ void Body::wakeUp() {
         isSleeping = false;
         world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~IS_SLEEPING;
         sleepTimer = 0;
-        if (wantsEvents()) {
-            world.addEvent((int)EventType::WAKE, id, -1, -1, -1, 0.0f);
-        }
-        
-        for (auto* f : fixtures) {
-            if (f->bvhNode) {
-                f->bvhNode->wakeUp();
-            }
-        }
-
+        if (wantsEvents()) world.addEvent((int)EventType::WAKE, id, -1, -1, -1, 0.0f);
+        for (auto* f : fixtures) if (f->bvhNode) f->bvhNode->wakeUp();
         for (auto* contact : contacts) contact->wakeUp();
     }
 }
@@ -334,14 +268,10 @@ void Body::addContact(Body* other) {
 
 void Body::removeContact(Body* other) {
     auto it = std::remove(contacts.begin(), contacts.end(), other);
-    if (it != contacts.end()) {
-        contacts.erase(it, contacts.end());
-    }
+    if (it != contacts.end()) contacts.erase(it, contacts.end());
 }
 
-void Body::updateInverseInertia() {
-    recomputeMassProperties();
-}
+void Body::updateInverseInertia() { recomputeMassProperties(); }
 
 void Body::recomputeMassProperties() {
     float im = getInverseMass();
@@ -349,75 +279,51 @@ void Body::recomputeMassProperties() {
         world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_INV_INERTIA] = 0.0f;
         return;
     }
-
     if (fixtures.empty()) {
         world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_M] = 0.0f;
         world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_IM] = 0.0f;
         world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_INV_INERTIA] = 0.0f;
         return;
     }
-
-    float totalMass = 0.0f;
-    float totalInertia = 0.0f;
-    Vec2 center(0.0f, 0.0f);
-
+    float totalMass = 0.0f; float totalInertia = 0.0f; Vec2 center(0.0f, 0.0f);
     for (auto* f : fixtures) {
         MassData data = f->getMassData();
-        totalMass += data.mass;
-        center = center + data.center * data.mass;
+        totalMass += data.mass; center = center + data.center * data.mass;
     }
-
     if (totalMass > 0.0f) {
         center = center / totalMass;
-
-        // Parallel Axis Theorem for total inertia: Σ (I_local + m * d^2)
-        // where d is distance from fixture center to body COM
         for (auto* f : fixtures) {
             MassData data = f->getMassData();
             float dSq = (data.center - center).magnitudeSquared();
             totalInertia += data.inertia + data.mass * dSq;
         }
-
-        // Shift origin to COM
         if (center.magnitudeSquared() > 0.0001f) {
-            float pr = getRotation();
-            Vec2 worldCenterShift = center.rotate(pr);
-            
-            // Update body position
+            float pr = getRotation(); Vec2 worldCenterShift = center.rotate(pr);
             int idx = worldIndex * BODY_FDATA_EPO;
             world.liveBodyFloatData[idx + BODY_FDATA_X] += worldCenterShift.x;
             world.liveBodyFloatData[idx + BODY_FDATA_Y] += worldCenterShift.y;
-            lastX += worldCenterShift.x;
-            lastY += worldCenterShift.y;
-
-            // Update fixture local positions
+            lastX += worldCenterShift.x; lastY += worldCenterShift.y;
             for (auto* f : fixtures) {
                 int fIdx = f->worldIndex * FIXTURE_FDATA_EPO;
                 world.liveFixtureFloatData[fIdx + FIXTURE_FDATA_LOCAL_X] -= center.x;
                 world.liveFixtureFloatData[fIdx + FIXTURE_FDATA_LOCAL_Y] -= center.y;
-                f->updateAabb(1); // Update AABB with new local position
+                f->updateAabb(1);
             }
         }
     }
-
     int idx = worldIndex * BODY_FDATA_EPO;
     int flags = world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
-
     if (totalMass > 0.0f) {
         if (flags & HAS_FIXED_MASS) {
             float manualMass = world.liveBodyFloatData[idx + BODY_FDATA_M];
-            if (manualMass > 0.0f) {
-                totalInertia *= (manualMass / totalMass);
-            }
+            if (manualMass > 0.0f) totalInertia *= (manualMass / totalMass);
         } else {
             world.liveBodyFloatData[idx + BODY_FDATA_M] = totalMass;
             world.liveBodyFloatData[idx + BODY_FDATA_IM] = 1.0f / totalMass;
         }
         world.liveBodyFloatData[idx + BODY_FDATA_INV_INERTIA] = (totalInertia > 0.0f) ? 1.0f / totalInertia : 0.0f;
     } else {
-        if (totalInertia > 0.0f) {
-            world.liveBodyFloatData[idx + BODY_FDATA_INV_INERTIA] = 1.0f / totalInertia;
-        }
+        if (totalInertia > 0.0f) world.liveBodyFloatData[idx + BODY_FDATA_INV_INERTIA] = 1.0f / totalInertia;
     }
 }
 
@@ -427,6 +333,21 @@ void Body::addFixture(Fixture* fixture) {
     updateInverseInertia();
 }
 
-int Body::createFixture(emscripten_val options) {
-    return world.addFixture(id, 0, options);
+Body::SolverData Body::getSolverData() const {
+    int idx = worldIndex * BODY_FDATA_EPO;
+    return {
+        Vec2(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]),
+        world.liveBodyFloatData[idx + BODY_FDATA_RS],
+        world.liveBodyFloatData[idx + BODY_FDATA_IM],
+        world.liveBodyFloatData[idx + BODY_FDATA_INV_INERTIA]
+    };
 }
+
+void Body::setSolverData(const SolverData& data) {
+    int idx = worldIndex * BODY_FDATA_EPO;
+    world.liveBodyFloatData[idx + BODY_FDATA_VX] = data.v.x;
+    world.liveBodyFloatData[idx + BODY_FDATA_VY] = data.v.y;
+    world.liveBodyFloatData[idx + BODY_FDATA_RS] = data.w;
+}
+
+int Body::createFixture(emscripten_val options) { return world.addFixture(id, 0, options); }

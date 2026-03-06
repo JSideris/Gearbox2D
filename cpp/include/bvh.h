@@ -6,10 +6,6 @@
 #include <memory>
 #include <algorithm>
 #include <limits>
-#include <fstream>
-#include <chrono>
-
-#define MAX_ALLOWED_COLLISIONS 20000
 
 // Collision categories as bitflags
 enum CollisionCategory : uint32_t {
@@ -150,30 +146,12 @@ struct AggregatedProperties {
     }
 };
 
-// Structure to track BVH performance metrics
-struct BvhMetrics {
-    long aabb_tests = 0;
-    long mask_culls = 0;
-    long pair_candidates = 0;
-    int max_depth = 0;
-    float avg_depth = 0.0f;
-
-    void reset() {
-        aabb_tests = 0;
-        mask_culls = 0;
-        pair_candidates = 0;
-        max_depth = 0;
-        avg_depth = 0.0f;
-    }
-};
-
-extern BvhMetrics g_bvhMetrics;
-
 class BvhNode {
 public:
     Aabb bounds;
     BvhNode* parent;
     bool isLeaf;
+    int height;
 
 	// For leaf nodes
 	CollisionProperties properties;  // Leaf collision properties
@@ -190,7 +168,7 @@ public:
     
     // Constructor for leaf node
 	BvhNode(const Aabb& aabb, void* userData, const CollisionProperties& props)
-    : bounds(aabb), parent(nullptr), isLeaf(true), 
+    : bounds(aabb), parent(nullptr), isLeaf(true), height(0),
       data(userData), properties(props), left(nullptr), right(nullptr) {
 		// For leaves, aggregated properties come directly from leaf properties
 		aggregated = AggregatedProperties::fromLeaf(properties);
@@ -198,7 +176,7 @@ public:
     
     // Constructor for internal node
     BvhNode(BvhNode* leftChild, BvhNode* rightChild)
-		: parent(nullptr), isLeaf(false), data(nullptr),
+		: parent(nullptr), isLeaf(false), height(0), data(nullptr),
 		left(leftChild), right(rightChild) {
         
         if (left) left->parent = this;
@@ -206,12 +184,21 @@ public:
         
         updateBounds();
         updateAggregatedProperties();
+        updateHeight();
     }
     
     ~BvhNode() {
         // Don't delete children here - BVH will manage the tree destruction
     }
     
+    void updateHeight() {
+        if (isLeaf) {
+            height = 0;
+        } else {
+            height = 1 + std::max(left ? left->height : 0, right ? right->height : 0);
+        }
+    }
+
     void updateBounds() {
         if (isLeaf) return;
         
@@ -236,14 +223,13 @@ public:
 		if (right) aggregated.mergeWith(right->aggregated);
 	}
     
-    // Update bounds and sleep state for all ancestors
+    // Update bounds and properties for all ancestors
     void updateAncestors() {
         BvhNode* current = parent;
         while (current) {
-            if (!current->isLeaf) {
-                current->updateBounds();
-                current->updateAggregatedProperties();
-            }
+            current->updateBounds();
+            current->updateAggregatedProperties();
+            current->updateHeight();
             current = current->parent;
         }
     }
@@ -293,18 +279,22 @@ public:
 
 private:
     BvhNode* root;
+    uint32_t tieBreaker = 0;
     
-    // Surface Area Heuristic for insertion cost calculation with multi-factor biasing
+    // Surface Area Heuristic for insertion cost calculation
     float computeInsertionCost(BvhNode* node, const Aabb& newBounds, const CollisionProperties& newProps) const {
         if (!node) return std::numeric_limits<float>::max();
         
         Aabb combinedBounds = node->bounds;
         combinedBounds.mergeWith(newBounds);
         
-        float combinedArea = combinedBounds.getSurfaceArea();
-        float currentArea = node->bounds.getSurfaceArea();
-        float spatialCost = combinedArea - currentArea;
-
+        float areaIncrease = combinedBounds.getSurfaceArea();
+        if (!node->isLeaf) {
+            areaIncrease -= node->bounds.getSurfaceArea();
+        }
+        
+        // --- Keep existing biasing factors as secondary weights ---
+        
         // Mask Biasing: Logical separation of user-defined categories
         // We exclude internal system categories from general mask pollution
         uint32_t newCats = newProps.userCategory & ~node->aggregated.containsUserCategories;
@@ -342,7 +332,7 @@ private:
             velocityCost = vDiff * config.velocityWeight;
         }
         
-        return spatialCost + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
+        return areaIncrease + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
     }
     
     // Find the best place to insert a new leaf
@@ -363,23 +353,22 @@ private:
             }
             
             // Choose the child with lower insertion cost
-            if (leftCost <= rightCost && current->left) {
+            if (leftCost < rightCost) {
                 current = current->left;
-            } else if (current->right) {
+            } else if (rightCost < leftCost) {
                 current = current->right;
             } else {
-                break;
+                // Costs are equal, use tie-breaker to prevent biased unbalancing
+                tieBreaker++;
+                if (tieBreaker % 2 == 0) {
+                    current = current->left;
+                } else {
+                    current = current->right;
+                }
             }
         }
         
         return current;
-    }
-    
-    // Update bounds and sleep state for all ancestors
-    void updateAncestors(BvhNode* node) {
-        if (node) {
-            node->updateAncestors();
-        }
     }
     
     // Recursively destroy nodes
@@ -414,6 +403,101 @@ private:
         }
     }
     
+    // Rotate a node to maintain AVL balance (height-based)
+    // Returns the new root of this subtree
+    BvhNode* balance(BvhNode* iA) {
+        if (!iA || iA->isLeaf || iA->height < 2) return iA;
+        
+        BvhNode* iB = iA->left;
+        BvhNode* iC = iA->right;
+        
+        int balanceFactor = (iC ? iC->height : 0) - (iB ? iB->height : 0);
+        
+        // Rotate C up (Right heavy)
+        if (balanceFactor > 1) {
+            BvhNode* iF = iC->left;
+            BvhNode* iG = iC->right;
+            
+            // Swap A and C
+            iC->left = iA;
+            iC->parent = iA->parent;
+            iA->parent = iC;
+            
+            if (iC->parent) {
+                if (iC->parent->left == iA) iC->parent->left = iC;
+                else iC->parent->right = iC;
+            } else {
+                root = iC;
+            }
+            
+            // Re-assign iC's children
+            if ((iF ? iF->height : 0) > (iG ? iG->height : 0)) {
+                iC->right = iF;
+                iA->right = iG;
+                if (iG) iG->parent = iA;
+                if (iF) iF->parent = iC;
+            } else {
+                iC->right = iG;
+                iA->right = iF;
+                if (iF) iF->parent = iA;
+                if (iG) iG->parent = iC;
+            }
+            
+            iA->updateBounds(); iA->updateAggregatedProperties(); iA->updateHeight();
+            iC->updateBounds(); iC->updateAggregatedProperties(); iC->updateHeight();
+            return iC;
+        }
+        
+        // Rotate B up (Left heavy)
+        if (balanceFactor < -1) {
+            BvhNode* iD = iB->left;
+            BvhNode* iE = iB->right;
+            
+            // Swap A and B
+            iB->right = iA;
+            iB->parent = iA->parent;
+            iA->parent = iB;
+            
+            if (iB->parent) {
+                if (iB->parent->left == iA) iB->parent->left = iB;
+                else iB->parent->right = iB;
+            } else {
+                root = iB;
+            }
+            
+            // Re-assign iB's children
+            if ((iD ? iD->height : 0) > (iE ? iE->height : 0)) {
+                iB->left = iD;
+                iA->left = iE;
+                if (iE) iE->parent = iA;
+                if (iD) iD->parent = iB;
+            } else {
+                iB->left = iE;
+                iA->left = iD;
+                if (iD) iD->parent = iA;
+                if (iE) iE->parent = iB;
+            }
+            
+            iA->updateBounds(); iA->updateAggregatedProperties(); iA->updateHeight();
+            iB->updateBounds(); iB->updateAggregatedProperties(); iB->updateHeight();
+            return iB;
+        }
+        
+        return iA;
+    }
+    
+    // Update bounds and properties up the tree, balancing as we go
+    void updateAncestors(BvhNode* node) {
+        BvhNode* current = node;
+        while (current) {
+            current->updateBounds();
+            current->updateAggregatedProperties();
+            current->updateHeight();
+            current = balance(current);
+            current = current->parent;
+        }
+    }
+    
     // Query implementation
     void queryRecursive(BvhNode* node, const Aabb& queryBounds, std::vector<BvhNode*>& results) const {
         if (!node || !node->bounds.overlaps(queryBounds)) return;
@@ -428,21 +512,18 @@ private:
     
     // Internal collision detection between two subtrees
     void detectCollisionsRecursive(BvhNode* nodeA, BvhNode* nodeB) {
-		if (!nodeA || !nodeB || collisionPairs.size() > MAX_ALLOWED_COLLISIONS) return;
+		if (!nodeA || !nodeB) return;
 		
 		// Early exit based on aggregated properties
 		if (!nodeA->aggregated.canPotentiallyCollideWith(nodeB->aggregated)) {
-            g_bvhMetrics.mask_culls++;
 			return;
 		}
         
         // Skip if bounds don't overlap
-        g_bvhMetrics.aabb_tests++;
         if (!nodeA->bounds.overlaps(nodeB->bounds)) return;
         
         // If both are leaves, add the collision pair
 		if (nodeA->isLeaf && nodeB->isLeaf) {
-            g_bvhMetrics.pair_candidates++;
 			if (nodeA != nodeB && nodeA->data && nodeB->data) {
 				// Final collision check with full properties
 				if (nodeA->properties.canCollideWith(nodeB->properties)) {
@@ -596,42 +677,6 @@ public:
     // Get root node (for debugging/visualization)
     BvhNode* getRoot() const { return root; }
 
-    // Update tree metrics
-    void updateMetrics() {
-        if (!root) {
-            g_bvhMetrics.max_depth = 0;
-            g_bvhMetrics.avg_depth = 0;
-            return;
-        }
-        
-        int max_d = 0;
-        long total_d = 0;
-        int leaf_count = 0;
-        
-        std::vector<std::pair<BvhNode*, int>> stack;
-        stack.push_back({root, 0});
-        
-        while (!stack.empty()) {
-            auto current = stack.back();
-            stack.pop_back();
-            
-            BvhNode* node = current.first;
-            int depth = current.second;
-            
-            if (node->isLeaf) {
-                leaf_count++;
-                total_d += depth;
-                if (depth > max_d) max_d = depth;
-            } else {
-                if (node->left) stack.push_back({node->left, depth + 1});
-                if (node->right) stack.push_back({node->right, depth + 1});
-            }
-        }
-        
-        g_bvhMetrics.max_depth = max_d;
-        g_bvhMetrics.avg_depth = leaf_count > 0 ? (float)total_d / leaf_count : 0;
-    }
-    
     // Check if tree is empty
     bool empty() const { return root == nullptr; }
 

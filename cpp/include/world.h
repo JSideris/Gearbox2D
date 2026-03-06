@@ -1,7 +1,6 @@
 #ifndef WORLD_H
 #define WORLD_H
 
-#include <iostream>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -48,6 +47,14 @@ struct ContactConstraint {
     void solvePosition();
 
     ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), staticFriction(0.0f), kineticFriction(0.0f) {}
+
+    // Temporary storage during iterations
+    struct SolverContext {
+        void* a; 
+        void* b; 
+    } context;
+
+    void solveFast();
 };
 
 struct StoredImpulse {
@@ -55,6 +62,11 @@ struct StoredImpulse {
     Vec2 localPointA;
     float normalImpulse;
     float frictionImpulse;
+};
+
+struct WarmStartData {
+    StoredImpulse impulses[2];
+    int count = 0;
 };
 
 class World {
@@ -76,7 +88,7 @@ private:
     std::vector<ContactConstraint> contactConstraints;
     std::vector<float> eventData;
     int velocityIterations = 50;
-    int positionIterations = 0;
+    int positionIterations = 3;
     int velocitySubSteps = 1;
     int nextFixtureId = 1;
 
@@ -103,7 +115,11 @@ private:
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> prevPairs;
     std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual> bodyContactCounts;
     std::unordered_map<std::pair<int, int>, float, PairHash, PairEqual> resolvedImpulses;
-    std::unordered_map<std::pair<int, int>, std::vector<StoredImpulse>, PairHash, PairEqual> warmStartImpulses;
+    std::unordered_map<std::pair<int, int>, WarmStartData, PairHash, PairEqual> warmStartImpulses;
+
+    void _clearContactTracking();
+    void _maybePruneBodyContactCounts();
+    void _maybePrunePairs();
 
 public:
     Bvh bvh;
@@ -170,7 +186,7 @@ public:
     void _doBroadPhase();
     void _doNarrowPhase();
     void _doContactManagement();
-    void _doResolution(float dt);
+    void _doResolution(float dt, int substepIndex);
     void clear();
 };
 

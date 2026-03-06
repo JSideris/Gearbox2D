@@ -100,6 +100,7 @@ export const stressTestExamples = [
             "**Note**: In many environments, the primary bottleneck will be the Canvas 2D rendering rather than the physics simulation."
         ].join("\n\n"),
         onInit: (world)=>{
+            (world as any)._frameCounter = 0;
             world.clear();
             let id = 1;
             let thickness = 2;
@@ -159,7 +160,8 @@ export const stressTestExamples = [
                 });
             }
         },
-        onTick: (world, dt)=>{}
+        onTick: (world, dt)=>{
+        }
     }),
     new Example({
         name: "2000 Bouncy Points",
