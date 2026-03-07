@@ -297,9 +297,6 @@ private:
         combinedBounds.mergeWith(newBounds);
         
         float areaIncrease = combinedBounds.getSurfaceArea();
-        if (!node->isLeaf) {
-            areaIncrease -= node->bounds.getSurfaceArea();
-        }
         
         // --- Keep existing biasing factors as secondary weights ---
         
@@ -339,8 +336,10 @@ private:
             float vDiff = (newProps.velocity - node->aggregated.avgVelocity).magnitude();
             velocityCost = vDiff * config.velocityWeight;
         }
+
+        float totalCost = areaIncrease + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
         
-        return areaIncrease + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
+        return totalCost;
     }
     
     // Find the best place to insert a new leaf
