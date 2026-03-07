@@ -15,6 +15,8 @@ public:
 
     void preSolve(float dt) override;
     void solve() override;
+    void solveFast() override;
+    void solvePosition() override;
 
     Vec2 getReactionForce(float inv_dt) const override;
     float getReactionTorque(float inv_dt) const override;
@@ -42,6 +44,8 @@ private:
     float bias;
     float gamma;
     float _dt;
+    Vec2 lastNormal;
+    bool hasLastNormal = false;
 };
 
 #endif

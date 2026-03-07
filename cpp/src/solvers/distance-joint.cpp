@@ -10,19 +10,40 @@ void DistanceJoint::preSolve(float dt) {
     _dt = dt;
     rA = localAnchorA.rotate(bodyA->getRotation());
     rB = localAnchorB.rotate(bodyB->getRotation());
-    Vec2 d = (bodyB->getPosition() + rB) - (bodyA->getPosition() + rA);
+    Vec2 pA = bodyA->getPosition();
+    Vec2 pB = bodyB->getPosition();
+    Vec2 d = (pB + rB) - (pA + rA);
     float dMag = d.magnitude();
-    if (dMag > 1e-6f) {
+    
+    Vec2 oldNormal = normal;
+    bool snapped = false;
+    if (dMag > 1e-4f) {
         normal = d / dMag;
-    } else {
-        normal = Vec2(0, 1); // Default normal if anchors overlap
+        if (hasLastNormal && lastNormal.dot(normal) < 0.9f) {
+            snapped = true;
+        }
+    } else if (!hasLastNormal) {
+        normal = Vec2(0, 1); 
     }
+    // Else: keep previous normal to avoid singularity at dMag = 0
+
+    float dot = 1.0f;
+    if (hasLastNormal) {
+        dot = lastNormal.dot(normal);
+        impulse *= dot;
+    }
+
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     float rnA = rA.cross(normal), rnB = rB.cross(normal);
     float k = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
     mass = (k > 0.0f) ? 1.0f / k : 0.0f;
-    bias = (dMag - length) * (0.2f * bodyA->world.invTimeStep);
+
+    lastNormal = normal;
+    hasLastNormal = true;
+
+    float C = dMag - length;
+
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(p) * iIA);
@@ -35,13 +56,37 @@ void DistanceJoint::solve() {
     float wA = bodyA->getAngularVelocity(), wB = bodyB->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     float Cdot = (vB + vrB - (vA + vrA)).dot(normal);
-    float lambda = -mass * (Cdot + bias);
+    float lambda = -mass * Cdot;
     impulse += lambda;
     Vec2 p = normal * lambda;
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     if (imA > 0.0f) { bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA); bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(p) * iIA); }
     if (imB > 0.0f) { bodyB->setVelocityInternal(bodyB->getVelocity() + p * imB); bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(p) * iIB); }
+}
+
+void DistanceJoint::solveFast() {
+    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
+    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
+
+    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+    float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
+    float lambda = -mass * Cdot;
+
+    impulse += lambda;
+    Vec2 p = normal * lambda;
+
+    if (sA.im > 0.0f) {
+        sA.v.x -= p.x * sA.im;
+        sA.v.y -= p.y * sA.im;
+        sA.w -= rA.cross(p) * sA.iI;
+    }
+    if (sB.im > 0.0f) {
+        sB.v.x += p.x * sB.im;
+        sB.v.y += p.y * sB.im;
+        sB.w += rB.cross(p) * sB.iI;
+    }
 }
 
 Vec2 DistanceJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
@@ -52,3 +97,53 @@ void DistanceJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp();
 Vec2 DistanceJoint::getLocalAnchorA() const { return localAnchorA; }
 void DistanceJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
 Vec2 DistanceJoint::getLocalAnchorB() const { return localAnchorB; }
+
+void DistanceJoint::solvePosition() {
+    float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
+    float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
+    if (imA + imB == 0.0f) return;
+
+    Vec2 pA = bodyA->getPosition(); float thetaA = bodyA->getRotation();
+    Vec2 pB = bodyB->getPosition(); float thetaB = bodyB->getRotation();
+
+    Vec2 rA_curr = localAnchorA.rotate(thetaA);
+    Vec2 rB_curr = localAnchorB.rotate(thetaB);
+
+    Vec2 d = (pB + rB_curr) - (pA + rA_curr);
+    float dMag = d.magnitude();
+    Vec2 normal_curr;
+    if (dMag > 1e-4f) {
+        normal_curr = d / dMag;
+    } else {
+        normal_curr = normal;
+    }
+
+    float C = dMag - length;
+    float slop = 0.008f;
+    float baumgarte = 0.1f; // Reverted to 0.1
+
+    if (std::abs(C) < slop) return;
+
+    float correction = C * baumgarte;
+
+    float rnA = rA_curr.cross(normal_curr);
+    float rnB = rB_curr.cross(normal_curr);
+    float k = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
+    if (k < 1e-6f) return;
+
+    float impulse_local = -correction / k;
+    Vec2 P = normal_curr * impulse_local;
+
+    if (imA > 0.0f) {
+        int idx = bodyA->worldIndex * BODY_FDATA_EPO;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - P.x * imA;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pA.y - P.y * imA;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaA - rA_curr.cross(P) * iIA;
+    }
+    if (imB > 0.0f) {
+        int idx = bodyB->worldIndex * BODY_FDATA_EPO;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_X] = pB.x + P.x * imB;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pB.y + P.y * imB;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaB + rB_curr.cross(P) * iIB;
+    }
+}

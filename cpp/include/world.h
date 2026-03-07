@@ -91,6 +91,7 @@ private:
     int positionIterations = 3;
     int velocitySubSteps = 1;
     int nextFixtureId = 1;
+private:
 
     struct PairHash {
         size_t operator()(const std::pair<int, int>& p) const {

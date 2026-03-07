@@ -11,11 +11,21 @@ public:
     Body* bodyA;
     Body* bodyB;
 
+    // Temporary storage during iterations
+    struct SolverContext {
+        void* a;
+        void* b;
+        void* c; // For GearJoint
+        void* d; // For GearJoint
+    } context;
+
     Joint(int id, Body* a, Body* b) : id(id), bodyA(a), bodyB(b) {}
     virtual ~Joint() {}
 
     virtual void preSolve(float dt) = 0;
     virtual void solve() = 0;
+    virtual void solveFast() = 0;
+    virtual void solvePosition() = 0;
     
     virtual Vec2 getReactionForce(float inv_dt) const = 0;
     virtual float getReactionTorque(float inv_dt) const = 0;

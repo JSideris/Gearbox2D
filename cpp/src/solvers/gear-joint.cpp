@@ -49,6 +49,22 @@ void GearJoint::solve() {
     bodyD->setAngularVelocityInternal(wD + lambda * bodyD->getInverseInertia());
 }
 
+void GearJoint::solveFast() {
+    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
+    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
+    Body::SolverData& sC = *static_cast<Body::SolverData*>(context.c);
+    Body::SolverData& sD = *static_cast<Body::SolverData*>(context.d);
+
+    float Cdot = ratio * (sB.w - sA.w) + (sD.w - sC.w);
+    float lambda = -mass * Cdot;
+    impulse += lambda;
+
+    sA.w -= ratio * lambda * sA.iI;
+    sB.w += ratio * lambda * sB.iI;
+    sC.w -= lambda * sC.iI;
+    sD.w += lambda * sD.iI;
+}
+
 Vec2 GearJoint::getReactionForce(float inv_dt) const { return Vec2(0, 0); }
 float GearJoint::getReactionTorque(float inv_dt) const { return impulse * inv_dt; }
 void GearJoint::setRatio(float r) { ratio = r; joint1->bodyB->wakeUp(); joint2->bodyB->wakeUp(); }
@@ -56,3 +72,5 @@ float GearJoint::getRatio() const { return ratio; }
 bool GearJoint::isConnectedTo(Body* body) const {
     return joint1->bodyA == body || joint1->bodyB == body || joint2->bodyA == body || joint2->bodyB == body;
 }
+
+void GearJoint::solvePosition() {}

@@ -577,7 +577,7 @@ export const issuesExamples = [
     }),
 
     new Example({
-        name: "TC-14 (REGRESSION)",
+        name: "TC-14 (SOLVED)",
         key: "tc-14",
         description: [
             "**Test Case 14**: Sliding pile regression.",
@@ -601,7 +601,7 @@ export const issuesExamples = [
             });
 
             // Stack of boxes
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 4; i++) {
                 world.makeBody(id++, {
                     x: 5,
                     y: 8 - i * 1.1,

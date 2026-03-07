@@ -214,5 +214,4 @@
 - [ ] Collision Prediction / Danger Maps (optional)
 
 ## Known Issues
-- Piles of objects don't go to sleep as easily as they should (regression).
 - Spring joints can't be adjusted at runtime - see the commented-out spring test case.

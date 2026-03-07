@@ -30,11 +30,7 @@ void HingeJoint::preSolve(float dt) {
         massMatrix[0][0] = massMatrix[0][1] = massMatrix[1][0] = massMatrix[1][1] = 0.0f;
     }
     Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
-    Vec2 C = (posB + rB) - (posA + rA);
-    bias = C * (0.2f * bodyA->world.invTimeStep);
-    float maxStabilizationVelocity = 10.0f;
-    float biasMag = bias.magnitude();
-    if (biasMag > maxStabilizationVelocity) bias = bias * (maxStabilizationVelocity / biasMag);
+    
     bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
     bodyB->setVelocityInternal(bodyB->getVelocity() + impulse * imB);
@@ -47,12 +43,35 @@ void HingeJoint::solve() {
     Vec2 vrA(-bodyA->getAngularVelocity() * rA.y, bodyA->getAngularVelocity() * rA.x);
     Vec2 vrB(-bodyB->getAngularVelocity() * rB.y, bodyB->getAngularVelocity() * rB.x);
     Vec2 Cdot = (bodyB->getVelocity() + vrB) - (bodyA->getVelocity() + vrA);
-    Vec2 jBias = Cdot + bias;
-    Vec2 lambda(-(massMatrix[0][0] * jBias.x + massMatrix[0][1] * jBias.y), -(massMatrix[1][0] * jBias.x + massMatrix[1][1] * jBias.y));
+    Vec2 lambda(-(massMatrix[0][0] * Cdot.x + massMatrix[0][1] * Cdot.y), -(massMatrix[1][0] * Cdot.x + massMatrix[1][1] * Cdot.y));
     if (std::isfinite(lambda.x) && std::isfinite(lambda.y)) {
         impulse = impulse + lambda;
         if (imA > 0.0f) { bodyA->setVelocityInternal(bodyA->getVelocity() - lambda * imA); bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(lambda) * iIA); }
         if (imB > 0.0f) { bodyB->setVelocityInternal(bodyB->getVelocity() + lambda * imB); bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(lambda) * iIB); }
+    }
+}
+
+void HingeJoint::solveFast() {
+    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
+    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
+
+    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+    Vec2 Cdot = (sB.v + vrB) - (sA.v + vrA);
+    Vec2 lambda(-(massMatrix[0][0] * Cdot.x + massMatrix[0][1] * Cdot.y), -(massMatrix[1][0] * Cdot.x + massMatrix[1][1] * Cdot.y));
+
+    if (std::isfinite(lambda.x) && std::isfinite(lambda.y)) {
+        impulse = impulse + lambda;
+        if (sA.im > 0.0f) {
+            sA.v.x -= lambda.x * sA.im;
+            sA.v.y -= lambda.y * sA.im;
+            sA.w -= rA.cross(lambda) * sA.iI;
+        }
+        if (sB.im > 0.0f) {
+            sB.v.x += lambda.x * sB.im;
+            sB.v.y += lambda.y * sB.im;
+            sB.w += rB.cross(lambda) * sB.iI;
+        }
     }
 }
 
@@ -62,3 +81,51 @@ void HingeJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp(); bo
 Vec2 HingeJoint::getLocalAnchorA() const { return localAnchorA; }
 void HingeJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
 Vec2 HingeJoint::getLocalAnchorB() const { return localAnchorB; }
+
+void HingeJoint::solvePosition() {
+    float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
+    float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
+    if (imA + imB == 0.0f) return;
+
+    Vec2 pA = bodyA->getPosition(); float thetaA = bodyA->getRotation();
+    Vec2 pB = bodyB->getPosition(); float thetaB = bodyB->getRotation();
+
+    Vec2 rA_curr = localAnchorA.rotate(thetaA);
+    Vec2 rB_curr = localAnchorB.rotate(thetaB);
+
+    Vec2 C = (pB + rB_curr) - (pA + rA_curr);
+    float slop = 0.008f;
+    float baumgarte = 0.2f;
+
+    float Cmag = C.magnitude();
+    if (Cmag < slop) return;
+
+    Vec2 correction = C * baumgarte;
+
+    float k00 = imA + imB + iIA * rA_curr.y * rA_curr.y + iIB * rB_curr.y * rB_curr.y;
+    float k01 = -iIA * rA_curr.x * rA_curr.y - iIB * rB_curr.x * rB_curr.y;
+    float k11 = imA + imB + iIA * rA_curr.x * rA_curr.x + iIB * rB_curr.x * rB_curr.x;
+
+    float det = k00 * k11 - k01 * k01;
+    Vec2 impulse_local;
+    if (std::abs(det) > 1e-6f) {
+        float invDet = 1.0f / det;
+        impulse_local.x = -invDet * (k11 * correction.x - k01 * correction.y);
+        impulse_local.y = -invDet * (-k01 * correction.x + k00 * correction.y);
+    } else {
+        return;
+    }
+
+    if (imA > 0.0f) {
+        int idx = bodyA->worldIndex * BODY_FDATA_EPO;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - impulse_local.x * imA;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pA.y - impulse_local.y * imA;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaA - rA_curr.cross(impulse_local) * iIA;
+    }
+    if (imB > 0.0f) {
+        int idx = bodyB->worldIndex * BODY_FDATA_EPO;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_X] = pB.x + impulse_local.x * imB;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pB.y + impulse_local.y * imB;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaB + rB_curr.cross(impulse_local) * iIB;
+    }
+}

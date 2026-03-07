@@ -13,7 +13,7 @@ World::World() : collisionSolver(*this) {
     timeStep = 1.0f / 60.0f;
     invTimeStep = 60.0f;
     velocityIterations = 50;
-    positionIterations = 3;
+    positionIterations = 10;
     velocitySubSteps = 1;
     int maxSize = 10000;
     liveBodyFloatData.reserve(maxSize * BODY_FDATA_EPO);
@@ -192,6 +192,21 @@ int World::removeObject(int id) {
 
 void World::step() {
     currentPairs.clear();
+
+    // Propagate wakefulness along joints
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (auto& pair : jointsMap) {
+            Joint* j = pair.second.get();
+            if (j->bodyA->isSleeping != j->bodyB->isSleeping) {
+                if (j->bodyA->isSleeping) j->bodyA->wakeUp();
+                else j->bodyB->wakeUp();
+                changed = true;
+            }
+        }
+    }
+
     // Clear collision flags on all bodies and fixtures
     for (int i = 0; i < (int)bodiesList.size(); ++i) {
         liveBodyIntData[i * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
@@ -226,9 +241,14 @@ void World::step() {
         _doBroadPhase();
         _doNarrowPhase();
         
-        for (auto& pair : jointsMap) {
-            if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
-            pair.second->preSolve(subStepDt);
+        std::vector<Joint*> sortedJoints;
+        sortedJoints.reserve(jointsMap.size());
+        for (auto& pair : jointsMap) sortedJoints.push_back(pair.second.get());
+        std::sort(sortedJoints.begin(), sortedJoints.end(), [](Joint* a, Joint* b) { return a->id < b->id; });
+
+        for (auto* joint : sortedJoints) {
+            if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
+            joint->preSolve(subStepDt);
         }
 
         _doResolution(subStepDt, i);
@@ -238,6 +258,10 @@ void World::step() {
         for (int p = 0; p < positionIterations; ++p) {
             for (auto& c : contactConstraints) {
                 c.solvePosition();
+            }
+            for (auto* joint : sortedJoints) {
+                if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
+                joint->solvePosition();
             }
         }
         
@@ -458,16 +482,18 @@ void World::_doResolution(float dt, int substepIndex) {
     contactConstraints.clear();
     
     // Collect all bodies involved in collisions to cache their solver data
-    std::unordered_map<int, Body::SolverData> solverBodies;
+    std::vector<Body::SolverData> solverBodies(bodiesList.size());
+    std::vector<bool> solverBodyActive(bodiesList.size(), false);
     auto getSolverBody = [&](Body* b) -> Body::SolverData& {
-        auto it = solverBodies.find(b->id);
-        if (it == solverBodies.end()) {
-            solverBodies[b->id] = b->getSolverData();
-            return solverBodies[b->id];
+        int idx = b->worldIndex;
+        if (!solverBodyActive[idx]) {
+            solverBodies[idx] = b->getSolverData();
+            solverBodyActive[idx] = true;
         }
-        return it->second;
+        return solverBodies[idx];
     };
 
+    // Constraint generation
     for (auto& col : collisionSolver.collisions) {
         Fixture* fA = fixturesList[col.indexA];
         Fixture* fB = fixturesList[col.indexB];
@@ -542,21 +568,47 @@ void World::_doResolution(float dt, int substepIndex) {
     }
 
     // Fast Iterative Solver
+    // Link joints to solver data before iterations
+    std::vector<Joint*> sortedJoints;
+    sortedJoints.reserve(jointsMap.size());
+    for (auto& pair : jointsMap) {
+        sortedJoints.push_back(pair.second.get());
+    }
+    std::sort(sortedJoints.begin(), sortedJoints.end(), [](Joint* a, Joint* b) {
+        return a->id < b->id;
+    });
+
+    for (auto* joint : sortedJoints) {
+        if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
+
+        joint->context.a = &getSolverBody(joint->bodyA);
+        joint->context.b = &getSolverBody(joint->bodyB);
+
+        // Special handling for GearJoint which needs 4 bodies
+        GearJoint* gear = dynamic_cast<GearJoint*>(joint);
+        if (gear) {
+            gear->context.a = &getSolverBody(gear->joint1->bodyA);
+            gear->context.b = &getSolverBody(gear->joint1->bodyB);
+            gear->context.c = &getSolverBody(gear->joint2->bodyA);
+            gear->context.d = &getSolverBody(gear->joint2->bodyB);
+        }
+    }
+
     for (int iter = 0; iter < velocityIterations; ++iter) {
         for (auto& c : contactConstraints) {
             c.solveFast();
         }
-        // Joints still use slow path for now, but we'll optimize if needed
-        for (auto& pair : jointsMap) {
-            if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
-            pair.second->solve(); // Warning: joints still use Body data, not cached data. 
-                                  // We should sync bodies back/forth or optimize joints too.
+        for (auto* joint : sortedJoints) {
+            if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
+            joint->solveFast();
         }
     }
 
     // Sync cached data back to bodies
-    for (auto& pair : solverBodies) {
-        bodiesMap[pair.first]->setSolverData(pair.second);
+    for (int i = 0; i < (int)bodiesList.size(); ++i) {
+        if (solverBodyActive[i]) {
+            bodiesList[i]->setSolverData(solverBodies[i]);
+        }
     }
 
     // Update warm start storage only on LAST substep

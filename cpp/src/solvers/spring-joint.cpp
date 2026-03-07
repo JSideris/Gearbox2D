@@ -1,5 +1,6 @@
 #include "spring-joint.h"
 #include "body.h"
+#include "world.h"
 #include <cmath>
 
 SpringJoint::SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio)
@@ -11,11 +12,20 @@ void SpringJoint::preSolve(float dt) {
     rB = localAnchorB.rotate(bodyB->getRotation());
     Vec2 d = (bodyB->getPosition() + rB) - (bodyA->getPosition() + rA);
     float dMag = d.magnitude();
-    if (dMag > 1e-6f) {
+    if (dMag > 1e-4f) {
         normal = d / dMag;
+    } else if (hasLastNormal) {
+        normal = lastNormal;
     } else {
-        normal = Vec2(0, 0);
+        normal = Vec2(0, 1);
     }
+
+    if (hasLastNormal) {
+        impulse *= lastNormal.dot(normal);
+    }
+    lastNormal = normal;
+    hasLastNormal = true;
+
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     float rnA = rA.cross(normal), rnB = rB.cross(normal);
@@ -56,6 +66,29 @@ void SpringJoint::solve() {
     if (imB > 0.0f) { bodyB->setVelocityInternal(bodyB->getVelocity() + p * imB); bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(p) * iIB); }
 }
 
+void SpringJoint::solveFast() {
+    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
+    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
+
+    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+    float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
+    float lambda = -mass * (Cdot + bias + gamma * impulse);
+    impulse += lambda;
+    Vec2 p = normal * lambda;
+
+    if (sA.im > 0.0f) {
+        sA.v.x -= p.x * sA.im;
+        sA.v.y -= p.y * sA.im;
+        sA.w -= rA.cross(p) * sA.iI;
+    }
+    if (sB.im > 0.0f) {
+        sB.v.x += p.x * sB.im;
+        sB.v.y += p.y * sB.im;
+        sB.w += rB.cross(p) * sB.iI;
+    }
+}
+
 Vec2 SpringJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
 float SpringJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
 void SpringJoint::setLength(float l) { length = l; bodyA->wakeUp(); bodyB->wakeUp(); }
@@ -68,3 +101,58 @@ void SpringJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp(); b
 Vec2 SpringJoint::getLocalAnchorA() const { return localAnchorA; }
 void SpringJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
 Vec2 SpringJoint::getLocalAnchorB() const { return localAnchorB; }
+
+void SpringJoint::solvePosition() {
+    // For SpringJoint, we only apply position correction if it's stiff (frequencyHz > 0)
+    // or if we want to prevent extreme stretching. 
+    // Here we'll use a logic similar to DistanceJoint but only if frequencyHz > 0.
+    if (frequencyHz <= 0.0f) return;
+
+    float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
+    float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
+    if (imA + imB == 0.0f) return;
+
+    Vec2 pA = bodyA->getPosition(); float thetaA = bodyA->getRotation();
+    Vec2 pB = bodyB->getPosition(); float thetaB = bodyB->getRotation();
+
+    Vec2 rA_curr = localAnchorA.rotate(thetaA);
+    Vec2 rB_curr = localAnchorB.rotate(thetaB);
+
+    Vec2 d = (pB + rB_curr) - (pA + rA_curr);
+    float dMag = d.magnitude();
+    Vec2 normal_curr;
+    if (dMag > 1e-6f) {
+        normal_curr = d / dMag;
+    } else {
+        normal_curr = normal;
+    }
+
+    float C = dMag - length;
+    float slop = 0.008f;
+    float baumgarte = 0.2f;
+    float maxCorrection = 0.2f;
+
+    float correction = std::max(-maxCorrection, std::min(C, maxCorrection)) * baumgarte;
+    if (std::abs(correction) < slop) return;
+
+    float rnA = rA_curr.cross(normal_curr);
+    float rnB = rB_curr.cross(normal_curr);
+    float k = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
+    if (k < 1e-6f) return;
+
+    float impulse = -correction / k;
+    Vec2 P = normal_curr * impulse;
+
+    if (imA > 0.0f) {
+        int idx = bodyA->worldIndex * BODY_FDATA_EPO;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - P.x * imA;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pA.y - P.y * imA;
+        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaA - rA_curr.cross(P) * iIA;
+    }
+    if (imB > 0.0f) {
+        int idx = bodyB->worldIndex * BODY_FDATA_EPO;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_X] = pB.x + P.x * imB;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pB.y + P.y * imB;
+        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaB + rB_curr.cross(P) * iIB;
+    }
+}
