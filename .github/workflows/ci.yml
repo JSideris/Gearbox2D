@@ -71,7 +71,7 @@ jobs:
 
       - name: Build Examples Site
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        run: npm run examples:build
+        run: npm run site:build
 
       - name: Add .nojekyll
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'

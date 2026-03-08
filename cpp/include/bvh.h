@@ -37,9 +37,6 @@ struct CollisionProperties {
           velocity(0, 0) {}
     
     bool canCollideWith(const CollisionProperties& other) const {
-        // Skip fixtures belonging to the same body
-        if (bodyId != -1 && bodyId == other.bodyId) return false;
-
         // Sleeping objects don't collide with each other
         if (isSleeping && other.isSleeping) return false;
         
@@ -123,11 +120,6 @@ struct AggregatedProperties {
     }
     
     bool canPotentiallyCollideWith(const AggregatedProperties& other) const {
-        // Optimization: Skip if both subtrees only contain fixtures from the same body
-        if (bodyId != -1 && bodyId == other.bodyId && !isMultiBody && !other.isMultiBody) {
-            return false;
-        }
-
         // If both subtrees contain only sleeping objects, skip
         if (!containsAwake && !other.containsAwake) return false;
         
@@ -297,6 +289,9 @@ private:
         combinedBounds.mergeWith(newBounds);
         
         float areaIncrease = combinedBounds.getSurfaceArea();
+        if (!node->isLeaf) {
+            areaIncrease -= node->bounds.getSurfaceArea();
+        }
         
         // --- Keep existing biasing factors as secondary weights ---
         
@@ -336,10 +331,8 @@ private:
             float vDiff = (newProps.velocity - node->aggregated.avgVelocity).magnitude();
             velocityCost = vDiff * config.velocityWeight;
         }
-
-        float totalCost = areaIncrease + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
         
-        return totalCost;
+        return areaIncrease + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
     }
     
     // Find the best place to insert a new leaf

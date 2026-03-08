@@ -13,7 +13,7 @@ World::World() : collisionSolver(*this) {
     timeStep = 1.0f / 60.0f;
     invTimeStep = 60.0f;
     velocityIterations = 50;
-    positionIterations = 10;
+    positionIterations = 3;
     velocitySubSteps = 1;
     int maxSize = 10000;
     liveBodyFloatData.reserve(maxSize * BODY_FDATA_EPO);
@@ -192,21 +192,6 @@ int World::removeObject(int id) {
 
 void World::step() {
     currentPairs.clear();
-
-    // Propagate wakefulness along joints
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (auto& pair : jointsMap) {
-            Joint* j = pair.second.get();
-            if (j->bodyA->isSleeping != j->bodyB->isSleeping) {
-                if (j->bodyA->isSleeping) j->bodyA->wakeUp();
-                else j->bodyB->wakeUp();
-                changed = true;
-            }
-        }
-    }
-
     // Clear collision flags on all bodies and fixtures
     for (int i = 0; i < (int)bodiesList.size(); ++i) {
         liveBodyIntData[i * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
@@ -241,14 +226,9 @@ void World::step() {
         _doBroadPhase();
         _doNarrowPhase();
         
-        std::vector<Joint*> sortedJoints;
-        sortedJoints.reserve(jointsMap.size());
-        for (auto& pair : jointsMap) sortedJoints.push_back(pair.second.get());
-        std::sort(sortedJoints.begin(), sortedJoints.end(), [](Joint* a, Joint* b) { return a->id < b->id; });
-
-        for (auto* joint : sortedJoints) {
-            if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-            joint->preSolve(subStepDt);
+        for (auto& pair : jointsMap) {
+            if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
+            pair.second->preSolve(subStepDt);
         }
 
         _doResolution(subStepDt, i);
@@ -258,10 +238,6 @@ void World::step() {
         for (int p = 0; p < positionIterations; ++p) {
             for (auto& c : contactConstraints) {
                 c.solvePosition();
-            }
-            for (auto* joint : sortedJoints) {
-                if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-                joint->solvePosition();
             }
         }
         
@@ -348,8 +324,6 @@ void World::_doNarrowPhase() {
         Fixture* f1 = static_cast<Fixture*>(pair.first);
         Fixture* f2 = static_cast<Fixture*>(pair.second);
         
-        if (disabledPairs.count({f1->body->id, f2->body->id})) continue;
-
         bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex);
         
         // Mark as AABB collision (broadphase overlap)
@@ -484,18 +458,16 @@ void World::_doResolution(float dt, int substepIndex) {
     contactConstraints.clear();
     
     // Collect all bodies involved in collisions to cache their solver data
-    std::vector<Body::SolverData> solverBodies(bodiesList.size());
-    std::vector<bool> solverBodyActive(bodiesList.size(), false);
+    std::unordered_map<int, Body::SolverData> solverBodies;
     auto getSolverBody = [&](Body* b) -> Body::SolverData& {
-        int idx = b->worldIndex;
-        if (!solverBodyActive[idx]) {
-            solverBodies[idx] = b->getSolverData();
-            solverBodyActive[idx] = true;
+        auto it = solverBodies.find(b->id);
+        if (it == solverBodies.end()) {
+            solverBodies[b->id] = b->getSolverData();
+            return solverBodies[b->id];
         }
-        return solverBodies[idx];
+        return it->second;
     };
 
-    // Constraint generation
     for (auto& col : collisionSolver.collisions) {
         Fixture* fA = fixturesList[col.indexA];
         Fixture* fB = fixturesList[col.indexB];
@@ -570,47 +542,21 @@ void World::_doResolution(float dt, int substepIndex) {
     }
 
     // Fast Iterative Solver
-    // Link joints to solver data before iterations
-    std::vector<Joint*> sortedJoints;
-    sortedJoints.reserve(jointsMap.size());
-    for (auto& pair : jointsMap) {
-        sortedJoints.push_back(pair.second.get());
-    }
-    std::sort(sortedJoints.begin(), sortedJoints.end(), [](Joint* a, Joint* b) {
-        return a->id < b->id;
-    });
-
-    for (auto* joint : sortedJoints) {
-        if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-
-        joint->context.a = &getSolverBody(joint->bodyA);
-        joint->context.b = &getSolverBody(joint->bodyB);
-
-        // Special handling for GearJoint which needs 4 bodies
-        GearJoint* gear = dynamic_cast<GearJoint*>(joint);
-        if (gear) {
-            gear->context.a = &getSolverBody(gear->joint1->bodyA);
-            gear->context.b = &getSolverBody(gear->joint1->bodyB);
-            gear->context.c = &getSolverBody(gear->joint2->bodyA);
-            gear->context.d = &getSolverBody(gear->joint2->bodyB);
-        }
-    }
-
     for (int iter = 0; iter < velocityIterations; ++iter) {
         for (auto& c : contactConstraints) {
             c.solveFast();
         }
-        for (auto* joint : sortedJoints) {
-            if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-            joint->solveFast();
+        // Joints still use slow path for now, but we'll optimize if needed
+        for (auto& pair : jointsMap) {
+            if (pair.second->bodyA->isSleeping && pair.second->bodyB->isSleeping) continue;
+            pair.second->solve(); // Warning: joints still use Body data, not cached data. 
+                                  // We should sync bodies back/forth or optimize joints too.
         }
     }
 
     // Sync cached data back to bodies
-    for (int i = 0; i < (int)bodiesList.size(); ++i) {
-        if (solverBodyActive[i]) {
-            bodiesList[i]->setSolverData(solverBodies[i]);
-        }
+    for (auto& pair : solverBodies) {
+        bodiesMap[pair.first]->setSolverData(pair.second);
     }
 
     // Update warm start storage only on LAST substep
@@ -639,7 +585,6 @@ void World::_doResolution(float dt, int substepIndex) {
 
 void World::clear() {
     jointsMap.clear();
-    disabledPairs.clear();
     currentPairs.clear();
     prevPairs.clear();
     bodyContactCounts.clear();
@@ -737,7 +682,6 @@ void World::addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB,
 int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY) {
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
-    disabledPairs.insert({bodyAId, bodyBId});
     jointsMap[id] = std::make_unique<HingeJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY));
     return id;
 }
@@ -745,7 +689,6 @@ int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, fl
 int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length) {
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
-    disabledPairs.insert({bodyAId, bodyBId});
     jointsMap[id] = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
     return id;
 }
@@ -753,7 +696,6 @@ int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX,
 int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length, float frequencyHz, float dampingRatio) {
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
-    disabledPairs.insert({bodyAId, bodyBId});
     jointsMap[id] = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
     return id;
 }
@@ -796,8 +738,21 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float forceVn = (b->forceVelocity - a->forceVelocity).dot(normal);
     float relativeVn = vn - forceVn;
 
+    // --- High-Fidelity Kinematic Energy Compensation ---
+    Vec2 grav = a->world.getGravity();
+    float gMag = grav.magnitude();
+    
     if (enableRestitution && relativeVn < -0.1f) {
-        bias = -restitution * (-relativeVn);
+        float targetBounceSpeed = restitution * (-relativeVn);
+        
+        if (gMag > 0.0001f && enablePenetration && depth > 0.004f) {
+            Vec2 gDir = grav / gMag;
+            float lift = (imA - imB) * normal.dot(gDir) * (depth - 0.004f) * 0.2f / (imA + imB);
+            float speedSq = targetBounceSpeed * targetBounceSpeed;
+            float compensatedSpeedSq = speedSq - 2.0f * gMag * lift;
+            targetBounceSpeed = std::sqrt(std::max(0.0f, compensatedSpeedSq));
+        }
+        bias = -targetBounceSpeed;
     } else {
         bias = 0.0f;
     }
@@ -816,7 +771,6 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float thetaA = a->getRotation();
     float cA = std::cos(-thetaA), sA = std::sin(-thetaA);
     localAnchorA = Vec2(rA.x * cA - rA.y * sA, rA.x * sA + rA.y * cA);
-    localNormalA = Vec2(normal.x * cA - normal.y * sA, normal.x * sA + normal.y * cA);
 
     float thetaB = b->getRotation();
     float cB = std::cos(-thetaB), sB = std::sin(-thetaB);
@@ -931,23 +885,22 @@ void ContactConstraint::solvePosition() {
     Vec2 pB = b->getPosition(); float thetaB = b->getRotation();
     float cA = std::cos(thetaA), sA = std::sin(thetaA);
     Vec2 rA_curr(localAnchorA.x * cA - localAnchorA.y * sA, localAnchorA.x * sA + localAnchorA.y * cA);
-    Vec2 normal_curr(localNormalA.x * cA - localNormalA.y * sA, localNormalA.x * sA + localNormalA.y * cA);
     float cB = std::cos(thetaB), sB = std::sin(thetaB);
     Vec2 rB_curr(localAnchorB.x * cB - localAnchorB.y * sB, localAnchorB.x * sB + localAnchorB.y * cB);
     Vec2 separation_vec = (pB + rB_curr) - (pA + rA_curr);
-    float current_depth = depth - separation_vec.dot(normal_curr);
-    float slop = 0.008f;
+    float current_depth = depth - separation_vec.dot(normal);
+    float slop = 0.004f;
     if (current_depth <= slop) return;
 
     float baumgarte = 0.2f;
     float maxCorrection = 0.2f;
     float correction = std::min(current_depth - slop, maxCorrection) * baumgarte;
-    float rnA = rA_curr.x * normal_curr.y - rA_curr.y * normal_curr.x;
-    float rnB = rB_curr.x * normal_curr.y - rB_curr.y * normal_curr.x;
+    float rnA = rA_curr.x * normal.y - rA_curr.y * normal.x;
+    float rnB = rB_curr.x * normal.y - rB_curr.y * normal.x;
     float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
     if (kNormal < 0.00001f) return;
     float impulse = correction / kNormal;
-    Vec2 P = normal_curr * impulse;
+    Vec2 P = normal * impulse;
     if (imA > 0) {
         int idx = a->worldIndex * BODY_FDATA_EPO;
         a->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - P.x * imA;
