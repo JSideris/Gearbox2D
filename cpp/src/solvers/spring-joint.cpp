@@ -91,15 +91,15 @@ void SpringJoint::solveFast() {
 
 Vec2 SpringJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
 float SpringJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
-void SpringJoint::setLength(float l) { length = l; bodyA->wakeUp(); bodyB->wakeUp(); }
+void SpringJoint::setLength(float l) { length = l; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 float SpringJoint::getLength() const { return length; }
-void SpringJoint::setFrequencyHz(float f) { frequencyHz = f; bodyA->wakeUp(); bodyB->wakeUp(); }
+void SpringJoint::setFrequencyHz(float f) { frequencyHz = f; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 float SpringJoint::getFrequencyHz() const { return frequencyHz; }
-void SpringJoint::setDampingRatio(float d) { dampingRatio = d; bodyA->wakeUp(); bodyB->wakeUp(); }
+void SpringJoint::setDampingRatio(float d) { dampingRatio = d; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 float SpringJoint::getDampingRatio() const { return dampingRatio; }
-void SpringJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp(); bodyB->wakeUp(); }
+void SpringJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 SpringJoint::getLocalAnchorA() const { return localAnchorA; }
-void SpringJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
+void SpringJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 SpringJoint::getLocalAnchorB() const { return localAnchorB; }
 
 void SpringJoint::solvePosition() {
@@ -130,9 +130,12 @@ void SpringJoint::solvePosition() {
     float C = dMag - length;
     float slop = 0.008f;
     float baumgarte = 0.2f;
-    float maxCorrection = 0.2f;
+    float maxCorrection = 2.0f;
 
-    float correction = std::max(-maxCorrection, std::min(C, maxCorrection)) * baumgarte;
+    float correction = C * baumgarte;
+    if (std::abs(correction) > maxCorrection) {
+        correction = (correction > 0) ? maxCorrection : -maxCorrection;
+    }
     if (std::abs(correction) < slop) return;
 
     float rnA = rA_curr.cross(normal_curr);

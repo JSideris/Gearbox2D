@@ -67,7 +67,7 @@ void GearJoint::solveFast() {
 
 Vec2 GearJoint::getReactionForce(float inv_dt) const { return Vec2(0, 0); }
 float GearJoint::getReactionTorque(float inv_dt) const { return impulse * inv_dt; }
-void GearJoint::setRatio(float r) { ratio = r; joint1->bodyB->wakeUp(); joint2->bodyB->wakeUp(); }
+void GearJoint::setRatio(float r) { ratio = r; joint1->bodyB->forceWakeUp(); joint2->bodyB->forceWakeUp(); }
 float GearJoint::getRatio() const { return ratio; }
 bool GearJoint::isConnectedTo(Body* body) const {
     return joint1->bodyA == body || joint1->bodyB == body || joint2->bodyA == body || joint2->bodyB == body;

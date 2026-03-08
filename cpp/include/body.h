@@ -91,6 +91,7 @@ public:
     bool integratePositions(float dt);
     void sleep();
     void wakeUp();
+    void forceWakeUp();
     void addContact(Body* other);
     void removeContact(Body* other);
     int getContactCount() const { return (int)contacts.size(); }

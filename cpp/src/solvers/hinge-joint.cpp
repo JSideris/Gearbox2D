@@ -77,9 +77,9 @@ void HingeJoint::solveFast() {
 
 Vec2 HingeJoint::getReactionForce(float inv_dt) const { return impulse * inv_dt; }
 float HingeJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
-void HingeJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp(); bodyB->wakeUp(); }
+void HingeJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 HingeJoint::getLocalAnchorA() const { return localAnchorA; }
-void HingeJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
+void HingeJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 HingeJoint::getLocalAnchorB() const { return localAnchorB; }
 
 void HingeJoint::solvePosition() {
@@ -96,11 +96,16 @@ void HingeJoint::solvePosition() {
     Vec2 C = (pB + rB_curr) - (pA + rA_curr);
     float slop = 0.008f;
     float baumgarte = 0.2f;
+    float maxCorrection = 2.0f;
 
     float Cmag = C.magnitude();
     if (Cmag < slop) return;
 
     Vec2 correction = C * baumgarte;
+    float corrMag = correction.magnitude();
+    if (corrMag > maxCorrection) {
+        correction = (correction / corrMag) * maxCorrection;
+    }
 
     float k00 = imA + imB + iIA * rA_curr.y * rA_curr.y + iIB * rB_curr.y * rB_curr.y;
     float k01 = -iIA * rA_curr.x * rA_curr.y - iIB * rB_curr.x * rB_curr.y;

@@ -91,11 +91,11 @@ void DistanceJoint::solveFast() {
 
 Vec2 DistanceJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
 float DistanceJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
-void DistanceJoint::setLength(float l) { length = l; bodyA->wakeUp(); bodyB->wakeUp(); }
+void DistanceJoint::setLength(float l) { length = l; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 float DistanceJoint::getLength() const { return length; }
-void DistanceJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp(); bodyB->wakeUp(); }
+void DistanceJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 DistanceJoint::getLocalAnchorA() const { return localAnchorA; }
-void DistanceJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
+void DistanceJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 DistanceJoint::getLocalAnchorB() const { return localAnchorB; }
 
 void DistanceJoint::solvePosition() {
@@ -120,11 +120,15 @@ void DistanceJoint::solvePosition() {
 
     float C = dMag - length;
     float slop = 0.008f;
-    float baumgarte = 0.1f; // Reverted to 0.1
+    float baumgarte = 0.2f;
+    float maxCorrection = 2.0f;
 
     if (std::abs(C) < slop) return;
 
     float correction = C * baumgarte;
+    if (std::abs(correction) > maxCorrection) {
+        correction = (correction > 0) ? maxCorrection : -maxCorrection;
+    }
 
     float rnA = rA_curr.cross(normal_curr);
     float rnB = rB_curr.cross(normal_curr);

@@ -40,7 +40,7 @@ struct ContactConstraint {
     float normalImpulse, frictionImpulse;
     ContactID id;
     
-    Vec2 localAnchorA, localAnchorB;
+    Vec2 localAnchorA, localAnchorB, localNormalA;
 
     void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
     void solve(bool enableNormal, bool enableFriction);
@@ -117,6 +117,7 @@ private:
     std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual> bodyContactCounts;
     std::unordered_map<std::pair<int, int>, float, PairHash, PairEqual> resolvedImpulses;
     std::unordered_map<std::pair<int, int>, WarmStartData, PairHash, PairEqual> warmStartImpulses;
+    std::unordered_set<std::pair<int, int>, PairHash, PairEqual> disabledPairs;
 
     void _clearContactTracking();
     void _maybePruneBodyContactCounts();

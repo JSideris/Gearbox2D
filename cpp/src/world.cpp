@@ -348,6 +348,8 @@ void World::_doNarrowPhase() {
         Fixture* f1 = static_cast<Fixture*>(pair.first);
         Fixture* f2 = static_cast<Fixture*>(pair.second);
         
+        if (disabledPairs.count({f1->body->id, f2->body->id})) continue;
+
         bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex);
         
         // Mark as AABB collision (broadphase overlap)
@@ -637,6 +639,7 @@ void World::_doResolution(float dt, int substepIndex) {
 
 void World::clear() {
     jointsMap.clear();
+    disabledPairs.clear();
     currentPairs.clear();
     prevPairs.clear();
     bodyContactCounts.clear();
@@ -734,6 +737,7 @@ void World::addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB,
 int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY) {
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
+    disabledPairs.insert({bodyAId, bodyBId});
     jointsMap[id] = std::make_unique<HingeJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY));
     return id;
 }
@@ -741,6 +745,7 @@ int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, fl
 int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length) {
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
+    disabledPairs.insert({bodyAId, bodyBId});
     jointsMap[id] = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
     return id;
 }
@@ -748,6 +753,7 @@ int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX,
 int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY, float length, float frequencyHz, float dampingRatio) {
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
+    disabledPairs.insert({bodyAId, bodyBId});
     jointsMap[id] = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
     return id;
 }
@@ -790,21 +796,8 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float forceVn = (b->forceVelocity - a->forceVelocity).dot(normal);
     float relativeVn = vn - forceVn;
 
-    // --- High-Fidelity Kinematic Energy Compensation ---
-    Vec2 grav = a->world.getGravity();
-    float gMag = grav.magnitude();
-    
     if (enableRestitution && relativeVn < -0.1f) {
-        float targetBounceSpeed = restitution * (-relativeVn);
-        
-        if (gMag > 0.0001f && enablePenetration && depth > 0.004f) {
-            Vec2 gDir = grav / gMag;
-            float lift = (imA - imB) * normal.dot(gDir) * (depth - 0.004f) * 0.2f / (imA + imB);
-            float speedSq = targetBounceSpeed * targetBounceSpeed;
-            float compensatedSpeedSq = speedSq - 2.0f * gMag * lift;
-            targetBounceSpeed = std::sqrt(std::max(0.0f, compensatedSpeedSq));
-        }
-        bias = -targetBounceSpeed;
+        bias = -restitution * (-relativeVn);
     } else {
         bias = 0.0f;
     }
@@ -823,6 +816,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float thetaA = a->getRotation();
     float cA = std::cos(-thetaA), sA = std::sin(-thetaA);
     localAnchorA = Vec2(rA.x * cA - rA.y * sA, rA.x * sA + rA.y * cA);
+    localNormalA = Vec2(normal.x * cA - normal.y * sA, normal.x * sA + normal.y * cA);
 
     float thetaB = b->getRotation();
     float cB = std::cos(-thetaB), sB = std::sin(-thetaB);
@@ -937,22 +931,23 @@ void ContactConstraint::solvePosition() {
     Vec2 pB = b->getPosition(); float thetaB = b->getRotation();
     float cA = std::cos(thetaA), sA = std::sin(thetaA);
     Vec2 rA_curr(localAnchorA.x * cA - localAnchorA.y * sA, localAnchorA.x * sA + localAnchorA.y * cA);
+    Vec2 normal_curr(localNormalA.x * cA - localNormalA.y * sA, localNormalA.x * sA + localNormalA.y * cA);
     float cB = std::cos(thetaB), sB = std::sin(thetaB);
     Vec2 rB_curr(localAnchorB.x * cB - localAnchorB.y * sB, localAnchorB.x * sB + localAnchorB.y * cB);
     Vec2 separation_vec = (pB + rB_curr) - (pA + rA_curr);
-    float current_depth = depth - separation_vec.dot(normal);
+    float current_depth = depth - separation_vec.dot(normal_curr);
     float slop = 0.008f;
     if (current_depth <= slop) return;
 
     float baumgarte = 0.2f;
     float maxCorrection = 0.2f;
     float correction = std::min(current_depth - slop, maxCorrection) * baumgarte;
-    float rnA = rA_curr.x * normal.y - rA_curr.y * normal.x;
-    float rnB = rB_curr.x * normal.y - rB_curr.y * normal.x;
+    float rnA = rA_curr.x * normal_curr.y - rA_curr.y * normal_curr.x;
+    float rnB = rB_curr.x * normal_curr.y - rB_curr.y * normal_curr.x;
     float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
     if (kNormal < 0.00001f) return;
     float impulse = correction / kNormal;
-    Vec2 P = normal * impulse;
+    Vec2 P = normal_curr * impulse;
     if (imA > 0) {
         int idx = a->worldIndex * BODY_FDATA_EPO;
         a->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - P.x * imA;

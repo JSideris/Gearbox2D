@@ -354,12 +354,13 @@ export const stressTestExamples = [
         }
     }),
     new Example({
-        name: "⚠ Ragdoll",
+        name: "Ragdoll",
         key: "ragdoll",
         description: "A draggable ragdoll made of boxes and circles connected by HingeJoints. Click and drag to interact.",
         onInit: (world) => {
             world.clear();
             world.setGravity(0, 10);
+            gearbox.debug.showAabbs = false;
             nextId = 1;
 
             // Ground
@@ -468,6 +469,7 @@ export const stressTestExamples = [
         onInit: (world) => {
             world.clear();
             world.setGravity(0, 10);
+            gearbox.debug.showAabbs = false;
             nextId = 1;
 
             const cx = 5, cy = 1;
