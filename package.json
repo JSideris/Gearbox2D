@@ -1,6 +1,6 @@
 {
   "name": "gearbox2d",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A 2D physics engine with TypeScript interface and WebAssembly core",
   "main": "dist/js/gearbox.js",
   "types": "dist/js/gearbox.d.ts",
