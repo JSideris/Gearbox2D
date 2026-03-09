@@ -6,7 +6,7 @@ let nextId = 1;
 
 export const optimizationExamples = [
     new Example({
-        name: "⚠ Sleep and Islands",
+        name: "Sleep and Islands",
         key: "sleep-and-islands",
         description: [
             "**Sleep** optimization in **Gearbox2D** uses a movement-based heuristic computed during the kinematics step.",
