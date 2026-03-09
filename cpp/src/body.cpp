@@ -260,6 +260,16 @@ void Body::wakeUp() {
     }
 }
 
+void Body::forceWakeUp() {
+    sleepTimer = 0;
+    wakeUp();
+    if (!isSleeping) {
+        // If it was already awake, wakeUp() did nothing, 
+        // but we still want to make sure it stays awake for another full second
+        sleepTimer = 0;
+    }
+}
+
 void Body::addContact(Body* other) {
     for (auto* c : contacts) if (c == other) return;
     contacts.push_back(other);

@@ -314,7 +314,7 @@ export const stressTestExamples = [
         }
     }),
     new Example({
-        name: "⚠ Mass Ratio",
+        name: "Mass Ratio",
         key: "mass-ratio",
         description: "A classic physics engine test: a very heavy object (mass 100) resting on a very light one (mass 0.1).",
         onInit: (world) => {
@@ -354,12 +354,13 @@ export const stressTestExamples = [
         }
     }),
     new Example({
-        name: "⚠ Ragdoll",
+        name: "Ragdoll",
         key: "ragdoll",
         description: "A draggable ragdoll made of boxes and circles connected by HingeJoints. Click and drag to interact.",
         onInit: (world) => {
             world.clear();
             world.setGravity(0, 10);
+            gearbox.debug.showAabbs = false;
             nextId = 1;
 
             // Ground
@@ -462,12 +463,13 @@ export const stressTestExamples = [
         }
     }),
     new Example({
-        name: "⚠ 20-Segment Chain",
+        name: "20-Segment Chain",
         key: "chain",
         description: "A 20-segment chain suspended from a fixed point using DistanceJoints.",
         onInit: (world) => {
             world.clear();
             world.setGravity(0, 10);
+            gearbox.debug.showAabbs = false;
             nextId = 1;
 
             const cx = 5, cy = 1;
@@ -475,16 +477,19 @@ export const stressTestExamples = [
             const segW = 0.4, segH = 0.15;
 
             const anchor = world.makeBody(nextId++, {
-                x: cx, y: cy,
+                x: cx, y: cy+ (Math.random() - 0.5) * 0.1,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#444"
             });
             anchor.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.1 });
 
+            let randomness = 0;
+            randomness = + (Math.random() - 0.5) * 0.00001;
+
             let lastBody = anchor;
             for (let i = 0; i < segments; i++) {
                 const body = world.makeBody(nextId++, {
-                    x: cx, y: cy + (i + 1) * segW,
+                    x: cx + randomness, y: cy + (i + 1) * segW,
                     mass: 0.2,
                     color: i % 2 === 0 ? "#60a5fa" : "#3b82f6"
                 });

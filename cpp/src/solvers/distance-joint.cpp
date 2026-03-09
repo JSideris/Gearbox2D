@@ -91,11 +91,11 @@ void DistanceJoint::solveFast() {
 
 Vec2 DistanceJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
 float DistanceJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
-void DistanceJoint::setLength(float l) { length = l; bodyA->wakeUp(); bodyB->wakeUp(); }
+void DistanceJoint::setLength(float l) { length = l; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 float DistanceJoint::getLength() const { return length; }
-void DistanceJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->wakeUp(); bodyB->wakeUp(); }
+void DistanceJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 DistanceJoint::getLocalAnchorA() const { return localAnchorA; }
-void DistanceJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->wakeUp(); bodyB->wakeUp(); }
+void DistanceJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 DistanceJoint::getLocalAnchorB() const { return localAnchorB; }
 
 void DistanceJoint::solvePosition() {
