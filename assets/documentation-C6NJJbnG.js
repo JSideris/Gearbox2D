@@ -225,7 +225,7 @@ gameWorld.setGravity(0, 9.81);
 uiWorld.setGravity(0, 0);gameWorld.step();
 uiWorld.step();
 \`\`\`
-`,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),B=`# Broad Phase
+`,A=Object.freeze(Object.defineProperty({__proto__:null,default:S},Symbol.toStringTag,{value:"Module"})),T=`# Broad Phase
 
 Gearbox2D uses a Dynamic Bounding Volume Hierarchy (BVH) for its broad phase collision detection. To maximize performance, the BVH employs several "logical biasing" techniques during object insertion. These heuristics encourage objects with similar physical properties to cluster together, allowing the engine to prune entire subtrees of potential collisions early in the detection process.
 
@@ -263,7 +263,7 @@ Objects moving in similar directions or at similar speeds are encouraged to clus
 ## Experimental Tuning
 
 All bias weights are internally adjustable, allowing for fine-grained performance tuning based on the specific needs of a simulation (e.g., high body counts vs. high particle counts).
-`,T=Object.freeze(Object.defineProperty({__proto__:null,default:B},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
+`,B=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),C=`# Collision Filtering
 TODO
 
 `,I=Object.freeze(Object.defineProperty({__proto__:null,default:C},Symbol.toStringTag,{value:"Module"})),O=`# Narrow Phase
@@ -1319,10 +1319,29 @@ TODO
 `,_e=Object.freeze(Object.defineProperty({__proto__:null,default:je},Symbol.toStringTag,{value:"Module"})),Se=`# Supported Shapes
 TODO
 
-`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Be=`# Planned Shapes
+`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Planned Shapes
 TODO
 
-`,Te=Object.freeze(Object.defineProperty({__proto__:null,default:Be},Symbol.toStringTag,{value:"Module"})),Ce=`# Plan:
+`,Be=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Ce=`# Plan:
+
+## Solvers & Physics Loop
+- [x] High-level physics loop implementation (\`step\`).
+	- [x] Substepping (Velocity Substeps).
+	- [x] Velocity Integration.
+	- [x] Position Integration.
+- [x] **Collision Solver** (Geometric Narrow Phase).
+	- [x] Geometric intersection tests.
+	- [x] Contact manifold generation (Point, Normal, Depth).
+- [x] **Velocity Solver** (Sequential Impulse).
+	- [x] Iterative solver for contact constraints.
+	- [x] Friction resolution (Static & Kinetic).
+	- [x] Warmstarting.
+- [x] **Position Solver** (Non-linear Gauss-Seidel).
+	- [x] Iterative penetration resolution.
+	- [x] Baumgarte stabilization (with multi-fixture scaling).
+- [x] **Joint Solver**.
+	- [x] Pre-solve and solve phases.
+	- [x] Integration with global iterative solver.
 
 ## Shapes, Kinematics, Collisions
 - [x] Setup and test Rust w/ web assembly target.
@@ -1346,7 +1365,7 @@ TODO
 - [x] Composite objects (Multi-fixture bodies).
 - [x] Add rotations.
 - [x] Compute/track AABB for each object.
-- [x] Implement VBH.
+- [x] Implement BVH.
 - [x] Implement broad phase collision detection using BVH.
 - [x] Implement narrow phase collision detection.
 	- [x] AABB-AABB.
@@ -1360,13 +1379,6 @@ TODO
 	- [ ] Circle-Capsule.
 	- [x] Circle-Circle.
 	- [ ] Convex-AABB.
-	- [ ] Convex-Box.
-	- [ ] Convex-Capsule.
-	- [ ] Convex-Circle.
-	- [ ] Convex-Convex.
-	- [ ] Concave-AABB.
-	- [ ] Concave-Box.
-	- [ ] Concave-Capsule. 
 	- [ ] Ellipse-Convex.
 	- [ ] Ellipse-Ellipse.
 	- [ ] Line-AABB.
@@ -1388,9 +1400,19 @@ TODO
 	- [x] Point-Point.
 	- [ ] Convave polygons?
 - [x] Collision resolvers.
-	- [x] Penetration resolution.
-	- [x] Collision impulse.
-	- [x] Collision friction.
+	- [x] **Collision Solver** (Geometric Narrow Phase).
+		- [x] Geometric intersection tests.
+		- [x] Contact manifold generation (Point, Normal, Depth).
+	- [x] **Velocity Solver** (Sequential Impulse).
+		- [x] Iterative solver for contact constraints.
+		- [x] Friction resolution (Static & Kinetic).
+		- [x] Warmstarting.
+	- [x] **Position Solver** (Non-linear Gauss-Seidel).
+		- [x] Iterative penetration resolution.
+		- [x] Baumgarte stabilization (with multi-fixture scaling).
+	- [x] **Joint Solver**.
+		- [x] Pre-solve and solve phases.
+		- [x] Integration with global iterative solver.
 - [x] Implement collision events.
 	- [X] Body-body collision events.
 	- [X] Fixture-fixture collision events.
@@ -1424,7 +1446,7 @@ TODO
 - [x] Support changing the center of mass.
 - [x] Live data buffers (Direct Wasm/TS memory mapping).
 - [x] Per-fixture material properties (Friction, Restitution, Density).
-- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization.
+- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization (optional).
 
 
 ## Events
@@ -1454,6 +1476,7 @@ TODO
 - [x] Cache inverse dt.
 - [x] Cache exponential decay factor when dt is set.
 - [x] Implement collision masks.
+- [X] Warmstarting.
 - [ ] Focus areas & resolution.
 
 ### High-Fidelity Optimizations
@@ -1482,7 +1505,7 @@ TODO
 
 ### Sleep Optimizations
 - [x] Sleeping objects.
-- [X] Islands.
+- [ ] Islands.
 - [x] Shrinkwrap AABB on sleep.
 - [ ] Experimental: Separate vectors for sleeping/awake objects.
 - [ ] Experimental: Re-insert into BVH upon sleep.
@@ -1515,7 +1538,5 @@ TODO
 - [ ] Collision Prediction / Danger Maps (optional)
 
 ## Known Issues
-- Piles of objects don't go to sleep as easily as they should (regression).
-- Sleep island example exhibits some solver flaws - objects collapsing into each other, etc (regression).
-- Spring joints can't be adjusted at runtime - see the commented-out spring test case.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Ce},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":T,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":F,"../docs/events.md":M,"../docs/first-simulation.md":z,"../docs/game-loop.md":J,"../docs/graphics-debug.md":G,"../docs/installation.md":q,"../docs/interaction-queries.md":X,"../docs/introduction.md":$,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":he,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Te,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
+- Spring joints can't be adjusted at runtime - see the commented-out spring test case.`,Ie=Object.freeze(Object.defineProperty({__proto__:null,default:Ce},Symbol.toStringTag,{value:"Module"})),Oe=Object.assign({"../docs/structure.md":p})["../docs/structure.md"].default,c=Object.assign({"../docs/api-reference.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":_,"../docs/architecture-world.md":A,"../docs/collision-broad-phase.md":B,"../docs/collision-filtering.md":I,"../docs/collision-narrow-phase.md":k,"../docs/core-concepts.md":D,"../docs/development.md":F,"../docs/events.md":M,"../docs/first-simulation.md":z,"../docs/game-loop.md":J,"../docs/graphics-debug.md":G,"../docs/installation.md":q,"../docs/interaction-queries.md":X,"../docs/introduction.md":$,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/objects-body-types.md":re,"../docs/objects-lifecycle.md":ce,"../docs/objects-properties.md":pe,"../docs/objects-state.md":he,"../docs/performance-optimizations.md":ge,"../docs/performance-tips.md":be,"../docs/planned-ai-pathfinding.md":ve,"../docs/planned-ccd.md":xe,"../docs/planned-fluid-dynamics.md":_e,"../docs/shapes-current.md":Ae,"../docs/shapes-planned.md":Be,"../docs/structure.md":p,"../plan.md":Ie});function ke(n){const o=n.split(`
 `),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const u=ke(Oe),d=document.getElementById("docs-list"),Pe=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){u.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function h(){const n=window.location.hash.substring(1),o=n?`${n}.md`:u[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Pe.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=y.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(g=>g.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",h);De();h();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),m=document.getElementById("sidebar-toggle");m.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!m.contains(n.target)&&a.classList.add("collapsed")});
