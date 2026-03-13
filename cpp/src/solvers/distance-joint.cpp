@@ -42,7 +42,21 @@ void DistanceJoint::preSolve(float dt) {
     lastNormal = normal;
     hasLastNormal = true;
 
-    bias = (dMag - length) * (0.2f / dt);
+    float C = dMag - length;
+    float beta = 0.2f;
+    float vB = beta * C / dt;
+    
+    // Kinematic Restitution Balancing (KRB) for Distance Joint
+    // Component A: Force Velocity Compensation
+    float forceVn = (bodyB->forceVelocity - bodyA->forceVelocity).dot(normal);
+    
+    // Component B: Kinematic Energy Balancing (The "Joint Tax")
+    // We adjust the bias velocity to account for work done by external forces over the correction displacement.
+    float accVn = forceVn / dt;
+    float workTerm = 2.0f * accVn * (beta * C);
+    float vB_balanced_sq = vB * vB - workTerm;
+    
+    bias = (C > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vB_balanced_sq));
 
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);

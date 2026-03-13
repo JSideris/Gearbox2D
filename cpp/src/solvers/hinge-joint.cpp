@@ -31,7 +31,19 @@ void HingeJoint::preSolve(float dt) {
     }
     Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
     Vec2 C = (posB + rB) - (posA + rA);
-    bias = C * (0.2f / dt);
+    
+    // Kinematic Restitution Balancing (KRB) for Hinge Joint
+    // We apply the "Joint Tax" to the Baumgarte bias component-wise.
+    float beta = 0.2f;
+    Vec2 vB = C * (beta / dt);
+    Vec2 forceVelDiff = bodyB->forceVelocity - bodyA->forceVelocity;
+    Vec2 accExt = forceVelDiff / dt;
+    
+    float vBx_balanced_sq = vB.x * vB.x - 2.0f * accExt.x * (beta * C.x);
+    float vBy_balanced_sq = vB.y * vB.y - 2.0f * accExt.y * (beta * C.y);
+    
+    bias.x = (C.x > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vBx_balanced_sq));
+    bias.y = (C.y > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vBy_balanced_sq));
     
     bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
