@@ -34,13 +34,18 @@ void HingeJoint::preSolve(float dt) {
     
     // Kinematic Restitution Balancing (KRB) for Hinge Joint
     // We apply the "Joint Tax" to the Baumgarte bias component-wise.
-    float beta = 0.2f;
-    Vec2 vB = C * (beta / dt);
+    Vec2 vB = C * (BAUMGARTE_FACTOR / dt);
     Vec2 forceVelDiff = bodyB->forceVelocity - bodyA->forceVelocity;
     Vec2 accExt = forceVelDiff / dt;
     
-    float vBx_balanced_sq = vB.x * vB.x - 2.0f * accExt.x * (beta * C.x);
-    float vBy_balanced_sq = vB.y * vB.y - 2.0f * accExt.y * (beta * C.y);
+    // Cumulative correction over position iterations: 1 - (1 - beta)^n
+    int n = bodyA->world.getPositionIterations();
+    float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
+    float totalDisplacementX = C.x * cumulativeCorrectionFactor;
+    float totalDisplacementY = C.y * cumulativeCorrectionFactor;
+
+    float vBx_balanced_sq = vB.x * vB.x - 2.0f * accExt.x * totalDisplacementX;
+    float vBy_balanced_sq = vB.y * vB.y - 2.0f * accExt.y * totalDisplacementY;
     
     bias.x = (C.x > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vBx_balanced_sq));
     bias.y = (C.y > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vBy_balanced_sq));
@@ -110,14 +115,12 @@ void HingeJoint::solvePosition() {
     Vec2 rB_curr = localAnchorB.rotate(thetaB);
 
     Vec2 C = (pB + rB_curr) - (pA + rA_curr);
-    float slop = 0.008f;
-    float baumgarte = 0.2f;
     float maxCorrection = 0.2f;
 
     float Cmag = C.magnitude();
-    if (Cmag < slop) return;
+    if (Cmag < PENETRATION_SLOP) return;
 
-    Vec2 correction = C * baumgarte;
+    Vec2 correction = C * BAUMGARTE_FACTOR;
     float corrMag = correction.magnitude();
     if (corrMag > maxCorrection) {
         correction = (correction / corrMag) * maxCorrection;

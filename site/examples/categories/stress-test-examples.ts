@@ -226,7 +226,7 @@ export const stressTestExamples = [
                     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: 2,
                     linearDamping: 0.0,
-                    angularDamping: 0.5,
+                    angularDamping: 0.0,
                 }).addFixture({
                     shape: gearbox.shapes.POINT,
                     radius: .05,

@@ -37,6 +37,11 @@
 #define BODY_FDATA_ERR_ACC_X 26
 #define BODY_FDATA_ERR_ACC_R 27 // Combined X/Y and R
 
+// --- Solver Constants ---
+#define BAUMGARTE_FACTOR 0.2f
+#define PENETRATION_SLOP 0.008f
+#define RESTITUTION_THRESHOLD 0.01f
+
 // --- Fixture Data Layout ---
 #define FIXTURE_IDATA_EPO 6
 #define FIXTURE_IDATA_ID 0
