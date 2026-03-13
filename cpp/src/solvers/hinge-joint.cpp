@@ -30,6 +30,8 @@ void HingeJoint::preSolve(float dt) {
         massMatrix[0][0] = massMatrix[0][1] = massMatrix[1][0] = massMatrix[1][1] = 0.0f;
     }
     Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
+    Vec2 C = (posB + rB) - (posA + rA);
+    bias = C * (0.2f / dt);
     
     bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
@@ -43,7 +45,8 @@ void HingeJoint::solve() {
     Vec2 vrA(-bodyA->getAngularVelocity() * rA.y, bodyA->getAngularVelocity() * rA.x);
     Vec2 vrB(-bodyB->getAngularVelocity() * rB.y, bodyB->getAngularVelocity() * rB.x);
     Vec2 Cdot = (bodyB->getVelocity() + vrB) - (bodyA->getVelocity() + vrA);
-    Vec2 lambda(-(massMatrix[0][0] * Cdot.x + massMatrix[0][1] * Cdot.y), -(massMatrix[1][0] * Cdot.x + massMatrix[1][1] * Cdot.y));
+    Vec2 lambda(-(massMatrix[0][0] * (Cdot.x + bias.x) + massMatrix[0][1] * (Cdot.y + bias.y)), 
+                -(massMatrix[1][0] * (Cdot.x + bias.x) + massMatrix[1][1] * (Cdot.y + bias.y)));
     if (std::isfinite(lambda.x) && std::isfinite(lambda.y)) {
         impulse = impulse + lambda;
         if (imA > 0.0f) { bodyA->setVelocityInternal(bodyA->getVelocity() - lambda * imA); bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(lambda) * iIA); }
@@ -58,7 +61,8 @@ void HingeJoint::solveFast() {
     Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
     Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
     Vec2 Cdot = (sB.v + vrB) - (sA.v + vrA);
-    Vec2 lambda(-(massMatrix[0][0] * Cdot.x + massMatrix[0][1] * Cdot.y), -(massMatrix[1][0] * Cdot.x + massMatrix[1][1] * Cdot.y));
+    Vec2 lambda(-(massMatrix[0][0] * (Cdot.x + bias.x) + massMatrix[0][1] * (Cdot.y + bias.y)), 
+                -(massMatrix[1][0] * (Cdot.x + bias.x) + massMatrix[1][1] * (Cdot.y + bias.y)));
 
     if (std::isfinite(lambda.x) && std::isfinite(lambda.y)) {
         impulse = impulse + lambda;
@@ -96,7 +100,7 @@ void HingeJoint::solvePosition() {
     Vec2 C = (pB + rB_curr) - (pA + rA_curr);
     float slop = 0.008f;
     float baumgarte = 0.2f;
-    float maxCorrection = 2.0f;
+    float maxCorrection = 0.2f;
 
     float Cmag = C.magnitude();
     if (Cmag < slop) return;

@@ -42,7 +42,7 @@ void DistanceJoint::preSolve(float dt) {
     lastNormal = normal;
     hasLastNormal = true;
 
-    float C = dMag - length;
+    bias = (dMag - length) * (0.2f / dt);
 
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
@@ -56,7 +56,7 @@ void DistanceJoint::solve() {
     float wA = bodyA->getAngularVelocity(), wB = bodyB->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     float Cdot = (vB + vrB - (vA + vrA)).dot(normal);
-    float lambda = -mass * Cdot;
+    float lambda = -mass * (Cdot + bias);
     impulse += lambda;
     Vec2 p = normal * lambda;
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
@@ -72,7 +72,7 @@ void DistanceJoint::solveFast() {
     Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
     Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
     float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
-    float lambda = -mass * Cdot;
+    float lambda = -mass * (Cdot + bias);
 
     impulse += lambda;
     Vec2 p = normal * lambda;
@@ -121,7 +121,7 @@ void DistanceJoint::solvePosition() {
     float C = dMag - length;
     float slop = 0.008f;
     float baumgarte = 0.2f;
-    float maxCorrection = 2.0f;
+    float maxCorrection = 0.2f;
 
     if (std::abs(C) < slop) return;
 

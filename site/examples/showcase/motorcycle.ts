@@ -152,8 +152,8 @@ export const motorcycleExample = new Example({
             anchorB: { x: 0.3, y: 0 }
         });
         world.createSpringJoint(nextId++, chassis, rearArm, {
-            anchorA: { x: -0.6, y: -0.2 },
-            anchorB: { x: -0.2, y: 0 },
+            anchorA: { x: -0.7, y: -0.2 },
+            anchorB: { x: -0.3, y: 0 },
             frequencyHz: 25.0,
             dampingRatio: 0.8
         });
@@ -180,7 +180,7 @@ export const motorcycleExample = new Example({
         });
 
         // Drive Chain (Engine to Rear Wheel)
-        world.createGearJoint(nextId++, engineHinge, rearWheelHinge, -2.0);
+        world.createGearJoint(nextId++, engineHinge, rearWheelHinge, 2.0);
 
         // Front Suspension Arm (Forks)
         const frontArmId = nextId++;
@@ -203,7 +203,7 @@ export const motorcycleExample = new Example({
         });
         world.createSpringJoint(nextId++, chassis, frontArm, {
             anchorA: { x: 0.2, y: 0.2 },
-            anchorB: { x: 0, y: 0.1 },
+            anchorB: { x: 0, y: 0.3 },
             frequencyHz: 20.0,
             dampingRatio: 0.9
         });
@@ -297,7 +297,7 @@ export const motorcycleExample = new Example({
         if (!chassis) return;
 
         // --- 3. Controls & Engine ---
-        const throttlePower = 150.0;
+        const throttlePower = 75.0;
         const leanPower = 100.0;
         const maxEngineSpeed = 100.0; // Higher top speed
 
@@ -336,12 +336,12 @@ export const motorcycleExample = new Example({
 
         if (keys['KeyD']) {
             if (engine.rs < maxEngineSpeed) {
-                engine.applyAngularImpulse(throttlePower * dt);
+                engine.applyAngularImpulse(-throttlePower * dt);
             }
         }
         if (keys['KeyA']) {
             if (engine.rs > -maxEngineSpeed) {
-                engine.applyAngularImpulse(-throttlePower * dt); 
+                engine.applyAngularImpulse(throttlePower * dt); 
             }
         }
         if (keys['KeyW']) {

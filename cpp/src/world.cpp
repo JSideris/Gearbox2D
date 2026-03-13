@@ -793,11 +793,26 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     Vec2 relVel = (b->getVelocity() + tangentialVelocityB) - (a->getVelocity() + tangentialVelocityA);
     float vn = relVel.dot(normal);
 
+    // Component A: Force Velocity Compensation
+    // We track the velocity increment from external forces during integration and compute the true impact velocity.
+    // This eliminates energy gain from gravity/forces being integrated before the solver.
+    // Reference: studies/kinematic_restitution_balancing/KRB_Whitepaper.md (Section 2.1)
     float forceVn = (b->forceVelocity - a->forceVelocity).dot(normal);
     float relativeVn = vn - forceVn;
 
     if (enableRestitution && relativeVn < -0.1f) {
-        bias = -restitution * (-relativeVn);
+        // Component B: Kinematic Energy Balancing
+        // We adjust the launch velocity to account for work done by external forces over the correction displacement (depth).
+        // This eliminates energy gain from position correction (Baumgarte) by taxing/boosting launch speed.
+        // Formula: v_final = sqrt(max(0, (e * v_impact)^2 + 2 * (a_ext . n) * depth))
+        // Reference: studies/kinematic_restitution_balancing/KRB_Whitepaper.md (Section 2.2)
+        float accVn = forceVn / dt;
+        float workTerm = 2.0f * accVn * depth;
+        float vImpactSq = relativeVn * relativeVn;
+        float restitutionSq = restitution * restitution;
+        
+        float vFinalSq = (restitutionSq * vImpactSq) + workTerm;
+        bias = -std::sqrt(std::max(0.0f, vFinalSq));
     } else {
         bias = 0.0f;
     }
