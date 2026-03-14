@@ -41,6 +41,7 @@
 #define BAUMGARTE_FACTOR 0.2f
 #define PENETRATION_SLOP 0.008f
 #define RESTITUTION_THRESHOLD 0.01f
+#define MAX_POSITION_CORRECTION 0.2f
 
 // --- Fixture Data Layout ---
 #define FIXTURE_IDATA_EPO 6

@@ -805,14 +805,23 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         // We adjust the launch velocity to account for work done by external forces over the correction displacement (depth).
         // This eliminates energy gain from position correction (Baumgarte) by taxing/boosting launch speed.
         // Formula: v_final = sqrt(max(0, (e * v_impact)^2 + 2 * (a_ext . n) * total_displacement))
-        // Total displacement is depth * cumulativeCorrectionFactor.
         // Reference: studies/kinematic_restitution_balancing/KRB_Whitepaper.md (Section 2.2)
-        float accVn = forceVn / dt;
         
-        // Cumulative correction over position iterations: 1 - (1 - beta)^n
+        float accVn = forceVn / dt;
+        float vBounce = -restitution * relativeVn;
+        
+        // Refined prediction: Account for velocity-induced displacement before position correction.
+        // The objects will move apart by (vBounce * dt) during integration, so the position solver
+        // only sees the remaining penetration.
+        float depthAfterVelocity = std::max(0.0f, (depth - PENETRATION_SLOP) - vBounce * dt);
+        
+        // Account for the displacement cap in the position solver (MAX_POSITION_CORRECTION)
+        // to avoid over-taxing kinetic energy when penetration is deep.
         int n = a->world.getPositionIterations();
         float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
-        float workTerm = 2.0f * accVn * std::max(0.0f, (depth - PENETRATION_SLOP) * cumulativeCorrectionFactor);
+        float expectedDisplacement = std::min(depthAfterVelocity, MAX_POSITION_CORRECTION) * cumulativeCorrectionFactor;
+        
+        float workTerm = 2.0f * accVn * expectedDisplacement;
         
         float vImpactSq = relativeVn * relativeVn;
         float restitutionSq = restitution * restitution;
@@ -959,8 +968,7 @@ void ContactConstraint::solvePosition() {
     float current_depth = depth - separation_vec.dot(normal_curr);
     if (current_depth <= PENETRATION_SLOP) return;
 
-    float maxCorrection = 0.2f;
-    float correction = std::min(current_depth - PENETRATION_SLOP, maxCorrection) * BAUMGARTE_FACTOR;
+    float correction = std::min(current_depth - PENETRATION_SLOP, MAX_POSITION_CORRECTION) * BAUMGARTE_FACTOR;
     float rnA = rA_curr.x * normal_curr.y - rA_curr.y * normal_curr.x;
     float rnB = rB_curr.x * normal_curr.y - rB_curr.y * normal_curr.x;
     float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;

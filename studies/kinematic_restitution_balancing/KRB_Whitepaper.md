@@ -46,6 +46,17 @@ $$v_{final} = \sqrt{\max(0, (e \cdot v_{impact})^2 + 2 (\mathbf{a}_{ext} \cdot \
 
 The equation is symmetric: ground collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} < 0$) tax the launch velocity to pay for increased PE, while ceiling collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} > 0$) boost it to account for work done against external forces.
 
+### 2.3 Effective Displacement Prediction
+In solvers where position correction is decoupled from velocity (e.g., Sequential Impulse followed by Position Iterations), the energy audit must account for the temporal separation between the velocity and position phases. Specifically, the kinematic bounce velocity $v_{launch}$ partially resolves the penetration $d$ during the subsequent integration step before the position solver operates:
+
+$$d_{eff} = \max(0, d - (v_{launch} \cdot \Delta t))$$
+
+Furthermore, many solvers clamp the position correction per iteration to $\Delta h_{max}$ (e.g., `0.2f`). To ensure the energy audit remains consistent with the physical work performed, the balancing term must respect these constraints:
+
+$$\Delta h = \min(d_{eff}, \Delta h_{max}) \cdot \Gamma$$
+
+Where $\Gamma$ is the cumulative correction factor ($1 - (1 - \beta)^n$) for $n$ iterations with Baumgarte factor $\beta$.
+
 This correction applies to bias methods that produce physical displacement (Baumgarte, soft constraints). Methods that decouple position correction from velocity (split impulse, speculative contacts) do not require Component B, though Component A remains applicable.
 
 ---
@@ -58,7 +69,10 @@ The implementation requires storing $v_{force} = a_{ext} \cdot \Delta t$ per bod
 v_impact = v_relative - (v_force_B - v_force_A)
 
 // Component B: Energy-balanced launch velocity  
-v_final = sqrt(max(0, (e * v_impact)² + 2 * dot(a_ext, n) * Δh))
+v_bounce = -e * v_impact
+d_eff = max(0, (depth - slop) - v_bounce * dt)
+h_expected = min(d_eff, MAX_POSITION_CORRECTION) * cumulative_factor
+v_final = sqrt(max(0, (v_bounce)² + 2 * dot(a_ext, n) * h_expected))
 ```
 
 ---
