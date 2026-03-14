@@ -64,4 +64,5 @@ export interface PhysicsEngineAdapter {
     getBodyCount(): number;
     getVelocity(id: number | string): { x: number, y: number };
     getPosition(id: number | string): { x: number, y: number };
+    setGravity(x: number, y: number): void;
 }

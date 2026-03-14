@@ -205,4 +205,8 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
         const body = this.bodies.get(this.getInternalId(id));
         return body ? { x: body.x, y: body.y } : { x: 0, y: 0 };
     }
+
+    setGravity(x: number, y: number): void {
+        if (this.world) this.world.setGravity(x, y);
+    }
 }

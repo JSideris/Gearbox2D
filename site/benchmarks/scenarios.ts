@@ -111,6 +111,7 @@ export const ConservationOfEnergyScenario: Scenario = {
     metricLabel: "Max Height (2s)",
     setup(adapter: PhysicsEngineAdapter) {
         adapter.clear();
+        adapter.setGravity(0, 80);
         
         const thickness = 1;
         const width = 12;

@@ -161,6 +161,13 @@ export class MatterAdapter implements PhysicsEngineAdapter {
         const body = this.bodies.get(id);
         return body ? { x: body.position.x / this.SCALE, y: body.position.y / this.SCALE } : { x: 0, y: 0 };
     }
+
+    setGravity(x: number, y: number): void {
+        if (this.world) {
+            this.world.gravity.x = x / 9.8;
+            this.world.gravity.y = y / 9.8;
+        }
+    }
 }
 
 // --- P2.js Adapter ---
@@ -292,6 +299,12 @@ export class P2Adapter implements PhysicsEngineAdapter {
     getPosition(id: number | string): { x: number, y: number } {
         const body = this.bodies.get(id);
         return body ? { x: body.position[0], y: -body.position[1] } : { x: 0, y: 0 };
+    }
+
+    setGravity(x: number, y: number): void {
+        if (this.world) {
+            this.world.gravity = [x, -y];
+        }
     }
 }
 
@@ -484,5 +497,11 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         if (!body) return { x: 0, y: 0 };
         const p = body.GetPosition();
         return { x: p.get_x(), y: -p.get_y() };
+    }
+
+    setGravity(x: number, y: number): void {
+        if (this.world) {
+            this.world.SetGravity(new this.box2d.b2Vec2(x, -y));
+        }
     }
 }
