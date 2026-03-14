@@ -109,6 +109,16 @@ export class World {
         this.refreshViews();
     }
 
+    destroy() {
+        if (this.world) {
+            this.world.delete();
+            this.world = null;
+        }
+        this.bodiesById = {};
+        this.fixturesById = {};
+        this.jointsById = {};
+    }
+
     makeBody(id: number, options: BodyOptions): Body {
         const index = this.world.makeBody(id, options);
         this.refreshViews();

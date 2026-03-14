@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gearbox2D Benchmarks | Performance Comparison</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="./styles/examples-styles.css">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-surface: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --border: #1e293b;
+            --accent-cyan: #00f2ff;
+            --accent-purple: #a855f7;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        #benchmark-sidebar {
+            width: 300px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #benchmark-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .benchmark-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1, h2 {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h1 { font-size: 1.2rem; color: var(--accent-cyan); }
+        h2 { font-size: 0.9rem; margin-bottom: 15px; color: var(--text-muted); }
+
+        .control-group {
+            margin-bottom: 30px;
+        }
+
+        select, button {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:hover, button:hover {
+            border-color: var(--accent-cyan);
+        }
+
+        button.primary {
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+            border: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: var(--accent-cyan);
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .home-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .home-link:hover { color: var(--accent-cyan); }
+    </style>
+</head>
+<body>
+    <div id="benchmark-sidebar">
+        <a href="index.html" class="home-link"><i class="fas fa-arrow-left"></i> Back to Home</a>
+        
+        <div class="control-group">
+            <h2>Select Engine</h2>
+            <select id="engine-select">
+                <option value="gearbox2d">Gearbox2D (WASM)</option>
+                <option value="matterjs">Matter.js (JS)</option>
+                <option value="p2js">P2.js (JS)</option>
+                <option value="box2dwasm">Box2D-WASM (WASM)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <h2>Select Scenario</h2>
+            <select id="scenario-select">
+                <option value="large-stack">Large Stack (Hybrid)</option>
+                <option value="high-density">High Density (Stress)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <button id="run-btn" class="primary">Run Simulation</button>
+            <button id="reset-btn">Reset</button>
+        </div>
+
+        <div class="control-group">
+            <h2>Performance Metrics</h2>
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <span>Engine:</span>
+                    <span id="stat-engine" class="stat-value">-</span>
+                </div>
+                <div class="stat-item">
+                    <span>Step Time:</span>
+                    <span id="stat-step-time" class="stat-value">0 ms</span>
+                </div>
+                <div class="stat-item">
+                    <span>Avg Step:</span>
+                    <span id="stat-avg-step" class="stat-value">0 ms</span>
+                </div>
+                <div class="stat-item">
+                    <span>Bodies:</span>
+                    <span id="stat-bodies" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>FPS:</span>
+                    <span id="stat-fps" class="stat-value">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="benchmark-main">
+        <div class="benchmark-header">
+            <h1>Engine Comparison Lab</h1>
+            <div id="status-text" style="font-size: 0.8rem; color: var(--text-muted);">Ready to benchmark</div>
+        </div>
+        <div id="canvas-container">
+            <canvas id="benchmark-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Engine Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p2.js/0.7.1/p2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd/entry.js" data-box2d-dir="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd"></script>
+
+    <script type="module">
+        import gearbox from 'gearbox2d';
+        import { GearboxAdapter } from './utils/adapters/gearbox-adapter.ts';
+        import { MatterAdapter, P2Adapter, Box2DAdapter } from './utils/adapters/competitor-adapters.ts';
+        import { ProtocolRenderer } from './utils/protocol-renderer.ts';
+        import { scenarios } from './benchmarks/scenarios.ts';
+
+        const canvas = document.getElementById('benchmark-canvas');
+        const renderer = new ProtocolRenderer(canvas);
+        
+        let adapter = null;
+        let isRunning = false;
+        let frameId = null;
+        let stepTimes = [];
+        let gearboxWorld = null;
+
+        // Initialize Gearbox once
+        async function initGearbox() {
+            try {
+                await gearbox.init();
+                gearboxWorld = gearbox.makeWorld();
+                console.log("Gearbox2D initialized globally");
+            } catch (e) {
+                console.error("Failed to initialize Gearbox2D:", e);
+            }
+        }
+        initGearbox();
+
+        function syncSize() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            renderer.offsetX = canvas.width / 2;
+            renderer.offsetY = canvas.height / 2;
+        }
+        window.addEventListener('resize', syncSize);
+        syncSize();
+
+        async function startBenchmark() {
+            const engineType = document.getElementById('engine-select').value;
+            const scenarioType = document.getElementById('scenario-select').value;
+            
+            if (adapter) {
+                adapter.clear();
+                adapter = null;
+            }
+
+            if (frameId) cancelAnimationFrame(frameId);
+
+            switch (engineType) {
+                case 'gearbox2d': 
+                    if (!gearboxWorld) await initGearbox();
+                    adapter = new GearboxAdapter(gearboxWorld); 
+                    break;
+                case 'matterjs': adapter = new MatterAdapter(); break;
+                case 'p2js': adapter = new P2Adapter(); break;
+                case 'box2dwasm': adapter = new Box2DAdapter(); break;
+            }
+
+            document.getElementById('stat-engine').textContent = engineType.toUpperCase();
+            document.getElementById('status-text').textContent = `Initializing ${engineType}...`;
+
+            try {
+                await adapter.init();
+                const scenario = scenarios[scenarioType];
+                if (scenario) {
+                    scenario.setup(adapter);
+                }
+                isRunning = true;
+                stepTimes = [];
+                lastTime = performance.now();
+                loop();
+                document.getElementById('status-text').textContent = `Running ${scenarioType} on ${engineType}`;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('status-text').textContent = `Error: ${e.message}`;
+            }
+        }
+
+        let lastTime = 0;
+        let fpsLastTime = 0;
+        let frames = 0;
+
+        function loop() {
+            if (!isRunning) return;
+
+            const startTime = performance.now();
+            adapter.step(1/60);
+            const endTime = performance.now();
+            
+            const stepTime = endTime - startTime;
+            stepTimes.push(stepTime);
+            if (stepTimes.length > 60) stepTimes.shift();
+
+            const avgStep = stepTimes.reduce((a, b) => a + b, 0) / stepTimes.length;
+
+            document.getElementById('stat-step-time').textContent = `${stepTime.toFixed(2)} ms`;
+            document.getElementById('stat-avg-step').textContent = `${avgStep.toFixed(2)} ms`;
+            document.getElementById('stat-bodies').textContent = adapter.getBodyCount();
+
+            const frame = adapter.getDebugFrame();
+            renderer.render(frame);
+
+            frames++;
+            const now = performance.now();
+            if (now - fpsLastTime > 1000) {
+                document.getElementById('stat-fps').textContent = frames;
+                frames = 0;
+                fpsLastTime = now;
+            }
+
+            frameId = requestAnimationFrame(loop);
+        }
+
+        document.getElementById('run-btn').addEventListener('click', startBenchmark);
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            if (adapter) adapter.clear();
+            if (frameId) cancelAnimationFrame(frameId);
+            isRunning = false;
+            document.getElementById('status-text').textContent = 'Reset completed';
+        });
+    </script>
+</body>
+</html>

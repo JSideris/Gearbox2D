@@ -1,0 +1,162 @@
+import gearbox from 'gearbox2d';
+import { PhysicsEngineAdapter, DebugFrame, ShapeType, JointType } from '../physics-protocol.ts';
+
+export class GearboxAdapter implements PhysicsEngineAdapter {
+    private world: any = null;
+    private idMap = new Map<string | number, number>();
+    private nextId = 1000;
+
+    constructor(existingWorld?: any) {
+        if (existingWorld) {
+            this.world = existingWorld;
+        }
+    }
+
+    private getInternalId(id: string | number): number {
+        if (typeof id === 'number') return id;
+        if (this.idMap.has(id)) return this.idMap.get(id)!;
+        const newId = this.nextId++;
+        this.idMap.set(id, newId);
+        return newId;
+    }
+
+    async init(): Promise<void> {
+        if (!this.world) {
+            await gearbox.init();
+            this.world = gearbox.makeWorld();
+        }
+        this.world.setGravity(0, 9.8);
+        this.world.setHasRestitution(true);
+        this.world.setHasFriction(true);
+        this.world.setHasPenetrationResolution(true);
+    }
+
+    step(dt: number): void {
+        if (!this.world) return;
+        this.world.step();
+    }
+
+    getDebugFrame(): DebugFrame {
+        const bodies: any[] = [];
+        const joints: any[] = [];
+
+        if (!this.world) return { bodies, joints, interpolationAlpha: 1.0 };
+
+        this.world.iterateBodies((body: any) => {
+            const fixtures = body.fixtures.map((f: any) => ({
+                shape: this.mapShape(f.shape),
+                radius: f.radius,
+                width: f.width,
+                height: f.height,
+                localX: f.localX,
+                localY: f.localY,
+                localR: f.localR
+            }));
+
+            bodies.push({
+                id: body.id,
+                x: body.x,
+                y: body.y,
+                r: body.r,
+                color: body.color,
+                isSleeping: (body.flags & 0x04) !== 0, // IS_SLEEPING (0x04 in constants.ts)
+                fixtures
+            });
+        });
+
+        for (const id in this.world.jointsById) {
+            const joint = this.world.jointsById[id];
+            joints.push({
+                id: joint.id,
+                type: this.mapJointType(joint.type),
+                bodyAId: joint.bodyA.id,
+                bodyBId: joint.bodyB.id,
+                anchorA: this.getJointWorldPoint(joint.bodyA, joint.localAnchorA),
+                anchorB: this.getJointWorldPoint(joint.bodyB, joint.localAnchorB)
+            });
+        }
+
+        return {
+            bodies,
+            joints,
+            interpolationAlpha: this.world.interpolationAlpha
+        };
+    }
+
+    private mapShape(shape: number): ShapeType {
+        switch (shape) {
+            case 0: return ShapeType.POINT;
+            case 1: return ShapeType.CIRCLE;
+            case 2: return ShapeType.AABB;
+            case 3: return ShapeType.BOX;
+            default: return ShapeType.BOX;
+        }
+    }
+
+    private mapJointType(type: number): JointType {
+        switch (type) {
+            case 0: return JointType.HINGE;
+            case 1: return JointType.DISTANCE;
+            case 2: return JointType.SPRING;
+            case 3: return JointType.GEAR;
+            default: return JointType.DISTANCE;
+        }
+    }
+
+    private getJointWorldPoint(body: any, localPoint: { x: number, y: number }) {
+        const cos = Math.cos(body.r);
+        const sin = Math.sin(body.r);
+        return {
+            x: body.x + (localPoint.x * cos - localPoint.y * sin),
+            y: body.y + (localPoint.x * sin + localPoint.y * cos)
+        };
+    }
+
+    clear(): void {
+        if (this.world) this.world.clear();
+        this.idMap.clear();
+        this.nextId = 1000;
+    }
+
+    createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options: any = {}): void {
+        const internalId = this.getInternalId(id);
+        const body = this.world.makeBody(internalId, {
+            x, y,
+            type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
+            mass: options.mass || 1.0,
+            color: options.color
+        });
+        body.addFixture({
+            shape: gearbox.shapes.BOX,
+            width: w, height: h,
+            restitution: options.restitution ?? 0.1,
+            sFriction: options.sFriction ?? 0.5,
+            kFriction: options.kFriction ?? 0.3
+        });
+    }
+
+    createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options: any = {}): void {
+        const internalId = this.getInternalId(id);
+        const body = this.world.makeBody(internalId, {
+            x, y,
+            type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
+            mass: options.mass || 1.0,
+            color: options.color
+        });
+        body.addFixture({
+            shape: gearbox.shapes.CIRCLE,
+            radius,
+            restitution: options.restitution ?? 0.1,
+            sFriction: options.sFriction ?? 0.5,
+            kFriction: options.kFriction ?? 0.3
+        });
+    }
+
+    getMemoryUsage(): number {
+        return this.world ? this.world.getMemoryUsage() : 0;
+    }
+
+    getBodyCount(): number {
+        return this.world ? this.world.getBodyCount() : 0;
+    }
+}

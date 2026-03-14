@@ -10,6 +10,7 @@
 - `plan.md`: Project Roadmap
 
 ## Core Architecture
+- `architecture-lifecycle.md`: Engine & World Lifecycle
 - `architecture-wasm-memory.md`: WASM & Shared Memory
 - `architecture-world.md`: World Management
 - `architecture-coordinates.md`: Coordinates & Units
