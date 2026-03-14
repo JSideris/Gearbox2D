@@ -62,4 +62,6 @@ export interface PhysicsEngineAdapter {
     createPoint(id: number | string, x: number, y: number, isStatic: boolean, options?: any): void;
     getMemoryUsage?(): number;
     getBodyCount(): number;
+    getVelocity(id: number | string): { x: number, y: number };
+    getPosition(id: number | string): { x: number, y: number };
 }

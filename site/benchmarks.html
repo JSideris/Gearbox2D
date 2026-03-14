@@ -41,7 +41,20 @@
         }
 
         #metrics {
-            width: 240px;
+            width: 320px;
+        }
+
+        #metric-chart-container {
+            width: 100%;
+            height: 180px;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        #metric-chart {
+            width: 100% !important;
+            height: 100% !important;
         }
 
         /* Benchmark specific overrides */
@@ -139,6 +152,9 @@
                 <div id="bodies"><i class="fas fa-cubes"></i><span>Bodies: 0</span></div>
                 <div id="memory" style="display: none;"><i class="fas fa-memory"></i><span>Memory: 0 MB</span></div>
                 <div id="fps"><i class="fas fa-tachometer-alt"></i><span>FPS: 0</span></div>
+                <div id="metric-chart-container">
+                    <canvas id="metric-chart"></canvas>
+                </div>
             </div>
 
             <div id="status-text" style="padding: 10px 20px; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border);">Ready to benchmark</div>
@@ -149,6 +165,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p2.js/0.7.1/p2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd/entry.js" data-box2d-dir="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script type="module">
         import gearbox from 'gearbox2d';
@@ -166,12 +183,86 @@
         const resetButton = document.getElementById('reset-button');
         const resetButtonMobile = document.getElementById('reset-button-mobile');
         
+        class BenchmarkChart {
+            constructor(canvasId) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            { label: 'Gearbox2D', borderColor: '#4ade80', data: [], tension: 0.1, pointRadius: 0 },
+                            { label: 'Matter.js', borderColor: '#f472b6', data: [], tension: 0.1, pointRadius: 0 },
+                            { label: 'P2.js', borderColor: '#a855f7', data: [], tension: 0.1, pointRadius: 0 },
+                            { label: 'Box2D-WASM', borderColor: '#60a5fa', data: [], tension: 0.1, pointRadius: 0 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        scales: {
+                            x: { 
+                                type: 'linear', 
+                                position: 'bottom', 
+                                title: { display: true, text: 'Time (s)', color: '#94a3b8', font: { size: 10 } },
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: { color: '#94a3b8', font: { size: 8 } }
+                            },
+                            y: { 
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: { color: '#94a3b8', font: { size: 8 } },
+                                title: { display: true, text: '', color: '#94a3b8', font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+                this.engineMap = { 'gearbox2d': 0, 'matterjs': 1, 'p2js': 2, 'box2dwasm': 3 };
+            }
+
+            addPoint(engine, time, value) {
+                const datasetIndex = this.engineMap[engine];
+                if (datasetIndex !== undefined) {
+                    this.chart.data.datasets[datasetIndex].data.push({ x: time, y: value });
+                }
+            }
+
+            clear() {
+                this.chart.data.datasets.forEach(ds => ds.data = []);
+                this.chart.update();
+            }
+
+            clearEngine(engine) {
+                const datasetIndex = this.engineMap[engine];
+                if (datasetIndex !== undefined) {
+                    this.chart.data.datasets[datasetIndex].data = [];
+                    this.chart.update();
+                }
+            }
+
+            updateLabel(label) {
+                this.chart.options.scales.y.title.text = label;
+                this.chart.update();
+            }
+
+            render() {
+                this.chart.update();
+            }
+        }
+
+        const benchmarkChart = new BenchmarkChart('metric-chart');
         let adapter = null;
         let isRunning = false;
         let frameId = null;
         let stepTimes = [];
         let gearboxWorld = null;
         let currentScenarioKey = 'large-stack';
+        let scenarioState = {};
+        let benchmarkStartTime = 0;
+        let lastChartUpdateTime = 0;
 
         // Initialize Gearbox once
         async function initGearbox() {
@@ -198,6 +289,7 @@
                     document.querySelectorAll('#scenarios-list li').forEach(el => el.classList.remove('selected'));
                     li.classList.add('selected');
                     currentScenarioKey = key;
+                    benchmarkChart.clear();
                     startBenchmark();
                     
                     if (window.innerWidth <= 768) {
@@ -224,6 +316,7 @@
             const scenario = scenarios[currentScenarioKey];
             
             scenarioNameH1.textContent = scenario.name;
+            benchmarkChart.updateLabel(scenario.metricLabel || 'Metric');
             
             if (adapter) {
                 adapter.clear();
@@ -231,6 +324,10 @@
             }
 
             if (frameId) cancelAnimationFrame(frameId);
+            
+            benchmarkStartTime = performance.now();
+            lastChartUpdateTime = benchmarkStartTime;
+            scenarioState = {};
 
             switch (engineType) {
                 case 'gearbox2d': 
@@ -253,6 +350,12 @@
                 isRunning = true;
                 stepTimes = [];
                 lastTime = performance.now();
+                
+                // Add initial 0s point
+                const metricValue = scenario.getMetric(adapter, scenarioState);
+                benchmarkChart.addPoint(engineType, 0, metricValue);
+                benchmarkChart.render();
+                
                 loop();
                 document.getElementById('status-text').textContent = `Running ${currentScenarioKey} on ${engineType}`;
             } catch (e) {
@@ -270,9 +373,9 @@
 
             const startTime = performance.now();
             adapter.step(1/60);
-            const endTime = performance.now();
+            const now = performance.now();
             
-            const stepTimeMicros = (endTime - startTime) * 1000;
+            const stepTimeMicros = (now - startTime) * 1000;
             stepTimes.push(stepTimeMicros);
             if (stepTimes.length > 60) stepTimes.shift();
 
@@ -291,11 +394,27 @@
                 memoryEl.style.display = 'none';
             }
 
+            // Update Scenario Metrics
+            const scenario = scenarios[currentScenarioKey];
+            if (scenario) {
+                scenarioState.avgStepTime = avgStepMicros / 1000; // to ms
+                const metricValue = scenario.getMetric(adapter, scenarioState);
+                
+                const timeSinceStart = (now - benchmarkStartTime) / 1000;
+                
+                if (timeSinceStart <= 60 && now - lastChartUpdateTime >= 1000) {
+                    const activeTab = document.querySelector('.engine-tab.active');
+                    const engineType = activeTab ? activeTab.dataset.engine : 'gearbox2d';
+                    benchmarkChart.addPoint(engineType, timeSinceStart, metricValue);
+                    benchmarkChart.render();
+                    lastChartUpdateTime = now;
+                }
+            }
+
             const frame = adapter.getDebugFrame();
             renderer.render(frame);
 
             frames++;
-            const now = performance.now();
             if (now - fpsLastTime > 1000) {
                 document.getElementById('fps').querySelector('span').textContent = `FPS: ${frames}`;
                 frames = 0;
@@ -321,8 +440,10 @@
         const tabs = document.querySelectorAll('.engine-tab');
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
+                const engine = tab.dataset.engine;
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
+                benchmarkChart.clearEngine(engine);
                 startBenchmark();
             });
         });

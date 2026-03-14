@@ -12,7 +12,7 @@ export class MatterAdapter implements PhysicsEngineAdapter {
         this.Matter = (window as any).Matter;
         if (!this.Matter) throw new Error("Matter.js not loaded");
         this.engine = this.Matter.Engine.create({
-            enableSleeping: true
+            enableSleeping: false
         });
         this.world = this.engine.world;
         // Adjust gravity to feel similar to the other engines at this scale
@@ -147,6 +147,20 @@ export class MatterAdapter implements PhysicsEngineAdapter {
     getBodyCount(): number {
         return this.Matter.Composite.allBodies(this.world).length;
     }
+
+    getVelocity(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(id);
+        if (!body) return { x: 0, y: 0 };
+        return { 
+            x: (body.velocity.x / this.SCALE) * 60, 
+            y: (body.velocity.y / this.SCALE) * 60 
+        };
+    }
+
+    getPosition(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(id);
+        return body ? { x: body.position.x / this.SCALE, y: body.position.y / this.SCALE } : { x: 0, y: 0 };
+    }
 }
 
 // --- P2.js Adapter ---
@@ -268,6 +282,16 @@ export class P2Adapter implements PhysicsEngineAdapter {
 
     getBodyCount(): number {
         return this.world.bodies.length;
+    }
+
+    getVelocity(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(id);
+        return body ? { x: body.velocity[0], y: -body.velocity[1] } : { x: 0, y: 0 };
+    }
+
+    getPosition(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(id);
+        return body ? { x: body.position[0], y: -body.position[1] } : { x: 0, y: 0 };
     }
 }
 
@@ -446,5 +470,19 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
 
     getBodyCount(): number {
         return this.world.GetBodyCount();
+    }
+
+    getVelocity(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(id);
+        if (!body) return { x: 0, y: 0 };
+        const v = body.GetLinearVelocity();
+        return { x: v.get_x(), y: -v.get_y() };
+    }
+
+    getPosition(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(id);
+        if (!body) return { x: 0, y: 0 };
+        const p = body.GetPosition();
+        return { x: p.get_x(), y: -p.get_y() };
     }
 }

@@ -195,4 +195,14 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
     getBodyCount(): number {
         return this.world ? this.world.getBodyCount() : 0;
     }
+
+    getVelocity(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(this.getInternalId(id));
+        return body ? { x: body.vx, y: body.vy } : { x: 0, y: 0 };
+    }
+
+    getPosition(id: number | string): { x: number, y: number } {
+        const body = this.bodies.get(this.getInternalId(id));
+        return body ? { x: body.x, y: body.y } : { x: 0, y: 0 };
+    }
 }
