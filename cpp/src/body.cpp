@@ -250,7 +250,7 @@ void Body::sleep() {
 }
 
 void Body::wakeUp() {
-    if (isSleeping) {
+    if (isSleeping && type != ObjectType::FIXED_OBJECT) {
         isSleeping = false;
         world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~IS_SLEEPING;
         sleepTimer = 0;
@@ -273,7 +273,7 @@ void Body::forceWakeUp() {
 void Body::addContact(Body* other) {
     for (auto* c : contacts) if (c == other) return;
     contacts.push_back(other);
-    if (!other->isSleeping) wakeUp();
+    if (!other->isSleeping && type != ObjectType::FIXED_OBJECT) wakeUp();
 }
 
 void Body::removeContact(Body* other) {

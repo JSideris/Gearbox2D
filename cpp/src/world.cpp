@@ -200,9 +200,13 @@ void World::step() {
         for (auto& pair : jointsMap) {
             Joint* j = pair.second.get();
             if (j->bodyA->isSleeping != j->bodyB->isSleeping) {
-                if (j->bodyA->isSleeping) j->bodyA->wakeUp();
-                else j->bodyB->wakeUp();
-                changed = true;
+                if (j->bodyA->isSleeping && j->bodyA->type != ObjectType::FIXED_OBJECT) {
+                    j->bodyA->wakeUp();
+                    changed = true;
+                } else if (j->bodyB->isSleeping && j->bodyB->type != ObjectType::FIXED_OBJECT) {
+                    j->bodyB->wakeUp();
+                    changed = true;
+                }
             }
         }
     }
@@ -287,7 +291,7 @@ void World::step() {
 
 void World::_doIntegrateVelocitiesSubStep(float dt) {
     for (auto* body : bodiesList) {
-        if (body->isSleeping) {
+        if (body->isSleeping && body->type != ObjectType::FIXED_OBJECT) {
             int idx = body->worldIndex * BODY_FDATA_EPO;
             if (liveBodyFloatData[idx + BODY_FDATA_NIX] != 0 || liveBodyFloatData[idx + BODY_FDATA_NIY] != 0 || 
                 liveBodyFloatData[idx + BODY_FDATA_NIA] != 0 || liveBodyFloatData[idx + BODY_FDATA_NFX] != 0 || 
@@ -367,7 +371,7 @@ void World::_doNarrowPhase() {
             if (f1->body->isSleeping != f2->body->isSleeping) {
                 Body* awake = f1->body->isSleeping ? f2->body : f1->body;
                 Body* sleeping = f1->body->isSleeping ? f1->body : f2->body;
-                if (awake->type != ObjectType::FIXED_OBJECT) {
+                if (awake->type != ObjectType::FIXED_OBJECT && sleeping->type != ObjectType::FIXED_OBJECT) {
                     sleeping->wakeUp();
                 }
             }
