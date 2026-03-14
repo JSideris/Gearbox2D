@@ -355,6 +355,57 @@
         let benchmarkStartTime = 0;
         let lastChartUpdateTime = 0;
 
+        function updateURL(replace = false) {
+            const activeTab = document.querySelector('.engine-tab.active');
+            const engine = activeTab ? activeTab.dataset.engine : 'all';
+            const params = new URLSearchParams(window.location.search);
+            params.set('scenario', currentScenarioKey);
+            params.set('engine', engine);
+            
+            const newURL = `${window.location.pathname}?${params.toString()}`;
+            if (replace) {
+                window.history.replaceState({ scenario: currentScenarioKey, engine }, '', newURL);
+            } else {
+                window.history.pushState({ scenario: currentScenarioKey, engine }, '', newURL);
+            }
+        }
+
+        function applyURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            const scenarioParam = params.get('scenario');
+            const engineParam = params.get('engine');
+
+            if (scenarioParam && scenarios[scenarioParam]) {
+                currentScenarioKey = scenarioParam;
+            }
+
+            if (engineParam) {
+                const tabs = document.querySelectorAll('.engine-tab');
+                let found = false;
+                tabs.forEach(tab => {
+                    if (tab.dataset.engine === engineParam) {
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        found = true;
+                    }
+                });
+                // If not found (e.g. invalid param), default to first tab (all)
+                if (!found && tabs.length > 0) {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabs[0].classList.add('active');
+                }
+            }
+            
+            // Sync scenario list UI
+            document.querySelectorAll('#scenarios-list li').forEach(el => {
+                if (el.dataset.key === currentScenarioKey) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+        }
+
         // Initialize Gearbox once
         async function initGearbox() {
             try {
@@ -377,11 +428,14 @@
                 li.textContent = scenario.name;
                 li.dataset.key = key;
                 li.addEventListener('click', () => {
-                    document.querySelectorAll('#scenarios-list li').forEach(el => el.classList.remove('selected'));
-                    li.classList.add('selected');
-                    currentScenarioKey = key;
-                    benchmarkChart.clear();
-                    startBenchmark();
+                    if (currentScenarioKey !== key) {
+                        document.querySelectorAll('#scenarios-list li').forEach(el => el.classList.remove('selected'));
+                        li.classList.add('selected');
+                        currentScenarioKey = key;
+                        benchmarkChart.clear();
+                        updateURL();
+                        startBenchmark();
+                    }
                     
                     if (window.innerWidth <= 768) {
                         sidebar.classList.add('collapsed');
@@ -401,6 +455,12 @@
             });
         }
         window.addEventListener('resize', syncSize);
+
+        window.addEventListener('popstate', (event) => {
+            applyURLParams();
+            benchmarkChart.clear();
+            startBenchmark();
+        });
 
         async function createEngineInstance(engineType, alignRight = false, zoom = 1.0) {
             const wrapper = document.createElement('div');
@@ -603,6 +663,8 @@
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 const engine = tab.dataset.engine;
+                if (tab.classList.contains('active')) return;
+                
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 if (engine === 'all') {
@@ -610,13 +672,16 @@
                 } else {
                     benchmarkChart.clearEngine(engine);
                 }
+                updateURL();
                 startBenchmark();
             });
         });
 
         // Initial setup
+        applyURLParams();
         populateScenarios();
         initGearbox();
+        updateURL(true);
     </script>
 </body>
 </html>
