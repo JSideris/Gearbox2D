@@ -6,6 +6,7 @@ export class MatterAdapter implements PhysicsEngineAdapter {
     private world: any = null;
     private Matter: any = (window as any).Matter;
     private readonly SCALE = 100;
+    private bodies = new Map<number | string, any>();
 
     async init(): Promise<void> {
         this.Matter = (window as any).Matter;
@@ -58,11 +59,34 @@ export class MatterAdapter implements PhysicsEngineAdapter {
             }
         });
 
-        return { bodies, joints: [], interpolationAlpha: 1.0 };
+        const joints = this.Matter.Composite.allConstraints(this.world).map((c: any) => {
+            const anchorA = c.pointA;
+            const anchorB = c.pointB;
+            const worldA = c.bodyA ? {
+                x: (c.bodyA.position.x + anchorA.x) / this.SCALE,
+                y: (c.bodyA.position.y + anchorA.y) / this.SCALE
+            } : { x: anchorA.x / this.SCALE, y: anchorA.y / this.SCALE };
+            const worldB = c.bodyB ? {
+                x: (c.bodyB.position.x + anchorB.x) / this.SCALE,
+                y: (c.bodyB.position.y + anchorB.y) / this.SCALE
+            } : { x: anchorB.x / this.SCALE, y: anchorB.y / this.SCALE };
+
+            return {
+                id: c.id,
+                type: JointType.DISTANCE,
+                bodyAId: c.bodyA?.id,
+                bodyBId: c.bodyB?.id,
+                anchorA: worldA,
+                anchorB: worldB
+            };
+        });
+
+        return { bodies, joints, interpolationAlpha: 1.0 };
     }
 
     clear(): void {
         this.Matter.Composite.clear(this.world, false);
+        this.bodies.clear();
     }
 
     createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options: any = {}): void {
@@ -71,9 +95,17 @@ export class MatterAdapter implements PhysicsEngineAdapter {
             y * this.SCALE, 
             w * this.SCALE, 
             h * this.SCALE, 
-            { isStatic, ...options }
+            { 
+                isStatic, 
+                restitution: options.restitution ?? 0,
+                friction: options.sFriction ?? 0.5,
+                frictionStatic: options.sFriction ?? 0.5,
+                frictionAir: 0,
+                ...options 
+            }
         );
         this.Matter.Composite.add(this.world, body);
+        this.bodies.set(id, body);
     }
 
     createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options: any = {}): void {
@@ -81,9 +113,31 @@ export class MatterAdapter implements PhysicsEngineAdapter {
             x * this.SCALE, 
             y * this.SCALE, 
             radius * this.SCALE, 
-            { isStatic, ...options }
+            { 
+                isStatic, 
+                restitution: options.restitution ?? 0,
+                friction: options.sFriction ?? 0.5,
+                frictionStatic: options.sFriction ?? 0.5,
+                frictionAir: 0,
+                ...options 
+            }
         );
         this.Matter.Composite.add(this.world, body);
+        this.bodies.set(id, body);
+    }
+
+    createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const bodyA = this.bodies.get(bodyAId);
+        const bodyB = this.bodies.get(bodyBId);
+        const constraint = this.Matter.Constraint.create({
+            bodyA,
+            bodyB,
+            pointA: options.anchorA ? { x: options.anchorA.x * this.SCALE, y: options.anchorA.y * this.SCALE } : { x: 0, y: 0 },
+            pointB: options.anchorB ? { x: options.anchorB.x * this.SCALE, y: options.anchorB.y * this.SCALE } : { x: 0, y: 0 },
+            length: options.length !== undefined ? options.length * this.SCALE : undefined,
+            stiffness: 1.0
+        });
+        this.Matter.Composite.add(this.world, constraint);
     }
 
     getBodyCount(): number {
@@ -95,6 +149,7 @@ export class MatterAdapter implements PhysicsEngineAdapter {
 export class P2Adapter implements PhysicsEngineAdapter {
     private world: any = null;
     private p2: any = (window as any).p2;
+    private bodies = new Map<number | string, any>();
 
     async init(): Promise<void> {
         this.p2 = (window as any).p2;
@@ -124,11 +179,30 @@ export class P2Adapter implements PhysicsEngineAdapter {
             }))
         }));
 
-        return { bodies, joints: [], interpolationAlpha: 1.0 };
+        const joints = this.world.constraints.map((c: any) => {
+            if (c instanceof this.p2.DistanceConstraint) {
+                const pA = [0, 0];
+                const pB = [0, 0];
+                c.bodyA.toWorldFrame(pA, c.localAnchorA);
+                c.bodyB.toWorldFrame(pB, c.localAnchorB);
+                return {
+                    id: Math.random(), // p2 doesn't have constraint IDs by default
+                    type: JointType.DISTANCE,
+                    bodyAId: c.bodyA.id,
+                    bodyBId: c.bodyB.id,
+                    anchorA: { x: pA[0], y: -pA[1] },
+                    anchorB: { x: pB[0], y: -pB[1] }
+                };
+            }
+            return null;
+        }).filter((j: any) => j !== null);
+
+        return { bodies, joints, interpolationAlpha: 1.0 };
     }
 
     clear(): void {
         this.world.clear();
+        this.bodies.clear();
     }
 
     createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options: any = {}): void {
@@ -139,6 +213,7 @@ export class P2Adapter implements PhysicsEngineAdapter {
         });
         body.addShape(new this.p2.Box({ width: w, height: h }));
         this.world.addBody(body);
+        this.bodies.set(id, body);
     }
 
     createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options: any = {}): void {
@@ -149,6 +224,18 @@ export class P2Adapter implements PhysicsEngineAdapter {
         });
         body.addShape(new this.p2.Circle({ radius }));
         this.world.addBody(body);
+        this.bodies.set(id, body);
+    }
+
+    createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const bodyA = this.bodies.get(bodyAId);
+        const bodyB = this.bodies.get(bodyBId);
+        const constraint = new this.p2.DistanceConstraint(bodyA, bodyB, {
+            localAnchorA: options.anchorA ? [options.anchorA.x, -options.anchorA.y] : [0, 0],
+            localAnchorB: options.anchorB ? [options.anchorB.x, -options.anchorB.y] : [0, 0],
+            distance: options.length
+        });
+        this.world.addConstraint(constraint);
     }
 
     getBodyCount(): number {
@@ -160,6 +247,7 @@ export class P2Adapter implements PhysicsEngineAdapter {
 export class Box2DAdapter implements PhysicsEngineAdapter {
     private world: any = null;
     private box2d: any = null;
+    private bodies = new Map<number | string, any>();
 
     async init(): Promise<void> {
         if (!(window as any).Box2D) throw new Error("Box2D-WASM not loaded");
@@ -212,7 +300,25 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
                 fixtures
             });
         }
-        return { bodies, joints: [], interpolationAlpha: 1.0 };
+
+        const joints: any[] = [];
+        for (let j = this.world.GetJointList(); this.box2d.getPointer(j) !== 0; j = j.GetNext()) {
+            const rawAnchorA = j.GetAnchorA();
+            const anchorA = { x: rawAnchorA.get_x(), y: -rawAnchorA.get_y() };
+            const rawAnchorB = j.GetAnchorB();
+            const anchorB = { x: rawAnchorB.get_x(), y: -rawAnchorB.get_y() };
+            
+            joints.push({
+                id: this.box2d.getPointer(j),
+                type: JointType.DISTANCE,
+                bodyAId: this.box2d.getPointer(j.GetBodyA()),
+                bodyBId: this.box2d.getPointer(j.GetBodyB()),
+                anchorA,
+                anchorB
+            });
+        }
+        
+        return { bodies, joints, interpolationAlpha: 1.0 };
     }
 
     clear(): void {
@@ -223,6 +329,7 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
                 b = next;
             }
         }
+        this.bodies.clear();
     }
 
     createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options: any = {}): void {
@@ -233,7 +340,10 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         
         const shape = new this.box2d.b2PolygonShape();
         shape.SetAsBox(w / 2, h / 2);
-        body.CreateFixture(shape, isStatic ? 0 : (options.mass || 1.0));
+        const fixture = body.CreateFixture(shape, isStatic ? 0 : (options.mass || 1.0));
+        fixture.SetFriction(options.sFriction ?? 0.5);
+        fixture.SetRestitution(options.restitution ?? 0);
+        this.bodies.set(id, body);
     }
 
     createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options: any = {}): void {
@@ -244,7 +354,58 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
 
         const shape = new this.box2d.b2CircleShape();
         shape.set_m_radius(radius);
-        body.CreateFixture(shape, isStatic ? 0 : (options.mass || 1.0));
+        const fixture = body.CreateFixture(shape, isStatic ? 0 : (options.mass || 1.0));
+        fixture.SetFriction(options.sFriction ?? 0.5);
+        fixture.SetRestitution(options.restitution ?? 0);
+        this.bodies.set(id, body);
+    }
+
+    createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const bodyA = this.bodies.get(bodyAId);
+        const bodyB = this.bodies.get(bodyBId);
+        if (!bodyA || !bodyB) return;
+
+        const jd = new this.box2d.b2DistanceJointDef();
+        
+        // Use Initialize to set up anchors and length automatically based on world positions
+        const vA = new this.box2d.b2Vec2(options.anchorA?.x || 0, -(options.anchorA?.y || 0));
+        const vB = new this.box2d.b2Vec2(options.anchorB?.x || 0, -(options.anchorB?.y || 0));
+        
+        // Capture world points into distinct objects immediately to avoid shared buffer issues in some WASM versions
+        const rawWorldA = bodyA.GetWorldPoint(vA);
+        const worldA = { x: rawWorldA.get_x(), y: rawWorldA.get_y() };
+        
+        const rawWorldB = bodyB.GetWorldPoint(vB);
+        const worldB = { x: rawWorldB.get_x(), y: rawWorldB.get_y() };
+        
+        const vWorldA = new this.box2d.b2Vec2(worldA.x, worldA.y);
+        const vWorldB = new this.box2d.b2Vec2(worldB.x, worldB.y);
+        
+        jd.Initialize(bodyA, bodyB, vWorldA, vWorldB);
+        
+        if (options.length !== undefined) {
+            jd.set_length(options.length);
+        }
+        
+        // Ensure the joint is rigid
+        if (jd.set_stiffness) jd.set_stiffness(0); 
+        if (jd.set_damping) jd.set_damping(0);
+        if (jd.set_frequencyHz) jd.set_frequencyHz(0);
+        if (jd.set_dampingRatio) jd.set_dampingRatio(0);
+
+        try {
+            this.world.CreateJoint(jd);
+        } catch (e) {
+            console.error('Failed to create Box2D joint:', e);
+        }
+
+        this.box2d.destroy(vA);
+        this.box2d.destroy(vB);
+        this.box2d.destroy(vWorldA);
+        this.box2d.destroy(vWorldB);
+        try { this.box2d.destroy(rawWorldA); } catch(e) {}
+        try { this.box2d.destroy(rawWorldB); } catch(e) {}
+        this.box2d.destroy(jd);
     }
 
     getBodyCount(): number {

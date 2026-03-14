@@ -36,7 +36,49 @@ export const HighDensityScenario: Scenario = {
     }
 };
 
+export const NewtonsCradleScenario: Scenario = {
+    name: "Newton's Cradle (Joints)",
+    setup(adapter: PhysicsEngineAdapter) {
+        adapter.clear();
+        
+        const count = 5;
+        const radius = 0.4;
+        const startY = -2;
+        const length = 4;
+        
+        for (let i = 0; i < count; i++) {
+            const x = (i - (count - 1) / 2) * radius * 2.01;
+            const anchorId = `anchor-${i}`;
+            const ballId = `ball-${i}`;
+            
+            // Create anchor (static body)
+            adapter.createBox(anchorId, x, startY, 0.2, 0.2, true, { color: '#555' });
+            
+            // Create ball
+            // Offset the first ball to start the motion
+            const ballX = (i === 0) ? x - 3 : x;
+            const ballY = (i === 0) ? startY + Math.sqrt(length*length - 3*3) : startY + length;
+            
+            adapter.createCircle(ballId, ballX, ballY, radius, false, { 
+                color: (i === 0 || i === count - 1) ? '#a855f7' : '#00f2ff',
+                restitution: 1.0,
+                mass: 1.0,
+                sFriction: 0,
+                kFriction: 0
+            });
+            
+            // Connect with distance joint
+            adapter.createDistanceJoint(`joint-${i}`, anchorId, ballId, {
+                length: length,
+                anchorA: { x: 0, y: 0 },
+                anchorB: { x: 0, y: 0 }
+            });
+        }
+    }
+};
+
 export const scenarios: Record<string, Scenario> = {
     'large-stack': LargeStackScenario,
-    'high-density': HighDensityScenario
+    'high-density': HighDensityScenario,
+    'newtons-cradle': NewtonsCradleScenario
 };

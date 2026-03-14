@@ -10,195 +10,138 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="./styles/examples-styles.css">
     <style>
-        :root {
-            --bg-deep: #050505;
-            --bg-surface: #0f172a;
-            --bg-card: rgba(30, 41, 59, 0.7);
-            --border: #1e293b;
-            --accent-cyan: #00f2ff;
-            --accent-purple: #a855f7;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-        }
-
-        body {
-            background-color: var(--bg-deep);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
+        .engine-tabs {
             display: flex;
-            height: 100vh;
-        }
-
-        #benchmark-sidebar {
-            width: 300px;
             background: var(--bg-surface);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        #benchmark-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .benchmark-header {
-            padding: 20px;
             border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 0 10px;
         }
 
-        h1, h2 {
+        .engine-tab {
+            padding: 12px 20px;
+            cursor: pointer;
             font-family: 'Orbitron', sans-serif;
-            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        h1 { font-size: 1.2rem; color: var(--accent-cyan); }
-        h2 { font-size: 0.9rem; margin-bottom: 15px; color: var(--text-muted); }
-
-        .control-group {
-            margin-bottom: 30px;
-        }
-
-        select, button {
-            width: 100%;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
+        .engine-tab:hover {
             color: var(--text-main);
-            padding: 10px;
-            border-radius: 4px;
-            font-family: 'Inter', sans-serif;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        select:hover, button:hover {
-            border-color: var(--accent-cyan);
-        }
-
-        button.primary {
-            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
-            border: none;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-family: 'Orbitron', sans-serif;
-        }
-
-        .stats-panel {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 15px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.85rem;
-        }
-
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
+        .engine-tab.active {
             color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+            background: rgba(0, 242, 255, 0.05);
+        }
+
+        #metrics {
+            width: 240px;
+        }
+
+        /* Benchmark specific overrides */
+        #main {
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            height: 100vh;
+            min-width: 0;
+        }
+
+        #main-header {
+            padding: 16px 20px;
+            flex-shrink: 0;
+        }
+
+        #content {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
         }
 
         #canvas-container {
+            margin-bottom: 0;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            max-width: none !important;
             flex: 1;
             position: relative;
             background: #000;
+            aspect-ratio: auto !important;
+            min-height: 0;
         }
 
-        canvas {
-            width: 100%;
-            height: 100%;
+        #benchmark-canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
         }
-
-        .home-link {
-            color: var(--text-muted);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
-        }
-
-        .home-link:hover { color: var(--accent-cyan); }
     </style>
 </head>
 <body>
-    <div id="benchmark-sidebar">
-        <a href="index.html" class="home-link"><i class="fas fa-arrow-left"></i> Back to Home</a>
-        
-        <div class="control-group">
-            <h2>Select Engine</h2>
-            <select id="engine-select">
-                <option value="gearbox2d">Gearbox2D (WASM)</option>
-                <option value="matterjs">Matter.js (JS)</option>
-                <option value="p2js">P2.js (JS)</option>
-                <option value="box2dwasm">Box2D-WASM (WASM)</option>
-            </select>
-        </div>
-
-        <div class="control-group">
-            <h2>Select Scenario</h2>
-            <select id="scenario-select">
-                <option value="large-stack">Large Stack (Hybrid)</option>
-                <option value="high-density">High Density (Stress)</option>
-            </select>
-        </div>
-
-        <div class="control-group">
-            <button id="run-btn" class="primary">Run Simulation</button>
-            <button id="reset-btn">Reset</button>
-        </div>
-
-        <div class="control-group">
-            <h2>Performance Metrics</h2>
-            <div class="stats-panel">
-                <div class="stat-item">
-                    <span>Engine:</span>
-                    <span id="stat-engine" class="stat-value">-</span>
-                </div>
-                <div class="stat-item">
-                    <span>Step Time:</span>
-                    <span id="stat-step-time" class="stat-value">0 ms</span>
-                </div>
-                <div class="stat-item">
-                    <span>Avg Step:</span>
-                    <span id="stat-avg-step" class="stat-value">0 ms</span>
-                </div>
-                <div class="stat-item">
-                    <span>Bodies:</span>
-                    <span id="stat-bodies" class="stat-value">0</span>
-                </div>
-                <div class="stat-item">
-                    <span>FPS:</span>
-                    <span id="stat-fps" class="stat-value">0</span>
-                </div>
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <h2 id="sidebar-title">Scenarios</h2>
+            <div id="sidebar-actions">
+                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+                <button id="reset-button-mobile" class="sidebar-icon-button" title="Reset"><i class="fas fa-redo-alt"></i></button>
+                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
             </div>
         </div>
+        <ul id="scenarios-list">
+            <!-- Scenarios will be dynamically generated -->
+        </ul>
     </div>
-
-    <div id="benchmark-main">
-        <div class="benchmark-header">
-            <h1>Engine Comparison Lab</h1>
-            <div id="status-text" style="font-size: 0.8rem; color: var(--text-muted);">Ready to benchmark</div>
+    
+    <div id="main">
+        <div id="main-header">
+            <div class="header-left">
+                <a href="index.html" class="home-link" title="Back to Home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <h1 id="scenario-name">Loading benchmark...</h1>
+            </div>
+            <div class="header-right">
+                <button id="reset-button" title="Reset current benchmark">
+                    <i class="fas fa-redo-alt"></i>
+                    <span class="button-text">Reset</span>
+                </button>
+            </div>
         </div>
-        <div id="canvas-container">
-            <canvas id="benchmark-canvas"></canvas>
+        
+        <div id="content">
+            <div class="engine-tabs">
+                <div class="engine-tab active" data-engine="gearbox2d">Gearbox2D</div>
+                <div class="engine-tab" data-engine="matterjs">Matter.js</div>
+                <div class="engine-tab" data-engine="p2js">P2.js</div>
+                <div class="engine-tab" data-engine="box2dwasm">Box2D-WASM</div>
+            </div>
+            
+            <div id="canvas-container">
+                <canvas id="benchmark-canvas"></canvas>
+            </div>
+            
+            <div id="metrics">
+                <div id="engine-name"><i class="fas fa-microchip"></i><span>Engine: -</span></div>
+                <div id="step-time"><i class="fas fa-stopwatch"></i><span>Step Time: 0 μs</span></div>
+                <div id="avg-step-time"><i class="fas fa-history"></i><span>Avg Step: 0 μs</span></div>
+                <div id="bodies"><i class="fas fa-cubes"></i><span>Bodies: 0</span></div>
+                <div id="memory" style="display: none;"><i class="fas fa-memory"></i><span>Memory: 0 MB</span></div>
+                <div id="fps"><i class="fas fa-tachometer-alt"></i><span>FPS: 0</span></div>
+            </div>
+
+            <div id="status-text" style="padding: 10px 20px; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border);">Ready to benchmark</div>
         </div>
     </div>
 
@@ -216,12 +159,19 @@
 
         const canvas = document.getElementById('benchmark-canvas');
         const renderer = new ProtocolRenderer(canvas);
+        const scenarioNameH1 = document.getElementById('scenario-name');
+        const scenariosList = document.getElementById('scenarios-list');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const resetButton = document.getElementById('reset-button');
+        const resetButtonMobile = document.getElementById('reset-button-mobile');
         
         let adapter = null;
         let isRunning = false;
         let frameId = null;
         let stepTimes = [];
         let gearboxWorld = null;
+        let currentScenarioKey = 'large-stack';
 
         // Initialize Gearbox once
         async function initGearbox() {
@@ -229,11 +179,34 @@
                 await gearbox.init();
                 gearboxWorld = gearbox.makeWorld();
                 console.log("Gearbox2D initialized globally");
+                // Auto-start first benchmark
+                startBenchmark();
             } catch (e) {
                 console.error("Failed to initialize Gearbox2D:", e);
             }
         }
-        initGearbox();
+
+        function populateScenarios() {
+            scenariosList.innerHTML = '';
+            Object.keys(scenarios).forEach(key => {
+                const scenario = scenarios[key];
+                const li = document.createElement('li');
+                li.className = 'example' + (key === currentScenarioKey ? ' selected' : '');
+                li.textContent = scenario.name;
+                li.dataset.key = key;
+                li.addEventListener('click', () => {
+                    document.querySelectorAll('#scenarios-list li').forEach(el => el.classList.remove('selected'));
+                    li.classList.add('selected');
+                    currentScenarioKey = key;
+                    startBenchmark();
+                    
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.add('collapsed');
+                    }
+                });
+                scenariosList.appendChild(li);
+            });
+        }
 
         function syncSize() {
             canvas.width = canvas.clientWidth;
@@ -245,8 +218,12 @@
         syncSize();
 
         async function startBenchmark() {
-            const engineType = document.getElementById('engine-select').value;
-            const scenarioType = document.getElementById('scenario-select').value;
+            syncSize();
+            const activeTab = document.querySelector('.engine-tab.active');
+            const engineType = activeTab ? activeTab.dataset.engine : 'gearbox2d';
+            const scenario = scenarios[currentScenarioKey];
+            
+            scenarioNameH1.textContent = scenario.name;
             
             if (adapter) {
                 adapter.clear();
@@ -265,12 +242,11 @@
                 case 'box2dwasm': adapter = new Box2DAdapter(); break;
             }
 
-            document.getElementById('stat-engine').textContent = engineType.toUpperCase();
+            document.getElementById('engine-name').querySelector('span').textContent = `Engine: ${engineType.toUpperCase()}`;
             document.getElementById('status-text').textContent = `Initializing ${engineType}...`;
 
             try {
                 await adapter.init();
-                const scenario = scenarios[scenarioType];
                 if (scenario) {
                     scenario.setup(adapter);
                 }
@@ -278,7 +254,7 @@
                 stepTimes = [];
                 lastTime = performance.now();
                 loop();
-                document.getElementById('status-text').textContent = `Running ${scenarioType} on ${engineType}`;
+                document.getElementById('status-text').textContent = `Running ${currentScenarioKey} on ${engineType}`;
             } catch (e) {
                 console.error(e);
                 document.getElementById('status-text').textContent = `Error: ${e.message}`;
@@ -296,15 +272,24 @@
             adapter.step(1/60);
             const endTime = performance.now();
             
-            const stepTime = endTime - startTime;
-            stepTimes.push(stepTime);
+            const stepTimeMicros = (endTime - startTime) * 1000;
+            stepTimes.push(stepTimeMicros);
             if (stepTimes.length > 60) stepTimes.shift();
 
-            const avgStep = stepTimes.reduce((a, b) => a + b, 0) / stepTimes.length;
+            const avgStepMicros = stepTimes.reduce((a, b) => a + b, 0) / stepTimes.length;
 
-            document.getElementById('stat-step-time').textContent = `${stepTime.toFixed(2)} ms`;
-            document.getElementById('stat-avg-step').textContent = `${avgStep.toFixed(2)} ms`;
-            document.getElementById('stat-bodies').textContent = adapter.getBodyCount();
+            document.getElementById('step-time').querySelector('span').textContent = `Step Time: ${stepTimeMicros.toFixed(0)} μs`;
+            document.getElementById('avg-step-time').querySelector('span').textContent = `Avg Step: ${avgStepMicros.toFixed(0)} μs`;
+            document.getElementById('bodies').querySelector('span').textContent = `Bodies: ${adapter.getBodyCount()}`;
+
+            const memoryEl = document.getElementById('memory');
+            if (adapter.getMemoryUsage) {
+                const mem = adapter.getMemoryUsage();
+                memoryEl.style.display = 'flex';
+                memoryEl.querySelector('span').textContent = mem < 1048576 ? `Memory: ${(mem / 1024).toFixed(2)} KB` : `Memory: ${(mem / 1048576).toFixed(2)} MB`;
+            } else {
+                memoryEl.style.display = 'none';
+            }
 
             const frame = adapter.getDebugFrame();
             renderer.render(frame);
@@ -312,7 +297,7 @@
             frames++;
             const now = performance.now();
             if (now - fpsLastTime > 1000) {
-                document.getElementById('stat-fps').textContent = frames;
+                document.getElementById('fps').querySelector('span').textContent = `FPS: ${frames}`;
                 frames = 0;
                 fpsLastTime = now;
             }
@@ -320,13 +305,31 @@
             frameId = requestAnimationFrame(loop);
         }
 
-        document.getElementById('run-btn').addEventListener('click', startBenchmark);
-        document.getElementById('reset-btn').addEventListener('click', () => {
-            if (adapter) adapter.clear();
-            if (frameId) cancelAnimationFrame(frameId);
-            isRunning = false;
-            document.getElementById('status-text').textContent = 'Reset completed';
+        const handleReset = () => {
+            startBenchmark();
+            document.getElementById('status-text').textContent = 'Benchmark reset';
+        };
+
+        resetButton.addEventListener('click', handleReset);
+        resetButtonMobile.addEventListener('click', handleReset);
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
         });
+
+        // Tab selection logic
+        const tabs = document.querySelectorAll('.engine-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                startBenchmark();
+            });
+        });
+
+        // Initial setup
+        populateScenarios();
+        initGearbox();
     </script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import { PhysicsEngineAdapter, DebugFrame, ShapeType, JointType } from '../physi
 export class GearboxAdapter implements PhysicsEngineAdapter {
     private world: any = null;
     private idMap = new Map<string | number, number>();
+    private bodies = new Map<number, any>();
     private nextId = 1000;
 
     constructor(existingWorld?: any) {
@@ -115,6 +116,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
     clear(): void {
         if (this.world) this.world.clear();
         this.idMap.clear();
+        this.bodies.clear();
         this.nextId = 1000;
     }
 
@@ -133,6 +135,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             sFriction: options.sFriction ?? 0.5,
             kFriction: options.kFriction ?? 0.3
         });
+        this.bodies.set(internalId, body);
     }
 
     createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options: any = {}): void {
@@ -150,6 +153,16 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             sFriction: options.sFriction ?? 0.5,
             kFriction: options.kFriction ?? 0.3
         });
+        this.bodies.set(internalId, body);
+    }
+
+    createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const internalId = this.getInternalId(id);
+        const bodyA = this.bodies.get(this.getInternalId(bodyAId));
+        const bodyB = this.bodies.get(this.getInternalId(bodyBId));
+        if (bodyA && bodyB) {
+            this.world.createDistanceJoint(internalId, bodyA, bodyB, options);
+        }
     }
 
     getMemoryUsage(): number {
