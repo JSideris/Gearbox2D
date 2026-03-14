@@ -113,7 +113,7 @@ export const ConservationOfEnergyScenario: Scenario = {
         adapter.clear();
         adapter.setGravity(0, 80);
         
-        const thickness = 1;
+        const thickness = 2;
         const width = 12;
         const height = 10;
         const color = '#333';
