@@ -69,6 +69,18 @@ struct WarmStartData {
     int count = 0;
 };
 
+struct Island {
+    std::vector<Body*> bodies;
+    std::vector<ContactConstraint*> contacts;
+    std::vector<Joint*> joints;
+
+    void clear() {
+        bodies.clear();
+        contacts.clear();
+        joints.clear();
+    }
+};
+
 class World {
 private:
     std::unordered_map<int, Body*> bodiesMap;
@@ -122,6 +134,9 @@ private:
     void _clearContactTracking();
     void _maybePruneBodyContactCounts();
     void _maybePrunePairs();
+
+    void _buildAndProcessIslands(float dt, int substepIndex);
+    void _solveIsland(Island& island, float dt, int substepIndex);
 
 public:
     Bvh bvh;

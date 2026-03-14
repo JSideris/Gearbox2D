@@ -181,7 +181,7 @@
 
 ### Sleep Optimizations
 - [x] Sleeping objects.
-- [ ] Islands.
+- [x] Islands.
 - [x] Shrinkwrap AABB on sleep.
 - [ ] Experimental: Separate vectors for sleeping/awake objects.
 - [ ] Experimental: Re-insert into BVH upon sleep.

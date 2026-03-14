@@ -245,46 +245,7 @@ void World::step() {
         _doBroadPhase();
         _doNarrowPhase();
         
-        std::vector<Joint*> sortedJoints;
-        sortedJoints.reserve(jointsMap.size());
-        for (auto& pair : jointsMap) sortedJoints.push_back(pair.second.get());
-        std::sort(sortedJoints.begin(), sortedJoints.end(), [](Joint* a, Joint* b) { return a->id < b->id; });
-
-        for (auto* joint : sortedJoints) {
-            if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-            joint->preSolve(subStepDt);
-        }
-
-        _doResolution(subStepDt, i);
-        _doIntegratePositionsSubStep(subStepDt);
-        
-        // --- Position Solver Loop ---
-        for (int p = 0; p < positionIterations; ++p) {
-            for (auto& c : contactConstraints) {
-                c.solvePosition();
-            }
-            for (auto* joint : sortedJoints) {
-                if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-                joint->solvePosition();
-            }
-        }
-        
-        // Re-synchronize AABBs after position correction
-        if (positionIterations > 0) {
-            for (auto* body : bodiesList) {
-                if (body->isSleeping) continue;
-                float pr = body->getRotation();
-                float cosR = std::cos(pr);
-                float sinR = std::sin(pr);
-                for (auto* fixture : body->fixtures) {
-                    Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
-                    if (!fixture->aabb.contains(tightAabb)) {
-                        fixture->updateAabb(cosR, sinR, 0);
-                        fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb);
-                    }
-                }
-            }
-        }
+        _buildAndProcessIslands(subStepDt, i);
     }
     _doContactManagement();
 }
@@ -366,15 +327,6 @@ void World::_doNarrowPhase() {
 
         if (colliding) {
             currentPairs.insert({f1->id, f2->id});
-
-            // If one body is awake and dynamic/kinematic, and the other is sleeping, wake up the sleeping one
-            if (f1->body->isSleeping != f2->body->isSleeping) {
-                Body* awake = f1->body->isSleeping ? f2->body : f1->body;
-                Body* sleeping = f1->body->isSleeping ? f1->body : f2->body;
-                if (awake->type != ObjectType::FIXED_OBJECT && sleeping->type != ObjectType::FIXED_OBJECT) {
-                    sleeping->wakeUp();
-                }
-            }
 
             // Mark fixtures as colliding for debug graphics
             liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
@@ -484,22 +436,21 @@ void World::_maybePrunePairs() {
     }
 }
 
-void World::_doResolution(float dt, int substepIndex) {
-    contactConstraints.clear();
+void World::_buildAndProcessIslands(float dt, int substepIndex) {
+    int bodyCount = bodiesList.size();
+    std::vector<bool> visited(bodyCount, false);
+    std::vector<Body*> stack;
     
-    // Collect all bodies involved in collisions to cache their solver data
-    std::vector<Body::SolverData> solverBodies(bodiesList.size());
-    std::vector<bool> solverBodyActive(bodiesList.size(), false);
-    auto getSolverBody = [&](Body* b) -> Body::SolverData& {
-        int idx = b->worldIndex;
-        if (!solverBodyActive[idx]) {
-            solverBodies[idx] = b->getSolverData();
-            solverBodyActive[idx] = true;
-        }
-        return solverBodies[idx];
-    };
-
-    // Constraint generation
+    // Clear collision tracking flags that we'll use during DFS if needed
+    // or just use the local visited vector.
+    
+    Island island;
+    island.bodies.reserve(bodyCount);
+    island.contacts.reserve(collisionSolver.collisions.size());
+    island.joints.reserve(jointsMap.size());
+    
+    // 1. Generate all contact constraints first, so we can follow them in DFS
+    contactConstraints.clear();
     for (auto& col : collisionSolver.collisions) {
         Fixture* fA = fixturesList[col.indexA];
         Fixture* fB = fixturesList[col.indexB];
@@ -545,79 +496,89 @@ void World::_doResolution(float dt, int substepIndex) {
                 }
             }
             if (bestMatchIdx != -1) {
-                c.normalImpulse = it->second.impulses[bestMatchIdx].normalImpulse * 1.0f;
-                c.frictionImpulse = it->second.impulses[bestMatchIdx].frictionImpulse * 1.0f;
+                c.normalImpulse = it->second.impulses[bestMatchIdx].normalImpulse;
+                c.frictionImpulse = it->second.impulses[bestMatchIdx].frictionImpulse;
             }
         }
-
-        // Apply initial warm-start impulses to Cached Solver Data
-        Body::SolverData& sA = getSolverBody(bA);
-        Body::SolverData& sB = getSolverBody(bB);
-        c.context.a = &sA;
-        c.context.b = &sB;
-
-        if (c.normalImpulse != 0 || c.frictionImpulse != 0) {
-            Vec2 impulse = c.normal * c.normalImpulse + c.tangent * c.frictionImpulse;
-            if (sA.im > 0) {
-                sA.v.x -= impulse.x * sA.im;
-                sA.v.y -= impulse.y * sA.im;
-                sA.w -= c.rA.cross(impulse) * sA.iI;
-            }
-            if (sB.im > 0) {
-                sB.v.x += impulse.x * sB.im;
-                sB.v.y += impulse.y * sB.im;
-                sB.w += c.rB.cross(impulse) * sB.iI;
-            }
-        }
-
         contactConstraints.push_back(c);
     }
-
-    // Fast Iterative Solver
-    // Link joints to solver data before iterations
-    std::vector<Joint*> sortedJoints;
-    sortedJoints.reserve(jointsMap.size());
+    
+    // 2. Pre-solve all joints globally so they can modify body velocities for warm-starting
     for (auto& pair : jointsMap) {
-        sortedJoints.push_back(pair.second.get());
+        pair.second->preSolve(dt);
     }
-    std::sort(sortedJoints.begin(), sortedJoints.end(), [](Joint* a, Joint* b) {
-        return a->id < b->id;
-    });
-
-    for (auto* joint : sortedJoints) {
-        if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-
-        joint->context.a = &getSolverBody(joint->bodyA);
-        joint->context.b = &getSolverBody(joint->bodyB);
-
-        // Special handling for GearJoint which needs 4 bodies
-        GearJoint* gear = dynamic_cast<GearJoint*>(joint);
-        if (gear) {
-            gear->context.a = &getSolverBody(gear->joint1->bodyA);
-            gear->context.b = &getSolverBody(gear->joint1->bodyB);
-            gear->context.c = &getSolverBody(gear->joint2->bodyA);
-            gear->context.d = &getSolverBody(gear->joint2->bodyB);
+    
+    // Map bodies to their contact constraints for fast DFS
+    std::vector<std::vector<ContactConstraint*>> bodyToContacts(bodyCount);
+    for (auto& c : contactConstraints) {
+        bodyToContacts[c.a->worldIndex].push_back(&c);
+        bodyToContacts[c.b->worldIndex].push_back(&c);
+    }
+    
+    // 2. DFS partitioning
+    for (int i = 0; i < bodyCount; ++i) {
+        Body* seed = bodiesList[i];
+        if (visited[i] || seed->type == ObjectType::FIXED_OBJECT || seed->isSleeping) continue;
+        
+        island.clear();
+        stack.push_back(seed);
+        visited[i] = true;
+        
+        while (!stack.empty()) {
+            Body* b = stack.back();
+            stack.pop_back();
+            
+            island.bodies.push_back(b);
+            
+            // Follow contacts
+            for (ContactConstraint* c : bodyToContacts[b->worldIndex]) {
+                // Add contact to island if not already added
+                if (std::find(island.contacts.begin(), island.contacts.end(), c) == island.contacts.end()) {
+                    island.contacts.push_back(c);
+                }
+                
+                Body* other = (c->a == b) ? c->b : c->a;
+                if (other->type != ObjectType::FIXED_OBJECT && !visited[other->worldIndex]) {
+                    visited[other->worldIndex] = true;
+                    stack.push_back(other);
+                }
+            }
+            
+            // Follow joints
+            for (Joint* j : b->joints) {
+                if (std::find(island.joints.begin(), island.joints.end(), j) == island.joints.end()) {
+                    island.joints.push_back(j);
+                }
+                
+                Body* bodies[6];
+                int count = 0;
+                bodies[count++] = j->bodyA;
+                bodies[count++] = j->bodyB;
+                GearJoint* gear = dynamic_cast<GearJoint*>(j);
+                if (gear) {
+                    bodies[count++] = gear->joint1->bodyA;
+                    bodies[count++] = gear->joint1->bodyB;
+                    bodies[count++] = gear->joint2->bodyA;
+                    bodies[count++] = gear->joint2->bodyB;
+                }
+                
+                for (int k = 0; k < count; ++k) {
+                    Body* other = bodies[k];
+                    if (other->type != ObjectType::FIXED_OBJECT && !visited[other->worldIndex]) {
+                        visited[other->worldIndex] = true;
+                        stack.push_back(other);
+                    }
+                }
+            }
+        }
+        
+        // 3. Process the island
+        if (!island.bodies.empty()) {
+            _solveIsland(island, dt, substepIndex);
         }
     }
-
-    for (int iter = 0; iter < velocityIterations; ++iter) {
-        for (auto& c : contactConstraints) {
-            c.solveFast();
-        }
-        for (auto* joint : sortedJoints) {
-            if (joint->bodyA->isSleeping && joint->bodyB->isSleeping) continue;
-            joint->solveFast();
-        }
-    }
-
-    // Sync cached data back to bodies
-    for (int i = 0; i < (int)bodiesList.size(); ++i) {
-        if (solverBodyActive[i]) {
-            bodiesList[i]->setSolverData(solverBodies[i]);
-        }
-    }
-
-    // Update warm start storage only on LAST substep
+    
+    // 4. Update warm start storage only on LAST substep
     if (substepIndex == velocitySubSteps - 1) {
         resolvedImpulses.clear();
         warmStartImpulses.clear();
@@ -639,7 +600,127 @@ void World::_doResolution(float dt, int substepIndex) {
             }
         }
     }
+    
+    // 5. Re-synchronize AABBs after position correction
+    if (positionIterations > 0) {
+        for (auto* body : bodiesList) {
+            if (body->isSleeping) continue;
+            float pr = body->getRotation();
+            float cosR = std::cos(pr);
+            float sinR = std::sin(pr);
+            for (auto* fixture : body->fixtures) {
+                Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
+                if (!fixture->aabb.contains(tightAabb)) {
+                    fixture->updateAabb(cosR, sinR, 0);
+                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb);
+                }
+            }
+        }
+    }
 }
+
+void World::_solveIsland(Island& island, float dt, int substepIndex) {
+    // 1. Sort constraints for deterministic solving
+    std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
+        return a->id.key < b->id.key;
+    });
+    std::sort(island.joints.begin(), island.joints.end(), [](Joint* a, Joint* b) {
+        return a->id < b->id;
+    });
+
+    // 2. Wake up bodies in island
+    for (Body* b : island.bodies) b->wakeUp();
+
+    // 3. Solve the island
+    std::vector<Body::SolverData> solverBodies(bodiesList.size());
+    std::vector<bool> solverBodyActive(bodiesList.size(), false);
+    
+    // Initialize solver data for all dynamic/kinematic bodies in the island
+    for (Body* b : island.bodies) {
+        solverBodies[b->worldIndex] = b->getSolverData();
+        solverBodyActive[b->worldIndex] = true;
+    }
+    
+    auto getSolverBody = [&](Body* b) -> Body::SolverData& {
+        int idx = b->worldIndex;
+        if (!solverBodyActive[idx]) {
+            solverBodies[idx] = b->getSolverData();
+            solverBodyActive[idx] = true;
+        }
+        return solverBodies[idx];
+    };
+    
+    // Prepare contacts
+    for (ContactConstraint* c : island.contacts) {
+        Body::SolverData& sA = getSolverBody(c->a);
+        Body::SolverData& sB = getSolverBody(c->b);
+        c->context.a = &sA;
+        c->context.b = &sB;
+        
+        if (c->normalImpulse != 0 || c->frictionImpulse != 0) {
+            Vec2 impulse = c->normal * c->normalImpulse + c->tangent * c->frictionImpulse;
+            if (sA.im > 0) {
+                sA.v.x -= impulse.x * sA.im;
+                sA.v.y -= impulse.y * sA.im;
+                sA.w -= c->rA.cross(impulse) * sA.iI;
+            }
+            if (sB.im > 0) {
+                sB.v.x += impulse.x * sB.im;
+                sB.v.y += impulse.y * sB.im;
+                sB.w += c->rB.cross(impulse) * sB.iI;
+            }
+        }
+    }
+    
+    // Prepare joints
+    for (Joint* j : island.joints) {
+        j->context.a = &getSolverBody(j->bodyA);
+        j->context.b = &getSolverBody(j->bodyB);
+        GearJoint* gear = dynamic_cast<GearJoint*>(j);
+        if (gear) {
+            gear->context.a = &getSolverBody(gear->joint1->bodyA);
+            gear->context.b = &getSolverBody(gear->joint1->bodyB);
+            gear->context.c = &getSolverBody(gear->joint2->bodyA);
+            gear->context.d = &getSolverBody(gear->joint2->bodyB);
+        }
+    }
+    
+    // Velocity Iterations
+    for (int iter = 0; iter < velocityIterations; ++iter) {
+        for (ContactConstraint* c : island.contacts) c->solveFast();
+        for (Joint* j : island.joints) j->solveFast();
+    }
+    
+    // Sync velocities back and integrate positions
+    for (Body* b : island.bodies) {
+        if (b->type != ObjectType::FIXED_OBJECT) {
+            b->setSolverData(solverBodies[b->worldIndex]);
+            b->integratePositions(dt);
+        }
+    }
+    
+    // Position Iterations
+    for (int p = 0; p < positionIterations; ++p) {
+        for (ContactConstraint* c : island.contacts) c->solvePosition();
+        for (Joint* j : island.joints) j->solvePosition();
+    }
+
+    // 3. Check if the island can go to sleep
+    if (substepIndex == velocitySubSteps - 1) {
+        bool canIslandSleep = true;
+        for (Body* b : island.bodies) {
+            if (b->sleepTimer < b->sleepTimeRequired) {
+                canIslandSleep = false;
+                break;
+            }
+        }
+        
+        if (canIslandSleep) {
+            for (Body* b : island.bodies) b->sleep();
+        }
+    }
+}
+
 
 void World::clear() {
     jointsMap.clear();
@@ -742,7 +823,10 @@ int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, fl
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
     disabledPairs.insert({bodyAId, bodyBId});
-    jointsMap[id] = std::make_unique<HingeJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY));
+    auto joint = std::make_unique<HingeJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY));
+    itA->second->joints.push_back(joint.get());
+    itB->second->joints.push_back(joint.get());
+    jointsMap[id] = std::move(joint);
     return id;
 }
 
@@ -750,7 +834,10 @@ int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX,
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
     disabledPairs.insert({bodyAId, bodyBId});
-    jointsMap[id] = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
+    auto joint = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
+    itA->second->joints.push_back(joint.get());
+    itB->second->joints.push_back(joint.get());
+    jointsMap[id] = std::move(joint);
     return id;
 }
 
@@ -758,7 +845,10 @@ int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, f
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
     disabledPairs.insert({bodyAId, bodyBId});
-    jointsMap[id] = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
+    auto joint = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
+    itA->second->joints.push_back(joint.get());
+    itB->second->joints.push_back(joint.get());
+    jointsMap[id] = std::move(joint);
     return id;
 }
 
@@ -768,7 +858,20 @@ int World::createGearJoint(int id, int joint1Id, int joint2Id, float ratio) {
     HingeJoint* h1 = dynamic_cast<HingeJoint*>(it1->second.get());
     HingeJoint* h2 = dynamic_cast<HingeJoint*>(it2->second.get());
     if (!h1 || !h2) return -1;
-    jointsMap[id] = std::make_unique<GearJoint>(id, h1, h2, ratio);
+    auto joint = std::make_unique<GearJoint>(id, h1, h2, ratio);
+    
+    auto addUnique = [](Body* b, Joint* j) {
+        if (std::find(b->joints.begin(), b->joints.end(), j) == b->joints.end()) {
+            b->joints.push_back(j);
+        }
+    };
+    
+    addUnique(h1->bodyA, joint.get());
+    addUnique(h1->bodyB, joint.get());
+    addUnique(h2->bodyA, joint.get());
+    addUnique(h2->bodyB, joint.get());
+    
+    jointsMap[id] = std::move(joint);
     return id;
 }
 
@@ -779,7 +882,27 @@ void World::removeJoint(int id) {
         if (gj && (gj->joint1->id == id || gj->joint2->id == id)) dependentJoints.push_back(pair.first);
     }
     for (int djId : dependentJoints) removeJoint(djId);
-    jointsMap.erase(id);
+
+    auto it = jointsMap.find(id);
+    if (it != jointsMap.end()) {
+        Joint* j = it->second.get();
+        auto removeJointFromBody = [j](Body* b) {
+            auto& v = b->joints;
+            v.erase(std::remove(v.begin(), v.end(), j), v.end());
+        };
+        removeJointFromBody(j->bodyA);
+        removeJointFromBody(j->bodyB);
+        
+        GearJoint* gear = dynamic_cast<GearJoint*>(j);
+        if (gear) {
+            removeJointFromBody(gear->joint1->bodyA);
+            removeJointFromBody(gear->joint1->bodyB);
+            removeJointFromBody(gear->joint2->bodyA);
+            removeJointFromBody(gear->joint2->bodyB);
+        }
+        
+        jointsMap.erase(id);
+    }
 }
 Joint* World::getJoint(int id) { auto it = jointsMap.find(id); return it != jointsMap.end() ? it->second.get() : nullptr; }
 

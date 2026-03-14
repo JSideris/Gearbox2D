@@ -8,6 +8,7 @@
 
 class World;
 class Fixture;
+class Joint;
 
 class Body {
 private:
@@ -17,6 +18,7 @@ private:
     std::vector<Body*> contacts;
 
 public:
+    std::vector<Joint*> joints;
     int id;
     World& world;
     int worldIndex = -1;

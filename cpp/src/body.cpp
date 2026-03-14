@@ -227,7 +227,6 @@ bool Body::integratePositions(float dt) {
         sleepTimer += dt;
     }
     
-    if (sleepTimer > sleepTimeRequired) sleep();
     return moved;
 }
 
