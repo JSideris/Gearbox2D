@@ -1,5 +1,5 @@
 import gearbox from 'gearbox2d';
-import { PhysicsEngineAdapter, DebugFrame, ShapeType, JointType } from '../physics-protocol.ts';
+import { PhysicsEngineAdapter, DebugFrame, ShapeType, JointType } from '../physics-protocol';
 
 export class GearboxAdapter implements PhysicsEngineAdapter {
     private world: any = null;
@@ -126,7 +126,9 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             x, y,
             type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
             mass: options.mass || 1.0,
-            color: options.color
+            color: options.color,
+            linearDamping: options.linearDamping,
+            angularDamping: options.angularDamping
         });
         body.addFixture({
             shape: gearbox.shapes.BOX,
@@ -144,7 +146,9 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             x, y,
             type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
             mass: options.mass || 1.0,
-            color: options.color
+            color: options.color,
+            linearDamping: options.linearDamping,
+            angularDamping: options.angularDamping
         });
         body.addFixture({
             shape: gearbox.shapes.CIRCLE,
@@ -163,6 +167,25 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
         if (bodyA && bodyB) {
             this.world.createDistanceJoint(internalId, bodyA, bodyB, options);
         }
+    }
+
+    createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
+        const internalId = this.getInternalId(id);
+        const body = this.world.makeBody(internalId, {
+            x, y,
+            type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
+            mass: options.mass || 1.0,
+            color: options.color,
+            linearDamping: options.linearDamping,
+            angularDamping: options.angularDamping
+        });
+        body.addFixture({
+            shape: gearbox.shapes.POINT,
+            restitution: options.restitution ?? 0.1,
+            sFriction: options.sFriction ?? 0.5,
+            kFriction: options.kFriction ?? 0.3
+        });
+        this.bodies.set(internalId, body);
     }
 
     getMemoryUsage(): number {

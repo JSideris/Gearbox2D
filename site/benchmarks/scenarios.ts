@@ -1,4 +1,4 @@
-import { PhysicsEngineAdapter } from '../utils/physics-protocol.ts';
+import { PhysicsEngineAdapter } from '../utils/physics-protocol';
 
 export interface Scenario {
     name: string;
@@ -64,7 +64,9 @@ export const NewtonsCradleScenario: Scenario = {
                 restitution: 1.0,
                 mass: 1.0,
                 sFriction: 0,
-                kFriction: 0
+                kFriction: 0,
+                linearDamping: 0,
+                angularDamping: 0
             });
             
             // Connect with distance joint
@@ -77,8 +79,45 @@ export const NewtonsCradleScenario: Scenario = {
     }
 };
 
+export const ConservationOfEnergyScenario: Scenario = {
+    name: "Conservation of Energy",
+    setup(adapter: PhysicsEngineAdapter) {
+        adapter.clear();
+        
+        const thickness = 1;
+        const width = 12;
+        const height = 10;
+        const color = '#333';
+        
+        // Container (4 fixed boxes)
+        adapter.createBox('ground', 0, height/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('ceiling', 0, -height/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('left', -width/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('right', width/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        
+        // Points dropped from max height (near ceiling)
+        const nPoints = 40;
+        const innerWidth = width - thickness * 2;
+        const startY = -height/2 + thickness + 0.5;
+        const spacing = innerWidth / (nPoints + 1);
+        
+        for (let i = 0; i < nPoints; i++) {
+            const x = -innerWidth/2 + spacing * (i + 1);
+            adapter.createPoint(`p-${i}`, x, startY, false, {
+                restitution: 1.0,
+                sFriction: 0,
+                kFriction: 0,
+                linearDamping: 0,
+                angularDamping: 0,
+                color: '#00f2ff'
+            });
+        }
+    }
+};
+
 export const scenarios: Record<string, Scenario> = {
     'large-stack': LargeStackScenario,
     'high-density': HighDensityScenario,
-    'newtons-cradle': NewtonsCradleScenario
+    'newtons-cradle': NewtonsCradleScenario,
+    'energy-conservation': ConservationOfEnergyScenario
 };

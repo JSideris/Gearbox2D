@@ -1,4 +1,4 @@
-import { DebugFrame, ShapeType, JointType, DebugBody, DebugFixture, DebugJoint } from './physics-protocol.ts';
+import { DebugFrame, ShapeType, JointType, DebugBody, DebugFixture, DebugJoint } from './physics-protocol';
 
 const ANIMSCALE = 100;
 
@@ -77,6 +77,11 @@ export class ProtocolRenderer {
                 this.ctx.translate(fx, fy);
                 this.ctx.rotate(fr);
                 this.ctx.rect(-w / 2, -h / 2, w, h);
+                break;
+            case ShapeType.POINT:
+                this.ctx.arc(fx, fy, 2, 0, 2 * Math.PI);
+                this.ctx.fillStyle = color || '#f1f5f9';
+                this.ctx.fill();
                 break;
             case ShapeType.POLYGON:
                 if (fixture.points && fixture.points.length > 0) {

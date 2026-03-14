@@ -59,6 +59,7 @@ export interface PhysicsEngineAdapter {
     createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options?: any): void;
     createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options?: any): void;
     createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options?: any): void;
+    createPoint(id: number | string, x: number, y: number, isStatic: boolean, options?: any): void;
     getMemoryUsage?(): number;
     getBodyCount(): number;
 }

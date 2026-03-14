@@ -1,4 +1,4 @@
-import { PhysicsEngineAdapter, DebugFrame, ShapeType, JointType } from '../physics-protocol.ts';
+import { PhysicsEngineAdapter, DebugFrame, ShapeType, JointType } from '../physics-protocol';
 
 // --- Matter.js Adapter ---
 export class MatterAdapter implements PhysicsEngineAdapter {
@@ -100,7 +100,7 @@ export class MatterAdapter implements PhysicsEngineAdapter {
                 restitution: options.restitution ?? 0,
                 friction: options.sFriction ?? 0.5,
                 frictionStatic: options.sFriction ?? 0.5,
-                frictionAir: 0,
+                frictionAir: options.linearDamping ?? 0,
                 ...options 
             }
         );
@@ -118,7 +118,7 @@ export class MatterAdapter implements PhysicsEngineAdapter {
                 restitution: options.restitution ?? 0,
                 friction: options.sFriction ?? 0.5,
                 frictionStatic: options.sFriction ?? 0.5,
-                frictionAir: 0,
+                frictionAir: options.linearDamping ?? 0,
                 ...options 
             }
         );
@@ -138,6 +138,10 @@ export class MatterAdapter implements PhysicsEngineAdapter {
             stiffness: 1.0
         });
         this.Matter.Composite.add(this.world, constraint);
+    }
+
+    createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
+        this.createCircle(id, x, y, 0.05, isStatic, options);
     }
 
     getBodyCount(): number {
@@ -209,22 +213,42 @@ export class P2Adapter implements PhysicsEngineAdapter {
         const body = new this.p2.Body({
             mass: isStatic ? 0 : (options.mass || 1),
             position: [x, -y],
-            type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC
+            type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC,
+            damping: options.linearDamping !== undefined ? options.linearDamping : 0.1,
+            angularDamping: options.angularDamping !== undefined ? options.angularDamping : 0.1
         });
         body.addShape(new this.p2.Box({ width: w, height: h }));
         this.world.addBody(body);
         this.bodies.set(id, body);
+        this.applyRestitution(options.restitution, options.sFriction);
     }
 
     createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options: any = {}): void {
         const body = new this.p2.Body({
             mass: isStatic ? 0 : (options.mass || 1),
             position: [x, -y],
-            type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC
+            type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC,
+            damping: options.linearDamping !== undefined ? options.linearDamping : 0.1,
+            angularDamping: options.angularDamping !== undefined ? options.angularDamping : 0.1
         });
         body.addShape(new this.p2.Circle({ radius }));
         this.world.addBody(body);
         this.bodies.set(id, body);
+        this.applyRestitution(options.restitution, options.sFriction);
+    }
+
+    private applyRestitution(restitution?: number, friction?: number): void {
+        if (restitution !== undefined) {
+            // P2 uses contact materials for bounciness. For simplicity in this adapter,
+            // we update the default contact material.
+            this.world.defaultContactMaterial.restitution = Math.max(
+                this.world.defaultContactMaterial.restitution, 
+                restitution
+            );
+        }
+        if (friction !== undefined) {
+            this.world.defaultContactMaterial.friction = friction;
+        }
     }
 
     createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
@@ -236,6 +260,10 @@ export class P2Adapter implements PhysicsEngineAdapter {
             distance: options.length
         });
         this.world.addConstraint(constraint);
+    }
+
+    createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
+        this.createCircle(id, x, y, 0.05, isStatic, options);
     }
 
     getBodyCount(): number {
@@ -336,6 +364,8 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         const bd = new this.box2d.b2BodyDef();
         bd.set_type(isStatic ? this.box2d.b2_staticBody : this.box2d.b2_dynamicBody);
         bd.set_position(new this.box2d.b2Vec2(x, -y));
+        if (options.linearDamping !== undefined) bd.set_linearDamping(options.linearDamping);
+        if (options.angularDamping !== undefined) bd.set_angularDamping(options.angularDamping);
         const body = this.world.CreateBody(bd);
         
         const shape = new this.box2d.b2PolygonShape();
@@ -350,6 +380,8 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         const bd = new this.box2d.b2BodyDef();
         bd.set_type(isStatic ? this.box2d.b2_staticBody : this.box2d.b2_dynamicBody);
         bd.set_position(new this.box2d.b2Vec2(x, -y));
+        if (options.linearDamping !== undefined) bd.set_linearDamping(options.linearDamping);
+        if (options.angularDamping !== undefined) bd.set_angularDamping(options.angularDamping);
         const body = this.world.CreateBody(bd);
 
         const shape = new this.box2d.b2CircleShape();
@@ -406,6 +438,10 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         try { this.box2d.destroy(rawWorldA); } catch(e) {}
         try { this.box2d.destroy(rawWorldB); } catch(e) {}
         this.box2d.destroy(jd);
+    }
+
+    createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
+        this.createCircle(id, x, y, 0.05, isStatic, options);
     }
 
     getBodyCount(): number {
