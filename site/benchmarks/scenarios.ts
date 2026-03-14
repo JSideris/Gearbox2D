@@ -111,23 +111,23 @@ export const ConservationOfEnergyScenario: Scenario = {
     metricLabel: "Max Height (2s)",
     setup(adapter: PhysicsEngineAdapter) {
         adapter.clear();
-        adapter.setGravity(0, 80);
+        adapter.setGravity(0, 1000);
         
-        const thickness = 2;
+        const thickness = 10;
         const width = 12;
         const height = 10;
         const color = '#333';
         
         // Container (4 fixed boxes)
-        adapter.createBox('ground', 0, height/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
-        adapter.createBox('ceiling', 0, -height/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
-        adapter.createBox('left', -width/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
-        adapter.createBox('right', width/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('ground', 0, height/2 + thickness/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('ceiling', 0, -height/2 - thickness/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('left', -width/2 - thickness/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('right', width/2 + thickness/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
         
         // Points dropped from max height (near ceiling)
         const nPoints = 40;
-        const innerWidth = width - thickness * 2;
-        const startY = -height/2 + thickness + 0.5;
+        const innerWidth = width;
+        const startY = -height/2 + 0.5;
         const spacing = innerWidth / (nPoints + 1);
         
         for (let i = 0; i < nPoints; i++) {
@@ -167,7 +167,7 @@ export const ConservationOfEnergyScenario: Scenario = {
             if (entry.height > maxInWindow) maxInWindow = entry.height;
         }
         
-        return maxInWindow === -Infinity ? 0 : maxInWindow;
+        return maxInWindow === -Infinity ? 0 : Math.max(0,maxInWindow);
     }
 };
 

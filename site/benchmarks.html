@@ -151,6 +151,38 @@
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), var(--shadow-glow);
             z-index: 1000;
         }
+
+        #engine-legend {
+            display: none;
+            grid-template-columns: repeat(2, auto);
+            justify-content: start;
+            column-gap: 20px;
+            row-gap: 4px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            font-size: 0.65rem;
+            color: var(--text-main);
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0 !important;
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 8px currentColor;
+        }
     </style>
 </head>
 <body>
@@ -208,6 +240,12 @@
                 <div id="metric-chart-container">
                     <canvas id="metric-chart"></canvas>
                 </div>
+                <div id="engine-legend">
+                    <div class="legend-item"><span class="legend-color" style="color: #4ade80; background: #4ade80;"></span>Gearbox2D</div>
+                    <div class="legend-item"><span class="legend-color" style="color: #f472b6; background: #f472b6;"></span>Matter.js</div>
+                    <div class="legend-item"><span class="legend-color" style="color: #a855f7; background: #a855f7;"></span>P2.js</div>
+                    <div class="legend-item"><span class="legend-color" style="color: #60a5fa; background: #60a5fa;"></span>Box2D-WASM</div>
+                </div>
             </div>
 
             <div id="status-text" style="padding: 10px 20px; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border);">Ready to benchmark</div>
@@ -235,6 +273,8 @@
         const sidebarToggle = document.getElementById('sidebar-toggle');
         const resetButton = document.getElementById('reset-button');
         const resetButtonMobile = document.getElementById('reset-button-mobile');
+        const engineNameEl = document.getElementById('engine-name');
+        const engineLegend = document.getElementById('engine-legend');
         
         class BenchmarkChart {
             constructor(canvasId) {
@@ -423,6 +463,8 @@
             if (selectedEngine === 'all') {
                 canvasContainer.classList.add('all-mode');
                 metricsContainer.classList.add('all-mode');
+                engineLegend.style.display = 'grid';
+                engineNameEl.style.display = 'none';
                 
                 // Top-left: Gearbox2D, Top-right: Matter.js
                 // Bottom-left: P2.js, Bottom-right: Box2D-WASM
@@ -439,6 +481,8 @@
             } else {
                 canvasContainer.classList.remove('all-mode');
                 metricsContainer.classList.remove('all-mode');
+                engineLegend.style.display = 'none';
+                engineNameEl.style.display = 'flex';
                 activeEngines.push(await createEngineInstance(selectedEngine, false, 1.0));
             }
 
