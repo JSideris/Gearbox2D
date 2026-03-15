@@ -126,6 +126,10 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             x, y,
             type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
             mass: options.mass || 1.0,
+            vx: options.vx,
+            vy: options.vy,
+            rs: options.rs,
+            gscale: options.gscale,
             color: options.color,
             linearDamping: options.linearDamping,
             angularDamping: options.angularDamping
@@ -146,6 +150,10 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             x, y,
             type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
             mass: options.mass || 1.0,
+            vx: options.vx,
+            vy: options.vy,
+            rs: options.rs,
+            gscale: options.gscale,
             color: options.color,
             linearDamping: options.linearDamping,
             angularDamping: options.angularDamping
@@ -175,6 +183,10 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
             x, y,
             type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
             mass: options.mass || 1.0,
+            vx: options.vx,
+            vy: options.vy,
+            rs: options.rs,
+            gscale: options.gscale,
             color: options.color,
             linearDamping: options.linearDamping,
             angularDamping: options.angularDamping

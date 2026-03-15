@@ -105,6 +105,12 @@ export class MatterAdapter implements PhysicsEngineAdapter {
             }
         );
         this.Matter.Composite.add(this.world, body);
+        if (options.vx !== undefined || options.vy !== undefined) {
+            this.Matter.Body.setVelocity(body, { 
+                x: (options.vx || 0) * this.SCALE / 60, 
+                y: (options.vy || 0) * this.SCALE / 60 
+            });
+        }
         this.bodies.set(id, body);
     }
 
@@ -123,6 +129,12 @@ export class MatterAdapter implements PhysicsEngineAdapter {
             }
         );
         this.Matter.Composite.add(this.world, body);
+        if (options.vx !== undefined || options.vy !== undefined) {
+            this.Matter.Body.setVelocity(body, { 
+                x: (options.vx || 0) * this.SCALE / 60, 
+                y: (options.vy || 0) * this.SCALE / 60 
+            });
+        }
         this.bodies.set(id, body);
     }
 

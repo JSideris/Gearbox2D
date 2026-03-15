@@ -171,9 +171,125 @@ export const ConservationOfEnergyScenario: Scenario = {
     }
 };
 
+export const HighPressureBouncyCircleScenario: Scenario = {
+    name: "High-Pressure Bouncy Circle",
+    metricLabel: "Max Velocity (2s)",
+    setup(adapter: PhysicsEngineAdapter) {
+        adapter.clear();
+        adapter.setGravity(0, 100);
+        
+        const thickness = 100;
+        const width = 12;
+        const height = 10;
+        const color = '#333';
+        
+        // Container (4 fixed boxes)
+        adapter.createBox('ground', 0, height/2 + thickness/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('ceiling', 0, -height/2 - thickness/2, width, thickness, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('left', -width/2 - thickness/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        adapter.createBox('right', width/2 + thickness/2, 0, thickness, height, true, { color, restitution: 1.0, sFriction: 0, kFriction: 0, linearDamping: 0, angularDamping: 0 });
+        
+        // Bouncy circle with initial downward push
+        adapter.createCircle('bouncy-circle', 0, 0, 0.5, false, {
+            restitution: 1.0,
+            sFriction: 0,
+            kFriction: 0,
+            linearDamping: 0,
+            angularDamping: 0,
+            vx: 500,
+            vy: 2000, // Strong downward push
+            color: '#00f2ff'
+        });
+    },
+    getMetric(adapter, state) {
+        if (!state.velocityHistory) state.velocityHistory = [];
+        const now = performance.now();
+        
+        const pos = adapter.getPosition('bouncy-circle');
+        const width = 12;
+        const height = 10;
+        const margin = 2;
+        
+        // If the circle escapes the enclosure, interpret max velocity as 0
+        if (Math.abs(pos.x) > width / 2 + margin || Math.abs(pos.y) > height / 2 + margin) {
+            state.velocityHistory = []; // Clear history if escaped
+            return 0;
+        }
+
+        const vel = adapter.getVelocity('bouncy-circle');
+        const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+        
+        state.velocityHistory.push({ time: now, speed });
+        
+        // Prune older than 2s (2000ms)
+        while (state.velocityHistory.length > 0 && now - state.velocityHistory[0].time > 2000) {
+            state.velocityHistory.shift();
+        }
+        
+        // Return max in history
+        let maxInWindow = -Infinity;
+        for (const entry of state.velocityHistory) {
+            if (entry.speed > maxInWindow) maxInWindow = entry.speed;
+        }
+        
+        return maxInWindow === -Infinity ? 0 : Math.max(0, maxInWindow);
+    }
+};
+
+export const HeavyOnLightStackScenario: Scenario = {
+    name: "Heavy-on-Light Stack",
+    metricLabel: "Total Jitter (px)",
+    setup(adapter: PhysicsEngineAdapter) {
+        adapter.clear();
+        adapter.setGravity(0, 1000);
+        
+        // Ground
+        adapter.createBox('ground', 0, 5, 20, 1, true, { color: '#333' });
+        
+        const count = 10;
+        const boxWidth = 1.0;
+        const boxHeight = 0.6;
+        
+        // Stack of light boxes
+        for (let y = 0; y < count - 1; y++) {
+            adapter.createBox(`box-${y}`, 0, 4 - y * boxHeight, boxWidth, boxHeight, false, { 
+                mass: 1.0,
+                color: `hsl(${y * 36}, 70%, 50%)` 
+            });
+        }
+        
+        // Heavy box on top
+        adapter.createBox(`box-${count - 1}`, 0, 4 - (count - 1) * boxHeight, boxWidth, boxHeight, false, { 
+            mass: 100.0, // 100x heavier
+            color: '#ff0000' 
+        });
+    },
+    getMetric(adapter, state) {
+        if (state.totalDisplacement === undefined) state.totalDisplacement = 0;
+        if (!state.lastPositions) state.lastPositions = {};
+
+        const count = 10;
+        for (let i = 0; i < count; i++) {
+            const id = `box-${i}`;
+            const pos = adapter.getPosition(id);
+            if (state.lastPositions[id]) {
+                const dx = pos.x - state.lastPositions[id].x;
+                const dy = pos.y - state.lastPositions[id].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                // Accumulate movement as a measure of jitter/instability
+                state.totalDisplacement += dist;
+            }
+            state.lastPositions[id] = pos;
+        }
+        return state.totalDisplacement;
+    }
+};
+
 export const scenarios: Record<string, Scenario> = {
     'large-stack': LargeStackScenario,
     'high-density': HighDensityScenario,
     'newtons-cradle': NewtonsCradleScenario,
-    'energy-conservation': ConservationOfEnergyScenario
+    'energy-conservation': ConservationOfEnergyScenario,
+    'bouncy-circle': HighPressureBouncyCircleScenario,
+    'heavy-on-light': HeavyOnLightStackScenario
 };

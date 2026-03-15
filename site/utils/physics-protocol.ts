@@ -56,8 +56,8 @@ export interface PhysicsEngineAdapter {
     step(dt: number): void;
     getDebugFrame(): DebugFrame;
     clear(): void;
-    createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options?: any): void;
-    createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options?: any): void;
+    createBox(id: number | string, x: number, y: number, w: number, h: number, isStatic: boolean, options?: { mass?: number, restitution?: number, sFriction?: number, kFriction?: number, linearDamping?: number, angularDamping?: number, vx?: number, vy?: number, color?: string }): void;
+    createCircle(id: number | string, x: number, y: number, radius: number, isStatic: boolean, options?: { mass?: number, restitution?: number, sFriction?: number, kFriction?: number, linearDamping?: number, angularDamping?: number, vx?: number, vy?: number, color?: string }): void;
     createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options?: any): void;
     createPoint(id: number | string, x: number, y: number, isStatic: boolean, options?: any): void;
     getMemoryUsage?(): number;

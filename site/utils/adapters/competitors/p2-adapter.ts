@@ -64,6 +64,7 @@ export class P2Adapter implements PhysicsEngineAdapter {
         const body = new this.p2.Body({
             mass: isStatic ? 0 : (options.mass || 1),
             position: [x, -y],
+            velocity: [options.vx || 0, -(options.vy || 0)],
             type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC,
             damping: options.linearDamping !== undefined ? options.linearDamping : 0.1,
             angularDamping: options.angularDamping !== undefined ? options.angularDamping : 0.1
@@ -78,6 +79,7 @@ export class P2Adapter implements PhysicsEngineAdapter {
         const body = new this.p2.Body({
             mass: isStatic ? 0 : (options.mass || 1),
             position: [x, -y],
+            velocity: [options.vx || 0, -(options.vy || 0)],
             type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC,
             damping: options.linearDamping !== undefined ? options.linearDamping : 0.1,
             angularDamping: options.angularDamping !== undefined ? options.angularDamping : 0.1

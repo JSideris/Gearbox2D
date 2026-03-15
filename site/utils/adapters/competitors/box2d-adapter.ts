@@ -97,6 +97,10 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         if (options.angularDamping !== undefined) bd.set_angularDamping(options.angularDamping);
         const body = this.world.CreateBody(bd);
         
+        if (options.vx !== undefined || options.vy !== undefined) {
+            body.SetLinearVelocity(new this.box2d.b2Vec2(options.vx || 0, -(options.vy || 0)));
+        }
+        
         const shape = new this.box2d.b2PolygonShape();
         shape.SetAsBox(w / 2, h / 2);
         const fixture = body.CreateFixture(shape, isStatic ? 0 : (options.mass || 1.0));
@@ -112,6 +116,10 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         if (options.linearDamping !== undefined) bd.set_linearDamping(options.linearDamping);
         if (options.angularDamping !== undefined) bd.set_angularDamping(options.angularDamping);
         const body = this.world.CreateBody(bd);
+
+        if (options.vx !== undefined || options.vy !== undefined) {
+            body.SetLinearVelocity(new this.box2d.b2Vec2(options.vx || 0, -(options.vy || 0)));
+        }
 
         const shape = new this.box2d.b2CircleShape();
         shape.set_m_radius(radius);
