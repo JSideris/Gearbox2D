@@ -8,7 +8,7 @@ export interface Scenario {
 }
 
 export const LargeStackScenario: Scenario = {
-    name: "Large Stack (Hybrid)",
+    name: "Large Stack",
     metricLabel: "Avg Step Time (ms)",
     setup(adapter: PhysicsEngineAdapter) {
         adapter.clear();
@@ -28,7 +28,7 @@ export const LargeStackScenario: Scenario = {
 };
 
 export const HighDensityScenario: Scenario = {
-    name: "High Density (Stress)",
+    name: "High Density",
     metricLabel: "Avg Step Time (ms)",
     setup(adapter: PhysicsEngineAdapter) {
         adapter.clear();
@@ -47,8 +47,8 @@ export const HighDensityScenario: Scenario = {
 };
 
 export const NewtonsCradleScenario: Scenario = {
-    name: "Newton's Cradle (Joints)",
-    metricLabel: "Total Path Distance",
+    name: "Newton's Cradle",
+    metricLabel: "Peak Height (2s)",
     setup(adapter: PhysicsEngineAdapter) {
         adapter.clear();
         
@@ -89,20 +89,35 @@ export const NewtonsCradleScenario: Scenario = {
         }
     },
     getMetric(adapter, state) {
-        if (state.totalDistance === undefined) state.totalDistance = 0;
-        if (!state.lastPositions) state.lastPositions = {};
-
-        for (let i = 1; i <= 3; i++) {
-            const id = `ball-${i}`;
+        if (!state.heightHistory) state.heightHistory = [];
+        const now = performance.now();
+        
+        const restingY = 2; // startY + length = -2 + 4 = 2
+        let frameMaxHeight = -Infinity;
+        
+        // Track the outer balls
+        const ids = ["ball-0", "ball-4"];
+        for (const id of ids) {
             const pos = adapter.getPosition(id);
-            if (state.lastPositions[id]) {
-                const dx = pos.x - state.lastPositions[id].x;
-                const dy = pos.y - state.lastPositions[id].y;
-                state.totalDistance += Math.sqrt(dx * dx + dy * dy);
-            }
-            state.lastPositions[id] = pos;
+            // Height relative to resting position (higher is smaller y)
+            const height = restingY - pos.y;
+            if (height > frameMaxHeight) frameMaxHeight = height;
         }
-        return state.totalDistance;
+        
+        state.heightHistory.push({ time: now, height: frameMaxHeight });
+        
+        // Prune older than 2s (2000ms)
+        while (state.heightHistory.length > 0 && now - state.heightHistory[0].time > 2000) {
+            state.heightHistory.shift();
+        }
+        
+        // Return max in history
+        let maxInWindow = -Infinity;
+        for (const entry of state.heightHistory) {
+            if (entry.height > maxInWindow) maxInWindow = entry.height;
+        }
+        
+        return maxInWindow === -Infinity ? 0 : Math.max(0, maxInWindow);
     }
 };
 
@@ -241,10 +256,10 @@ export const HeavyOnLightStackScenario: Scenario = {
     metricLabel: "Total Jitter (px)",
     setup(adapter: PhysicsEngineAdapter) {
         adapter.clear();
-        adapter.setGravity(0, 1000);
+        adapter.setGravity(0, 9.81);
         
         // Ground
-        adapter.createBox('ground', 0, 5, 20, 1, true, { color: '#333' });
+        adapter.createBox('ground', 0, 5, 100, 1, true, { color: '#333' });
         
         const count = 10;
         const boxWidth = 1.0;

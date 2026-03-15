@@ -163,7 +163,7 @@
 - [x] Do not recompute AABB when no movement happens.
 - [ ] Stagger AABB recalculation when movement is slow.
 - [x] Speed-dependant bounding area padding.
-- [ ] Spin-dependant bounding area padding.
+- [ ] Spin-dependant bounding area padding (optional).
 - [x] Bounding volume hierarchy (BVH).
 - [X] BVH heuristic biasing.
 	- [x] BVH sleep biasing.
