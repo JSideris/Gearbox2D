@@ -71,6 +71,7 @@ struct AggregatedProperties {
     bool isMultiBody;                  // True if contains objects from multiple bodies
     Vec2 avgVelocity;                  // Average velocity of all objects in subtree
     int leafCount;                     // Number of leaves in subtree
+    bool mayContainSelfCollisions;     // True if subtree could contain colliding objects
     
     AggregatedProperties() 
         : containsSystemCategories(0), 
@@ -82,15 +83,19 @@ struct AggregatedProperties {
           bodyId(-1),
           isMultiBody(false),
           avgVelocity(0, 0),
-          leafCount(0) {}
+          leafCount(0),
+          mayContainSelfCollisions(false) {}
     
     void mergeWith(const AggregatedProperties& other) {
+        bool childrenCanCollide = canPotentiallyCollideWith(other);
+
         containsSystemCategories |= other.containsSystemCategories;
         containsUserCategories |= other.containsUserCategories;
         mayCollideWithUserMask |= other.mayCollideWithUserMask;
         containsAwake |= other.containsAwake;
         containsSleep |= other.containsSleep;
         containsRigid |= other.containsRigid;
+        mayContainSelfCollisions = mayContainSelfCollisions || other.mayContainSelfCollisions || childrenCanCollide;
 
         if (leafCount == 0) {
             bodyId = other.bodyId;
@@ -119,6 +124,7 @@ struct AggregatedProperties {
         agg.isMultiBody = false;
         agg.avgVelocity = props.velocity;
         agg.leafCount = 1;
+        agg.mayContainSelfCollisions = false;
         return agg;
     }
     
@@ -130,6 +136,12 @@ struct AggregatedProperties {
 
         // If both subtrees contain only sleeping objects, skip
         if (!containsAwake && !other.containsAwake) return false;
+
+        // Static-Static Pruning: Skip if both subtrees contain ONLY static objects
+        if (containsSystemCategories == CATEGORY_STATIC && 
+            other.containsSystemCategories == CATEGORY_STATIC) {
+            return false;
+        }
         
         // Check if any objects in this subtree can collide with any in the other based on user masks
         bool thisCanCollideWithOther = (containsUserCategories & other.mayCollideWithUserMask) != 0;
@@ -560,7 +572,7 @@ private:
     
     // Self-collision detection within a single subtree
     void detectSelfCollisionsRecursive(BvhNode* node) {
-        if (!node || !node->aggregated.containsAwake) return;
+        if (!node || !node->aggregated.containsAwake || !node->aggregated.mayContainSelfCollisions) return;
         
         if (node->isLeaf) return; // Leaf nodes can't have self-collisions
         

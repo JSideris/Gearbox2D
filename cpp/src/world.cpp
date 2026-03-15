@@ -440,6 +440,11 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     int bodyCount = bodiesList.size();
     std::vector<bool> visited(bodyCount, false);
     std::vector<Body*> stack;
+
+    // Reset joint inIsland flags
+    for (auto& pair : jointsMap) {
+        pair.second->inIsland = false;
+    }
     
     // Clear collision tracking flags that we'll use during DFS if needed
     // or just use the local visited vector.
@@ -533,7 +538,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             // Follow contacts
             for (ContactConstraint* c : bodyToContacts[b->worldIndex]) {
                 // Add contact to island if not already added
-                if (std::find(island.contacts.begin(), island.contacts.end(), c) == island.contacts.end()) {
+                if (!c->inIsland) {
+                    c->inIsland = true;
                     island.contacts.push_back(c);
                 }
                 
@@ -546,7 +552,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             
             // Follow joints
             for (Joint* j : b->joints) {
-                if (std::find(island.joints.begin(), island.joints.end(), j) == island.joints.end()) {
+                if (!j->inIsland) {
+                    j->inIsland = true;
                     island.joints.push_back(j);
                 }
                 

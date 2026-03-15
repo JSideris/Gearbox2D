@@ -10,6 +10,7 @@ public:
     int id;
     Body* bodyA;
     Body* bodyB;
+    bool inIsland;
 
     // Temporary storage during iterations
     struct SolverContext {
@@ -19,7 +20,7 @@ public:
         void* d; // For GearJoint
     } context;
 
-    Joint(int id, Body* a, Body* b) : id(id), bodyA(a), bodyB(b) {}
+    Joint(int id, Body* a, Body* b) : id(id), bodyA(a), bodyB(b), inIsland(false) {}
     virtual ~Joint() {}
 
     virtual void preSolve(float dt) = 0;

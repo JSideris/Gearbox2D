@@ -39,6 +39,7 @@ struct ContactConstraint {
     float restitution;
     float normalImpulse, frictionImpulse;
     ContactID id;
+    bool inIsland;
     
     Vec2 localAnchorA, localAnchorB, localNormalA;
 
@@ -46,7 +47,7 @@ struct ContactConstraint {
     void solve(bool enableNormal, bool enableFriction);
     void solvePosition();
 
-    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), staticFriction(0.0f), kineticFriction(0.0f) {}
+    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), staticFriction(0.0f), kineticFriction(0.0f), inIsland(false) {}
 
     // Temporary storage during iterations
     struct SolverContext {
