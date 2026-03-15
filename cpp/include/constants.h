@@ -7,7 +7,7 @@
 #define BODY_IDATA_FLAGS 2
 #define BODY_IDATA_FIXTURE_COUNT 3
 
-#define BODY_FDATA_EPO 28
+#define BODY_FDATA_EPO 29
 #define BODY_FDATA_X 0
 #define BODY_FDATA_Y 1
 #define BODY_FDATA_R 2
@@ -35,7 +35,8 @@
 #define BODY_FDATA_PREV_R 24
 #define BODY_FDATA_SLEEP_TIMER 25
 #define BODY_FDATA_ERR_ACC_X 26
-#define BODY_FDATA_ERR_ACC_R 27 // Combined X/Y and R
+#define BODY_FDATA_ERR_ACC_Y 27
+#define BODY_FDATA_ERR_ACC_R 28
 
 // --- Solver Constants ---
 #define BAUMGARTE_FACTOR 0.2f

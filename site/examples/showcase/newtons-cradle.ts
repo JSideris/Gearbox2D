@@ -49,10 +49,10 @@ export const newtonsCradleExample = new Example({
             
             const ball = world.makeBody(ballId, {
                 x: ballX, y: ballY,
-                mass: 1.0,
+                mass: 10.0,
                 color: (i === 0 || i === count - 1) ? '#a855f7' : '#00f2ff',
-                linearDamping: 0.001,
-                angularDamping: 0.01
+                linearDamping: 0.0,
+                angularDamping: 0.0
             });
             
             ball.addFixture(ballId, {

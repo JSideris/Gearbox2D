@@ -6,7 +6,7 @@ export const BODY_TYPE_OFFSET = 1;
 export const BODY_FLAGS_OFFSET = 2;
 export const BODY_FIXTURE_COUNT_OFFSET = 3;
 
-export const BODY_SIZE_F = 28;
+export const BODY_SIZE_F = 29;
 export const BODY_X_OFFSET = 0;
 export const BODY_Y_OFFSET = 1;
 export const BODY_R_OFFSET = 2;
@@ -33,6 +33,9 @@ export const BODY_PREV_X_OFFSET = 22;
 export const BODY_PREV_Y_OFFSET = 23;
 export const BODY_PREV_R_OFFSET = 24;
 export const BODY_SLEEP_TIMER_OFFSET = 25;
+export const BODY_ERR_ACC_X_OFFSET = 26;
+export const BODY_ERR_ACC_Y_OFFSET = 27;
+export const BODY_ERR_ACC_R_OFFSET = 28;
 
 // --- Fixture Data Layout ---
 export const FIXTURE_SIZE_I = 6;

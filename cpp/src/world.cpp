@@ -727,7 +727,7 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
     if (substepIndex == velocitySubSteps - 1) {
         bool canIslandSleep = true;
         for (Body* b : island.bodies) {
-            if (b->sleepTimer < b->sleepTimeRequired) {
+            if (b->getSleepTimer() < b->sleepTimeRequired) {
                 canIslandSleep = false;
                 break;
             }

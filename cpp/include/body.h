@@ -29,12 +29,16 @@ public:
     // Sleep properties
     bool isSleeping = false;
     bool canSleep = true;
-    float sleepTimer = 0.0f;
     float sleepTimeRequired = 1.0f;
     
-    float sleepErrAccumulatorX = 0.0f;
-    float sleepErrAccumulatorY = 0.0f;
-    float sleepErrAccumulatorR = 0.0f;
+    float getSleepTimer() const;
+    void setSleepTimer(float t);
+    float getSleepErrAccumulatorX() const;
+    void setSleepErrAccumulatorX(float x);
+    float getSleepErrAccumulatorY() const;
+    void setSleepErrAccumulatorY(float y);
+    float getSleepErrAccumulatorR() const;
+    void setSleepErrAccumulatorR(float r);
     
     Vec2 forceVelocity = Vec2(0.0f, 0.0f);
 

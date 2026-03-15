@@ -53,12 +53,22 @@ Body::Body(World& world, int id, emscripten_val options)
     world.liveBodyFloatData.push_back(initR); // PrevR
     world.liveBodyFloatData.push_back(0.0f); // SleepTimer
     world.liveBodyFloatData.push_back(0.0f); // ErrAccX
+    world.liveBodyFloatData.push_back(0.0f); // ErrAccY
     world.liveBodyFloatData.push_back(0.0f); // ErrAccR
     
     lastX = initX;
     lastY = initY;
     lastR = initR;
 }
+
+float Body::getSleepTimer() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_SLEEP_TIMER]; }
+void Body::setSleepTimer(float t) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_SLEEP_TIMER] = t; }
+float Body::getSleepErrAccumulatorX() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_X]; }
+void Body::setSleepErrAccumulatorX(float x) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_X] = x; }
+float Body::getSleepErrAccumulatorY() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_Y]; }
+void Body::setSleepErrAccumulatorY(float y) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_Y] = y; }
+float Body::getSleepErrAccumulatorR() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_R]; }
+void Body::setSleepErrAccumulatorR(float r) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_R] = r; }
 
 Body::~Body() {
     for (auto* contact : contacts) {
@@ -68,11 +78,29 @@ Body::~Body() {
 }
 
 float Body::getX() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_X]; }
-void Body::setX(float x) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_X] = x; recomputeAabb(0); wakeUp(); }
+void Body::setX(float x) { 
+    world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_X] = x; 
+    lastX = x; 
+    setSleepErrAccumulatorX(0); 
+    recomputeAabb(0); 
+    wakeUp(); 
+}
 float Body::getY() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y]; }
-void Body::setY(float y) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y] = y; recomputeAabb(0); wakeUp(); }
+void Body::setY(float y) { 
+    world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y] = y; 
+    lastY = y; 
+    setSleepErrAccumulatorY(0); 
+    recomputeAabb(0); 
+    wakeUp(); 
+}
 float Body::getRotation() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_R]; }
-void Body::setRotation(float r) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_R] = r; recomputeAabb(0); wakeUp(); }
+void Body::setRotation(float r) { 
+    world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_R] = r; 
+    lastR = r; 
+    setSleepErrAccumulatorR(0); 
+    recomputeAabb(0); 
+    wakeUp(); 
+}
 
 float Body::getVelocityX() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_VX]; }
 void Body::setVelocityX(float vx) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_VX] = vx; wakeUp(); }
@@ -122,7 +150,17 @@ void Body::recomputeAabb(int mode) {
 }
 
 Vec2 Body::getPosition() const { return Vec2(getX(), getY()); }
-void Body::setPosition(Vec2 p) { setX(p.x); setY(p.y); }
+void Body::setPosition(Vec2 p) {
+    int idx = worldIndex * BODY_FDATA_EPO;
+    world.liveBodyFloatData[idx + BODY_FDATA_X] = p.x;
+    world.liveBodyFloatData[idx + BODY_FDATA_Y] = p.y;
+    lastX = p.x;
+    lastY = p.y;
+    setSleepErrAccumulatorX(0);
+    setSleepErrAccumulatorY(0);
+    recomputeAabb(0);
+    wakeUp();
+}
 Vec2 Body::getVelocity() const { return Vec2(getVelocityX(), getVelocityY()); }
 void Body::setVelocity(Vec2 v) { setVelocityX(v.x); setVelocityY(v.y); }
 void Body::setVelocityInternal(Vec2 v) {
@@ -212,20 +250,28 @@ bool Body::integratePositions(float dt) {
     world.liveBodyFloatData[idx + BODY_FDATA_RS] = rs;
     world.liveBodyFloatData[idx + BODY_FDATA_R] = currentR + rs * dt;
     float dx = pos.x - lastX; float dy = pos.y - lastY; float dr = world.liveBodyFloatData[idx + BODY_FDATA_R] - lastR;
-    sleepErrAccumulatorX += dx; sleepErrAccumulatorY += dy; sleepErrAccumulatorR += dr;
+    float accX = getSleepErrAccumulatorX() + dx;
+    float accY = getSleepErrAccumulatorY() + dy;
+    float accR = getSleepErrAccumulatorR() + dr;
+    float timer = getSleepTimer();
     lastX = pos.x; lastY = pos.y; lastR = world.liveBodyFloatData[idx + BODY_FDATA_R];
     bool moved = dx != 0 || dy != 0 || dr != 0;
-    if (moved && (std::abs(sleepErrAccumulatorX) > WAKE_MOVEMENT_THRESHOLD || std::abs(sleepErrAccumulatorY) > WAKE_MOVEMENT_THRESHOLD || std::abs(sleepErrAccumulatorR) > WAKE_MOVEMENT_THRESHOLD)) {
+    if (moved && (std::abs(accX) > WAKE_MOVEMENT_THRESHOLD || std::abs(accY) > WAKE_MOVEMENT_THRESHOLD || std::abs(accR) > WAKE_MOVEMENT_THRESHOLD)) {
         if (vel.magnitudeSquared() > SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD || std::abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
-            sleepTimer = 0; sleepErrAccumulatorX = 0; sleepErrAccumulatorY = 0; sleepErrAccumulatorR = 0;
+            timer = 0; accX = 0; accY = 0; accR = 0;
         } else {
             // Significant movement but low velocity - likely position solver correction.
             // Still increment sleep timer so the body can eventually rest.
-            sleepTimer += dt;
+            timer += dt;
         }
     } else {
-        sleepTimer += dt;
+        timer += dt;
     }
+    
+    setSleepErrAccumulatorX(accX);
+    setSleepErrAccumulatorY(accY);
+    setSleepErrAccumulatorR(accR);
+    setSleepTimer(timer);
     
     return moved;
 }
@@ -252,7 +298,7 @@ void Body::wakeUp() {
     if (isSleeping && type != ObjectType::FIXED_OBJECT) {
         isSleeping = false;
         world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~IS_SLEEPING;
-        sleepTimer = 0;
+        setSleepTimer(0);
         if (wantsEvents()) world.addEvent((int)EventType::WAKE, id, -1, -1, -1, 0.0f);
         for (auto* f : fixtures) if (f->bvhNode) f->bvhNode->wakeUp();
         for (auto* contact : contacts) contact->wakeUp();
@@ -260,12 +306,12 @@ void Body::wakeUp() {
 }
 
 void Body::forceWakeUp() {
-    sleepTimer = 0;
+    setSleepTimer(0);
     wakeUp();
     if (!isSleeping) {
         // If it was already awake, wakeUp() did nothing, 
         // but we still want to make sure it stays awake for another full second
-        sleepTimer = 0;
+        setSleepTimer(0);
     }
 }
 
