@@ -117,7 +117,7 @@ void Body::recomputeAabb(int mode) {
     float sinR = std::sin(pr);
     for (auto* f : fixtures) {
         f->updateAabb(cosR, sinR, mode);
-        if (f->bvhNode) f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb);
+        if (f->bvhNode) f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb, f->getCollisionProperties());
     }
 }
 
@@ -242,7 +242,7 @@ void Body::sleep() {
             if (f->bvhNode) {
                 f->bvhNode->properties.isSleeping = true;
                 f->updateAabb(cosR, sinR, 1);
-                f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb);
+                f->bvhNode = world.bvh.updateLeaf(f->bvhNode, f->aabb, f->getCollisionProperties());
             }
         }
     }
@@ -342,7 +342,7 @@ void Body::addFixture(Fixture* fixture) {
     updateInverseInertia();
 }
 
-Body::SolverData Body::getSolverData() const {
+SolverData Body::getSolverData() const {
     int idx = worldIndex * BODY_FDATA_EPO;
     return {
         Vec2(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]),

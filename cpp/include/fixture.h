@@ -9,6 +9,7 @@
 class Body;
 class World;
 struct BvhNode;
+struct CollisionProperties;
 
 struct MassData {
     float mass;
@@ -57,6 +58,9 @@ public:
     bool isSensor() const;
     bool wantsEvents() const;
     void setDensity(float density);
+    
+    // BVH Support
+    CollisionProperties getCollisionProperties() const;
 };
 
 #endif

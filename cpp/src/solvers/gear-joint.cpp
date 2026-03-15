@@ -50,10 +50,10 @@ void GearJoint::solve() {
 }
 
 void GearJoint::solveFast() {
-    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
-    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
-    Body::SolverData& sC = *static_cast<Body::SolverData*>(context.c);
-    Body::SolverData& sD = *static_cast<Body::SolverData*>(context.d);
+    SolverData& sA = *static_cast<SolverData*>(context.a);
+    SolverData& sB = *static_cast<SolverData*>(context.b);
+    SolverData& sC = *static_cast<SolverData*>(context.c);
+    SolverData& sD = *static_cast<SolverData*>(context.d);
 
     float Cdot = ratio * (sB.w - sA.w) + (sD.w - sC.w);
     float lambda = -mass * Cdot;

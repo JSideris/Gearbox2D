@@ -21,6 +21,8 @@ World::World() : collisionSolver(*this) {
     liveFixtureFloatData.reserve(maxSize * FIXTURE_FDATA_EPO);
     liveFixtureIntData.reserve(maxSize * FIXTURE_IDATA_EPO);
     contactConstraints.reserve(1000);
+    solverBodies.reserve(maxSize);
+    solverBodyActive.reserve(maxSize);
     nextFixtureId = 1;
 }
 
@@ -66,16 +68,7 @@ int World::addFixture(int bodyId, int fixtureId, emscripten_val options) {
     body->addFixture(fixture);
     fixture->updateAabb(1);
 
-    CollisionProperties props;
-    props.userCategory = fixture->getCategoryBits();
-    props.userMask = fixture->getMaskBits();
-    props.systemCategory = fixture->getSystemCategory();
-    props.isRigid = !fixture->isSensor();
-    props.isSleeping = body->isSleeping;
-    props.bodyId = body->id;
-    props.velocity = body->getVelocity();
-
-    fixture->bvhNode = bvh.insert(fixture->aabb, fixture, props);
+    fixture->bvhNode = bvh.insert(fixture->aabb, fixture, fixture->getCollisionProperties());
 
     return fixture->worldIndex;
 }
@@ -296,7 +289,7 @@ void World::_doIntegratePositionsSubStep(float dt) {
                 if (!fixture->aabb.contains(tightAabb)) {
                     // Out of bounds, update to new fat AABB and broadphase
                     fixture->updateAabb(cosR, sinR, 0);
-                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb);
+                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb, fixture->getCollisionProperties());
                 }
             }
         }
@@ -619,7 +612,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
                 Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
                 if (!fixture->aabb.contains(tightAabb)) {
                     fixture->updateAabb(cosR, sinR, 0);
-                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb);
+                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb, fixture->getCollisionProperties());
                 }
             }
         }
@@ -639,28 +632,41 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
     for (Body* b : island.bodies) b->wakeUp();
 
     // 3. Solve the island
-    std::vector<Body::SolverData> solverBodies(bodiesList.size());
-    std::vector<bool> solverBodyActive(bodiesList.size(), false);
+    int totalBodyCount = bodiesList.size();
+    if (solverBodies.size() < totalBodyCount) {
+        solverBodies.resize(totalBodyCount);
+        solverBodyActive.resize(totalBodyCount, false);
+    } else {
+        // Reset only the ones that will be used. 
+        // We'll reset all of them to false for safety before each solve, 
+        // or just rely on tracking which ones we activated.
+        // Actually, for performance, it's better to only reset what we used.
+    }
     
     // Initialize solver data for all dynamic/kinematic bodies in the island
+    std::vector<int> activeIndices;
+    activeIndices.reserve(island.bodies.size());
+
     for (Body* b : island.bodies) {
         solverBodies[b->worldIndex] = b->getSolverData();
         solverBodyActive[b->worldIndex] = true;
+        activeIndices.push_back(b->worldIndex);
     }
     
-    auto getSolverBody = [&](Body* b) -> Body::SolverData& {
+    auto getSolverBody = [&](Body* b) -> SolverData& {
         int idx = b->worldIndex;
         if (!solverBodyActive[idx]) {
             solverBodies[idx] = b->getSolverData();
             solverBodyActive[idx] = true;
+            activeIndices.push_back(idx);
         }
         return solverBodies[idx];
     };
     
     // Prepare contacts
     for (ContactConstraint* c : island.contacts) {
-        Body::SolverData& sA = getSolverBody(c->a);
-        Body::SolverData& sB = getSolverBody(c->b);
+        SolverData& sA = getSolverBody(c->a);
+        SolverData& sB = getSolverBody(c->b);
         c->context.a = &sA;
         c->context.b = &sB;
         
@@ -710,6 +716,11 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
     for (int p = 0; p < positionIterations; ++p) {
         for (ContactConstraint* c : island.contacts) c->solvePosition();
         for (Joint* j : island.joints) j->solvePosition();
+    }
+
+    // Reset solverBodyActive for used indices
+    for (int idx : activeIndices) {
+        solverBodyActive[idx] = false;
     }
 
     // 3. Check if the island can go to sleep
@@ -988,8 +999,8 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
 }
 
 void ContactConstraint::solveFast() {
-    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
-    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
+    SolverData& sA = *static_cast<SolverData*>(context.a);
+    SolverData& sB = *static_cast<SolverData*>(context.b);
 
     // Normal constraint
     Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);

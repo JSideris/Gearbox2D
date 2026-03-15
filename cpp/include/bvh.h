@@ -310,48 +310,54 @@ private:
         
         float areaIncrease = combinedBounds.getSurfaceArea();
         
-        // --- Keep existing biasing factors as secondary weights ---
-        
+        // --- Logical Biasing Multipliers ---
+        // Instead of additive costs, we use multipliers to scale the spatial cost (SAH).
+        // This ensures biasing is scale-invariant and consistent for all object sizes.
+        float multiplier = 1.0f;
+
         // Mask Biasing: Logical separation of user-defined categories
-        // We exclude internal system categories from general mask pollution
         uint32_t newCats = newProps.userCategory & ~node->aggregated.containsUserCategories;
         uint32_t newMasks = newProps.userMask & ~node->aggregated.mayCollideWithUserMask;
         int maskPollution = __builtin_popcount(newCats) + __builtin_popcount(newMasks);
-        float maskCost = maskPollution * config.maskWeight;
+        if (maskPollution > 0) {
+            multiplier += maskPollution * config.maskWeight;
+        }
 
-        // Static Biasing: Strong-arm static objects into their own pure branches
+        // Static Biasing: Encourage static objects into pure branches
         bool isNewStatic = (newProps.systemCategory & CATEGORY_STATIC) != 0;
         bool isSubtreePureStatic = (node->aggregated.containsSystemCategories == CATEGORY_STATIC);
-        float staticCost = (isNewStatic != isSubtreePureStatic ? 1.0f : 0.0f) * config.staticWeight;
+        if (isNewStatic != isSubtreePureStatic) {
+            multiplier += config.staticWeight;
+        }
 
-        // Sensor Biasing: Keep sensors grouped to skip rigid collision checks
+        // Sensor Biasing: Keep sensors grouped
         bool isNewSensor = (newProps.systemCategory & CATEGORY_SENSOR) != 0;
         bool isSubtreePureSensor = (node->aggregated.containsSystemCategories == CATEGORY_SENSOR);
-        float sensorCost = (isNewSensor != isSubtreePureSensor ? 1.0f : 0.0f) * config.sensorWeight;
+        if (isNewSensor != isSubtreePureSensor) {
+            multiplier += config.sensorWeight;
+        }
 
-        // Sleep Biasing: penalize "polluting" a subtree with different sleep states.
+        // Sleep Biasing: Penalize mixing awake/sleeping objects
         bool addsAwake = !newProps.isSleeping && !node->aggregated.containsAwake;
         bool addsSleep = newProps.isSleeping && !node->aggregated.containsSleep;
-        float sleepCost = ((addsAwake ? 1.0f : 0.0f) + (addsSleep ? 1.0f : 0.0f)) * config.sleepWeight;
+        if (addsAwake || addsSleep) {
+            multiplier += config.sleepWeight;
+        }
 
-        // Body Biasing: Encourage fixtures from the same body to stay together
-        float bodyCost = 0.0f;
+        // Body Biasing: Keep fixtures from same body together
         if (node->aggregated.leafCount > 0) {
             if (node->aggregated.isMultiBody || node->aggregated.bodyId != newProps.bodyId) {
-                bodyCost = config.bodyWeight;
+                multiplier += config.bodyWeight;
             }
         }
 
-        // Velocity Biasing: Group objects moving in similar directions/speeds
-        float velocityCost = 0.0f;
+        // Velocity Biasing: Group similar velocities
         if (node->aggregated.leafCount > 0) {
             float vDiff = (newProps.velocity - node->aggregated.avgVelocity).magnitude();
-            velocityCost = vDiff * config.velocityWeight;
+            multiplier += vDiff * config.velocityWeight;
         }
 
-        float totalCost = areaIncrease + maskCost + staticCost + sensorCost + sleepCost + bodyCost + velocityCost;
-        
-        return totalCost;
+        return areaIncrease * multiplier;
     }
     
     // Find the best place to insert a new leaf
@@ -664,12 +670,11 @@ public:
     }
     
     // Update a leaf's AABB and propagate changes with re-insertion
-    BvhNode* updateLeaf(BvhNode* leaf, const Aabb& newBounds) {
+    BvhNode* updateLeaf(BvhNode* leaf, const Aabb& newBounds, const CollisionProperties& props) {
         if (!leaf || !leaf->isLeaf) return leaf;
         
-        // Capture data and properties before removal
+        // Capture data before removal
         void* userData = leaf->data;
-        CollisionProperties props = leaf->properties;
 
         // Remove the leaf from the tree
         remove(leaf);

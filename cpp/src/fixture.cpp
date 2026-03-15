@@ -164,6 +164,18 @@ MassData Fixture::getMassData() const {
     return data;
 }
 
+CollisionProperties Fixture::getCollisionProperties() const {
+    CollisionProperties props;
+    props.userCategory = getCategoryBits();
+    props.userMask = getMaskBits();
+    props.systemCategory = getSystemCategory();
+    props.isRigid = !isSensor();
+    props.isSleeping = body->isSleeping;
+    props.bodyId = body->id;
+    props.velocity = body->getVelocity();
+    return props;
+}
+
 void Fixture::updateAabb(int mode) {
     float pr = body->getRotation();
     updateAabb(cos(pr), sin(pr), mode);
@@ -238,17 +250,19 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
             break;
     }
 
-    // Apply padding
-    float padding = (mode == 0) ? 0.2f : 0.0f;
-    float margin = (mode == 0) ? 0.1f : 0.0f;
+    // Apply proportional padding
+    float hx = (newX2 - newX1) * 0.5f;
+    float hy = (newY2 - newY1) * 0.5f;
+    float size = std::max(hx, hy) * 2.0f;
+
+    float margin = (mode == 0) ? size * 0.05f : 0.0f; // 5% of object size
+    float padding = (mode == 0) ? 0.1f : 0.0f;        // 0.1s of velocity-based expansion
     
-    if (padding > 0 || margin > 0) {
+    if (margin > 0 || padding > 0) {
         float vx = body->getVelocityX();
         float vy = body->getVelocityY();
         float rs = body->getAngularVelocity();
         float absRs = std::abs(rs);
-        float hx = (newX2 - newX1) * 0.5f;
-        float hy = (newY2 - newY1) * 0.5f;
 
         newX1 += std::min((vx - absRs * hy) * padding, 0.0f) - margin;
         newY1 += std::min((vy - absRs * hx) * padding, 0.0f) - margin;

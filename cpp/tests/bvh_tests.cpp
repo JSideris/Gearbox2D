@@ -79,7 +79,7 @@ TEST(BvhTest, UpdateNodeWithSignificantMovement) {
 
     BvhNode* node = bvh.insert(aabb, userData);
     Aabb newAabb = createAabb(10.0f, 10.0f, 11.0f, 11.0f);
-    bvh.updateLeaf(node, newAabb);
+    bvh.updateLeaf(node, newAabb, node->properties);
 
     EXPECT_EQ(node->bounds.min.x, 10.0f);
     EXPECT_EQ(node->bounds.min.y, 10.0f);

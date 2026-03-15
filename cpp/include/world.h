@@ -18,6 +18,7 @@
 #include "collision-solver.h"
 #include "constants.h"
 #include "joint.h"
+#include "solver-data.h"
 
 class Body;
 class Fixture;
@@ -104,6 +105,9 @@ private:
     int positionIterations = 3;
     int velocitySubSteps = 1;
     int nextFixtureId = 1;
+
+    std::vector<SolverData> solverBodies;
+    std::vector<bool> solverBodyActive;
 private:
 
     struct PairHash {

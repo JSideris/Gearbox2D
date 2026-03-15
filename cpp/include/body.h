@@ -5,6 +5,7 @@
 #include "debug.h"
 #include "vec2.h"
 #include "constants.h"
+#include "solver-data.h"
 
 class World;
 class Fixture;
@@ -101,12 +102,6 @@ public:
     void recomputeMassProperties();
 
     // Internal fast access
-    struct SolverData {
-        Vec2 v;
-        float w;
-        float im;
-        float iI;
-    };
     SolverData getSolverData() const;
     void setSolverData(const SolverData& data);
 

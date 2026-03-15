@@ -84,8 +84,8 @@ void DistanceJoint::solve() {
 }
 
 void DistanceJoint::solveFast() {
-    Body::SolverData& sA = *static_cast<Body::SolverData*>(context.a);
-    Body::SolverData& sB = *static_cast<Body::SolverData*>(context.b);
+    SolverData& sA = *static_cast<SolverData*>(context.a);
+    SolverData& sB = *static_cast<SolverData*>(context.b);
 
     Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
     Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
