@@ -428,14 +428,16 @@
                 li.textContent = scenario.name;
                 li.dataset.key = key;
                 li.addEventListener('click', () => {
-                    if (currentScenarioKey !== key) {
+                    const isNew = currentScenarioKey !== key;
+                    if (isNew) {
                         document.querySelectorAll('#scenarios-list li').forEach(el => el.classList.remove('selected'));
                         li.classList.add('selected');
                         currentScenarioKey = key;
-                        benchmarkChart.clear();
                         updateURL();
-                        startBenchmark();
                     }
+                    
+                    benchmarkChart.clear();
+                    startBenchmark();
                     
                     if (window.innerWidth <= 768) {
                         sidebar.classList.add('collapsed');
@@ -556,6 +558,7 @@
             try {
                 for (const engine of activeEngines) {
                     await engine.adapter.init();
+                    engine.adapter.clear();
                     if (scenario) {
                         scenario.setup(engine.adapter);
                     }
@@ -647,6 +650,7 @@
         }
 
         const handleReset = () => {
+            benchmarkChart.clear();
             startBenchmark();
             document.getElementById('status-text').textContent = 'Benchmark reset';
         };
