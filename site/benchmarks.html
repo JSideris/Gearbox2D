@@ -19,7 +19,6 @@
         }
 
         .engine-tab {
-            padding: 12px 10px;
             cursor: pointer;
             font-family: 'Orbitron', sans-serif;
             font-size: 0.8rem;
@@ -29,21 +28,41 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             display: flex;
+            align-items: stretch;
+            padding: 0;
+        }
+
+        .engine-tab-text {
+            padding: 12px 10px;
+            display: flex;
             align-items: center;
-            gap: 8px;
+        }
+
+        .engine-toggle-wrapper {
+            display: none;
+            padding: 12px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-right: 1px solid transparent;
+        }
+
+        .engine-toggle-wrapper:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .engine-tab.active[data-engine="all"] ~ .engine-tab .engine-toggle-wrapper,
+        .engine-tab.active[data-engine="all"] .engine-toggle-wrapper {
+            display: flex;
+            align-items: center;
+            border-right: 1px solid var(--border);
         }
 
         .engine-toggle {
-            display: none;
             width: 14px;
             height: 14px;
             cursor: pointer;
             accent-color: var(--accent-cyan);
-        }
-
-        .engine-tab.active[data-engine="all"] ~ .engine-tab .engine-toggle,
-        .engine-tab.active[data-engine="all"] .engine-toggle {
-            display: block;
+            margin: 0;
         }
 
         .engine-tab:hover {
@@ -260,23 +279,31 @@
         <div id="content">
             <div class="engine-tabs">
                 <div class="engine-tab active" data-engine="all">
-                    All Engines
+                    <span class="engine-tab-text">All Engines</span>
                 </div>
                 <div class="engine-tab" data-engine="gearbox2d">
-                    <input type="checkbox" class="engine-toggle" checked data-engine="gearbox2d">
-                    Gearbox2D
+                    <label class="engine-toggle-wrapper">
+                        <input type="checkbox" class="engine-toggle" checked data-engine="gearbox2d">
+                    </label>
+                    <span class="engine-tab-text">Gearbox2D</span>
                 </div>
                 <div class="engine-tab" data-engine="matterjs">
-                    <input type="checkbox" class="engine-toggle" checked data-engine="matterjs">
-                    Matter.js
+                    <label class="engine-toggle-wrapper">
+                        <input type="checkbox" class="engine-toggle" checked data-engine="matterjs">
+                    </label>
+                    <span class="engine-tab-text">Matter.js</span>
                 </div>
                 <div class="engine-tab" data-engine="p2js">
-                    <input type="checkbox" class="engine-toggle" checked data-engine="p2js">
-                    P2.js
+                    <label class="engine-toggle-wrapper">
+                        <input type="checkbox" class="engine-toggle" checked data-engine="p2js">
+                    </label>
+                    <span class="engine-tab-text">P2.js</span>
                 </div>
                 <div class="engine-tab" data-engine="box2dwasm">
-                    <input type="checkbox" class="engine-toggle" checked data-engine="box2dwasm">
-                    Box2D-WASM
+                    <label class="engine-toggle-wrapper">
+                        <input type="checkbox" class="engine-toggle" checked data-engine="box2dwasm">
+                    </label>
+                    <span class="engine-tab-text">Box2D-WASM</span>
                 </div>
             </div>
             
@@ -770,19 +797,21 @@
         const tabs = document.querySelectorAll('.engine-tab');
         tabs.forEach(tab => {
             tab.addEventListener('click', (e) => {
-                // Ignore clicks on checkboxes, they are handled separately
-                if (e.target.classList.contains('engine-toggle')) return;
+                // Ignore clicks on checkbox area
+                if (e.target.closest('.engine-toggle-wrapper')) return;
 
                 const engine = tab.dataset.engine;
-                if (tab.classList.contains('active')) return;
+                if (tab.classList.contains('active')) {
+                    // Reset current simulation if re-clicked
+                    handleReset();
+                    return;
+                }
                 
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
                 if (engine === 'all') {
-                    // Reset enabled engines if needed, or keep current ones
-                    // The prompt doesn't specify if switching back to "all" should reset enabled engines.
-                    // Usually it's better to keep them or reset to all. Let's reset to all for better experience.
+                    // Reset enabled engines to all
                     enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
                     document.querySelectorAll('.engine-toggle').forEach(toggle => {
                         toggle.checked = true;
@@ -811,6 +840,8 @@
                 const order = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
                 enabledEngines.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
+                // Always clear chart when engine selection changes
+                benchmarkChart.clear();
                 updateURL();
                 startBenchmark();
             });
