@@ -217,14 +217,24 @@ void Body::integrateVelocities(float dt) {
     applyForce(world.liveBodyFloatData[idx + BODY_FDATA_NFX], world.liveBodyFloatData[idx + BODY_FDATA_NFY]);
     world.liveBodyFloatData[idx + BODY_FDATA_NFX] = 0;
     world.liveBodyFloatData[idx + BODY_FDATA_NFY] = 0;
-    applyForce(vel * -getDamping());
-    Vec2 acc(0, 0);
+    // 1. Calculate forceVelocity using ONLY conservative forces
+    Vec2 consAcc(0, 0);
     if (im > 0) {
-        acc.x = world.liveBodyFloatData[idx + BODY_FDATA_FX] * im;
-        acc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
+        consAcc.x = world.liveBodyFloatData[idx + BODY_FDATA_FX] * im;
+        consAcc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
     }
-    forceVelocity = acc * dt;
-    vel = vel + forceVelocity;
+    forceVelocity = consAcc * dt; 
+    
+    // 2. NOW apply the non-conservative damping
+    applyForce(vel * -getDamping());
+    
+    // 3. Compute total acceleration for actual velocity integration
+    Vec2 totalAcc(0, 0);
+    if (im > 0) {
+        totalAcc.x = world.liveBodyFloatData[idx + BODY_FDATA_FX] * im;
+        totalAcc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
+    }
+    vel = vel + totalAcc * dt;
     const float maxVel = 1000.0f;
     float speedSq = vel.magnitudeSquared();
     if (speedSq > maxVel * maxVel) vel = vel * (maxVel / std::sqrt(speedSq));

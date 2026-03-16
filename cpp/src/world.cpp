@@ -981,10 +981,9 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         float accVn = forceVn / dt;
         float workTerm = 2.0f * accVn * expectedDisplacement;
         float vImpactSq = relativeVn * relativeVn;
-        float restitutionSq = restitution * restitution;
         
-        float vFinalSq = (restitutionSq * vImpactSq) + workTerm;
-        float vFinal = std::sqrt(std::max(0.0f, vFinalSq));
+        float vSurfSq = vImpactSq + workTerm;
+        float vFinal = restitution * std::sqrt(std::max(0.0f, vSurfSq));
 
         if (depth < 0.0f) {
             // Speculative bias: ensure no penetration happens in the next step.

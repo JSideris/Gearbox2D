@@ -38,11 +38,13 @@ This correction applies whenever Symplectic Euler integration is used, independe
 ### 2.2 Component B: Kinematic Energy Balancing
 We adjust the launch velocity to account for work done by external forces over the correction displacement $\Delta h$:
 
-$$v_{launch}^2 = (e \cdot v_{impact})^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h$$
+We conceptually rewind the object to the surface to find the true surface velocity, and then apply the lossy restitution bounce:
 
-Yielding:
+$$v_{surf} = \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
 
-$$v_{final} = \sqrt{\max(0, (e \cdot v_{impact})^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
+Yielding a final velocity of:
+
+$$v_{final} = e \cdot v_{surf} = e \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
 
 The equation is symmetric: ground collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} < 0$) tax the launch velocity to pay for increased PE, while ceiling collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} > 0$) boost it to account for work done against external forces.
 
@@ -80,7 +82,8 @@ v_impact = v_relative - (v_force_B - v_force_A)
 v_bounce = -e * v_impact
 d_eff = max(0, (depth - slop) - v_bounce * dt)
 h_expected = min(d_eff, MAX_POSITION_CORRECTION) * cumulative_factor
-v_final = sqrt(max(0, (v_bounce)² + 2 * dot(a_ext, n) * h_expected))
+v_surf = sqrt(max(0, (v_impact)² + 2 * dot(a_ext, n) * h_expected))
+v_final = e * v_surf
 ```
 
 ---

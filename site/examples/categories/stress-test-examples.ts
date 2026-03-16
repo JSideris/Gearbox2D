@@ -95,7 +95,7 @@ const cleanupMouseListeners = (world: any) => {
 
 export const stressTestExamples = [
     new Example({
-        name: "!2000 Colliding Circles",
+        name: "2000 Colliding Circles",
         key: "particles",
         description: [
             "A **Stress Test** featuring 2,000 `CIRCLE` objects with full collision resolution.",
