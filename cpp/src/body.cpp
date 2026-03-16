@@ -18,6 +18,10 @@ Body::Body(World& world, int id, emscripten_val options)
     }
 
     int flags = 0;
+    if (type == ObjectType::FIXED_OBJECT) {
+        flags |= IS_SLEEPING | HAS_FIXED_MASS;
+        isSleeping = true;
+    }
     float mass = (type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT && !options["mass"].isUndefined()) ? options["mass"].as<float>() : 0.0f;
     if (mass > 0.0f) flags |= HAS_FIXED_MASS;
     if (!options["wantsEvents"].isUndefined() && options["wantsEvents"].as<bool>()) {

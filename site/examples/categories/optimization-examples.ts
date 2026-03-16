@@ -40,7 +40,7 @@ export const optimizationExamples = [
             const nObjects = 10;
             simulationTime += dt*2;
             let numbSeconds = Math.floor(simulationTime / 3);
-            if(numbSeconds > nextId){
+            if(numbSeconds >= nextId){
                 if(nextId < nObjects){
                     const bodyId = nextId++;
                     world.makeBody(bodyId, {

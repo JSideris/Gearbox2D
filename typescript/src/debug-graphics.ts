@@ -184,6 +184,13 @@ export class DebugGraphics {
         const fr = rr + fixture.localR;
 
         this.ctx.save();
+
+        const isSleeping = (body.flags & IS_SLEEPING) !== 0;
+        if (isSleeping) {
+            this.ctx.globalAlpha = 0.5;
+            this.ctx.setLineDash([2, 2]);
+        }
+
         this.ctx.strokeStyle = body.color || '#f1f5f9';
         this.ctx.lineWidth = 2;
         this.ctx.beginPath();
