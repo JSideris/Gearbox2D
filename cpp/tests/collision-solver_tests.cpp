@@ -29,7 +29,7 @@ TEST(CollisionSolverTest, CirclesCollide) {
     int id2 = world.makeBody(2, createSimpleOptions(1.5f, 0.0f, ObjectShape::CIRCLE, 1.0f));
     
     CollisionSolver solver(world);
-    bool colliding = solver.solve(id1, id2);
+    bool colliding = solver.solve(id1, id2, world.getTimeStep());
     
     EXPECT_TRUE(colliding);
     ASSERT_EQ(solver.collisions.size(), 1);
@@ -43,7 +43,7 @@ TEST(CollisionSolverTest, CirclesDoNotCollide) {
     int id2 = world.makeBody(2, createSimpleOptions(3.0f, 0.0f, ObjectShape::CIRCLE, 1.0f));
     
     CollisionSolver solver(world);
-    bool colliding = solver.solve(id1, id2);
+    bool colliding = solver.solve(id1, id2, world.getTimeStep());
     
     EXPECT_FALSE(colliding);
 }
@@ -57,7 +57,7 @@ TEST(CollisionSolverTest, AabbsCollide) {
     int id2 = world.makeBody(2, createSimpleOptions(1.5f, 0.0f, ObjectShape::AABB, 2.0f));
     
     CollisionSolver solver(world);
-    bool colliding = solver.solve(id1, id2);
+    bool colliding = solver.solve(id1, id2, world.getTimeStep());
     
     EXPECT_TRUE(colliding);
     ASSERT_EQ(solver.collisions.size(), 1);
@@ -73,7 +73,7 @@ TEST(CollisionSolverTest, CircleAabbCollide) {
     int id2 = world.makeBody(2, createSimpleOptions(1.5f, 0.0f, ObjectShape::AABB, 2.0f));
     
     CollisionSolver solver(world);
-    bool colliding = solver.solve(id1, id2);
+    bool colliding = solver.solve(id1, id2, world.getTimeStep());
     
     EXPECT_TRUE(colliding);
 }

@@ -39,7 +39,7 @@ public:
     CollisionSolver(World& world);
 
     void clear();
-    bool solve(int indexA, int indexB);
+    bool solve(int indexA, int indexB, float dt);
 
     static bool testPointCircle(const Vec2& point, const Vec2& center, float radius);
     static bool testPointAabb(const Vec2& point, const Vec2& center, float width, float height);
@@ -48,6 +48,7 @@ public:
 private:
     int _indexA = 0;
     int _indexB = 0;
+    float _dt = 0.0f;
     float _speculativeMargin = 0.0f;
     Vec2 _relativeVelocity;
 

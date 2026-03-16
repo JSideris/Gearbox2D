@@ -39,7 +39,8 @@ TEST(ReproAabbIssue, FloatingPaddingBug) {
     CollisionSolver solver(world);
     // The current solver incorrectly uses the AX1/AX2 fields which are fat bounds
     bool colliding = solver.solve(world.getBodyAtIndex(id1)->fixtures[0]->worldIndex, 
-                                  world.getBodyAtIndex(id2)->fixtures[0]->worldIndex);
+                                  world.getBodyAtIndex(id2)->fixtures[0]->worldIndex,
+                                  world.getTimeStep());
     
     EXPECT_FALSE(colliding) << "AABBs should not collide when separated by 0.1m, despite padding.";
 }
@@ -58,7 +59,8 @@ TEST(ReproAabbIssue, MissingRotationalVelocity) {
     
     CollisionSolver solver(world);
     bool colliding = solver.solve(world.getBodyAtIndex(id1)->fixtures[0]->worldIndex, 
-                                  world.getBodyAtIndex(id2)->fixtures[0]->worldIndex);
+                                  world.getBodyAtIndex(id2)->fixtures[0]->worldIndex,
+                                  world.getTimeStep());
     
     ASSERT_TRUE(colliding);
     // BUG: Currently solver uses vB - vA which ignores rotation.

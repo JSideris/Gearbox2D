@@ -44,8 +44,6 @@ bool CollisionSolver::_solveBoxBox() {
     float minOverlap = FLT_MAX;
     int bestAxis = -1;
 
-    float dt = world.getTimeStep();
-
     for (int i = 0; i < 4; ++i) {
         Vec2 axis = (i < 2) ? axesA[i] : axesB[i - 2];
         float projA = halfA[0] * abs(axis.dot(axesA[0])) + halfA[1] * abs(axis.dot(axesA[1]));
@@ -149,7 +147,7 @@ bool CollisionSolver::_solveBoxBox() {
 
             // Check for speculative contact
             float vn = relativeVel.dot(normal);
-            if (penetration <= 0.0f && vn >= penetration / dt) {
+            if (penetration <= 0.0f && vn >= penetration / _dt) {
                 continue;
             }
 
@@ -207,8 +205,6 @@ bool CollisionSolver::_solveBoxPoint() {
     float halfW = wA / 2.0f;
     float halfH = hA / 2.0f;
 
-    float dt = world.getTimeStep();
-
     if (localPos.x >= -halfW - _speculativeMargin && localPos.x <= halfW + _speculativeMargin && 
         localPos.y >= -halfH - _speculativeMargin && localPos.y <= halfH + _speculativeMargin) {
         
@@ -240,7 +236,7 @@ bool CollisionSolver::_solveBoxPoint() {
 
         // Check for speculative contact
         float vn = relativeVel.dot(normal);
-        if (depth <= 0.0f && vn >= depth / dt) {
+        if (depth <= 0.0f && vn >= depth / _dt) {
             return false;
         }
         
@@ -291,8 +287,6 @@ bool CollisionSolver::_solveCircleBox() {
 
     float halfW = wB / 2.0f;
     float halfH = hB / 2.0f;
-
-    float dt = world.getTimeStep();
 
     float closestX = max(-halfW, min(localPos.x, halfW));
     float closestY = max(-halfH, min(localPos.y, halfH));
@@ -345,7 +339,7 @@ bool CollisionSolver::_solveCircleBox() {
         // So normal points from Box to Circle center (A).
         // So -normal points from Circle (A) to Box (B).
         float vn = _relativeVelocity.dot(normal * -1.0f);
-        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / dt) {
+        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / _dt) {
             return false;
         }
 

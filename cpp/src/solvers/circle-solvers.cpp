@@ -35,7 +35,6 @@ bool CollisionSolver::_solveCircleCircle() {
     Vec2 pDiff = pB - pA;
     float pd2 = pDiff.magnitudeSquared();
     float combinedRadius = rA + rB;
-    float dt = world.getTimeStep();
 
     if ((combinedRadius + _speculativeMargin) * (combinedRadius + _speculativeMargin) > pd2) {
         float distance = sqrt(pd2);
@@ -44,7 +43,7 @@ bool CollisionSolver::_solveCircleCircle() {
 
         // Check for speculative contact: only create if overlapping or going to overlap
         float vn = _relativeVelocity.dot(normal);
-        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / dt) {
+        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / _dt) {
             return false;
         }
 
@@ -92,7 +91,6 @@ bool CollisionSolver::_solveCirclePoint() {
     float lYB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
     float cosB = cos(bRB), sinB = sin(bRB);
     Vec2 pB(bXB + (lXB * cosB - lYB * sinB), bYB + (lXB * sinB + lYB * cosB));
-    float dt = world.getTimeStep();
 
     Vec2 pDiff = pB - pA;
     float pd2 = pDiff.magnitudeSquared();
@@ -104,7 +102,7 @@ bool CollisionSolver::_solveCirclePoint() {
 
         // Check for speculative contact: only create if overlapping or going to overlap
         float vn = _relativeVelocity.dot(normal);
-        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / dt) {
+        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / _dt) {
             return false;
         }
         

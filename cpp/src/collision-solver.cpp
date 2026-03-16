@@ -16,9 +16,10 @@ void CollisionSolver::_swap() {
     _relativeVelocity = _relativeVelocity * -1.0f;
 }
 
-bool CollisionSolver::solve(int indexA, int indexB) {
+bool CollisionSolver::solve(int indexA, int indexB, float dt) {
     _indexA = indexA;
     _indexB = indexB;
+    _dt = dt;
 
     int shapeA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
     int shapeB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
@@ -31,18 +32,22 @@ bool CollisionSolver::solve(int indexA, int indexB) {
         world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY] - world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]
     );
 
-    float dt = world.getTimeStep();
     float globalSpecMargin = world.getSpeculativeMargin();
     
     // Dynamic Speculative Margin logic:
     // Only enable speculative contacts for objects moving fast relative to their size.
     // This fixes stability issues in stacks (Pyramids) and Newton's Cradle.
-    float maxExtentA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_MAX_EXTENT];
-    float maxExtentB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_MAX_EXTENT];
-    float minSize = std::min(maxExtentA, maxExtentB) * 2.0f;
+    auto getMinThickness = [&](int fIdx, int shape) {
+        float w = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
+        float h = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+        if (shape == (int)ObjectShape::CIRCLE || shape == (int)ObjectShape::POINT) return w * 2.0f;
+        return std::min(w, h);
+    };
+
+    float minSize = std::min(getMinThickness(_indexA, shapeA), getMinThickness(_indexB, shapeB));
     
     float relSpeed = _relativeVelocity.magnitude();
-    float travelDist = relSpeed * dt;
+    float travelDist = relSpeed * _dt;
     
     // If travel distance is less than 25% of the object size, we don't need speculative contacts.
     // This preserves high-fidelity discrete physics for slow/resting objects.

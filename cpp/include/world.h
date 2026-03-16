@@ -210,7 +210,7 @@ public:
     void _doIntegratePositions();
     void _doIntegratePositionsSubStep(float dt);
     void _doBroadPhase();
-    void _doNarrowPhase();
+    void _doNarrowPhase(float dt);
     void _doContactManagement();
     void _doResolution(float dt, int substepIndex);
     void clear();

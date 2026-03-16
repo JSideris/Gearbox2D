@@ -51,8 +51,6 @@ bool CollisionSolver::_solveAabbAabb() {
     float x1B = pB.center.x - pB.halfDim.x, x2B = pB.center.x + pB.halfDim.x;
     float y1B = pB.center.y - pB.halfDim.y, y2B = pB.center.y + pB.halfDim.y;
 
-    float dt = world.getTimeStep();
-
     if (x1A < x2B + _speculativeMargin && x2A > x1B - _speculativeMargin && 
         y1A < y2B + _speculativeMargin && y2A > y1B - _speculativeMargin) {
         
@@ -76,7 +74,7 @@ bool CollisionSolver::_solveAabbAabb() {
 
         // Check for speculative contact: only create if overlapping or going to overlap
         float vn = _relativeVelocity.dot(normal);
-        if (depth <= 0.0f && vn >= depth / dt) {
+        if (depth <= 0.0f && vn >= depth / _dt) {
             return false;
         }
 
@@ -107,8 +105,6 @@ bool CollisionSolver::_solveAabbPoint() {
     float x1 = pA.center.x - pA.halfDim.x, x2 = pA.center.x + pA.halfDim.x;
     float y1 = pA.center.y - pA.halfDim.y, y2 = pA.center.y + pA.halfDim.y;
 
-    float dt = world.getTimeStep();
-
     if (pointWorld.x >= x1 - _speculativeMargin && pointWorld.x <= x2 + _speculativeMargin && 
         pointWorld.y >= y1 - _speculativeMargin && pointWorld.y <= y2 + _speculativeMargin) {
         
@@ -121,7 +117,7 @@ bool CollisionSolver::_solveAabbPoint() {
         
         // Check for speculative contact
         float vn = _relativeVelocity.dot(normal);
-        if (depth <= 0.0f && vn >= depth / dt) {
+        if (depth <= 0.0f && vn >= depth / _dt) {
             return false;
         }
 
@@ -158,8 +154,6 @@ bool CollisionSolver::_solveAabbCircle() {
     Vec2 diff = centerB - closest;
     float distSq = diff.magnitudeSquared();
 
-    float dt = world.getTimeStep();
-
     bool inside = (distSq == 0);
     int axis = 0;
     if (inside) {
@@ -180,7 +174,7 @@ bool CollisionSolver::_solveAabbCircle() {
 
         // Check for speculative contact
         float vn = _relativeVelocity.dot(normal);
-        if (depth <= 0.0f && vn >= depth / dt) {
+        if (depth <= 0.0f && vn >= depth / _dt) {
             return false;
         }
 

@@ -237,7 +237,7 @@ void World::step() {
     for (int i = 0; i < velocitySubSteps; ++i) {
         _doIntegrateVelocitiesSubStep(subStepDt);
         _doBroadPhase();
-        _doNarrowPhase();
+        _doNarrowPhase(subStepDt);
         
         _buildAndProcessIslands(subStepDt, i);
     }
@@ -301,7 +301,7 @@ void World::_doBroadPhase() {
     bvh.detectCollisions();
 }
 
-void World::_doNarrowPhase() {
+void World::_doNarrowPhase(float dt) {
     collisionSolver.clear();
     for (auto& pair : bvh.collisionPairs) {
         Fixture* f1 = static_cast<Fixture*>(pair.first);
@@ -309,7 +309,7 @@ void World::_doNarrowPhase() {
         
         if (disabledPairs.count({f1->body->id, f2->body->id})) continue;
 
-        bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex);
+        bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex, dt);
         
         // Mark as AABB collision (broadphase overlap)
         liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
