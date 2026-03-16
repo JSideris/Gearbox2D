@@ -34,12 +34,21 @@ bool CollisionSolver::_solveCircleCircle() {
 
     Vec2 pDiff = pB - pA;
     float pd2 = pDiff.magnitudeSquared();
+    float combinedRadius = rA + rB;
+    float dt = world.getTimeStep();
 
-    if ((rA + rB) * (rA + rB) > pd2) {
+    if ((combinedRadius + _speculativeMargin) * (combinedRadius + _speculativeMargin) > pd2) {
         float distance = sqrt(pd2);
         Vec2 normal = (distance > 0.0001f) ? pDiff / distance : Vec2(0.0f, -1.0f);
-        float penetrationDepth = rA + rB - distance;
-        Vec2 contactPoint = pA + normal * (rA - penetrationDepth * 0.5f);
+        float penetrationDepth = combinedRadius - distance;
+
+        // Check for speculative contact: only create if overlapping or going to overlap
+        float vn = _relativeVelocity.dot(normal);
+        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / dt) {
+            return false;
+        }
+
+        Vec2 contactPoint = pA + normal * (rA - std::max(0.0f, penetrationDepth) * 0.5f);
 
         Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
         Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
@@ -83,12 +92,21 @@ bool CollisionSolver::_solveCirclePoint() {
     float lYB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
     float cosB = cos(bRB), sinB = sin(bRB);
     Vec2 pB(bXB + (lXB * cosB - lYB * sinB), bYB + (lXB * sinB + lYB * cosB));
+    float dt = world.getTimeStep();
 
-    if (testPointCircle(pB, pA, rA)) {
-        Vec2 pDiff = pB - pA;
-        float distance = pDiff.magnitude();
+    Vec2 pDiff = pB - pA;
+    float pd2 = pDiff.magnitudeSquared();
+
+    if ((rA + _speculativeMargin) * (rA + _speculativeMargin) > pd2) {
+        float distance = sqrt(pd2);
         Vec2 normal = (distance > 0.0001f) ? pDiff / distance : Vec2(0.0f, -1.0f);
         float penetrationDepth = rA - distance;
+
+        // Check for speculative contact: only create if overlapping or going to overlap
+        float vn = _relativeVelocity.dot(normal);
+        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / dt) {
+            return false;
+        }
         
         Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
         Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);

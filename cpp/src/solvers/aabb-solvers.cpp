@@ -51,9 +51,17 @@ bool CollisionSolver::_solveAabbAabb() {
     float x1B = pB.center.x - pB.halfDim.x, x2B = pB.center.x + pB.halfDim.x;
     float y1B = pB.center.y - pB.halfDim.y, y2B = pB.center.y + pB.halfDim.y;
 
-    if (x1A < x2B && x2A > x1B && y1A < y2B && y2A > y1B) {
-        float overlapX = min(x2A, x2B) - max(x1A, x1B);
-        float overlapY = min(y2A, y2B) - max(y1A, y1B);
+    float dt = world.getTimeStep();
+
+    if (x1A < x2B + _speculativeMargin && x2A > x1B - _speculativeMargin && 
+        y1A < y2B + _speculativeMargin && y2A > y1B - _speculativeMargin) {
+        
+        float gapX = max(x1A, x1B) - min(x2A, x2B);
+        float gapY = max(y1A, y1B) - min(y2A, y2B);
+        
+        float overlapX = -gapX;
+        float overlapY = -gapY;
+
         Vec2 normal;
         float depth;
         bool horizontal = overlapX < overlapY;
@@ -64,6 +72,12 @@ bool CollisionSolver::_solveAabbAabb() {
         } else {
             depth = overlapY;
             normal = (pA.center.y < pB.center.y) ? Vec2(0, 1) : Vec2(0, -1);
+        }
+
+        // Check for speculative contact: only create if overlapping or going to overlap
+        float vn = _relativeVelocity.dot(normal);
+        if (depth <= 0.0f && vn >= depth / dt) {
+            return false;
         }
 
         Vec2 contactPoint((max(x1A, x1B) + min(x2A, x2B)) * 0.5f, (max(y1A, y1B) + min(y2A, y2B)) * 0.5f);
@@ -93,12 +107,24 @@ bool CollisionSolver::_solveAabbPoint() {
     float x1 = pA.center.x - pA.halfDim.x, x2 = pA.center.x + pA.halfDim.x;
     float y1 = pA.center.y - pA.halfDim.y, y2 = pA.center.y + pA.halfDim.y;
 
-    if (pointWorld.x >= x1 && pointWorld.x <= x2 && pointWorld.y >= y1 && pointWorld.y <= y2) {
+    float dt = world.getTimeStep();
+
+    if (pointWorld.x >= x1 - _speculativeMargin && pointWorld.x <= x2 + _speculativeMargin && 
+        pointWorld.y >= y1 - _speculativeMargin && pointWorld.y <= y2 + _speculativeMargin) {
+        
         float d[4] = { pointWorld.x - x1, x2 - pointWorld.x, pointWorld.y - y1, y2 - pointWorld.y };
         float minDist = d[0]; int axis = 0;
         for(int i=1; i<4; ++i) if(d[i] < minDist) { minDist = d[i]; axis = i; }
         
+        float depth = minDist; // Can be negative if speculative
         Vec2 normal = (axis == 0) ? Vec2(-1, 0) : (axis == 1) ? Vec2(1, 0) : (axis == 2) ? Vec2(0, -1) : Vec2(0, 1);
+        
+        // Check for speculative contact
+        float vn = _relativeVelocity.dot(normal);
+        if (depth <= 0.0f && vn >= depth / dt) {
+            return false;
+        }
+
         Vec2 relVel = Vec2(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]) - getVelocityAt(pA, pointWorld);
 
         ContactID id;
@@ -132,6 +158,8 @@ bool CollisionSolver::_solveAabbCircle() {
     Vec2 diff = centerB - closest;
     float distSq = diff.magnitudeSquared();
 
+    float dt = world.getTimeStep();
+
     bool inside = (distSq == 0);
     int axis = 0;
     if (inside) {
@@ -145,10 +173,16 @@ bool CollisionSolver::_solveAabbCircle() {
         distSq = minDist * minDist;
     }
 
-    if (distSq < rB * rB || inside) {
+    if (distSq < (rB + _speculativeMargin) * (rB + _speculativeMargin) || inside) {
         float dist = sqrt(distSq);
-        Vec2 normal = inside ? diff : diff / dist;
+        Vec2 normal = inside ? diff : (dist > 0.0001f ? diff / dist : Vec2(0, -1));
         float depth = inside ? rB + dist : rB - dist;
+
+        // Check for speculative contact
+        float vn = _relativeVelocity.dot(normal);
+        if (depth <= 0.0f && vn >= depth / dt) {
+            return false;
+        }
 
         Vec2 vB = Vec2(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
         float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];

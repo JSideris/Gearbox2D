@@ -192,7 +192,7 @@
 - [ ] Find opportunities to optimize using multi-threading.
 
 ## Advanced Features
-- [ ] Smart anti-tunelling.
+- [x] Smart anti-tunelling (Speculative Contacts).
 - [ ] Advanced drag.
 - [ ] Forcefields.
 - [ ] Microscopic scale.

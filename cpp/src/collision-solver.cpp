@@ -31,6 +31,28 @@ bool CollisionSolver::solve(int indexA, int indexB) {
         world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY] - world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]
     );
 
+    float dt = world.getTimeStep();
+    float globalSpecMargin = world.getSpeculativeMargin();
+    
+    // Dynamic Speculative Margin logic:
+    // Only enable speculative contacts for objects moving fast relative to their size.
+    // This fixes stability issues in stacks (Pyramids) and Newton's Cradle.
+    float maxExtentA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_MAX_EXTENT];
+    float maxExtentB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_MAX_EXTENT];
+    float minSize = std::min(maxExtentA, maxExtentB) * 2.0f;
+    
+    float relSpeed = _relativeVelocity.magnitude();
+    float travelDist = relSpeed * dt;
+    
+    // If travel distance is less than 25% of the object size, we don't need speculative contacts.
+    // This preserves high-fidelity discrete physics for slow/resting objects.
+    if (travelDist < minSize * 0.25f) {
+        _speculativeMargin = 0.0f;
+    } else {
+        // Otherwise, ensure the margin is large enough to catch the collision this frame.
+        _speculativeMargin = std::max(globalSpecMargin, travelDist);
+    }
+
     switch(static_cast<ObjectShape>(shapeA)){
         case ObjectShape::AABB:
             switch(static_cast<ObjectShape>(shapeB)){

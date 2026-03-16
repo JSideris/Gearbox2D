@@ -48,6 +48,7 @@ public:
 private:
     int _indexA = 0;
     int _indexB = 0;
+    float _speculativeMargin = 0.0f;
     Vec2 _relativeVelocity;
 
     void _swap();

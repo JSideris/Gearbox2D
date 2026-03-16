@@ -615,7 +615,6 @@ export const generalExamples = [
     }),
 
     new Example({ // Friction
-        // TODO: 2 of the boxes here never sleep.
         name: "Friction",
         key: "friction",
         description: [

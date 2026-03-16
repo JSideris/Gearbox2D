@@ -56,7 +56,7 @@ export const constraintsExamples = [
     }),
 
     new Example({ // Breakable Joint
-        name: "Breakable Joint",
+        name: "!Breakable Joint",
         key: "breakable-joint",
         description: [
             "This demo showcases **Joint Reaction Forces** and dynamic joint removal.",

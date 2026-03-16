@@ -619,4 +619,45 @@ export const issuesExamples = [
         onTick: (world, dt)=>{
         }
     }),
+
+    new Example({
+        name: "TC-15: Anti-tunneling",
+        key: "tc-15",
+        description: [
+            "**Test Case 15**: Anti-tunneling via Speculative Contacts.",
+            "A small bullet (radius 0.05) is fired at a very thin wall (width 0.1) at high speed (vx: 40).",
+            "At 60Hz, the bullet moves ~0.66 units per frame, which is 6x the wall thickness.",
+            "Without speculative contacts, the bullet would tunnel through. Here, we set a `speculativeMargin` of 0.5 to catch it."
+        ].join("\n\n"),
+        onInit: (world)=>{
+            world.setGravity(0, 0);
+            world.setSpeculativeMargin(0.5);
+
+            let id = 1;
+            // Thin wall
+            world.makeBody(id++, {
+                x: 8,
+                y: 5,
+                type: gearbox.bodyTypes.FIXED_OBJECT,
+            }).addFixture({
+                shape: gearbox.shapes.BOX,
+                width: 0.1,
+                height: 4,
+            });
+
+            // Fast bullet
+            world.makeBody(id++, {
+                x: 2,
+                y: 5,
+                vx: 40,
+                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+                mass: 0.1,
+            }).addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.05,
+            });
+        },
+        onTick: (world, dt)=>{
+        }
+    }),
 ];

@@ -44,6 +44,8 @@ bool CollisionSolver::_solveBoxBox() {
     float minOverlap = FLT_MAX;
     int bestAxis = -1;
 
+    float dt = world.getTimeStep();
+
     for (int i = 0; i < 4; ++i) {
         Vec2 axis = (i < 2) ? axesA[i] : axesB[i - 2];
         float projA = halfA[0] * abs(axis.dot(axesA[0])) + halfA[1] * abs(axis.dot(axesA[1]));
@@ -51,7 +53,7 @@ bool CollisionSolver::_solveBoxBox() {
         float dist = abs(relPos.dot(axis));
         float overlap = projA + projB - dist;
 
-        if (overlap < 0) return false;
+        if (overlap < -_speculativeMargin) return false;
         if (overlap < minOverlap) {
             minOverlap = overlap;
             bestAxis = i;
@@ -130,11 +132,10 @@ bool CollisionSolver::_solveBoxBox() {
     
     bool foundCollision = false;
     for (int i = 0; i < count; ++i) {
-        float depth = refNormal.dot(clippedVertices[i]) - refOffset;
-        if (depth <= 0) {
-            foundCollision = true;
+        float d = refNormal.dot(clippedVertices[i]) - refOffset;
+        if (d <= _speculativeMargin) {
             Vec2 contactPoint = clippedVertices[i]; // Deepest points are on the incident box
-            float penetration = -depth;
+            float penetration = -d;
 
             Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
             Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
@@ -144,6 +145,15 @@ bool CollisionSolver::_solveBoxBox() {
             Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
             Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * rsA, rA_vec.x * rsA);
             Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * rsB, rB_vec.x * rsB);
+            Vec2 relativeVel = totalVelocityB - totalVelocityA;
+
+            // Check for speculative contact
+            float vn = relativeVel.dot(normal);
+            if (penetration <= 0.0f && vn >= penetration / dt) {
+                continue;
+            }
+
+            foundCollision = true;
 
             ContactID id;
             id.features.indexA = i; // which clipped vertex
@@ -197,13 +207,19 @@ bool CollisionSolver::_solveBoxPoint() {
     float halfW = wA / 2.0f;
     float halfH = hA / 2.0f;
 
-    if (localPos.x >= -halfW && localPos.x <= halfW && localPos.y >= -halfH && localPos.y <= halfH) {
+    float dt = world.getTimeStep();
+
+    if (localPos.x >= -halfW - _speculativeMargin && localPos.x <= halfW + _speculativeMargin && 
+        localPos.y >= -halfH - _speculativeMargin && localPos.y <= halfH + _speculativeMargin) {
+        
         float d1 = localPos.x - (-halfW);
         float d2 = halfW - localPos.x;
         float d3 = localPos.y - (-halfH);
         float d4 = halfH - localPos.y;
         
         float minDist = min({d1, d2, d3, d4});
+        float depth = minDist; // Can be negative if speculative
+
         Vec2 normalLocal;
         if (minDist == d1) normalLocal = Vec2(-1, 0);
         else if (minDist == d2) normalLocal = Vec2(1, 0);
@@ -220,6 +236,13 @@ bool CollisionSolver::_solveBoxPoint() {
         
         Vec2 rA_vec = pB - pA;
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
+        Vec2 relativeVel = vB - totalVelocityA;
+
+        // Check for speculative contact
+        float vn = relativeVel.dot(normal);
+        if (depth <= 0.0f && vn >= depth / dt) {
+            return false;
+        }
         
         ContactID id;
         id.features.indexA = 0; // point
@@ -269,6 +292,8 @@ bool CollisionSolver::_solveCircleBox() {
     float halfW = wB / 2.0f;
     float halfH = hB / 2.0f;
 
+    float dt = world.getTimeStep();
+
     float closestX = max(-halfW, min(localPos.x, halfW));
     float closestY = max(-halfH, min(localPos.y, halfH));
 
@@ -294,7 +319,7 @@ bool CollisionSolver::_solveCircleBox() {
         distSq = minDist * minDist;
     }
 
-    if (distSq < rA * rA || inside) {
+    if (distSq < (rA + _speculativeMargin) * (rA + _speculativeMargin) || inside) {
         float distance = sqrt(distSq);
         Vec2 normalLocal;
         float penetrationDepth;
@@ -303,13 +328,27 @@ bool CollisionSolver::_solveCircleBox() {
             normalLocal = diffLocal;
             penetrationDepth = rA + distance;
         } else {
-            normalLocal = diffLocal / distance;
+            normalLocal = (distance > 0.0001f) ? diffLocal / distance : Vec2(0.0f, -1.0f);
             penetrationDepth = rA - distance;
         }
 
         // Transform back to world space
         float cosW = cos(rotB), sinW = sin(rotB);
         Vec2 normal(normalLocal.x * cosW - normalLocal.y * sinW, normalLocal.x * sinW + normalLocal.y * cosW);
+
+        // Check for speculative contact
+        // Normal points from box to circle center.
+        // We need normal from fixture A (circle) to B (box) for _relativeVelocity.dot(normal).
+        // Wait, solve() calculates _relativeVelocity as vB - vA.
+        // So vn = (vB - vA) . normal_A_to_B.
+        // Here normalLocal points from Box center towards Circle center.
+        // So normal points from Box to Circle center (A).
+        // So -normal points from Circle (A) to Box (B).
+        float vn = _relativeVelocity.dot(normal * -1.0f);
+        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / dt) {
+            return false;
+        }
+
         Vec2 contactPoint(closestPointLocal.x * cosW - closestPointLocal.y * sinW + pB.x, 
                           closestPointLocal.x * sinW + closestPointLocal.y * cosW + pB.y);
 

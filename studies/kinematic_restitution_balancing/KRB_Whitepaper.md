@@ -57,7 +57,15 @@ $$\Delta h = \min(d_{eff}, \Delta h_{max}) \cdot \Gamma$$
 
 Where $\Gamma$ is the cumulative correction factor ($1 - (1 - \beta)^n$) for $n$ iterations with Baumgarte factor $\beta$.
 
-This correction applies to bias methods that produce physical displacement (Baumgarte, soft constraints). Methods that decouple position correction from velocity (split impulse, speculative contacts) do not require Component B, though Component A remains applicable.
+### 2.4 Application to Speculative Contacts (Anti-Tunneling)
+Speculative contacts are created *before* overlap occurs to prevent high-speed objects from tunneling. In these cases, the penetration $d$ is negative ($d < 0$), representing a gap.
+
+Because the objects are not yet touching, **Component B (Kinematic Energy Balancing) is not required** ($\Delta h = 0$), as there is no position correction work to balance. However, **Component A (Force Velocity Compensation) remains critical**. Without it, speculative contacts would "see" gravity-induced velocity as part of the impact speed, causing objects to bounce off "thin air" before they even reach the surface.
+
+To maintain physical fidelity with speculative contacts:
+1. Use Component A to find the true impact velocity relative to the next frame.
+2. Apply restitution if the predicted overlap exceeds the restitution threshold.
+3. Ensure the final velocity $v_{final}$ satisfies the anti-tunneling constraint: $v_{final} \ge \max(v_{bounce}, d / \Delta t)$.
 
 ---
 

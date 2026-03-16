@@ -6,6 +6,9 @@ let mouseAnchor: any = null;
 let dragJoint: any = null;
 let canvas: HTMLCanvasElement | null = null;
 
+let startX = 1;
+let bulletSpeed = 50;
+
 const screenToWorld = (x: number, y: number) => {
     return {
         x: (x - gearbox.debug.offsetX) / (gearbox.debug.zoom * 100),
@@ -92,7 +95,7 @@ const cleanupMouseListeners = (world: any) => {
 
 export const stressTestExamples = [
     new Example({
-        name: "2000 Colliding Circles",
+        name: "!2000 Colliding Circles",
         key: "particles",
         description: [
             "A **Stress Test** featuring 2,000 `CIRCLE` objects with full collision resolution.",
@@ -442,10 +445,10 @@ export const stressTestExamples = [
 
             // The Bullet
             const bullet = world.makeBody(nextId++, {
-                x: 1, y: 5,
-                vx: 200, // Extremely high velocity
+                x: startX, y: 5,
+                vx: 50, // Extremely high velocity
                 mass: 1.0,
-                color: "#ff4444"
+                color: "#ffff44"
             });
             bullet.addFixture({
                 shape: gearbox.shapes.CIRCLE,
@@ -456,9 +459,15 @@ export const stressTestExamples = [
         },
         onTick: (world, dt) => {
             const bullet = world.getBodyById((world as any).bulletId);
-            if (bullet && bullet.x > 10) {
-                bullet.x = 1;
-                bullet.vx = 200;
+            if (bullet && bullet.x > 25) {
+                bullet.x = startX;
+                bullet.vx = bulletSpeed;
+                bullet.color = "#ff4444";
+            }
+            if (bullet && bullet.x < 0) {
+                bullet.x = startX;
+                bullet.vx = bulletSpeed;
+                bullet.color = "#44ff44";
             }
         }
     }),

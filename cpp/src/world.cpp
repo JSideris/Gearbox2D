@@ -15,6 +15,7 @@ World::World() : collisionSolver(*this) {
     velocityIterations = 50;
     positionIterations = 10;
     velocitySubSteps = 1;
+    speculativeMargin = 0.01f;
     int maxSize = 10000;
     liveBodyFloatData.reserve(maxSize * BODY_FDATA_EPO);
     liveBodyIntData.reserve(maxSize * BODY_IDATA_EPO);
@@ -945,36 +946,61 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float forceVn = (b->forceVelocity - a->forceVelocity).dot(normal);
     float relativeVn = vn - forceVn;
 
-    if (enableRestitution && relativeVn < -RESTITUTION_THRESHOLD) {
+    float vBounce = -restitution * relativeVn;
+    float expectedDisplacement = 0.0f;
+
+    if (depth < 0.0f) {
+        // Speculative contact: disable friction to prevent lateral "ghost" forces
+        staticFriction = 0.0f;
+        kineticFriction = 0.0f;
+    }
+
+    // Determine if we should apply restitution (bouncing)
+    // For regular contacts: if closing velocity exceeds threshold.
+    // For speculative: if velocity is high enough to penetrate this frame.
+    bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
+
+    if (shouldBounce) {
         // Component B: Kinematic Energy Balancing
-        // We adjust the launch velocity to account for work done by external forces over the correction displacement (depth).
-        // This eliminates energy gain from position correction (Baumgarte) by taxing/boosting launch speed.
-        // Formula: v_final = sqrt(max(0, (e * v_impact)^2 + 2 * (a_ext . n) * total_displacement))
+        // We adjust the launch velocity to account for work done by external forces over the correction displacement.
         // Reference: studies/kinematic_restitution_balancing/KRB_Whitepaper.md (Section 2.2)
         
+        if (depth > 0.0f) {
+            // Refined prediction: Account for velocity-induced displacement before position correction.
+            float depthAfterVelocity = std::max(0.0f, (depth - PENETRATION_SLOP) - vBounce * dt);
+            
+            // Account for the displacement cap in the position solver (MAX_POSITION_CORRECTION)
+            int n = a->world.getPositionIterations();
+            float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
+            expectedDisplacement = std::min(depthAfterVelocity, MAX_POSITION_CORRECTION) * cumulativeCorrectionFactor;
+        } else {
+            // Speculative contacts have no expected displacement from the position solver yet.
+            expectedDisplacement = 0.0f;
+        }
+        
         float accVn = forceVn / dt;
-        float vBounce = -restitution * relativeVn;
-        
-        // Refined prediction: Account for velocity-induced displacement before position correction.
-        // The objects will move apart by (vBounce * dt) during integration, so the position solver
-        // only sees the remaining penetration.
-        float depthAfterVelocity = std::max(0.0f, (depth - PENETRATION_SLOP) - vBounce * dt);
-        
-        // Account for the displacement cap in the position solver (MAX_POSITION_CORRECTION)
-        // to avoid over-taxing kinetic energy when penetration is deep.
-        int n = a->world.getPositionIterations();
-        float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
-        float expectedDisplacement = std::min(depthAfterVelocity, MAX_POSITION_CORRECTION) * cumulativeCorrectionFactor;
-        
         float workTerm = 2.0f * accVn * expectedDisplacement;
-        
         float vImpactSq = relativeVn * relativeVn;
         float restitutionSq = restitution * restitution;
         
         float vFinalSq = (restitutionSq * vImpactSq) + workTerm;
-        bias = -std::sqrt(std::max(0.0f, vFinalSq));
+        float vFinal = std::sqrt(std::max(0.0f, vFinalSq));
+
+        if (depth < 0.0f) {
+            // Speculative bias: ensure no penetration happens in the next step.
+            // We want v_final . n >= max(vBounce_Corrected, gap / dt).
+            bias = -std::max(vFinal, depth / dt);
+        } else {
+            bias = -vFinal;
+        }
     } else {
-        bias = 0.0f;
+        // No bounce logic, but we still need to handle speculative anti-tunneling
+        if (depth < 0.0f) {
+            // Ensure objects don't close the gap faster than gap / dt
+            bias = -depth / dt;
+        } else {
+            bias = 0.0f;
+        }
     }
     
     tangent = Vec2(-normal.y, normal.x);

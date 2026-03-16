@@ -335,6 +335,14 @@ export class World {
         this.world.setHasFriction(v);
     }
 
+    setSpeculativeMargin(v: number) {
+        this.world.setSpeculativeMargin(v);
+    }
+
+    getSpeculativeMargin(): number {
+        return this.world.getSpeculativeMargin();
+    }
+
     getMemoryUsage(): number {
         // 1. WASM Heap (C++ objects and buffers)
         const wasmHeap = (this as any)._wasmMemoryGetter?.() || 0;

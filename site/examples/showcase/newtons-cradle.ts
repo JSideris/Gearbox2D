@@ -20,7 +20,7 @@ export const newtonsCradleExample = new Example({
         gearbox.debug.showAabbs = false;
 
         const count = 5;
-        const radius = 0.45;
+        const radius = 0.4;
         const startY = 2;
         const length = 4;
         const cx = 5;
@@ -49,7 +49,7 @@ export const newtonsCradleExample = new Example({
             
             const ball = world.makeBody(ballId, {
                 x: ballX, y: ballY,
-                mass: 10.0,
+                mass: 1.0,
                 color: (i === 0 || i === count - 1) ? '#a855f7' : '#00f2ff',
                 linearDamping: 0.0,
                 angularDamping: 0.0
@@ -60,7 +60,8 @@ export const newtonsCradleExample = new Example({
                 radius: radius,
                 restitution: 1.0,
                 sFriction: 0,
-                kFriction: 0
+                kFriction: 0,
+                
             });
             
             // Connect with distance joint

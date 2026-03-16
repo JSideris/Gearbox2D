@@ -104,6 +104,7 @@ private:
     int velocityIterations = 50;
     int positionIterations = 3;
     int velocitySubSteps = 1;
+    float speculativeMargin = 0.01f; // Default speculative margin
     int nextFixtureId = 1;
 
     std::vector<SolverData> solverBodies;
@@ -162,6 +163,8 @@ public:
     int getVelocityIterations() const { return velocityIterations; }
     void setPositionIterations(int iterations) { positionIterations = std::max(0, iterations); }
     int getPositionIterations() const { return positionIterations; }
+    void setSpeculativeMargin(float margin) { speculativeMargin = std::max(0.0f, margin); }
+    float getSpeculativeMargin() const { return speculativeMargin; }
 
     int makeBody(int id, emscripten_val options);
     int addFixture(int bodyId, int fixtureId, emscripten_val options);
@@ -175,6 +178,7 @@ public:
     Joint* getJoint(int id);
 
     void setTimeStep(float dt);
+    float getTimeStep() const { return timeStep; }
     void setHasPenetrationResolution(bool value);
     void setHasRestitution(bool value);
     void setHasFriction(bool value);
