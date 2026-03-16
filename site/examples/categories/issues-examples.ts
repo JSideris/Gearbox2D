@@ -621,43 +621,57 @@ export const issuesExamples = [
     }),
 
     new Example({
-        name: "TC-15: Anti-tunneling",
+        name: "TC-15: Anti-tunneling (REGRESSION)",
         key: "tc-15",
         description: [
-            "**Test Case 15**: Anti-tunneling via Speculative Contacts.",
-            "A small bullet (radius 0.05) is fired at a very thin wall (width 0.1) at high speed (vx: 40).",
-            "At 60Hz, the bullet moves ~0.66 units per frame, which is 6x the wall thickness.",
-            "Without speculative contacts, the bullet would tunnel through. Here, we set a `speculativeMargin` of 0.5 to catch it."
+            "**Test Case 15**: Regression test for anti-tunneling.",
+            "A fast bullet (radius 0.1) is fired at a thin wall (width 0.05) at high speed (vx: 50).",
+            "This test intentionally lacks `speculativeMargin`, leading to tunneling behavior."
         ].join("\n\n"),
         onInit: (world)=>{
             world.setGravity(0, 0);
-            world.setSpeculativeMargin(0.5);
 
             let id = 1;
             // Thin wall
             world.makeBody(id++, {
-                x: 8,
+                x: 7,
                 y: 5,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
+                color: "#ccc"
             }).addFixture({
                 shape: gearbox.shapes.BOX,
-                width: 0.1,
+                width: 0.05,
                 height: 4,
             });
 
             // Fast bullet
-            world.makeBody(id++, {
-                x: 2,
+            const bullet = world.makeBody(id++, {
+                x: 1,
                 y: 5,
-                vx: 40,
+                vx: 50,
                 type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.1,
-            }).addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.05,
+                mass: 1.0,
+                color: "#ffff44"
             });
+            bullet.addFixture({
+                shape: gearbox.shapes.CIRCLE,
+                radius: 0.1,
+            });
+            
+            (world as any).bulletId = bullet.id;
         },
         onTick: (world, dt)=>{
+            const bullet = world.getBodyById((world as any).bulletId);
+            if (bullet && bullet.x > 25) {
+                bullet.x = 1;
+                bullet.vx = 50;
+                bullet.color = "#ff4444";
+            }
+            if (bullet && bullet.x < 0) {
+                bullet.x = 1;
+                bullet.vx = 50;
+                bullet.color = "#44ff44";
+            }
         }
     }),
 ];

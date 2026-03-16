@@ -6,8 +6,8 @@ let mouseAnchor: any = null;
 let dragJoint: any = null;
 let canvas: HTMLCanvasElement | null = null;
 
-let startX = 1;
-let bulletSpeed = 50;
+let startX = 2;
+let bulletSpeed = 40;
 
 const screenToWorld = (x: number, y: number) => {
     return {
@@ -427,32 +427,36 @@ export const stressTestExamples = [
     new Example({
         name: "⚠ Bullet Through Paper",
         key: "bullet",
-        description: "Tests anti-tunneling by firing a fast-moving 'bullet' (small circle) through a thin 'paper' (static AABB).",
+        description: [
+            "Tests anti-tunneling by firing a fast-moving 'bullet' (small circle) through a thin 'paper' (static AABB).",
+            "This version uses `speculativeMargin` to ensure the collision is caught even at high speeds."
+        ].join("\n\n"),
         onInit: (world) => {
             world.clear();
             world.setGravity(0, 0);
+            world.setSpeculativeMargin(0.5);
             nextId = 1;
 
             // Thin Paper
             world.makeBody(nextId++, {
-                x: 7, y: 5,
+                x: 8, y: 5,
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#ccc"
             }).addFixture({
                 shape: gearbox.shapes.BOX,
-                width: 0.05, height: 4,
+                width: 0.1, height: 4,
             });
 
             // The Bullet
             const bullet = world.makeBody(nextId++, {
                 x: startX, y: 5,
-                vx: 50, // Extremely high velocity
-                mass: 1.0,
+                vx: bulletSpeed, // High velocity
+                mass: 0.1,
                 color: "#ffff44"
             });
             bullet.addFixture({
                 shape: gearbox.shapes.CIRCLE,
-                radius: 0.1,
+                radius: 0.05,
             });
             
             (world as any).bulletId = bullet.id;
