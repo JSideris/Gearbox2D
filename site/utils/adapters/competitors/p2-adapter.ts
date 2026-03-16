@@ -115,6 +115,23 @@ export class P2Adapter implements PhysicsEngineAdapter {
         this.world.addConstraint(constraint);
     }
 
+    createHingeJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const bodyA = this.bodies.get(bodyAId);
+        const bodyB = this.bodies.get(bodyBId);
+        if (!bodyA || !bodyB) return;
+
+        const constraintOptions: any = {};
+        if (options.worldAnchor) {
+            constraintOptions.worldPivot = [options.worldAnchor.x, -options.worldAnchor.y];
+        } else {
+            if (options.localAnchorA) constraintOptions.localPivotA = [options.localAnchorA.x, -options.localAnchorA.y];
+            if (options.localAnchorB) constraintOptions.localPivotB = [options.localAnchorB.x, -options.localAnchorB.y];
+        }
+
+        const constraint = new this.p2.RevoluteConstraint(bodyA, bodyB, constraintOptions);
+        this.world.addConstraint(constraint);
+    }
+
     createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
         this.createCircle(id, x, y, 0.05, isStatic, options);
     }

@@ -177,6 +177,15 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
         }
     }
 
+    createHingeJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const internalId = this.getInternalId(id);
+        const bodyA = this.bodies.get(this.getInternalId(bodyAId));
+        const bodyB = this.bodies.get(this.getInternalId(bodyBId));
+        if (bodyA && bodyB) {
+            this.world.createHingeJoint(internalId, bodyA, bodyB, options);
+        }
+    }
+
     createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
         const internalId = this.getInternalId(id);
         const body = this.world.makeBody(internalId, {

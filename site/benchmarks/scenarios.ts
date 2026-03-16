@@ -300,11 +300,79 @@ export const HeavyOnLightStackScenario: Scenario = {
     }
 };
 
+export const RagdollScenario: Scenario = {
+    name: "Ragdoll Stress Test",
+    metricLabel: "Avg Step Time (ms)",
+    setup(adapter: PhysicsEngineAdapter) {
+        adapter.clear();
+        adapter.setGravity(0, 10);
+        
+        // Ground
+        adapter.createBox('ground', 0, 4, 20, 1, true, { color: '#444' });
+
+        let nextId = 1;
+        const createRagdoll = (cx: number, cy: number) => {
+            const headId = `head-${nextId}`;
+            const torsoId = `torso-${nextId}`;
+            const currentId = nextId;
+            nextId++;
+
+            // Head
+            adapter.createCircle(headId, cx, cy - 1.5, 0.3, false, { mass: 1.0, color: "#fed7aa" });
+            // Torso
+            adapter.createBox(torsoId, cx, cy, 0.6, 1.0, false, { mass: 2.0, color: "#93c5fd" });
+
+            // Arms and Legs segments
+            const createLimb = (x: number, y: number, w: number, h: number, color: string, name: string) => {
+                const id = `${name}-${currentId}-${nextId++}`;
+                adapter.createBox(id, x, y, w, h, false, { mass: 0.5, color });
+                return id;
+            };
+
+            const lUpperArm = createLimb(cx - 0.6, cy - 0.3, 0.5, 0.2, "#fed7aa", "lua");
+            const lLowerArm = createLimb(cx - 1.1, cy - 0.3, 0.5, 0.2, "#fed7aa", "lla");
+            const rUpperArm = createLimb(cx + 0.6, cy - 0.3, 0.5, 0.2, "#fed7aa", "rua");
+            const rLowerArm = createLimb(cx + 1.1, cy - 0.3, 0.5, 0.2, "#fed7aa", "rla");
+
+            const lUpperLeg = createLimb(cx - 0.2, cy + 0.8, 0.2, 0.6, "#1e3a8a", "lul");
+            const lLowerLeg = createLimb(cx - 0.2, cy + 1.5, 0.2, 0.6, "#fed7aa", "lll");
+            const rUpperLeg = createLimb(cx + 0.2, cy + 0.8, 0.2, 0.6, "#1e3a8a", "rul");
+            const rLowerLeg = createLimb(cx + 0.2, cy + 1.5, 0.2, 0.6, "#fed7aa", "rll");
+
+            // Joint them up
+            adapter.createHingeJoint(`h-head-${currentId}`, headId, torsoId, { worldAnchor: { x: cx, y: cy - 1.0 } });
+            
+            adapter.createHingeJoint(`h-lua-${currentId}`, torsoId, lUpperArm, { worldAnchor: { x: cx - 0.3, y: cy - 0.3 } });
+            adapter.createHingeJoint(`h-lla-${currentId}`, lUpperArm, lLowerArm, { worldAnchor: { x: cx - 0.85, y: cy - 0.3 } });
+            
+            adapter.createHingeJoint(`h-rua-${currentId}`, torsoId, rUpperArm, { worldAnchor: { x: cx + 0.3, y: cy - 0.3 } });
+            adapter.createHingeJoint(`h-rla-${currentId}`, rUpperArm, rLowerArm, { worldAnchor: { x: cx + 0.85, y: cy - 0.3 } });
+
+            adapter.createHingeJoint(`h-lul-${currentId}`, torsoId, lUpperLeg, { worldAnchor: { x: cx - 0.2, y: cy + 0.5 } });
+            adapter.createHingeJoint(`h-lll-${currentId}`, lUpperLeg, lLowerLeg, { worldAnchor: { x: cx - 0.2, y: cy + 1.15 } });
+
+            adapter.createHingeJoint(`h-rul-${currentId}`, torsoId, rUpperLeg, { worldAnchor: { x: cx + 0.2, y: cy + 0.5 } });
+            adapter.createHingeJoint(`h-rll-${currentId}`, rUpperLeg, rLowerLeg, { worldAnchor: { x: cx + 0.2, y: cy + 1.15 } });
+        };
+
+        // Spawn a grid of ragdolls
+        for (let x = -5; x <= 5; x += 2.5) {
+            for (let y = -9; y <= -2; y += 3) {
+                createRagdoll(x, y);
+            }
+        }
+    },
+    getMetric(adapter, state) {
+        return state.avgStepTime || 0;
+    }
+};
+
 export const scenarios: Record<string, Scenario> = {
     'large-stack': LargeStackScenario,
     'high-density': HighDensityScenario,
     'newtons-cradle': NewtonsCradleScenario,
     'energy-conservation': ConservationOfEnergyScenario,
     'bouncy-circle': HighPressureBouncyCircleScenario,
-    'heavy-on-light': HeavyOnLightStackScenario
+    'heavy-on-light': HeavyOnLightStackScenario,
+    'ragdoll': RagdollScenario
 };

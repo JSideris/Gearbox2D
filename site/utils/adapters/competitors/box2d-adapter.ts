@@ -177,6 +177,29 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
         this.box2d.destroy(jd);
     }
 
+    createHingeJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const bodyA = this.bodies.get(bodyAId);
+        const bodyB = this.bodies.get(bodyBId);
+        if (!bodyA || !bodyB) return;
+
+        const jd = new this.box2d.b2RevoluteJointDef();
+        if (options.worldAnchor) {
+            const vAnchor = new this.box2d.b2Vec2(options.worldAnchor.x, -options.worldAnchor.y);
+            jd.Initialize(bodyA, bodyB, vAnchor);
+            this.box2d.destroy(vAnchor);
+        } else {
+            if (options.localAnchorA) jd.set_localAnchorA(new this.box2d.b2Vec2(options.localAnchorA.x, -options.localAnchorA.y));
+            if (options.localAnchorB) jd.set_localAnchorB(new this.box2d.b2Vec2(options.localAnchorB.x, -options.localAnchorB.y));
+        }
+
+        try {
+            this.world.CreateJoint(jd);
+        } catch (e) {
+            console.error('Failed to create Box2D hinge joint:', e);
+        }
+        this.box2d.destroy(jd);
+    }
+
     createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
         this.createCircle(id, x, y, 0.05, isStatic, options);
     }

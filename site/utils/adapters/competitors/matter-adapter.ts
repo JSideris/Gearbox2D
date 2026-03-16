@@ -152,6 +152,47 @@ export class MatterAdapter implements PhysicsEngineAdapter {
         this.Matter.Composite.add(this.world, constraint);
     }
 
+    createHingeJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options: any = {}): void {
+        const bodyA = this.bodies.get(bodyAId);
+        const bodyB = this.bodies.get(bodyBId);
+        if (!bodyA || !bodyB) return;
+
+        let pointA = { x: 0, y: 0 };
+        let pointB = { x: 0, y: 0 };
+
+        if (options.worldAnchor) {
+            const wx = options.worldAnchor.x * this.SCALE;
+            const wy = options.worldAnchor.y * this.SCALE;
+            
+            const getLocal = (body: any, x: number, y: number) => {
+                const dx = x - body.position.x;
+                const dy = y - body.position.y;
+                const cos = Math.cos(-body.angle);
+                const sin = Math.sin(-body.angle);
+                return {
+                    x: dx * cos - dy * sin,
+                    y: dx * sin + dy * cos
+                };
+            };
+            
+            pointA = getLocal(bodyA, wx, wy);
+            pointB = getLocal(bodyB, wx, wy);
+        } else {
+            if (options.localAnchorA) pointA = { x: options.localAnchorA.x * this.SCALE, y: options.localAnchorA.y * this.SCALE };
+            if (options.localAnchorB) pointB = { x: options.localAnchorB.x * this.SCALE, y: options.localAnchorB.y * this.SCALE };
+        }
+
+        const constraint = this.Matter.Constraint.create({
+            bodyA,
+            bodyB,
+            pointA,
+            pointB,
+            length: 0,
+            stiffness: 1.0
+        });
+        this.Matter.Composite.add(this.world, constraint);
+    }
+
     createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
         this.createCircle(id, x, y, 0.05, isStatic, options);
     }
