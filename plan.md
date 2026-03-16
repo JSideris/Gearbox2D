@@ -31,12 +31,12 @@
 - [x] Add a few different shapes.
 	- [x] AABB.
 	- [x] Box.
-	- [ ] Capsule.
+	- [x] Capsule.
 	- [x] Circle.
 	- [ ] Concave polygons.
 	- [ ] Convex polygons.
 	- [ ] Ellipse.
-	- [ ] Line.
+	- [ ] Edge (optional).
 	- [x] Point.
 - [x] Composite objects (Multi-fixture bodies).
 - [x] Add rotations.
@@ -47,32 +47,32 @@
 	- [x] AABB-AABB.
 	- [x] Box-AABB -> Box-Box.
 	- [x] Box-Box.
-	- [ ] Capsule-AABB.
-	- [ ] Capsule-Box.
-	- [ ] Capsule-Capsule.
+	- [x] Capsule-AABB.
+	- [x] Capsule-Box.
+	- [x] Capsule-Capsule.
 	- [x] Circle-AABB.
-	- [ ] Circle-Box.
-	- [ ] Circle-Capsule.
+	- [x] Circle-Box.
+	- [x] Circle-Capsule.
 	- [x] Circle-Circle.
 	- [ ] Convex-AABB.
 	- [ ] Ellipse-Convex.
 	- [ ] Ellipse-Ellipse.
-	- [ ] Line-AABB.
-	- [ ] Line-Box.
-	- [ ] Line-Capsule.
-	- [ ] Line-Circle.
-	- [ ] Line-Concave.
-	- [ ] Line-Convex.
-	- [ ] Line-Ellipse.
-	- [ ] Line-Line.
+	- [ ] Edge-AABB.
+	- [ ] Edge-Box.
+	- [ ] Edge-Capsule.
+	- [ ] Edge-Circle.
+	- [ ] Edge-Concave.
+	- [ ] Edge-Convex.
+	- [ ] Edge-Ellipse.
+	- [ ] Edge-Edge.
 	- [x] Point-AABB.
 	- [x] Point-Box.
-	- [ ] Point-Capsule.
+	- [x] Point-Capsule.
 	- [x] Point-Circle.
 	- [ ] Point-Concave.
 	- [ ] Point-Convex.
 	- [ ] Point-Ellipse.
-	- [ ] Point-Line.
+	- [ ] Point-Edge.
 	- [x] Point-Point.
 	- [ ] Convave polygons?
 - [x] Collision resolvers.

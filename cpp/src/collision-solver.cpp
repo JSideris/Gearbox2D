@@ -40,7 +40,7 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
     auto getMinThickness = [&](int fIdx, int shape) {
         float w = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
         float h = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
-        if (shape == (int)ObjectShape::CIRCLE || shape == (int)ObjectShape::POINT) return w * 2.0f;
+        if (shape == (int)ObjectShape::CIRCLE || shape == (int)ObjectShape::POINT || shape == (int)ObjectShape::CAPSULE) return w * 2.0f;
         return std::min(w, h);
     };
 
@@ -74,6 +74,7 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::CIRCLE: _swap(); return _solveCircleBox();
                 case ObjectShape::BOX: return _solveBoxBox();
                 case ObjectShape::POINT: return _solveBoxPoint();
+                case ObjectShape::CAPSULE: _swap(); return _solveCapsuleBox();
                 default: break;
             }
             break;
@@ -83,6 +84,17 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::AABB: _swap(); return _solveAabbCircle();
                 case ObjectShape::BOX: return _solveCircleBox();
                 case ObjectShape::POINT: return _solveCirclePoint();
+                case ObjectShape::CAPSULE: _swap(); return _solveCapsuleCircle();
+                default: break;
+            }
+            break;
+        case ObjectShape::CAPSULE:
+            switch(static_cast<ObjectShape>(shapeB)){
+                case ObjectShape::CIRCLE: return _solveCapsuleCircle();
+                case ObjectShape::BOX: return _solveCapsuleBox();
+                case ObjectShape::CAPSULE: return _solveCapsuleCapsule();
+                case ObjectShape::POINT: return _solveCapsulePoint();
+                case ObjectShape::AABB: return _solveCapsuleBox(); // AABB is treated as oriented box
                 default: break;
             }
             break;
@@ -92,6 +104,7 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::AABB: _swap(); return _solveAabbPoint();
                 case ObjectShape::CIRCLE: _swap(); return _solveCirclePoint();
                 case ObjectShape::BOX: _swap(); return _solveBoxPoint();
+                case ObjectShape::CAPSULE: _swap(); return _solveCapsulePoint();
                 default: break;
             }
             break;

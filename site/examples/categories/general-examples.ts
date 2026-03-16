@@ -80,6 +80,7 @@ export const generalExamples = [
             "### Features",
             "- **Point Query**: The engine detects which object is under the mouse using **BVH** and precise shape tests.",
             "- **Mouse Joint**: Uses a `SpringJoint` to pull objects toward the mouse cursor.",
+            "- **Capsules**: New capsule shapes are supported with proper collision and mass properties.",
             "- **Multi-Fixture Bodies**: Some objects are composed of multiple shapes (circles and boxes) attached to a single body.",
             "- **Jointed Compounds**: Some objects are connected by **Hinge**, **Distance**, and **Spring** joints to create complex assemblies.",
             "- **Collision Filtering**: The mouse 'anchor' object is a sensor that doesn't collide with other objects."
@@ -165,7 +166,7 @@ export const generalExamples = [
                     };
 
                     const rand = Math.random();
-                    if (rand < 0.5) {
+                    if (rand < 0.33) {
                         // Circle
                         world.makeBody(nextId++, {
                             ...commonProps,
@@ -174,7 +175,7 @@ export const generalExamples = [
                             shape: gearbox.shapes.CIRCLE,
                             radius: 0.1 + Math.random() * 0.3,
                         });
-                    } else{
+                    } else if (rand < 0.66) {
                         // Box
                         world.makeBody(nextId++, {
                             ...commonProps,
@@ -184,7 +185,18 @@ export const generalExamples = [
                             width: 0.2 + Math.random() * 0.6,
                             height: 0.2 + Math.random() * 0.6,
                         });
-                    } 
+                    } else {
+                        // Capsule
+                        const capRadius = 0.1 + Math.random() * 0.1;
+                        world.makeBody(nextId++, {
+                            ...commonProps,
+                            r: Math.random() * Math.PI,
+                        }).addFixture({
+                            shape: gearbox.shapes.CAPSULE,
+                            radius: capRadius,
+                            height: capRadius * 2 + 0.2 + Math.random() * 0.4,
+                        });
+                    }
                 }
             }
 
@@ -541,6 +553,7 @@ export const generalExamples = [
             "- **CIRCLE**: Optimized circular collisions.",
             "- **BOX**: Oriented bounding boxes with full rotation support.",
             "- **AABB**: Axis-aligned bounding boxes.",
+            "- **CAPSULE**: 2D capsules with robust collision detection.",
             "- **POINT**: Zero-radius points that collide with larger shapes."
         ].join("\n\n"),
         globalLines: ["let nextId = 1;"],
@@ -569,8 +582,14 @@ export const generalExamples = [
                     mass = 0.01; // Points have very small mass
                 } else if (shapeType < 0.2) {
                     shape = gearbox.shapes.AABB;
-                } else if (shapeType < 0.6) {
+                } else if (shapeType < 0.45) {
                     shape = gearbox.shapes.BOX;
+                } else if (shapeType < 0.7) {
+                    shape = gearbox.shapes.CAPSULE;
+                    // For capsule, use 'h' for width (2*r) and 'w' for height
+                    let capR = h * 0.5;
+                    r = capR;
+                    h = Math.max(capR * 2 + 0.1, w);
                 } else {
                     shape = gearbox.shapes.CIRCLE;
                 }
@@ -589,8 +608,7 @@ export const generalExamples = [
                 }).addFixture({
                     shape: shape,
                     radius: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB) ? w : r,
-                    // width: isBox ? r * 2 : 0,
-                    height: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB) ? h : 0,
+                    height: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB || shape === gearbox.shapes.CAPSULE) ? h : 0,
                 });
 
                 // Scan for objects that are out of bounds and remove them.
@@ -1017,21 +1035,24 @@ export const generalExamples = [
             // 3. Spawn Rigid Bodies (Dynamic)
             if (world.stepCount % 20 === 0) {
                 const colors = ["#ff4444", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
-                const isCircle = Math.random() > 0.5;
+                const spawnRand = Math.random();
                 const x = 3 + Math.random() * 4;
                 
                 const bodyId = nextId++;
-                world.makeBody(bodyId, {
+                const body = world.makeBody(bodyId, {
                     x, y: 0.5,
                     mass: 0.5 + Math.random() * 1.0,
                     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     color: colors[Math.floor(Math.random() * colors.length)],
-                }).addFixture({
-                    shape: isCircle ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
-                    radius: 0.25,
-                    width: 0.5, height: 0.5,
-                    restitution: 0.3
                 });
+
+                if (spawnRand < 0.33) {
+                    body.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.25, restitution: 0.3 });
+                } else if (spawnRand < 0.66) {
+                    body.addFixture({ shape: gearbox.shapes.BOX, width: 0.5, height: 0.5, restitution: 0.3 });
+                } else {
+                    body.addFixture({ shape: gearbox.shapes.CAPSULE, radius: 0.15, height: 0.6, restitution: 0.3 });
+                }
             }
 
             // Cleanup recycled objects

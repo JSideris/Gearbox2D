@@ -225,6 +225,22 @@ export class DebugGraphics {
                 this.ctx.rotate(fr);
                 this.ctx.rect(-w / 2, -h / 2, w, h);
                 break;
+            case SHAPES.CAPSULE:
+                const cr = fixture.radius * ANIMSCALE;
+                const ch = fixture.height * ANIMSCALE;
+                const halfL = Math.max(0, ch / 2 - cr);
+                this.ctx.translate(fx, fy);
+                this.ctx.rotate(fr);
+                
+                this.ctx.arc(0, -halfL, cr, Math.PI, 0);
+                this.ctx.lineTo(cr, halfL);
+                this.ctx.arc(0, halfL, cr, 0, Math.PI);
+                this.ctx.lineTo(-cr, -halfL);
+                this.ctx.closePath();
+                
+                this.ctx.moveTo(0, -halfL);
+                this.ctx.lineTo(0, halfL);
+                break;
         }
         this.ctx.stroke();
         this.ctx.restore();

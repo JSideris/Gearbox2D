@@ -37,3 +37,21 @@ bool CollisionSolver::testPointBox(const Vec2& point, const Vec2& center, float 
     Vec2 relPoint = (point - center).rotate(-rotation);
     return (relPoint.x >= -width/2 && relPoint.x <= width/2 && relPoint.y >= -height/2 && relPoint.y <= height/2);
 }
+
+bool CollisionSolver::testPointCapsule(const Vec2& point, const Vec2& center, float radius, float height, float rotation) {
+    float halfL = std::max(0.0f, height * 0.5f - radius);
+    Vec2 d(0, halfL);
+    d = d.rotate(rotation);
+    Vec2 p1 = center - d;
+    Vec2 p2 = center + d;
+    
+    Vec2 v = p2 - p1;
+    Vec2 w = point - p1;
+    float c1 = w.dot(v);
+    if (c1 <= 0) return (point - p1).magnitudeSquared() < radius * radius;
+    float c2 = v.dot(v);
+    if (c2 <= c1) return (point - p2).magnitudeSquared() < radius * radius;
+    float b = c1 / c2;
+    Vec2 pb = p1 + v * b;
+    return (point - pb).magnitudeSquared() < radius * radius;
+}

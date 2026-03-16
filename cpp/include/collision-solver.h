@@ -44,6 +44,7 @@ public:
     static bool testPointCircle(const Vec2& point, const Vec2& center, float radius);
     static bool testPointAabb(const Vec2& point, const Vec2& center, float width, float height);
     static bool testPointBox(const Vec2& point, const Vec2& center, float width, float height, float rotation);
+    static bool testPointCapsule(const Vec2& point, const Vec2& center, float radius, float height, float rotation);
 
 private:
     int _indexA = 0;
@@ -63,4 +64,8 @@ private:
     bool _solveBoxBox();
     bool _solveBoxPoint();
     bool _solveCircleBox();
+    bool _solveCapsuleCircle();
+    bool _solveCapsuleBox();
+    bool _solveCapsuleCapsule();
+    bool _solveCapsulePoint();
 };

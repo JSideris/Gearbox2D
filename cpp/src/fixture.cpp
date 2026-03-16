@@ -153,6 +153,20 @@ MassData Fixture::getMassData() const {
         float r = getRadius();
         data.mass = density * M_PI * r * r;
         data.inertia = 0.5f * data.mass * r * r;
+    } else if (shape == ObjectShape::CAPSULE) {
+        float r = getRadius();
+        float h = getHeight();
+        float l = std::max(0.0f, h - 2.0f * r);
+        float circleArea = M_PI * r * r;
+        float rectArea = 2.0f * r * l;
+        data.mass = density * (circleArea + rectArea);
+        
+        float mCircle = density * circleArea;
+        float mRect = density * rectArea;
+        
+        // Inertia of rectangle + Steiner's theorem for two semicircles (forming a circle shifted by l/2)
+        data.inertia = (1.0f / 12.0f) * mRect * (4.0f * r * r + l * l) + 
+                       (0.5f * mCircle * r * r + mCircle * (l * l * 0.25f));
     } else {
         // Box or AABB
         float w = getWidth();
@@ -245,6 +259,24 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
             newY2 = *std::max_element(cornersY, cornersY + 4);
             break;
         }
+        case ObjectShape::CAPSULE: {
+            float r = getRadius();
+            float halfL = std::max(0.0f, getHeight() * 0.5f - r);
+            float cr = cos(wr);
+            float sr = sin(wr);
+            
+            // Local segment is (0, -halfL) to (0, halfL)
+            float ex1 = -(-halfL) * sr + wx;
+            float ey1 = (-halfL) * cr + wy;
+            float ex2 = -(halfL) * sr + wx;
+            float ey2 = (halfL) * cr + wy;
+            
+            newX1 = std::min(ex1, ex2) - r;
+            newY1 = std::min(ey1, ey2) - r;
+            newX2 = std::max(ex1, ex2) + r;
+            newY2 = std::max(ey1, ey2) + r;
+            break;
+        }
         default:
             newX1 = wx; newY1 = wy; newX2 = wx; newY2 = wy;
             break;
@@ -293,6 +325,8 @@ bool Fixture::testPoint(float x, float y) const {
             return CollisionSolver::testPointCircle(p, center, getRadius());
         case ObjectShape::BOX:    
             return CollisionSolver::testPointBox(p, center, getWidth(), getHeight(), rotation);
+        case ObjectShape::CAPSULE:
+            return CollisionSolver::testPointCapsule(p, center, getRadius(), getHeight(), rotation);
         case ObjectShape::AABB:   
             return CollisionSolver::testPointAabb(p, center, getWidth(), getHeight());
         default: 

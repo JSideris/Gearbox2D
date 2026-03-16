@@ -274,7 +274,7 @@ export const constraintsExamples = [
             if (engineHub) {
                 // Apply a persistent but relatively low angular impulse to the drive gear
                 if(Math.abs(engineHub.rs) < 0.9) {
-                    engineHub.applyAngularImpulse(0.01);
+                    engineHub.applyAngularImpulse(0.03);
                 }
             }
         }
@@ -515,21 +515,27 @@ export const constraintsExamples = [
                 const sy = cy + Math.sin(angle) * outerRadius;
 
                 const shapeId = nextId++;
-                const shape = world.makeBody(shapeId, {
+                const body = world.makeBody(shapeId, {
                     x: sx,
                     y: sy,
-                    mass: 1.5, // Heavier for more stretch
+                    mass: 0.1,
                     color: `hsl(${(i * 360) / numShapes}, 70%, 60%)`,
                 });
-                shape.addFixture({
-                    shape: i % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
+
+                let sType;
+                if (i % 3 === 0) sType = gearbox.shapes.BOX;
+                else if (i % 3 === 1) sType = gearbox.shapes.CIRCLE;
+                else sType = gearbox.shapes.CAPSULE;
+
+                body.addFixture({
+                    shape: sType,
                     width: 0.6,
-                    height: 0.6,
+                    height: sType === gearbox.shapes.CAPSULE ? 1.0 : 0.6,
                     radius: 0.3,
                     sFriction: 0.999,
                     kFriction: 0.99
                 });
-                shapes.push(shape);
+                shapes.push(body);
             }
 
             // Connect shapes to each other to form a belt
