@@ -63,7 +63,7 @@ export const optimizationExamples = [
         }
     }),
     new Example({
-        name: "!Shrink Wrap",
+        name: "Shrink Wrap",
         key: "shrink-wrap",
         description: [
             "Objects that are put to **Sleep** have their **AABBs** 'shrink-wrapped' to their exact shape bounds.",

@@ -56,12 +56,12 @@ export const constraintsExamples = [
     }),
 
     new Example({ // Breakable Joint
-        name: "!Breakable Joint",
+        name: "Breakable Joint",
         key: "breakable-joint",
         description: [
             "This demo showcases **Joint Reaction Forces** and dynamic joint removal.",
             "1. A ball is suspended by a **Hinge Joint**. Its mass increases until the reaction force exceeds a threshold, snapping the joint.",
-            "2. The ball falls onto a bridge made of `SpringJoint` segments, which also have breaking thresholds.",
+            "2. The ball falls onto a bridge made of `DistanceJoint` segments, which also have breaking thresholds.",
             "You can visualize the stress on the joints by enabling **Force Vectors** in the debug settings."
         ].join("\n\n"),
         onInit: (world) => {
@@ -90,13 +90,13 @@ export const constraintsExamples = [
             const massObjectId = nextId++;
             massObject = world.makeBody(massObjectId, {
                 x: 5,
-                y: 2.5,
+                y: 2.3,
                 mass: 0.05,
                 color: "#888888"
             });
             massObject.addFixture(massObjectId, {
                 shape: gearbox.shapes.CIRCLE,
-                radius: 0.4,
+                radius: 0.6,
             });
 
             breakableJoint = world.createHingeJoint(nextId++, anchor, massObject, {
@@ -154,21 +154,17 @@ export const constraintsExamples = [
                     maskBits: ~0x0004 // Don't collide with other bridge segments
                 });
 
-                const sj = world.createSpringJoint(nextId++, prevBody, segmentBody, {
+                const dj = world.createDistanceJoint(nextId++, prevBody, segmentBody, {
                     worldAnchor: { x: startX + i * segmentWidth, y: bridgeY },
-                    frequencyHz: 4.0,   // More lax/stretchy
-                    dampingRatio: 1.0   // High damping to eliminate jitter
                 });
-                bridgeJoints.push(sj);
+                bridgeJoints.push(dj);
                 prevBody = segmentBody;
             }
 
-            const lastSj = world.createSpringJoint(nextId++, prevBody, bridgeAnchorRight, {
+            const lastDj = world.createDistanceJoint(nextId++, prevBody, bridgeAnchorRight, {
                 worldAnchor: { x: endX, y: bridgeY },
-                frequencyHz: 4.0,
-                dampingRatio: 1.0
             });
-            bridgeJoints.push(lastSj);
+            bridgeJoints.push(lastDj);
             
             // Apply a side force to make it swing
             massObject.applyImpulse(0.2, 0);
@@ -201,12 +197,12 @@ export const constraintsExamples = [
             // 3. Break bridge joints
             if (bridgeJoints.length > 0) {
                 for (let i = bridgeJoints.length - 1; i >= 0; i--) {
-                    const sj = bridgeJoints[i];
-                    const f = sj.reactionForce;
+                    const dj = bridgeJoints[i];
+                    const f = dj.reactionForce;
                     const forceMag = Math.sqrt(f.x * f.x + f.y * f.y);
                     
                     if (forceMag > 600) { 
-                        world.removeJoint(sj.id);
+                        world.removeJoint(dj.id);
                         bridgeJoints.splice(i, 1);
                     }
                 }
