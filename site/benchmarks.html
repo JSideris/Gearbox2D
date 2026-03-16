@@ -14,11 +14,12 @@
             display: flex;
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border);
-            padding: 0 10px;
+            padding: 0 20px;
+            gap: 15px;
         }
 
         .engine-tab {
-            padding: 12px 20px;
+            padding: 12px 10px;
             cursor: pointer;
             font-family: 'Orbitron', sans-serif;
             font-size: 0.8rem;
@@ -27,6 +28,22 @@
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .engine-toggle {
+            display: none;
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: var(--accent-cyan);
+        }
+
+        .engine-tab.active[data-engine="all"] ~ .engine-tab .engine-toggle,
+        .engine-tab.active[data-engine="all"] .engine-toggle {
+            display: block;
         }
 
         .engine-tab:hover {
@@ -97,10 +114,29 @@
         }
 
         #canvas-container.all-mode {
+            background: var(--border);
+            gap: 1px;
+        }
+
+        /* Layouts for all-mode */
+        #canvas-container.all-mode.layout-4 {
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 1fr 1fr;
-            gap: 1px;
-            background: var(--border);
+        }
+
+        #canvas-container.all-mode.layout-3 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+
+        #canvas-container.all-mode.layout-2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        #canvas-container.all-mode.layout-1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
         }
 
         .engine-canvas-wrapper {
@@ -109,6 +145,10 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+        }
+
+        .engine-canvas-wrapper.empty-slot {
+            background: #050505;
         }
 
         .engine-label {
@@ -219,11 +259,25 @@
         
         <div id="content">
             <div class="engine-tabs">
-                <div class="engine-tab active" data-engine="all">All Engines</div>
-                <div class="engine-tab" data-engine="gearbox2d">Gearbox2D</div>
-                <div class="engine-tab" data-engine="matterjs">Matter.js</div>
-                <div class="engine-tab" data-engine="p2js">P2.js</div>
-                <div class="engine-tab" data-engine="box2dwasm">Box2D-WASM</div>
+                <div class="engine-tab active" data-engine="all">
+                    All Engines
+                </div>
+                <div class="engine-tab" data-engine="gearbox2d">
+                    <input type="checkbox" class="engine-toggle" checked data-engine="gearbox2d">
+                    Gearbox2D
+                </div>
+                <div class="engine-tab" data-engine="matterjs">
+                    <input type="checkbox" class="engine-toggle" checked data-engine="matterjs">
+                    Matter.js
+                </div>
+                <div class="engine-tab" data-engine="p2js">
+                    <input type="checkbox" class="engine-toggle" checked data-engine="p2js">
+                    P2.js
+                </div>
+                <div class="engine-tab" data-engine="box2dwasm">
+                    <input type="checkbox" class="engine-toggle" checked data-engine="box2dwasm">
+                    Box2D-WASM
+                </div>
             </div>
             
             <div id="canvas-container">
@@ -348,6 +402,7 @@
 
         const benchmarkChart = new BenchmarkChart('metric-chart');
         let activeEngines = []; // Array of { type, adapter, renderer, canvas, state, stepTimes: [] }
+        let enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
         let isRunning = false;
         let frameId = null;
         let gearboxWorld = null;
@@ -362,11 +417,17 @@
             params.set('scenario', currentScenarioKey);
             params.set('engine', engine);
             
+            if (engine === 'all') {
+                params.set('enabled', enabledEngines.join(','));
+            } else {
+                params.delete('enabled');
+            }
+            
             const newURL = `${window.location.pathname}?${params.toString()}`;
             if (replace) {
-                window.history.replaceState({ scenario: currentScenarioKey, engine }, '', newURL);
+                window.history.replaceState({ scenario: currentScenarioKey, engine, enabled: [...enabledEngines] }, '', newURL);
             } else {
-                window.history.pushState({ scenario: currentScenarioKey, engine }, '', newURL);
+                window.history.pushState({ scenario: currentScenarioKey, engine, enabled: [...enabledEngines] }, '', newURL);
             }
         }
 
@@ -374,9 +435,23 @@
             const params = new URLSearchParams(window.location.search);
             const scenarioParam = params.get('scenario');
             const engineParam = params.get('engine');
+            const enabledParam = params.get('enabled');
 
             if (scenarioParam && scenarios[scenarioParam]) {
                 currentScenarioKey = scenarioParam;
+            }
+
+            if (enabledParam) {
+                enabledEngines = enabledParam.split(',').filter(e => ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'].includes(e));
+                // Update checkboxes
+                document.querySelectorAll('.engine-toggle').forEach(toggle => {
+                    toggle.checked = enabledEngines.includes(toggle.dataset.engine);
+                });
+            } else {
+                enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
+                document.querySelectorAll('.engine-toggle').forEach(toggle => {
+                    toggle.checked = true;
+                });
             }
 
             if (engineParam) {
@@ -521,6 +596,7 @@
             // Clear existing canvases
             canvasContainer.innerHTML = '';
             activeEngines = [];
+            canvasContainer.className = '';
 
             if (selectedEngine === 'all') {
                 canvasContainer.classList.add('all-mode');
@@ -528,17 +604,45 @@
                 engineLegend.style.display = 'grid';
                 engineNameEl.style.display = 'none';
                 
-                // Top-left: Gearbox2D, Top-right: Matter.js
-                // Bottom-left: P2.js, Bottom-right: Box2D-WASM
-                const enginesToInit = [
+                const engineConfigs = [
                     { type: 'gearbox2d', alignRight: false },
                     { type: 'matterjs', alignRight: true },
                     { type: 'p2js', alignRight: false },
                     { type: 'box2dwasm', alignRight: true }
                 ];
+
+                const filteredConfigs = engineConfigs.filter(config => enabledEngines.includes(config.type));
                 
-                for (const config of enginesToInit) {
-                    activeEngines.push(await createEngineInstance(config.type, config.alignRight, 0.6));
+                if (filteredConfigs.length === 1) {
+                    // Switch to single engine mode
+                    const engine = filteredConfigs[0].type;
+                    const tab = document.querySelector(`.engine-tab[data-engine="${engine}"]`);
+                    if (tab) {
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        updateURL();
+                        return startBenchmark();
+                    }
+                }
+
+                canvasContainer.classList.add(`layout-${filteredConfigs.length}`);
+                
+                if (filteredConfigs.length === 3) {
+                    // Special case: TL, TR, BL empty, BR
+                    // TL
+                    activeEngines.push(await createEngineInstance(filteredConfigs[0].type, filteredConfigs[0].alignRight, 0.6));
+                    // TR
+                    activeEngines.push(await createEngineInstance(filteredConfigs[1].type, filteredConfigs[1].alignRight, 0.6));
+                    // BL Empty
+                    const empty = document.createElement('div');
+                    empty.className = 'engine-canvas-wrapper empty-slot';
+                    canvasContainer.appendChild(empty);
+                    // BR
+                    activeEngines.push(await createEngineInstance(filteredConfigs[2].type, filteredConfigs[2].alignRight, 0.6));
+                } else {
+                    for (const config of filteredConfigs) {
+                        activeEngines.push(await createEngineInstance(config.type, config.alignRight, 0.6));
+                    }
                 }
             } else {
                 canvasContainer.classList.remove('all-mode');
@@ -553,7 +657,7 @@
             benchmarkStartTime = performance.now();
             lastChartUpdateTime = benchmarkStartTime;
 
-            document.getElementById('status-text').textContent = `Initializing ${selectedEngine === 'all' ? 'all engines' : selectedEngine}...`;
+            document.getElementById('status-text').textContent = `Initializing ${selectedEngine === 'all' ? 'comparison' : selectedEngine}...`;
 
             try {
                 for (const engine of activeEngines) {
@@ -575,7 +679,7 @@
                 frames = 0;
                 
                 loop();
-                document.getElementById('status-text').textContent = `Running ${currentScenarioKey} on ${selectedEngine === 'all' ? 'all engines' : selectedEngine}`;
+                document.getElementById('status-text').textContent = `Running ${currentScenarioKey} on ${selectedEngine === 'all' ? 'comparison' : selectedEngine}`;
             } catch (e) {
                 console.error(e);
                 document.getElementById('status-text').textContent = `Error: ${e.message}`;
@@ -665,17 +769,48 @@
         // Tab selection logic
         const tabs = document.querySelectorAll('.engine-tab');
         tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
+            tab.addEventListener('click', (e) => {
+                // Ignore clicks on checkboxes, they are handled separately
+                if (e.target.classList.contains('engine-toggle')) return;
+
                 const engine = tab.dataset.engine;
                 if (tab.classList.contains('active')) return;
                 
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
+                
                 if (engine === 'all') {
-                    benchmarkChart.clear();
-                } else {
-                    benchmarkChart.clearEngine(engine);
+                    // Reset enabled engines if needed, or keep current ones
+                    // The prompt doesn't specify if switching back to "all" should reset enabled engines.
+                    // Usually it's better to keep them or reset to all. Let's reset to all for better experience.
+                    enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
+                    document.querySelectorAll('.engine-toggle').forEach(toggle => {
+                        toggle.checked = true;
+                    });
                 }
+                
+                benchmarkChart.clear();
+                updateURL();
+                startBenchmark();
+            });
+        });
+
+        // Toggle selection logic
+        document.querySelectorAll('.engine-toggle').forEach(toggle => {
+            toggle.addEventListener('change', () => {
+                const engine = toggle.dataset.engine;
+                if (toggle.checked) {
+                    if (!enabledEngines.includes(engine)) {
+                        enabledEngines.push(engine);
+                    }
+                } else {
+                    enabledEngines = enabledEngines.filter(e => e !== engine);
+                }
+                
+                // Sort enabledEngines to maintain consistent order
+                const order = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
+                enabledEngines.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
                 updateURL();
                 startBenchmark();
             });
