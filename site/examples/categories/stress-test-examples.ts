@@ -425,7 +425,7 @@ export const stressTestExamples = [
         }
     }),
     new Example({
-        name: "⚠ Bullet Through Paper",
+        name: "Bullet Through Paper",
         key: "bullet",
         description: [
             "Tests anti-tunneling by firing a fast-moving 'bullet' (small circle) through a thin 'paper' (static AABB).",
