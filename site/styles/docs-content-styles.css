@@ -120,10 +120,25 @@
 }
 #doc-content blockquote {
     border-left: 4px solid var(--accent-purple);
-    padding-left: 1rem;
-    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    margin: 1.5rem 0;
     font-style: italic;
     color: var(--text-muted);
+    background-color: rgba(30, 41, 59, 0.2);
+    border-radius: 0 4px 4px 0;
+}
+#doc-content blockquote.blockquote-note {
+    border-left-color: var(--accent-cyan);
+    background-color: rgba(0, 242, 255, 0.05);
+    font-style: normal;
+}
+#doc-content blockquote.blockquote-warning {
+    border-left-color: #f59e0b; /* Amber */
+    background-color: rgba(245, 158, 11, 0.05);
+    font-style: normal;
+}
+#doc-content blockquote p {
+    margin-bottom: 0;
 }
 #doc-content table {
     width: 100%;

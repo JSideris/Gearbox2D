@@ -29,6 +29,19 @@ public:
         return Vec2(-x, -y);
     }
 
+    // In-place addition
+    Vec2& operator+=(const Vec2& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+
+    // In-place subtraction
+    Vec2& operator-=(const Vec2& other) {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
 
     // Scalar multiplication
     Vec2 operator*(float scalar) const {
@@ -38,6 +51,20 @@ public:
     // Scalar division
     Vec2 operator/(float scalar) const {
         return Vec2(x / scalar, y / scalar);
+    }
+
+    // In-place scalar multiplication
+    Vec2& operator*=(float scalar) {
+        x *= scalar;
+        y *= scalar;
+        return *this;
+    }
+
+    // In-place scalar division
+    Vec2& operator/=(float scalar) {
+        x /= scalar;
+        y /= scalar;
+        return *this;
     }
 
     // Magnitude (length) of the vector

@@ -65,6 +65,8 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::CIRCLE: return _solveAabbCircle();
                 case ObjectShape::BOX: return _solveBoxBox();
                 case ObjectShape::POINT: return _solveAabbPoint();
+                case ObjectShape::CAPSULE: _swap(); return _solveCapsuleBox();
+                case ObjectShape::POLYGON: _swap(); return _solvePolygonAabb();
                 default: break;
             }
             break;
@@ -75,6 +77,7 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::BOX: return _solveBoxBox();
                 case ObjectShape::POINT: return _solveBoxPoint();
                 case ObjectShape::CAPSULE: _swap(); return _solveCapsuleBox();
+                case ObjectShape::POLYGON: _swap(); return _solvePolygonBox();
                 default: break;
             }
             break;
@@ -85,6 +88,7 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::BOX: return _solveCircleBox();
                 case ObjectShape::POINT: return _solveCirclePoint();
                 case ObjectShape::CAPSULE: _swap(); return _solveCapsuleCircle();
+                case ObjectShape::POLYGON: _swap(); return _solvePolygonCircle();
                 default: break;
             }
             break;
@@ -95,6 +99,7 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::CAPSULE: return _solveCapsuleCapsule();
                 case ObjectShape::POINT: return _solveCapsulePoint();
                 case ObjectShape::AABB: return _solveCapsuleBox(); // AABB is treated as oriented box
+                case ObjectShape::POLYGON: _swap(); return _solvePolygonCapsule();
                 default: break;
             }
             break;
@@ -105,6 +110,18 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
                 case ObjectShape::CIRCLE: _swap(); return _solveCirclePoint();
                 case ObjectShape::BOX: _swap(); return _solveBoxPoint();
                 case ObjectShape::CAPSULE: _swap(); return _solveCapsulePoint();
+                case ObjectShape::POLYGON: _swap(); return _solvePolygonPoint();
+                default: break;
+            }
+            break;
+        case ObjectShape::POLYGON:
+            switch(static_cast<ObjectShape>(shapeB)){
+                case ObjectShape::POLYGON: return _solvePolygonPolygon();
+                case ObjectShape::POINT: return _solvePolygonPoint();
+                case ObjectShape::CIRCLE: return _solvePolygonCircle();
+                case ObjectShape::BOX: return _solvePolygonBox();
+                case ObjectShape::CAPSULE: return _solvePolygonCapsule();
+                case ObjectShape::AABB: return _solvePolygonAabb();
                 default: break;
             }
             break;

@@ -62,9 +62,57 @@ Fixture::Fixture(World& world, int id, Body* body, emscripten_val options)
     float density = !options["density"].isUndefined() ? options["density"].as<float>() : 1.0f;
     world.liveFixtureFloatData.push_back(density); // Index 13 (FIXTURE_FDATA_DENSITY)
 
-    // Ensure we push exactly FIXTURE_FDATA_EPO (16) elements
-    for (int i = 14; i < FIXTURE_FDATA_EPO; ++i) {
-        world.liveFixtureFloatData.push_back(0.0f);
+    // Polygon vertex data
+    if (shape == ObjectShape::POLYGON && !options["vertices"].isUndefined()) {
+        emscripten_val vertices = options["vertices"];
+        int count = vertices["length"].as<int>();
+        count = std::min(count, MAX_POLYGON_VERTICES);
+        
+        std::vector<Vec2> polyVertices;
+        for (int i = 0; i < count; ++i) {
+            polyVertices.push_back(Vec2(vertices[i]["x"].as<float>(), vertices[i]["y"].as<float>()));
+        }
+
+        // Check winding order (should be CCW)
+        float area = 0.0f;
+        for (int i = 0; i < count; ++i) {
+            Vec2 p1 = polyVertices[i];
+            Vec2 p2 = polyVertices[(i + 1) % count];
+            area += p1.cross(p2);
+        }
+        
+        if (area < 0) {
+            std::reverse(polyVertices.begin(), polyVertices.end());
+        }
+
+        world.liveFixtureFloatData.push_back((float)count); // Index 14: FIXTURE_FDATA_VERTEX_COUNT
+        world.liveFixtureFloatData.push_back(0.0f);         // Index 15: Padding
+        
+        float maxPolyExtentSq = 0.0f;
+        for (int i = 0; i < MAX_POLYGON_VERTICES; ++i) {
+            if (i < count) {
+                float vx = polyVertices[i].x;
+                float vy = polyVertices[i].y;
+                world.liveFixtureFloatData.push_back(vx);
+                world.liveFixtureFloatData.push_back(vy);
+                maxPolyExtentSq = std::max(maxPolyExtentSq, vx * vx + vy * vy);
+            } else {
+                world.liveFixtureFloatData.push_back(0.0f);
+                world.liveFixtureFloatData.push_back(0.0f);
+            }
+        }
+        maxExtent = std::sqrt(maxPolyExtentSq);
+        // Overwrite maxExtent at index 12 if it was polygon
+        // We just pushed 2 + 2 * MAX_POLYGON_VERTICES = 18 elements.
+        // Index 12 is 18 - (14 - 12) = 18 - 2 = 16 elements back? No.
+        // Let's just use the absolute index in the vector for now since we know we just pushed them.
+        size_t lastIdx = world.liveFixtureFloatData.size() - 1; // index 31
+        world.liveFixtureFloatData[lastIdx - (FIXTURE_FDATA_EPO - 1 - FIXTURE_FDATA_MAX_EXTENT)] = maxExtent;
+    } else {
+        // Ensure we push exactly FIXTURE_FDATA_EPO (32) elements
+        for (int i = 14; i < FIXTURE_FDATA_EPO; ++i) {
+            world.liveFixtureFloatData.push_back(0.0f);
+        }
     }
 }
 
@@ -167,6 +215,39 @@ MassData Fixture::getMassData() const {
         // Inertia of rectangle + Steiner's theorem for two semicircles (forming a circle shifted by l/2)
         data.inertia = (1.0f / 12.0f) * mRect * (4.0f * r * r + l * l) + 
                        (0.5f * mCircle * r * r + mCircle * (l * l * 0.25f));
+    } else if (shape == ObjectShape::POLYGON) {
+        int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
+        float area = 0.0f;
+        Vec2 centroid(0.0f, 0.0f);
+        float inertia = 0.0f;
+        
+        int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
+        for (int i = 0; i < vCount; ++i) {
+            Vec2 p1(world.liveFixtureFloatData[startIdx + i * 2], world.liveFixtureFloatData[startIdx + i * 2 + 1]);
+            Vec2 p2(world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2], world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2 + 1]);
+            
+            float cross = p1.cross(p2);
+            area += 0.5f * cross;
+            centroid += (p1 + p2) * (cross / 6.0f);
+        }
+        
+        if (std::abs(area) > 0.0001f) {
+            centroid /= area;
+            data.mass = density * std::abs(area);
+            
+            // Inertia of polygon: sum (p1 x p2) * (p1^2 + p1.p2 + p2^2) / 12
+            for (int i = 0; i < vCount; ++i) {
+                Vec2 p1 = Vec2(world.liveFixtureFloatData[startIdx + i * 2], world.liveFixtureFloatData[startIdx + i * 2 + 1]) - centroid;
+                Vec2 p2 = Vec2(world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2], world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2 + 1]) - centroid;
+                float cross = p1.cross(p2);
+                inertia += cross * (p1.dot(p1) + p1.dot(p2) + p2.dot(p2));
+            }
+            data.inertia = density * std::abs(inertia) / 12.0f;
+            data.center = centroid + Vec2(lx, ly);
+        } else {
+            data.mass = 0.0f;
+            data.inertia = 0.0f;
+        }
     } else {
         // Box or AABB
         float w = getWidth();
@@ -277,6 +358,28 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
             newY2 = std::max(ey1, ey2) + r;
             break;
         }
+        case ObjectShape::POLYGON: {
+            int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
+            int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
+            float cosTotal = cos(wr);
+            float sinTotal = sin(wr);
+            
+            newX1 = 1e10f; newY1 = 1e10f;
+            newX2 = -1e10f; newY2 = -1e10f;
+            
+            for (int i = 0; i < vCount; ++i) {
+                float vx = world.liveFixtureFloatData[startIdx + i * 2];
+                float vy = world.liveFixtureFloatData[startIdx + i * 2 + 1];
+                float worldVX = wx + (vx * cosTotal - vy * sinTotal);
+                float worldVY = wy + (vx * sinTotal + vy * cosTotal);
+                
+                newX1 = std::min(newX1, worldVX);
+                newY1 = std::min(newY1, worldVY);
+                newX2 = std::max(newX2, worldVX);
+                newY2 = std::max(newY2, worldVY);
+            }
+            break;
+        }
         default:
             newX1 = wx; newY1 = wy; newX2 = wx; newY2 = wy;
             break;
@@ -329,6 +432,19 @@ bool Fixture::testPoint(float x, float y) const {
             return CollisionSolver::testPointCapsule(p, center, getRadius(), getHeight(), rotation);
         case ObjectShape::AABB:   
             return CollisionSolver::testPointAabb(p, center, getWidth(), getHeight());
+        case ObjectShape::POLYGON: {
+            int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
+            int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
+            std::vector<Vec2> worldVertices;
+            float cosTotal = cos(rotation);
+            float sinTotal = sin(rotation);
+            for (int i = 0; i < vCount; ++i) {
+                float vx = world.liveFixtureFloatData[startIdx + i * 2];
+                float vy = world.liveFixtureFloatData[startIdx + i * 2 + 1];
+                worldVertices.push_back(Vec2(center.x + (vx * cosTotal - vy * sinTotal), center.y + (vx * sinTotal + vy * cosTotal)));
+            }
+            return CollisionSolver::testPointPolygon(p, worldVertices);
+        }
         default: 
             return false;
     }

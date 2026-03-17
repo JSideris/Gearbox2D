@@ -108,7 +108,7 @@ export const generalExamples = [
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#444"
             }).addFixture({
-                shape: gearbox.shapes.BOX,
+                shape: gearbox.shapes.AABB,
                 width: boundaryWidth, height: thickness,
             });
 
@@ -118,7 +118,7 @@ export const generalExamples = [
                 type: gearbox.bodyTypes.FIXED_OBJECT,
                 color: "#444"
             }).addFixture({
-                shape: gearbox.shapes.BOX,
+                shape: gearbox.shapes.AABB,
                 width: boundaryWidth, height: thickness,
             });
 
@@ -129,7 +129,7 @@ export const generalExamples = [
                 type: gearbox.bodyTypes.FIXED_OBJECT, 
                 color: "#444" 
             }).addFixture({
-                shape: gearbox.shapes.BOX, 
+                shape: gearbox.shapes.AABB, 
                 width: thickness, height: wallHeight, 
             });
             world.makeBody(nextId++, { 
@@ -138,7 +138,7 @@ export const generalExamples = [
                 type: gearbox.bodyTypes.FIXED_OBJECT, 
                 color: "#444" 
             }).addFixture({
-                shape: gearbox.shapes.BOX, 
+                shape: gearbox.shapes.AABB, 
                 width: thickness, height: wallHeight, 
             });
 
@@ -166,7 +166,7 @@ export const generalExamples = [
                     };
 
                     const rand = Math.random();
-                    if (rand < 0.33) {
+                    if (rand < 0.25) {
                         // Circle
                         world.makeBody(nextId++, {
                             ...commonProps,
@@ -175,7 +175,7 @@ export const generalExamples = [
                             shape: gearbox.shapes.CIRCLE,
                             radius: 0.1 + Math.random() * 0.3,
                         });
-                    } else if (rand < 0.66) {
+                    } else if (rand < 0.5) {
                         // Box
                         world.makeBody(nextId++, {
                             ...commonProps,
@@ -185,7 +185,7 @@ export const generalExamples = [
                             width: 0.2 + Math.random() * 0.6,
                             height: 0.2 + Math.random() * 0.6,
                         });
-                    } else {
+                    } else if (rand < 0.75) {
                         // Capsule
                         const capRadius = 0.1 + Math.random() * 0.1;
                         world.makeBody(nextId++, {
@@ -195,6 +195,33 @@ export const generalExamples = [
                             shape: gearbox.shapes.CAPSULE,
                             radius: capRadius,
                             height: capRadius * 2 + 0.2 + Math.random() * 0.4,
+                        });
+                    } else {
+                        // Polygon or Star
+                        const randPoly = Math.random();
+                        let vertices;
+                        if (randPoly < 0.4) {
+                            // Regular Polygon
+                            const sides = 3 + Math.floor(Math.random() * 5);
+                            vertices = gearbox.polygon.makeRegularPolygon(sides, 0.2 + Math.random() * 0.2);
+                        } else if (randPoly < 0.8) {
+                            // Star
+                            const points = 5 + Math.floor(Math.random() * 3);
+                            const outer = 0.3 + Math.random() * 0.2;
+                            vertices = gearbox.polygon.makeStar(points, outer, outer * 0.5);
+                        } else {
+                            // Manual concave polygon (legacy test)
+                            vertices = [
+                                { x: 0, y: -0.4 }, { x: 0.35, y: -0.15 }, { x: 0.2, y: 0.3 }, { x: -0.2, y: 0.3 }, { x: -0.35, y: -0.15 }
+                            ];
+                        }
+
+                        world.makeBody(nextId++, {
+                            ...commonProps,
+                            r: Math.random() * Math.PI,
+                        }).addFixture({
+                            shape: gearbox.shapes.POLYGON,
+                            vertices: vertices
                         });
                     }
                 }
@@ -590,12 +617,14 @@ export const generalExamples = [
                     let capR = h * 0.5;
                     r = capR;
                     h = Math.max(capR * 2 + 0.1, w);
+                } else if (shapeType < 0.85) {
+                    shape = gearbox.shapes.POLYGON;
                 } else {
                     shape = gearbox.shapes.CIRCLE;
                 }
 
                 const bodyId = nextId++;
-                world.makeBody(bodyId, {
+                const body = world.makeBody(bodyId, {
                     x: 5.00 - dir * 5.00,
                     y: 7.50,
                     r: Math.PI / 2 * Math.random(),
@@ -605,11 +634,34 @@ export const generalExamples = [
                     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
                     mass: mass, 
                     linearDamping: 0,
-                }).addFixture({
-                    shape: shape,
-                    radius: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB) ? w : r,
-                    height: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB || shape === gearbox.shapes.CAPSULE) ? h : 0,
                 });
+
+                if (shape === gearbox.shapes.POLYGON) {
+                    const randPoly = Math.random();
+                    let polyVertices;
+                    const polyRadius = 0.2 + Math.random() * 0.3;
+                    
+                    if (randPoly < 0.6) {
+                        // Regular Polygon
+                        const sides = 3 + Math.floor(Math.random() * 5);
+                        polyVertices = gearbox.polygon.makeRegularPolygon(sides, polyRadius);
+                    } else {
+                        // Star
+                        const points = 5 + Math.floor(Math.random() * 3);
+                        polyVertices = gearbox.polygon.makeStar(points, polyRadius, polyRadius * 0.5);
+                    }
+
+                    body.addFixture({
+                        shape: shape,
+                        vertices: polyVertices
+                    });
+                } else {
+                    body.addFixture({
+                        shape: shape,
+                        radius: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB) ? w : r,
+                        height: (shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB || shape === gearbox.shapes.CAPSULE) ? h : 0,
+                    });
+                }
 
                 // Scan for objects that are out of bounds and remove them.
                 // Another way to do this would be to use collision events.

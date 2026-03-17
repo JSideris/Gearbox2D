@@ -45,6 +45,7 @@ public:
     static bool testPointAabb(const Vec2& point, const Vec2& center, float width, float height);
     static bool testPointBox(const Vec2& point, const Vec2& center, float width, float height, float rotation);
     static bool testPointCapsule(const Vec2& point, const Vec2& center, float radius, float height, float rotation);
+    static bool testPointPolygon(const Vec2& point, const std::vector<Vec2>& vertices);
 
 private:
     int _indexA = 0;
@@ -68,4 +69,11 @@ private:
     bool _solveCapsuleBox();
     bool _solveCapsuleCapsule();
     bool _solveCapsulePoint();
+
+    bool _solvePolygonPolygon();
+    bool _solvePolygonPoint();
+    bool _solvePolygonCircle();
+    bool _solvePolygonBox();
+    bool _solvePolygonCapsule();
+    bool _solvePolygonAabb();
 };

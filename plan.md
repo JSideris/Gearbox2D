@@ -33,8 +33,8 @@
 	- [x] Box.
 	- [x] Capsule.
 	- [x] Circle.
-	- [ ] Concave polygons.
-	- [ ] Convex polygons.
+	- [x] Convex polygons.
+	- [X] Concave polygons.
 	- [ ] Edge (optional).
 	- [x] Point.
 - [x] Composite objects (Multi-fixture bodies).
@@ -53,23 +53,24 @@
 	- [x] Circle-Box.
 	- [x] Circle-Capsule.
 	- [x] Circle-Circle.
-	- [ ] Convex-AABB.
+	- [x] Polygon-AABB.
+	- [x] Polygon-Box.
+	- [x] Polygon-Capsule.
+	- [x] Polygon-Circle.
+	- [x] Polygon-Polygon.
 	- [ ] Edge-AABB.
 	- [ ] Edge-Box.
 	- [ ] Edge-Capsule.
 	- [ ] Edge-Circle.
-	- [ ] Edge-Concave.
 	- [ ] Edge-Convex.
 	- [ ] Edge-Edge.
 	- [x] Point-AABB.
 	- [x] Point-Box.
 	- [x] Point-Capsule.
 	- [x] Point-Circle.
-	- [ ] Point-Concave.
-	- [ ] Point-Convex.
+	- [x] Polygon-Point.
 	- [ ] Point-Edge.
 	- [x] Point-Point.
-	- [ ] Convave polygons?
 - [x] Collision resolvers.
 	- [x] **Collision Solver** (Geometric Narrow Phase).
 		- [x] Geometric intersection tests.
@@ -96,8 +97,6 @@
 - [x] Implement an applyImpulse on objects.
 - [x] Implement an applyAngularImpulse on objects.
 - [x] Determine and apply impulse for rigid body collisions with basic shapes.
-- [ ] Determine and apply impulse for convex polygons.
-- [ ] Determine and apply impulse for concave polygons (by splitting them up into convex polygons).
 - [X] Collision tracking.
 
 ## Constraints

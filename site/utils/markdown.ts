@@ -62,10 +62,27 @@ export default class MarkdownParser {
         html = html.replace(/^# (.*$)/gm, "<h1>$1</h1>");
 
         // Blockquotes
-        html = html.replace(/^> (.*$)/gm, "<blockquote>$1</blockquote>");
-        html = html.replace(/(<blockquote>.*<\/blockquote>(\n<blockquote>.*<\/blockquote>)*)/g, "<blockquote>\n$1\n</blockquote>");
-        // Remove nested blockquotes created by the line-by-line replace
-        html = html.replace(/<blockquote>\n<blockquote>(.*)<\/blockquote>\n<\/blockquote>/g, "<blockquote>$1</blockquote>");
+        // Matches one or more lines starting with &gt;
+        html = html.replace(/((?:^(?:[ \t]*)&gt;[ \t]?.*(?:\n|$))+)/gm, (match) => {
+            const lines = match.split('\n');
+            const content = lines
+                .map(line => line.trim().replace(/^&gt;[ \t]?/, ''))
+                .filter(line => line !== null)
+                .join('\n')
+                .trim();
+
+            if (!content) return "";
+
+            // Check for callouts
+            let className = '';
+            if (content.startsWith('**Note**:') || content.startsWith('**Note** :')) {
+                className = ' class="blockquote-note"';
+            } else if (content.startsWith('**Warning**:') || content.startsWith('**Warning** :')) {
+                className = ' class="blockquote-warning"';
+            }
+
+            return `<blockquote${className}>${content.replace(/\n/g, "<br />")}</blockquote>\n`;
+        });
 
         // Tables
         // Matches header, separator, and data rows

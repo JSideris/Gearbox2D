@@ -16,7 +16,8 @@ const body = world.makeBody(bodyId, {
     mass: 1.0,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT
 });
-body.addFixture(bodyId, {
+
+body.addFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 0.5
 });
@@ -33,7 +34,8 @@ const body = world.makeBody(bodyId, {
     x: 5, y: 9,
     type: gearbox.bodyTypes.FIXED_OBJECT
 });
-body.addFixture(bodyId, {
+
+body.addFixture({
     shape: gearbox.shapes.AABB,
     width: 10, height: 1
 });
@@ -51,17 +53,18 @@ const body = world.makeBody(bodyId, {
     vx: 2.0, // Moves horizontally
     type: gearbox.bodyTypes.KINEMATIC_OBJECT
 });
-body.addFixture(bodyId, {
+
+body.addFixture({
     shape: gearbox.shapes.BOX,
     width: 2, height: 0.5
 });
 ```
 
-## Sensors
+## Sensors vs. Body Types
 
-Sensors detect collisions and trigger events but do not have a physical response. They "pass through" other objects. They are useful for trigger zones, area-of-effect detection, or visibility checks.
+It is important to distinguish between **Body Types** (which define movement behavior) and **Sensors** (which define collision response).
 
-In **Gearbox2D**, a sensor is not a body type, but a property of a **Fixture**. This allows you to attach sensors to any type of body:
+A **Sensor** is a property of a **Fixture**, not a body type. This allows you to attach sensors to any type of body:
 - **Static Sensor:** A fixed trigger zone (Fixed Body).
 - **Moving Sensor:** An elevator or platform trigger (Kinematic Body).
 - **Attached Sensor:** A vision cone or proximity alert attached to a player (Dynamic Body).

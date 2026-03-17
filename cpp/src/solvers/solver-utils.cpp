@@ -55,3 +55,19 @@ bool CollisionSolver::testPointCapsule(const Vec2& point, const Vec2& center, fl
     Vec2 pb = p1 + v * b;
     return (point - pb).magnitudeSquared() < radius * radius;
 }
+
+bool CollisionSolver::testPointPolygon(const Vec2& point, const std::vector<Vec2>& vertices) {
+    if (vertices.size() < 3) return false;
+    bool inside = true;
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        Vec2 p1 = vertices[i];
+        Vec2 p2 = vertices[(i + 1) % vertices.size()];
+        Vec2 edge = p2 - p1;
+        Vec2 normal(edge.y, -edge.x);
+        if (normal.dot(point - p1) > 0) {
+            inside = false;
+            break;
+        }
+    }
+    return inside;
+}

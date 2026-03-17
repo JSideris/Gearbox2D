@@ -3,6 +3,7 @@ import gearboxModule from '../../dist/wasm/gearbox-module.js';
 import { DebugGraphics } from './debug-graphics.js';
 import { SHAPES, BODY_TYPES } from './constants.js';
 import { World } from './world.js';
+import * as polygon from './polygon-utils.js';
 
 /**@type {Gearbox} */
 export class Gearbox {
@@ -12,6 +13,10 @@ export class Gearbox {
 	// Enums.
 	shapes = SHAPES;
 	bodyTypes = BODY_TYPES;
+	polygon = {
+		makeRegularPolygon: polygon.makeRegularPolygon,
+		makeStar: polygon.makeStar
+	};
 
 	// Wasm module constructors.
 	private _module: any;

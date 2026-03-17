@@ -4,9 +4,10 @@ Understanding the lifecycle of a `Body` is crucial for efficient simulation mana
 
 ## Creation
 
-Bodys are instantiated using the `world.makeBody()` method. You can create a body with a single fixture, multiple fixtures at once (atomic creation), or add fixtures later using `body.createFixture()`.
+Bodies are instantiated using the `world.makeBody()` method. You can create a body with an initial shape, or add fixtures later using `body.addFixture()`.
 
-### Atomic Creation (Multiple Fixtures)
+### Atomic Creation
+You can provide an array of fixtures during body creation.
 
 ```typescript
 const obj = world.makeBody(id, {
@@ -14,42 +15,30 @@ const obj = world.makeBody(id, {
     y: 20,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
     fixtures: [
-        {
-            shape: gearbox.shapes.CIRCLE,
-            radius: 1,
-            localX: -1
-        },
-        {
-            shape: gearbox.shapes.CIRCLE,
-            radius: 1,
-            localX: 1
-        }
+        { shape: gearbox.shapes.CIRCLE, radius: 1, localX: -1 },
+        { shape: gearbox.shapes.CIRCLE, radius: 1, localX: 1 }
     ]
 });
 ```
 
 ### Runtime Additions
+Fixtures can also be added to an existing body.
 
 ```typescript
-// Add a single fixture
-const fixture = obj.createFixture({
+const fixture = obj.addFixture({
     shape: gearbox.shapes.BOX,
     width: 2,
     height: 0.5,
     restitution: 0.8
 });
-
-// Or add multiple fixtures at once
-obj.createFixture([
-    { shape: gearbox.shapes.CIRCLE, radius: 0.5, localY: -1 },
-    { shape: gearbox.shapes.CIRCLE, radius: 0.5, localY: 1 }
-]);
 ```
 
+> **Note on Concave Polygons**: When you add a concave polygon fixture, Gearbox2D decomposes it into multiple convex pieces internally. However, `addFixture` will still return a **single proxy Fixture object**. This proxy manages all the internal pieces transparently.
+
 Upon creation, the engine:
-1. Allocates space in the **Live Data Buffers** (`liveFloatData` and `liveIntData`).
+1. Allocates space in the **Live Data Buffers**.
 2. Computes the initial **AABB** (Axis-Aligned Bounding Box).
-3. Inserts the object into the **BVH** (Bounding Volume Hierarchy) for spatial tracking.
+3. Inserts the fixture(s) into the **BVH** (Bounding Volume Hierarchy) for spatial tracking.
 
 ## Simulation Step (Integration)
 
@@ -72,21 +61,15 @@ An object will automatically enter a sleep state if its activity remains below c
 
 When an object sleeps:
 - It is no longer included in the kinematics integration step.
-- Its AABB is "shrink-wrapped" to its exact bounds (removing padding) to minimize unnecessary collision checks.
-- It is flagged in the `liveIntData` buffer with the `IS_ASLEEP` bit.
+- Its AABB is "shrink-wrapped" to its exact bounds to minimize unnecessary collision checks.
+- It is flagged in the data buffer with the `IS_SLEEPING` bit.
 
 ### Waking Up
-An object is "woken up" (returned to an active state) when:
-- **Collisions**: It is hit by another active object.
-- **External Forces**: An impulse or force is applied via `applyForce()` or `applyImpulse()`.
-- **Manual Manipulation**: A property like `x`, `y`, or `vx` is changed via the JavaScript API.
-- **Neighbor Propagation**: When an object wakes up, it automatically wakes up all objects it is currently in contact with.
-
-You can manually wake an object using the `wakeUp()` method:
-
-```typescript
-obj.wakeUp();
-```
+An object is "woken up" when:
+- It is hit by another active object.
+- An impulse or force is applied via `applyForce()` or `applyImpulse()`.
+- A property like `x`, `y`, or `vx` is changed via the JavaScript API.
+- When an object wakes up, it automatically wakes up all objects it is currently in contact with.
 
 ## Removal
 
@@ -97,10 +80,9 @@ world.removeObject(obj.id);
 ```
 
 During removal, the engine:
-1. Removes the object from the **BVH**.
-2. Destroys any **Joints** connected to the object.
-3. Clears **Contacts** from other objects' tracking lists.
-4. Reorganizes the **Live Data Buffers** to fill the gap (using a swap-and-pop strategy for $O(1)$ removal).
+1. Removes all associated fixtures from the **BVH**.
+2. Destroys any **Joints** connected to the body.
+3. Clears contact tracking state.
+4. Reorganizes the **Live Data Buffers** using a swap-and-pop strategy for $O(1)$ removal.
 
-> **Note**: After calling `removeObject()`, the JavaScript `Body` wrapper becomes invalid and should no longer be used.
-
+> **Warning**: After calling `removeObject()`, the JavaScript `Body` and `Fixture` wrappers for that object become invalid and should no longer be accessed.

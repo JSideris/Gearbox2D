@@ -21,8 +21,7 @@
 - `objects-state.md`: Body State
 
 ## Shapes & Geometry
-- `shapes-current.md`: Supported Shapes
-- `shapes-planned.md`: Planned Shapes
+- `shapes.md`: Supported Shapes
 
 ## Constraints & Joints
 - `joints-overview.md`: Joints Overview

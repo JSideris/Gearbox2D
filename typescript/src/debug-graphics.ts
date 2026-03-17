@@ -241,6 +241,25 @@ export class DebugGraphics {
                 this.ctx.moveTo(0, -halfL);
                 this.ctx.lineTo(0, halfL);
                 break;
+            case SHAPES.POLYGON:
+                const pieces = (fixture as any).debugVertices as { x: number, y: number }[][];
+                this.ctx.translate(fx, fy);
+                this.ctx.rotate(fr);
+                for (const vertices of pieces) {
+                    if (vertices.length > 0) {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(vertices[0].x * ANIMSCALE, vertices[0].y * ANIMSCALE);
+                        for (let i = 1; i < vertices.length; i++) {
+                            this.ctx.lineTo(vertices[i].x * ANIMSCALE, vertices[i].y * ANIMSCALE);
+                        }
+                        this.ctx.closePath();
+                        this.ctx.stroke();
+                    }
+                }
+                // Return early so we don't double-stroke at the end
+                this.ctx.restore();
+                return;
+            case SHAPES.BOX:
         }
         this.ctx.stroke();
         this.ctx.restore();

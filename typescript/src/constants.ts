@@ -46,7 +46,7 @@ export const FIXTURE_CATEGORY_BITS_OFFSET = 3;
 export const FIXTURE_MASK_BITS_OFFSET = 4;
 export const FIXTURE_FLAGS_OFFSET = 5;
 
-export const FIXTURE_SIZE_F = 16;
+export const FIXTURE_SIZE_F = 32;
 export const FIXTURE_LOCAL_X_OFFSET = 0;
 export const FIXTURE_LOCAL_Y_OFFSET = 1;
 export const FIXTURE_LOCAL_R_OFFSET = 2;
@@ -62,6 +62,8 @@ export const FIXTURE_AX2_OFFSET = 10;
 export const FIXTURE_AY2_OFFSET = 11;
 export const FIXTURE_MAX_EXTENT_OFFSET = 12;
 export const FIXTURE_DENSITY_OFFSET = 13;
+export const FIXTURE_VERTEX_COUNT_OFFSET = 14;
+export const FIXTURE_VERTEX_START_OFFSET = 16;
 
 // Flags and Types
 export const HAS_AABB_COLLISION = 0x1;

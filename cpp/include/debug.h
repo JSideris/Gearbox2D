@@ -9,46 +9,51 @@
 
 class MockVal {
 public:
-    std::unordered_map<std::string, std::variant<int, float, bool, uint32_t>> properties;
-    std::string lastKey;
+    std::variant<int, float, bool, uint32_t, std::monostate> val;
+    std::unordered_map<std::string, MockVal> properties;
+
+    MockVal() : val(std::monostate{}) {}
+
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T, bool>>>
+    MockVal& operator=(T v) {
+        val = v;
+        return *this;
+    }
 
     bool hasOwnProperty(const std::string& key) const {
         return properties.find(key) != properties.end();
     }
 
     bool isUndefined() const {
-        return properties.find(lastKey) == properties.end();
+        return std::holds_alternative<std::monostate>(val) && properties.empty();
     }
 
     template<typename T>
     T as() const {
-        auto it = properties.find(lastKey);
-        if (it == properties.end()) return T();
-        
-        if (std::holds_alternative<T>(it->second)) {
-            return std::get<T>(it->second);
+        if (std::holds_alternative<T>(val)) {
+            return std::get<T>(val);
         }
         
         // Handle basic numeric conversions if possible
         if constexpr (std::is_same_v<T, float>) {
-            if (std::holds_alternative<int>(it->second)) return (float)std::get<int>(it->second);
-            if (std::holds_alternative<uint32_t>(it->second)) return (float)std::get<uint32_t>(it->second);
+            if (std::holds_alternative<int>(val)) return (float)std::get<int>(val);
+            if (std::holds_alternative<uint32_t>(val)) return (float)std::get<uint32_t>(val);
         } else if constexpr (std::is_same_v<T, int>) {
-            if (std::holds_alternative<float>(it->second)) return (int)std::get<float>(it->second);
-            if (std::holds_alternative<uint32_t>(it->second)) return (int)std::get<uint32_t>(it->second);
+            if (std::holds_alternative<float>(val)) return (int)std::get<float>(val);
+            if (std::holds_alternative<uint32_t>(val)) return (int)std::get<uint32_t>(val);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            if (std::holds_alternative<int>(val)) return (bool)std::get<int>(val);
         }
         
         return T();
     }
 
     MockVal& operator[](const std::string& key) {
-        lastKey = key;
-        return *this;
+        return properties[key];
     }
 
     MockVal& operator[](int index) {
-        lastKey = std::to_string(index);
-        return *this;
+        return properties[std::to_string(index)];
     }
 };
 

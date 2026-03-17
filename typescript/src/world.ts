@@ -1,11 +1,13 @@
 
 import { 
     BODY_SIZE_F, BODY_SIZE_I, FIXTURE_SIZE_F, FIXTURE_SIZE_I,
-    BODY_ID_OFFSET, FIXTURE_ID_OFFSET, BODY_FIXTURE_COUNT_OFFSET
+    BODY_ID_OFFSET, FIXTURE_ID_OFFSET, BODY_FIXTURE_COUNT_OFFSET,
+    SHAPES
 } from './constants.js';
 import { Body } from './Body.js';
 import { Fixture } from './Fixture.js';
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from './joints.js';
+import { isConcave, decompose } from './polygon-utils.js';
 
 export interface BodyOptions {
     type?: number;
@@ -57,6 +59,7 @@ export interface FixtureOptions {
     density?: number;
     isSensor?: boolean;
     wantsEvents?: boolean;
+    vertices?: { x: number, y: number }[];
 }
 
 export interface JointOptions {
@@ -120,23 +123,20 @@ export class World {
     }
 
     makeBody(id: number, options: BodyOptions): Body {
-        const index = this.world.makeBody(id, options);
+        const { fixtures, shape, ...rest } = options;
+        const index = this.world.makeBody(id, rest);
         this.refreshViews();
         const body = new Body(index, this);
         body.color = options.color;
         this.bodiesById[id] = body;
 
-        // Fetch all fixtures created by C++ makeBody (could be multiple if options.fixtures was used)
-        const totalFixtureCount = this.world.getFixtureCount();
-        const currentBodyFixtureCount = this.liveBodyIntData[index * BODY_SIZE_I + BODY_FIXTURE_COUNT_OFFSET];
-        
-        if (currentBodyFixtureCount > 0) {
-            for (let i = 0; i < currentBodyFixtureCount; i++) {
-                const fIndex = totalFixtureCount - currentBodyFixtureCount + i;
-                const fixture = new Fixture(fIndex, body);
-                this.fixturesById[fixture.id] = fixture;
-                body.fixtures.push(fixture);
+        if (fixtures) {
+            for (const fOpt of fixtures) {
+                this.addFixture(id, fOpt);
             }
+        }
+        if (shape !== undefined) {
+            this.addFixture(id, options);
         }
 
         return body;
@@ -159,6 +159,27 @@ export class World {
         const body = this.bodiesById[bodyId];
         if (!body) throw new Error(`Body with id ${bodyId} not found`);
 
+        if (options.shape === SHAPES.POLYGON && options.vertices && isConcave(options.vertices)) {
+            const pieces = decompose(options.vertices);
+            let firstProxy: Fixture | null = null;
+            
+            for (const piece of pieces) {
+                const pieceOptions = { ...options, vertices: piece };
+                const fIndex = this.world.addFixture(bodyId, 0, pieceOptions);
+                this.refreshViews();
+                const id = this.liveFixtureIntData[fIndex * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
+                
+                if (!firstProxy) {
+                    firstProxy = new Fixture(fIndex, body, id);
+                } else {
+                    firstProxy.subFixtures.push({ id, index: fIndex });
+                }
+                this.fixturesById[id] = firstProxy;
+            }
+            body.fixtures.push(firstProxy!);
+            return firstProxy!;
+        }
+
         const fIndex = this.world.addFixture(bodyId, fixtureId, options);
         this.refreshViews();
         const fixture = new Fixture(fIndex, body);
@@ -172,7 +193,9 @@ export class World {
         const body = this.bodiesById[id];
         if (body) {
             for (const fixture of body.fixtures) {
-                delete this.fixturesById[fixture.id];
+                for (const sub of fixture.subFixtures) {
+                    delete this.fixturesById[sub.id];
+                }
             }
         }
         this.world.removeObject(id);
@@ -193,8 +216,9 @@ export class World {
         const fixtureCount = this.world.getFixtureCount();
         for (let i = 0; i < fixtureCount; i++) {
             const id = this.liveFixtureIntData[i * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
-            if (this.fixturesById[id]) {
-                this.fixturesById[id].index = i;
+            const fixture = this.fixturesById[id];
+            if (fixture) {
+                fixture.updateSubIndex(id, i);
             }
         }
     }
