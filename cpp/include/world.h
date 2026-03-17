@@ -208,7 +208,6 @@ public:
     void _doIntegrateVelocities();
     void _doIntegrateVelocitiesSubStep(float dt);
     void _doIntegratePositions();
-    void _doIntegratePositionsSubStep(float dt);
     void _doBroadPhase();
     void _doNarrowPhase(float dt);
     void _doContactManagement();

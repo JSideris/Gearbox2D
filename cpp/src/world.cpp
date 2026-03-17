@@ -274,29 +274,6 @@ void World::_doIntegrateVelocitiesSubStep(float dt) {
     }
 }
 
-void World::_doIntegratePositionsSubStep(float dt) {
-    for (auto* body : bodiesList) {
-        if (body->isSleeping) continue;
-
-        bool moved = body->integratePositions(dt);
-
-        if (moved) {
-            float pr = body->getRotation();
-            float cosR = std::cos(pr);
-            float sinR = std::sin(pr);
-            for (auto* fixture : body->fixtures) {
-                // Check if tight AABB (mode 1) is still within current fat AABB
-                Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
-                if (!fixture->aabb.contains(tightAabb)) {
-                    // Out of bounds, update to new fat AABB and broadphase
-                    fixture->updateAabb(cosR, sinR, 0);
-                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb, fixture->getCollisionProperties());
-                }
-            }
-        }
-    }
-}
-
 void World::_doBroadPhase() {
     bvh.detectCollisions();
 }
@@ -579,26 +556,29 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         }
     }
     
-    // 4. Update warm start storage only on LAST substep
+    // 4. Update warm start storage on every substep
+    warmStartImpulses.clear();
     if (substepIndex == velocitySubSteps - 1) {
         resolvedImpulses.clear();
-        warmStartImpulses.clear();
+    }
+    
+    for (auto& c : contactConstraints) {
+        std::pair<int, int> pair = {c.fA->id, c.fB->id};
+        if (pair.first > pair.second) std::swap(pair.first, pair.second);
         
-        for (auto& c : contactConstraints) {
-            std::pair<int, int> pair = {c.fA->id, c.fB->id};
-            if (pair.first > pair.second) std::swap(pair.first, pair.second);
+        if (substepIndex == velocitySubSteps - 1) {
             resolvedImpulses[pair] += c.normalImpulse;
-            
-            Body* bFirst = (c.fA->id < c.fB->id) ? c.a : c.b;
-            float prFirst = bFirst->getRotation();
-            float cosFirst = std::cos(-prFirst), sinFirst = std::sin(-prFirst);
-            Vec2 rFirst_world = c.point - bFirst->getPosition();
-            Vec2 localPointFirst(rFirst_world.x * cosFirst - rFirst_world.y * sinFirst, rFirst_world.x * sinFirst + rFirst_world.y * cosFirst);
-            
-            auto& data = warmStartImpulses[pair];
-            if (data.count < 2) {
-                data.impulses[data.count++] = {c.id, localPointFirst, c.normalImpulse, c.frictionImpulse};
-            }
+        }
+        
+        Body* bFirst = (c.fA->id < c.fB->id) ? c.a : c.b;
+        float prFirst = bFirst->getRotation();
+        float cosFirst = std::cos(-prFirst), sinFirst = std::sin(-prFirst);
+        Vec2 rFirst_world = c.point - bFirst->getPosition();
+        Vec2 localPointFirst(rFirst_world.x * cosFirst - rFirst_world.y * sinFirst, rFirst_world.x * sinFirst + rFirst_world.y * cosFirst);
+        
+        auto& data = warmStartImpulses[pair];
+        if (data.count < 2) {
+            data.impulses[data.count++] = {c.id, localPointFirst, c.normalImpulse, c.frictionImpulse};
         }
     }
     
