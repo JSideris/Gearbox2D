@@ -142,19 +142,7 @@ export class World {
         return body;
     }
 
-    addFixture(bodyId: number, arg1: any, arg2?: any): Fixture {
-        let options: FixtureOptions;
-        let fixtureId: number;
-
-        if (typeof arg1 === 'number') {
-            // Old signature: addFixture(bodyId, fixtureId, options)
-            fixtureId = arg1;
-            options = arg2;
-        } else {
-            // New signature: addFixture(bodyId, options, fixtureId?)
-            options = arg1;
-            fixtureId = arg2 || 0;
-        }
+    addFixture(bodyId: number, options: FixtureOptions, fixtureId?: number): Fixture {
 
         const body = this.bodiesById[bodyId];
         if (!body) throw new Error(`Body with id ${bodyId} not found`);
