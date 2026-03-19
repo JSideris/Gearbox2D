@@ -67,10 +67,6 @@ export class Fixture {
 	get index() {
 		return this.subFixtures[0].index;
 	}
-	/** @internal For backward compatibility and syncIndices */
-	set index(v: number) {
-		this.subFixtures[0].index = v;
-	}
 
 	/** @internal Updates the index of a specific sub-fixture */
 	updateSubIndex(id: number, index: number) {
