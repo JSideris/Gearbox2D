@@ -34,8 +34,9 @@ import {
 	WANTS_EVENTS,
 } from "./constants.js";
 import { RowView } from "./BufferAccessor.js";
-import type { World, FixtureOptions } from "./world.js";
-import type { Fixture } from "./Fixture.js";
+import type { World } from "./world.js";
+import { Fixture } from "./Fixture.js";
+import type { BodyOptions, FixtureOptions } from "./types.js";
 
 export class Body {
 	id: number;
@@ -65,15 +66,36 @@ export class Body {
 		this.id = this.ints.get(BODY_ID_OFFSET);
 	}
 
+	/** @internal Create a new body (handles WASM object creation and initial fixtures) */
+	static create(world: World, id: number, options: BodyOptions): Body {
+		const { fixtures, shape, ...rest } = options;
+		const index = world.world.makeBody(id, rest);
+		world.refreshViews();
+		const body = new Body(index, world);
+		body.color = options.color;
+		world.bodiesById[id] = body;
+
+		if (fixtures) {
+			for (const fOpt of fixtures) {
+				Fixture.create(body, fOpt);
+			}
+		}
+		if (shape !== undefined) {
+			Fixture.create(body, options as unknown as FixtureOptions);
+		}
+
+		return body;
+	}
+
 	private get cppBody() {
 		return this.world.world.getBody(this.id);
 	}
 
 	addFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
 		if (Array.isArray(options)) {
-			return options.map((opt) => this.world.addFixture(this.id, opt));
+			return options.map((opt) => Fixture.create(this, opt));
 		}
-		return this.world.addFixture(this.id, options, id);
+		return Fixture.create(this, options, id);
 	}
 
 	get type() {

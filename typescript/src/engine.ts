@@ -42,9 +42,6 @@ export class Gearbox {
 
 		this._worldC = WorldConstructor;
 		this._vec2C = Vec2;
-		// this._body = Body;
-		// this._objectType = ObjectType;
-		// this._objectShape = ObjectShape;
 
 		this.isInitialized = true;
 	}

@@ -5,76 +5,12 @@ import {
 	FIXTURE_SIZE_I,
 	BODY_ID_OFFSET,
 	FIXTURE_ID_OFFSET,
-	BODY_FIXTURE_COUNT_OFFSET,
-	SHAPES,
 } from "./constants.js";
 import { BufferView } from "./BufferAccessor.js";
 import { Body } from "./Body.js";
 import { Fixture } from "./Fixture.js";
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from "./joints.js";
-import { isConcave, decompose } from "./polygon-utils.js";
-
-export interface BodyOptions {
-	type?: number;
-	x?: number;
-	y?: number;
-	r?: number;
-	vx?: number;
-	vy?: number;
-	rs?: number;
-	mass?: number;
-	gscale?: number;
-	linearDamping?: number;
-	angularDamping?: number;
-	color?: string;
-
-	// Initial fixture options
-	shape?: number;
-	fixtureId?: number;
-	categoryBits?: number;
-	maskBits?: number;
-	localX?: number;
-	localY?: number;
-	localR?: number;
-	radius?: number;
-	width?: number;
-	height?: number;
-	restitution?: number;
-	sFriction?: number;
-	kFriction?: number;
-	density?: number;
-	isSensor?: boolean;
-	wantsEvents?: boolean;
-	fixtures?: FixtureOptions[];
-}
-
-export interface FixtureOptions {
-	shape: number;
-	categoryBits?: number;
-	maskBits?: number;
-	localX?: number;
-	localY?: number;
-	localR?: number;
-	radius?: number;
-	width?: number;
-	height?: number;
-	restitution?: number;
-	sFriction?: number;
-	kFriction?: number;
-	density?: number;
-	isSensor?: boolean;
-	wantsEvents?: boolean;
-	vertices?: { x: number; y: number }[];
-}
-
-export interface JointOptions {
-	anchorA?: { x: number; y: number };
-	anchorB?: { x: number; y: number };
-	worldAnchor?: { x: number; y: number };
-	length?: number;
-	frequencyHz?: number;
-	dampingRatio?: number;
-}
+import type { BodyOptions, FixtureOptions, JointOptions } from "./types.js";
 
 export type Joint = HingeJoint | DistanceJoint | SpringJoint | GearJoint;
 
@@ -139,58 +75,13 @@ export class World {
 	}
 
 	makeBody(id: number, options: BodyOptions): Body {
-		const { fixtures, shape, ...rest } = options;
-		const index = this.world.makeBody(id, rest);
-		this.refreshViews();
-		const body = new Body(index, this);
-		body.color = options.color;
-		this.bodiesById[id] = body;
-
-		if (fixtures) {
-			for (const fOpt of fixtures) {
-				this.addFixture(id, fOpt);
-			}
-		}
-		if (shape !== undefined) {
-			this.addFixture(id, options as unknown as FixtureOptions);
-		}
-
-		return body;
+		return Body.create(this, id, options);
 	}
 
 	addFixture(bodyId: number, options: FixtureOptions, fixtureId?: number): Fixture {
 		const body = this.bodiesById[bodyId];
 		if (!body) throw new Error(`Body with id ${bodyId} not found`);
-
-		if (options.shape === SHAPES.POLYGON && options.vertices && isConcave(options.vertices)) {
-			const pieces = decompose(options.vertices);
-			let firstProxy: Fixture | null = null;
-
-			for (const piece of pieces) {
-				const pieceOptions = { ...options, vertices: piece };
-				const fIndex = this.world.addFixture(bodyId, 0, pieceOptions, false);
-				this.refreshViews();
-				const id = this.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
-
-				if (!firstProxy) {
-					firstProxy = new Fixture(fIndex, body, id);
-				} else {
-					firstProxy.subFixtures.push({ id, index: fIndex });
-				}
-				this.fixturesById[id] = firstProxy;
-			}
-			body.recomputeMassProperties();
-			body.fixtures.push(firstProxy!);
-			return firstProxy!;
-		}
-
-		const fIndex = this.world.addFixture(bodyId, fixtureId || 0, options, true);
-		this.refreshViews();
-		const fixture = new Fixture(fIndex, body);
-		this.fixturesById[fixture.id] = fixture;
-		body.fixtures.push(fixture);
-
-		return fixture;
+		return Fixture.create(body, options, fixtureId);
 	}
 
 	removeObject(id: number) {
@@ -411,6 +302,7 @@ export class World {
 		const jointCount = Object.keys(this.jointsById).length;
 
 		// Estimates:
+		// TODO: this may be inaccurate. Put some thought into a better approach.
 		// Body: ~160 bytes
 		// Fixture: ~120 bytes
 		// Joint: ~140 bytes

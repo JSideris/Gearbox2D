@@ -25,9 +25,12 @@ import {
 	FIXTURE_VERTEX_COUNT_OFFSET,
 	FIXTURE_VERTEX_START_OFFSET,
 	FIXTURE_FLAGS,
+	SHAPES,
 } from "./constants.js";
 import { RowView } from "./BufferAccessor.js";
 import type { Body } from "./Body.js";
+import { isConcave, decompose } from "./polygon-utils.js";
+import type { FixtureOptions } from "./types.js";
 
 export class Fixture {
 	body: Body;
@@ -57,6 +60,41 @@ export class Fixture {
 		if (id === undefined) {
 			this.subFixtures[0].id = this.ints.get(FIXTURE_ID_OFFSET);
 		}
+	}
+
+	/** @internal Create a new fixture (handles decomposition and WASM object creation) */
+	static create(body: Body, options: FixtureOptions, fixtureId?: number): Fixture {
+		const world = body.world;
+
+		if (options.shape === SHAPES.POLYGON && options.vertices && isConcave(options.vertices)) {
+			const pieces = decompose(options.vertices);
+			let firstProxy: Fixture | null = null;
+
+			for (const piece of pieces) {
+				const pieceOptions = { ...options, vertices: piece };
+				const fIndex = world.world.addFixture(body.id, 0, pieceOptions, false);
+				world.refreshViews();
+				const id = world.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
+
+				if (!firstProxy) {
+					firstProxy = new Fixture(fIndex, body, id);
+				} else {
+					firstProxy.subFixtures.push({ id, index: fIndex });
+				}
+				world.fixturesById[id] = firstProxy;
+			}
+			body.recomputeMassProperties();
+			body.fixtures.push(firstProxy!);
+			return firstProxy!;
+		}
+
+		const fIndex = world.world.addFixture(body.id, fixtureId || 0, options, true);
+		world.refreshViews();
+		const fixture = new Fixture(fIndex, body);
+		world.fixturesById[fixture.id] = fixture;
+		body.fixtures.push(fixture);
+
+		return fixture;
 	}
 
 	/** The primary sub-fixture ID (used as the user-facing ID) */
