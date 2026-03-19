@@ -169,7 +169,7 @@ export class World {
             return firstProxy!;
         }
 
-        const fIndex = this.world.addFixture(bodyId, fixtureId, options);
+        const fIndex = this.world.addFixture(bodyId, fixtureId || 0, options, true);
         this.refreshViews();
         const fixture = new Fixture(fIndex, body);
         this.fixturesById[fixture.id] = fixture;

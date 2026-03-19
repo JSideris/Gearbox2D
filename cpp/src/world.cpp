@@ -42,14 +42,14 @@ int World::makeBody(int id, emscripten_val options) {
         emscripten_val fixtures = options["fixtures"];
         int length = fixtures["length"].as<int>();
         for (int i = 0; i < length; ++i) {
-            addFixture(id, 0, fixtures[i]);
+            addFixture(id, 0, fixtures[i], true);
         }
     }
 
     // Only create an initial fixture if shape is specified (legacy/single fixture support)
     if (!options["shape"].isUndefined()) {
         int fId = (!options["fixtureId"].isUndefined()) ? options["fixtureId"].as<int>() : nextFixtureId++;
-        addFixture(id, fId, options);
+        addFixture(id, fId, options, true);
     }
 
     return body->worldIndex;
