@@ -243,7 +243,8 @@ MassData Fixture::getMassData() const {
                 inertia += cross * (p1.dot(p1) + p1.dot(p2) + p2.dot(p2));
             }
             data.inertia = density * std::abs(inertia) / 12.0f;
-            data.center = centroid + Vec2(lx, ly);
+            float lr = getLocalR();
+            data.center = centroid.rotate(lr) + Vec2(lx, ly);
         } else {
             data.mass = 0.0f;
             data.inertia = 0.0f;
@@ -298,7 +299,11 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
     // World position of fixture
     float wx = px + (lx * cosR - ly * sinR);
     float wy = py + (lx * sinR + ly * cosR);
-    float wr = pr + lr;
+    
+    float cosLr = cos(lr);
+    float sinLr = sin(lr);
+    float cosTotal = cosR * cosLr - sinR * sinLr;
+    float sinTotal = sinR * cosLr + cosR * sinLr;
 
     float w = getWidth();
     float h = getHeight();
@@ -320,19 +325,20 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
             break;
         case ObjectShape::BOX:
         case ObjectShape::ELLIPSE: {
-            float cr = cos(wr);
-            float sr = sin(wr);
+            float cr = (shape == ObjectShape::BOX) ? cosTotal : cosTotal; // ELLIPSE also needs rotation
+            float sr = (shape == ObjectShape::BOX) ? sinTotal : sinTotal;
+            if (shape == ObjectShape::AABB) { cr = 1.0f; sr = 0.0f; } // Should not happen here but safe
             float cornersX[4] = {
-                (-w/2) * cr - (-h/2) * sr + wx,
-                ( w/2) * cr - (-h/2) * sr + wx,
-                ( w/2) * cr - ( h/2) * sr + wx,
-                (-w/2) * cr - ( h/2) * sr + wx
+                (-w/2) * cosTotal - (-h/2) * sinTotal + wx,
+                ( w/2) * cosTotal - (-h/2) * sinTotal + wx,
+                ( w/2) * cosTotal - ( h/2) * sinTotal + wx,
+                (-w/2) * cosTotal - ( h/2) * sinTotal + wx
             };
             float cornersY[4] = {
-                (-w/2) * sr + (-h/2) * cr + wy,
-                ( w/2) * sr + (-h/2) * cr + wy,
-                ( w/2) * sr + ( h/2) * cr + wy,
-                (-w/2) * sr + ( h/2) * cr + wy
+                (-w/2) * sinTotal + (-h/2) * cosTotal + wy,
+                ( w/2) * sinTotal + (-h/2) * cosTotal + wy,
+                ( w/2) * sinTotal + ( h/2) * cosTotal + wy,
+                (-w/2) * sinTotal + ( h/2) * cosTotal + wy
             };
             newX1 = *std::min_element(cornersX, cornersX + 4);
             newY1 = *std::min_element(cornersY, cornersY + 4);
@@ -343,14 +349,12 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
         case ObjectShape::CAPSULE: {
             float r = getRadius();
             float halfL = std::max(0.0f, getHeight() * 0.5f - r);
-            float cr = cos(wr);
-            float sr = sin(wr);
             
             // Local segment is (0, -halfL) to (0, halfL)
-            float ex1 = -(-halfL) * sr + wx;
-            float ey1 = (-halfL) * cr + wy;
-            float ex2 = -(halfL) * sr + wx;
-            float ey2 = (halfL) * cr + wy;
+            float ex1 = -(-halfL) * sinTotal + wx;
+            float ey1 = (-halfL) * cosTotal + wy;
+            float ex2 = -(halfL) * sinTotal + wx;
+            float ey2 = (halfL) * cosTotal + wy;
             
             newX1 = std::min(ex1, ex2) - r;
             newY1 = std::min(ey1, ey2) - r;
@@ -361,8 +365,6 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
         case ObjectShape::POLYGON: {
             int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
             int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
-            float cosTotal = cos(wr);
-            float sinTotal = sin(wr);
             
             newX1 = 1e10f; newY1 = 1e10f;
             newX2 = -1e10f; newY2 = -1e10f;

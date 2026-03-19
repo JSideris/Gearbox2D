@@ -167,7 +167,7 @@ public:
     float getSpeculativeMargin() const { return speculativeMargin; }
 
     int makeBody(int id, emscripten_val options);
-    int addFixture(int bodyId, int fixtureId, emscripten_val options);
+    int addFixture(int bodyId, int fixtureId, emscripten_val options, bool recomputeMass = true);
     int removeObject(int id);
 
     int createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, float anchorAY, float anchorBX, float anchorBY);

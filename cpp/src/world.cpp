@@ -55,7 +55,7 @@ int World::makeBody(int id, emscripten_val options) {
     return body->worldIndex;
 }
 
-int World::addFixture(int bodyId, int fixtureId, emscripten_val options) {
+int World::addFixture(int bodyId, int fixtureId, emscripten_val options, bool recomputeMass) {
     auto it = bodiesMap.find(bodyId);
     if (it == bodiesMap.end()) return -1;
     Body* body = it->second;
@@ -66,7 +66,7 @@ int World::addFixture(int bodyId, int fixtureId, emscripten_val options) {
     fixturesMap[fId] = fixture;
     fixturesList.push_back(fixture);
     
-    body->addFixture(fixture);
+    body->addFixture(fixture, recomputeMass);
     fixture->updateAabb(1);
 
     fixture->bvhNode = bvh.insert(fixture->aabb, fixture, fixture->getCollisionProperties());

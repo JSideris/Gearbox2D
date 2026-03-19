@@ -396,10 +396,12 @@ void Body::recomputeMassProperties() {
     }
 }
 
-void Body::addFixture(Fixture* fixture) {
+void Body::addFixture(Fixture* fixture, bool recomputeMass) {
     fixtures.push_back(fixture);
     world.liveBodyIntData[worldIndex * BODY_IDATA_EPO + BODY_IDATA_FIXTURE_COUNT] = fixtures.size();
-    updateInverseInertia();
+    if (recomputeMass) {
+        updateInverseInertia();
+    }
 }
 
 SolverData Body::getSolverData() const {

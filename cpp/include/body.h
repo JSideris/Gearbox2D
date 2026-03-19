@@ -109,7 +109,7 @@ public:
     SolverData getSolverData() const;
     void setSolverData(const SolverData& data);
 
-    void addFixture(Fixture* fixture);
+    void addFixture(Fixture* fixture, bool recomputeMass = true);
     int createFixture(emscripten_val options);
 };
 

@@ -136,7 +136,7 @@ export class World {
             }
         }
         if (shape !== undefined) {
-            this.addFixture(id, options);
+            this.addFixture(id, options as unknown as FixtureOptions);
         }
 
         return body;
@@ -153,7 +153,7 @@ export class World {
             
             for (const piece of pieces) {
                 const pieceOptions = { ...options, vertices: piece };
-                const fIndex = this.world.addFixture(bodyId, 0, pieceOptions);
+                const fIndex = this.world.addFixture(bodyId, 0, pieceOptions, false);
                 this.refreshViews();
                 const id = this.liveFixtureIntData[fIndex * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
                 
@@ -164,6 +164,7 @@ export class World {
                 }
                 this.fixturesById[id] = firstProxy;
             }
+            body.recomputeMassProperties();
             body.fixtures.push(firstProxy!);
             return firstProxy!;
         }
