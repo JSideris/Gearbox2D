@@ -1,677 +1,722 @@
-import Example from '../engine-wrapper.js';
-import gearbox from 'gearbox2d';
+import Example from "../engine-wrapper.js";
+import gearbox from "gearbox2d";
 
 let impulseTimer = 0;
 let nextId = 1;
 
 export const issuesExamples = [
-    new Example({
-        name: "TC-1 (SOLVED)",
-        key: "tc-1",
-        description: [
-            "**Test Case 1**: Verifies stability during box-on-box collisions.",
-            "Previously, boxes would exhibit 'jitter' or 'explosive' behavior when colliding at certain angles."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 10);
+	new Example({
+		name: "TC-1 (SOLVED)",
+		key: "tc-1",
+		description: [
+			"**Test Case 1**: Verifies stability during box-on-box collisions.",
+			"Previously, boxes would exhibit 'jitter' or 'explosive' behavior when colliding at certain angles.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 10);
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 8,
-                // r: Math.PI,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-            });
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 8,
+					// r: Math.PI,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+				});
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 7,
-                y: 2,
-                // r: Math.PI,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                // radius: 1,
-                width: 5,
-                height: 1,
-            });
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 7,
+					y: 2,
+					// r: Math.PI,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					// radius: 1,
+					width: 5,
+					height: 1,
+				});
 
-            world.makeBody(id++, {
-                x: 3,
-                y: 5,
-                // r: Math.PI,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                // radius: 1,
-                width: 5,
-                height: 1,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
-    
-    new Example({
-        name: "TC-2 (SOLVED)",
-        key: "tc-2",
-        description: [
-            "**Test Case 2**: Ensures `BOX` shapes do not tunnel through `AABB` shapes.",
-            "This test case was used to refine the overlap detection and penetration resolution logic for different boundary types."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 10);
+			world
+				.makeBody(id++, {
+					x: 3,
+					y: 5,
+					// r: Math.PI,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					// radius: 1,
+					width: 5,
+					height: 1,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 8,
-                r: Math.PI / 2,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.AABB,
-                width: 1,
-                height: 1,
-            });
+	new Example({
+		name: "TC-2 (SOLVED)",
+		key: "tc-2",
+		description: [
+			"**Test Case 2**: Ensures `BOX` shapes do not tunnel through `AABB` shapes.",
+			"This test case was used to refine the overlap detection and penetration resolution logic for different boundary types.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 10);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 7,
-                y: 2,
-                // r: Math.PI / 2,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 5,
-                height: 1,
-            });
-            world.makeBody(id++, {
-                x: 3,
-                y: 5,
-                // r: Math.PI / 2,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 5,
-                height: 1,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 8,
+					r: Math.PI / 2,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.AABB,
+					width: 1,
+					height: 1,
+				});
 
-    new Example({
-        name: "TC-3 (SOLVED)",
-        key: "tc-3",
-        description: [
-            "**Test Case 3**: Momentum preservation and angular transfer.",
-            "Previously, objects would lose too much linear momentum during eccentric collisions. The solver now correctly calculates the balance between linear and angular velocity transfer."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 0);
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 7,
+					y: 2,
+					// r: Math.PI / 2,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 5,
+					height: 1,
+				});
+			world
+				.makeBody(id++, {
+					x: 3,
+					y: 5,
+					// r: Math.PI / 2,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 5,
+					height: 1,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 8,
-                y: 5,
-                // r: Math.PI,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-            });
+	new Example({
+		name: "TC-3 (SOLVED)",
+		key: "tc-3",
+		description: [
+			"**Test Case 3**: Momentum preservation and angular transfer.",
+			"Previously, objects would lose too much linear momentum during eccentric collisions. The solver now correctly calculates the balance between linear and angular velocity transfer.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 0);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 2,
-                y: 3,
-                vx: 3,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                // radius: 1,
-                width: 1,
-                height: 5,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 8,
+					y: 5,
+					// r: Math.PI,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+				});
 
-    new Example({
-        name: "TC-4 (SOLVED)",
-        key: "tc-4",
-        description: [
-            "**Test Case 4**: Correctness of angular velocity direction.",
-            "Ensures that objects receive torque in the physically correct direction based on the contact point and normal."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 0);
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 2,
+					y: 3,
+					vx: 3,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					// radius: 1,
+					width: 1,
+					height: 5,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 8,
-                y: 5,
-                // r: Math.PI,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-            });
+	new Example({
+		name: "TC-4 (SOLVED)",
+		key: "tc-4",
+		description: [
+			"**Test Case 4**: Correctness of angular velocity direction.",
+			"Ensures that objects receive torque in the physically correct direction based on the contact point and normal.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 0);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 2,
-                y: 6,
-                vx: 3,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                // radius: 1,
-                width: 1,
-                height: 5,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 8,
+					y: 5,
+					// r: Math.PI,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+				});
 
-    new Example({
-        name: "TC-5 (SOLVED)",
-        key: "tc-5",
-        description: [
-            "**Test Case 5**: Sensitivity to initial rotation.",
-            "Fixes an issue where even tiny angular velocities (`rs`) caused disproportionate collision responses. Also verifies that rotating objects transfer angular momentum in opposing directions."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 0);
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 2,
+					y: 6,
+					vx: 3,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					// radius: 1,
+					width: 1,
+					height: 5,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 5,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 4,
-            }).addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 1,
-            });
+	new Example({
+		name: "TC-5 (SOLVED)",
+		key: "tc-5",
+		description: [
+			"**Test Case 5**: Sensitivity to initial rotation.",
+			"Fixes an issue where even tiny angular velocities (`rs`) caused disproportionate collision responses. Also verifies that rotating objects transfer angular momentum in opposing directions.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 0);
 
-            world.makeBody(id++, {
-                x: 2.8,
-                y: 2.0,
-                vx: 3,
-                vy: 3,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1,
-                // rs: 10,
-                rs: 0.01,
-            }).addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.5,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 5,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 4,
+				})
+				.addFixture({
+					shape: gearbox.shapes.CIRCLE,
+					radius: 1,
+				});
 
-    new Example({
-        name: "TC-6 (SOLVED)",
-        key: "tc-6",
-        description: [
-            "**Test Case 6**: Contact point calculation accuracy.",
-            "Uses edge-clipping techniques to ensure stable and accurate impulse application during complex box-box collisions."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 10);
-            world.setHasFriction(false);
+			world
+				.makeBody(id++, {
+					x: 2.8,
+					y: 2.0,
+					vx: 3,
+					vy: 3,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 1,
+					// rs: 10,
+					rs: 0.01,
+				})
+				.addFixture({
+					shape: gearbox.shapes.CIRCLE,
+					radius: 0.5,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 6,
-                r: Math.PI / 8,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 8,
-                height: 1,
-            });
+	new Example({
+		name: "TC-6 (SOLVED)",
+		key: "tc-6",
+		description: [
+			"**Test Case 6**: Contact point calculation accuracy.",
+			"Uses edge-clipping techniques to ensure stable and accurate impulse application during complex box-box collisions.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 10);
+			world.setHasFriction(false);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 2,
-                y: 2,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 6,
+					r: Math.PI / 8,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 8,
+					height: 1,
+				});
 
-    new Example({
-        name: "TC-7 (SOLVED)",
-        key: "tc-7",
-        description: [
-            "**Test Case 7**: Friction normal vector correctness.",
-            "Ensures that friction impulses are applied exactly tangent to the contact normal, even when restitution is high."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 10);
-            // world.setHasRestitution(false);
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 2,
+					y: 2,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 6,
-                // r: Math.PI / 8,
-                r: 0.1,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 8,
-                height: 1,
-                restitution: 0.0,
-            });
+	new Example({
+		name: "TC-7 (SOLVED)",
+		key: "tc-7",
+		description: [
+			"**Test Case 7**: Friction normal vector correctness.",
+			"Ensures that friction impulses are applied exactly tangent to the contact normal, even when restitution is high.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 10);
+			// world.setHasRestitution(false);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 2,
-                y: 2,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-                restitution: 0.0,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 6,
+					// r: Math.PI / 8,
+					r: 0.1,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 8,
+					height: 1,
+					restitution: 0.0,
+				});
 
-    new Example({
-        name: "TC-8 (SOLVED)",
-        key: "tc-8",
-        description: [
-            "**Test Case 8**: Stability of high-frequency circle collisions.",
-            "Verifies that multiple circles colliding in quick succession do not cause simulation instability or tunneling."
-        ].join("\n\n"),
-        globalLines: ["let nextId = 1;"],
-        onInit: (world)=>{
-            world.setGravity(0, 10);
-            impulseTimer = 0;
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 2,
+					y: 2,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+					restitution: 0.0,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            // Objects will be created in the tick function.
-        },
-        // Once collisions are a bit more stable, the number of colliding objects can be doubled.
-        onTick: (world, dt)=>{
-            impulseTimer++;
-            if(impulseTimer % 60 == 0){
-                let m = .1 + Math.random() * .4;
-                let r = .2 + m*m * .8;
-                let id1 = nextId++;
-                world.makeBody(id1, {
-                    x: 0,
-                    y: 7.50,
-                    r: Math.PI / 2 * Math.random(),
-                    rs: (Math.random() - 0.5) * 5.00,
-                    vx: (2.00 + Math.random() * 5.00) * 1,
-                    vy: -6.00 - Math.random() * 1.00,
-                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                    mass: m, 
-                }).addFixture({
-                    shape: gearbox.shapes.CIRCLE,
-                    radius: r,
-                });
+	new Example({
+		name: "TC-8 (SOLVED)",
+		key: "tc-8",
+		description: [
+			"**Test Case 8**: Stability of high-frequency circle collisions.",
+			"Verifies that multiple circles colliding in quick succession do not cause simulation instability or tunneling.",
+		].join("\n\n"),
+		globalLines: ["let nextId = 1;"],
+		onInit: (world) => {
+			world.setGravity(0, 10);
+			impulseTimer = 0;
 
-                m = .1 + Math.random() * .4;
-                r = .2 + m*m * .8;
-                let id2 = nextId++;
-                world.makeBody(id2, {
-                    x: 10,
-                    y: 7.50,
-                    r: Math.PI / 2 * Math.random(),
-                    rs: (Math.random() - 0.5) * 5.00,
-                    vx: (2.00 + Math.random() * 5.00) * -1,
-                    vy: -6.00 - Math.random() * 1.00,
-                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                    mass: m, 
-                }).addFixture({
-                    shape: gearbox.shapes.CIRCLE,
-                    radius: r,
-                });
+			// Objects will be created in the tick function.
+		},
+		// Once collisions are a bit more stable, the number of colliding objects can be doubled.
+		onTick: (world, dt) => {
+			impulseTimer++;
+			if (impulseTimer % 60 == 0) {
+				let m = 0.1 + Math.random() * 0.4;
+				let r = 0.2 + m * m * 0.8;
+				let id1 = nextId++;
+				world
+					.makeBody(id1, {
+						x: 0,
+						y: 7.5,
+						r: (Math.PI / 2) * Math.random(),
+						rs: (Math.random() - 0.5) * 5.0,
+						vx: (2.0 + Math.random() * 5.0) * 1,
+						vy: -6.0 - Math.random() * 1.0,
+						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+						mass: m,
+					})
+					.addFixture({
+						shape: gearbox.shapes.CIRCLE,
+						radius: r,
+					});
 
-                // Scan for objects that are out of bounds and remove them.
-                // Another way to do this would be to use collision events.
-                let objectCount = world.getBodyCount();
-                let toRemove = [];
+				m = 0.1 + Math.random() * 0.4;
+				r = 0.2 + m * m * 0.8;
+				let id2 = nextId++;
+				world
+					.makeBody(id2, {
+						x: 10,
+						y: 7.5,
+						r: (Math.PI / 2) * Math.random(),
+						rs: (Math.random() - 0.5) * 5.0,
+						vx: (2.0 + Math.random() * 5.0) * -1,
+						vy: -6.0 - Math.random() * 1.0,
+						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+						mass: m,
+					})
+					.addFixture({
+						shape: gearbox.shapes.CIRCLE,
+						radius: r,
+					});
 
-                world.iterateBodies(obj=>{
-                    
-                    if(obj.y > 10.50){
-                        // Don't remove stuff in the middle of the loop!!!
-                        toRemove.push(obj);
-                    }
-                });
+				// Scan for objects that are out of bounds and remove them.
+				// Another way to do this would be to use collision events.
+				let objectCount = world.getBodyCount();
+				let toRemove = [];
 
-                // Now remove everything we found that's out of bounds.
-                for(let obj of toRemove){
-                    world.removeObject(obj.id);
-                }
-            }
-        }
-    }),
+				world.iterateBodies((obj) => {
+					if (obj.y > 10.5) {
+						// Don't remove stuff in the middle of the loop!!!
+						toRemove.push(obj);
+					}
+				});
 
-    new Example({
-        name: "TC-9 (SOLVED)",
-        key: "tc-9",
-        description: [
-            "**Test Case 9**: Resting stability.",
-            "A small box resting on a larger fixed box to verify that gravity and normal impulses reach equilibrium without constant jitter."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 1);
-            // world.setHasRestitution(false);
+				// Now remove everything we found that's out of bounds.
+				for (let obj of toRemove) {
+					world.removeObject(obj.id);
+				}
+			}
+		},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 6,
-                r: Math.PI / 2,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 8,
-            });
+	new Example({
+		name: "TC-9 (SOLVED)",
+		key: "tc-9",
+		description: [
+			"**Test Case 9**: Resting stability.",
+			"A small box resting on a larger fixed box to verify that gravity and normal impulses reach equilibrium without constant jitter.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 1);
+			// world.setHasRestitution(false);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 7,
-                y: 5,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 6,
+					r: Math.PI / 2,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 8,
+				});
 
-    new Example({
-        name: "TC-10 (SOLVED)",
-        key: "tc-10",
-        description: [
-            "**Test Case 10**: Circle-AABB penetration resolution.",
-            "Fixes extreme responses when a circle falls directly onto a large axis-aligned platform."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 3);
-            // world.setHasRestitution(false);
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 7,
+					y: 5,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 8,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.AABB,
-                width: 8,
-                height: 1,
-                // restitution: 1
-            });
+	new Example({
+		name: "TC-10 (SOLVED)",
+		key: "tc-10",
+		description: [
+			"**Test Case 10**: Circle-AABB penetration resolution.",
+			"Fixes extreme responses when a circle falls directly onto a large axis-aligned platform.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 3);
+			// world.setHasRestitution(false);
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 7,
-                y: 2,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-                rs: -0.1,
-            }).addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 1,
-                restitution: 1,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
-    new Example({
-        name: "TC-11 (SOLVED)",
-        key: "tc-11",
-        description: [
-            "**Test Case 11**: Stuck objects and overlap logic.",
-            "Ensures that small circles do not get 'embedded' within other shapes when subjected to high-velocity collisions or deep initial overlaps."
-        ].join("\n\n"),
-        onInit: (world)=>{
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 8,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.AABB,
+					width: 8,
+					height: 1,
+					// restitution: 1
+				});
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 5,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.AABB,
-                width: 1,
-                height: 5,
-            });
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 7,
+					y: 2,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+					rs: -0.1,
+				})
+				.addFixture({
+					shape: gearbox.shapes.CIRCLE,
+					radius: 1,
+					restitution: 1,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
+	new Example({
+		name: "TC-11 (SOLVED)",
+		key: "tc-11",
+		description: [
+			"**Test Case 11**: Stuck objects and overlap logic.",
+			"Ensures that small circles do not get 'embedded' within other shapes when subjected to high-velocity collisions or deep initial overlaps.",
+		].join("\n\n"),
+		onInit: (world) => {
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 5,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.AABB,
+					width: 1,
+					height: 5,
+				});
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 5.2,
-                y: 5,
-                // vx: -50,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-            }).addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.1,
-                restitution: 0.5,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 5.2,
+					y: 5,
+					// vx: -50,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+				})
+				.addFixture({
+					shape: gearbox.shapes.CIRCLE,
+					radius: 0.1,
+					restitution: 0.5,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-    new Example({
-        name: "TC-12 (SOLVED)",
-        key: "tc-12",
-        description: [
-            "**Test Case 12**: Sinking prevention under high gravity.",
-            "Verifies that boxes maintain their position on top of other objects even when high downward forces are applied, ensuring the penetration resolution is sufficient."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 10);
-            // world.setHasRestitution(false);
+	new Example({
+		name: "TC-12 (SOLVED)",
+		key: "tc-12",
+		description: [
+			"**Test Case 12**: Sinking prevention under high gravity.",
+			"Verifies that boxes maintain their position on top of other objects even when high downward forces are applied, ensuring the penetration resolution is sufficient.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 10);
+			// world.setHasRestitution(false);
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 6,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.AABB,
-                width: 8,
-                height: 1,
-            });
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 6,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.AABB,
+					width: 8,
+					height: 1,
+				});
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 7,
-                y: 4,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 1,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 7,
+					y: 4,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 1,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
+	new Example({
+		name: "TC-13 (SOLVED)",
+		key: "tc-13",
+		description: [
+			"**Test Case 13**: Stuck objects and overlap logic.",
+			"Ensures that small circles do not get 'embedded' within other shapes when subjected to high-velocity collisions or deep initial overlaps.",
+		].join("\n\n"),
+		onInit: (world) => {
+			let id = 1;
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 5,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 1,
+					height: 5,
+				});
 
-    new Example({
-        name: "TC-13 (SOLVED)",
-        key: "tc-13",
-        description: [
-            "**Test Case 13**: Stuck objects and overlap logic.",
-            "Ensures that small circles do not get 'embedded' within other shapes when subjected to high-velocity collisions or deep initial overlaps."
-        ].join("\n\n"),
-        onInit: (world)=>{
+			// Anohter box but this time a rigid body.
+			world
+				.makeBody(id++, {
+					x: 5.2,
+					y: 5,
+					// vx: -50,
+					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+					mass: 0.2,
+				})
+				.addFixture({
+					shape: gearbox.shapes.CIRCLE,
+					radius: 0.1,
+					restitution: 0.5,
+				});
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            let id = 1;
-            world.makeBody(id++, {
-                x: 5,
-                y: 5,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 1,
-                height: 5,
-            });
+	new Example({
+		name: "TC-14 (SOLVED)",
+		key: "tc-14",
+		description: [
+			"**Test Case 14**: Sliding pile regression.",
+			"A stack of boxes should remain stationary when high friction is present. This test verifies if piles of objects exhibit 'random slow sliding' and fail to enter the sleep state.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 20); // Higher gravity to emphasize pressure
 
-            // Anohter box but this time a rigid body.
-            world.makeBody(id++, {
-                x: 5.2,
-                y: 5,
-                // vx: -50,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 0.2,
-            }).addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.1,
-                restitution: 0.5,
-            });
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+			let id = 1;
+			// Ground
+			world
+				.makeBody(id++, {
+					x: 5,
+					y: 9,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 10,
+					height: 1,
+					sFriction: 10,
+					kFriction: 10,
+				});
 
-    new Example({
-        name: "TC-14 (SOLVED)",
-        key: "tc-14",
-        description: [
-            "**Test Case 14**: Sliding pile regression.",
-            "A stack of boxes should remain stationary when high friction is present. This test verifies if piles of objects exhibit 'random slow sliding' and fail to enter the sleep state."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 20); // Higher gravity to emphasize pressure
-            
-            let id = 1;
-            // Ground
-            world.makeBody(id++, {
-                x: 5,
-                y: 9,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 10,
-                height: 1,
-                sFriction: 10,
-                kFriction: 10,
-            });
+			// Stack of boxes
+			for (let i = 0; i < 4; i++) {
+				world
+					.makeBody(id++, {
+						x: 5,
+						y: 8 - i * 1.1,
+						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+						mass: 1,
+					})
+					.addFixture({
+						shape: gearbox.shapes.BOX,
+						width: 2,
+						height: 1,
+						sFriction: 10,
+						kFriction: 10,
+					});
+			}
+		},
+		onTick: (world, dt) => {},
+	}),
 
-            // Stack of boxes
-            for (let i = 0; i < 4; i++) {
-                world.makeBody(id++, {
-                    x: 5,
-                    y: 8 - i * 1.1,
-                    type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                    mass: 1,
-                }).addFixture({
-                    shape: gearbox.shapes.BOX,
-                    width: 2,
-                    height: 1,
-                    sFriction: 10,
-                    kFriction: 10,
-                });
-            }
-        },
-        onTick: (world, dt)=>{
-        }
-    }),
+	new Example({
+		name: "TC-15: Anti-tunneling (REGRESSION)",
+		key: "tc-15",
+		description: [
+			"**Test Case 15**: Regression test for anti-tunneling.",
+			"A fast bullet (radius 0.1) is fired at a thin wall (width 0.05) at high speed (vx: 50).",
+			"This test intentionally lacks `speculativeMargin`, leading to tunneling behavior.",
+		].join("\n\n"),
+		onInit: (world) => {
+			world.setGravity(0, 0);
 
-    new Example({
-        name: "TC-15: Anti-tunneling (REGRESSION)",
-        key: "tc-15",
-        description: [
-            "**Test Case 15**: Regression test for anti-tunneling.",
-            "A fast bullet (radius 0.1) is fired at a thin wall (width 0.05) at high speed (vx: 50).",
-            "This test intentionally lacks `speculativeMargin`, leading to tunneling behavior."
-        ].join("\n\n"),
-        onInit: (world)=>{
-            world.setGravity(0, 0);
+			let id = 1;
+			// Thin wall
+			world
+				.makeBody(id++, {
+					x: 7,
+					y: 5,
+					type: gearbox.bodyTypes.FIXED_OBJECT,
+					color: "#ccc",
+				})
+				.addFixture({
+					shape: gearbox.shapes.BOX,
+					width: 0.05,
+					height: 4,
+				});
 
-            let id = 1;
-            // Thin wall
-            world.makeBody(id++, {
-                x: 7,
-                y: 5,
-                type: gearbox.bodyTypes.FIXED_OBJECT,
-                color: "#ccc"
-            }).addFixture({
-                shape: gearbox.shapes.BOX,
-                width: 0.05,
-                height: 4,
-            });
+			// Fast bullet
+			const bullet = world.makeBody(id++, {
+				x: 1,
+				y: 5,
+				vx: 50,
+				type: gearbox.bodyTypes.DYNAMIC_OBJECT,
+				mass: 1.0,
+				color: "#ffff44",
+			});
+			bullet.addFixture({
+				shape: gearbox.shapes.CIRCLE,
+				radius: 0.1,
+			});
 
-            // Fast bullet
-            const bullet = world.makeBody(id++, {
-                x: 1,
-                y: 5,
-                vx: 50,
-                type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-                mass: 1.0,
-                color: "#ffff44"
-            });
-            bullet.addFixture({
-                shape: gearbox.shapes.CIRCLE,
-                radius: 0.1,
-            });
-            
-            (world as any).bulletId = bullet.id;
-        },
-        onTick: (world, dt)=>{
-            const bullet = world.getBodyById((world as any).bulletId);
-            if (bullet && bullet.x > 25) {
-                bullet.x = 1;
-                bullet.vx = 50;
-                bullet.color = "#ff4444";
-            }
-            if (bullet && bullet.x < 0) {
-                bullet.x = 1;
-                bullet.vx = 50;
-                bullet.color = "#44ff44";
-            }
-        }
-    }),
+			(world as any).bulletId = bullet.id;
+		},
+		onTick: (world, dt) => {
+			const bullet = world.getBodyById((world as any).bulletId);
+			if (bullet && bullet.x > 25) {
+				bullet.x = 1;
+				bullet.vx = 50;
+				bullet.color = "#ff4444";
+			}
+			if (bullet && bullet.x < 0) {
+				bullet.x = 1;
+				bullet.vx = 50;
+				bullet.color = "#44ff44";
+			}
+		},
+	}),
 ];

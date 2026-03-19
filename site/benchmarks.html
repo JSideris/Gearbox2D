@@ -1,857 +1,922 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gearbox2D Benchmarks | Performance Comparison</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="./styles/examples-styles.css">
-    <style>
-        .engine-tabs {
-            display: flex;
-            background: var(--bg-surface);
-            border-bottom: 1px solid var(--border);
-            padding: 0 20px;
-            gap: 15px;
-        }
-
-        .engine-tab {
-            cursor: pointer;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: stretch;
-            padding: 0;
-        }
-
-        .engine-tab-text {
-            padding: 12px 10px;
-            display: flex;
-            align-items: center;
-        }
-
-        .engine-toggle-wrapper {
-            display: none;
-            padding: 12px 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border-right: 1px solid transparent;
-        }
-
-        .engine-toggle-wrapper:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .engine-tab.active[data-engine="all"] ~ .engine-tab .engine-toggle-wrapper,
-        .engine-tab.active[data-engine="all"] .engine-toggle-wrapper {
-            display: flex;
-            align-items: center;
-            border-right: 1px solid var(--border);
-        }
-
-        .engine-toggle {
-            width: 14px;
-            height: 14px;
-            cursor: pointer;
-            accent-color: var(--accent-cyan);
-            margin: 0;
-        }
-
-        .engine-tab:hover {
-            color: var(--text-main);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .engine-tab.active {
-            color: var(--accent-cyan);
-            border-bottom-color: var(--accent-cyan);
-            background: rgba(0, 242, 255, 0.05);
-        }
-
-        #metrics {
-            width: 320px;
-        }
-
-        #metric-chart-container {
-            width: 100%;
-            height: 180px;
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid var(--border);
-        }
-
-        #metric-chart {
-            width: 100% !important;
-            height: 100% !important;
-        }
-
-        /* Benchmark specific overrides */
-        #main {
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            height: 100vh;
-            min-width: 0;
-        }
-
-        #main-header {
-            padding: 16px 20px;
-            flex-shrink: 0;
-        }
-
-        #content {
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            overflow: hidden;
-            min-height: 0;
-            position: relative;
-        }
-
-        #canvas-container {
-            margin-bottom: 0;
-            border-radius: 0;
-            border-left: none;
-            border-right: none;
-            max-width: none !important;
-            flex: 1;
-            position: relative;
-            background: #000;
-            aspect-ratio: auto !important;
-            min-height: 0;
-            display: grid;
-        }
-
-        #canvas-container.all-mode {
-            background: var(--border);
-            gap: 1px;
-        }
-
-        /* Layouts for all-mode */
-        #canvas-container.all-mode.layout-4 {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-        }
-
-        #canvas-container.all-mode.layout-3 {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-        }
-
-        #canvas-container.all-mode.layout-2 {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr;
-        }
-
-        #canvas-container.all-mode.layout-1 {
-            grid-template-columns: 1fr;
-            grid-template-rows: 1fr;
-        }
-
-        .engine-canvas-wrapper {
-            position: relative;
-            background: #000;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .engine-canvas-wrapper.empty-slot {
-            background: #050505;
-        }
-
-        .engine-label {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: var(--accent-cyan);
-            padding: 4px 10px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.6rem;
-            letter-spacing: 1px;
-            border: 1px solid var(--border);
-            border-radius: 2px;
-            z-index: 5;
-            pointer-events: none;
-            text-transform: uppercase;
-        }
-
-        .engine-label.right-aligned {
-            left: auto;
-            right: 10px;
-        }
-
-        #benchmark-canvas {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
-        }
-
-        /* Centered metrics for ALL mode */
-        #metrics.all-mode {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            right: auto;
-            margin: 0;
-            background: rgba(5, 5, 5, 0.9);
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), var(--shadow-glow);
-            z-index: 1000;
-        }
-
-        #engine-legend {
-            display: none;
-            grid-template-columns: repeat(2, auto);
-            justify-content: start;
-            column-gap: 20px;
-            row-gap: 4px;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid var(--border);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            font-size: 0.65rem;
-            color: var(--text-main);
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 0 !important;
-        }
-
-        .legend-color {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 8px currentColor;
-        }
-    </style>
-</head>
-<body>
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <h2 id="sidebar-title">Scenarios</h2>
-            <div id="sidebar-actions">
-                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
-                <button id="reset-button-mobile" class="sidebar-icon-button" title="Reset"><i class="fas fa-redo-alt"></i></button>
-                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
-            </div>
-        </div>
-        <ul id="scenarios-list">
-            <!-- Scenarios will be dynamically generated -->
-        </ul>
-    </div>
-    
-    <div id="main">
-        <div id="main-header">
-            <div class="header-left">
-                <a href="index.html" class="home-link" title="Back to Home">
-                    <i class="fas fa-home"></i>
-                    <span>Home</span>
-                </a>
-                <h1 id="scenario-name">Loading benchmark...</h1>
-            </div>
-            <div class="header-right">
-                <button id="reset-button" title="Reset current benchmark">
-                    <i class="fas fa-redo-alt"></i>
-                    <span class="button-text">Reset</span>
-                </button>
-            </div>
-        </div>
-        
-        <div id="content">
-            <div class="engine-tabs">
-                <div class="engine-tab active" data-engine="all">
-                    <span class="engine-tab-text">All Engines</span>
-                </div>
-                <div class="engine-tab" data-engine="gearbox2d">
-                    <label class="engine-toggle-wrapper">
-                        <input type="checkbox" class="engine-toggle" checked data-engine="gearbox2d">
-                    </label>
-                    <span class="engine-tab-text">Gearbox2D</span>
-                </div>
-                <div class="engine-tab" data-engine="matterjs">
-                    <label class="engine-toggle-wrapper">
-                        <input type="checkbox" class="engine-toggle" checked data-engine="matterjs">
-                    </label>
-                    <span class="engine-tab-text">Matter.js</span>
-                </div>
-                <div class="engine-tab" data-engine="p2js">
-                    <label class="engine-toggle-wrapper">
-                        <input type="checkbox" class="engine-toggle" checked data-engine="p2js">
-                    </label>
-                    <span class="engine-tab-text">P2.js</span>
-                </div>
-                <div class="engine-tab" data-engine="box2dwasm">
-                    <label class="engine-toggle-wrapper">
-                        <input type="checkbox" class="engine-toggle" checked data-engine="box2dwasm">
-                    </label>
-                    <span class="engine-tab-text">Box2D-WASM</span>
-                </div>
-            </div>
-            
-            <div id="canvas-container">
-                <canvas id="benchmark-canvas"></canvas>
-            </div>
-            
-            <div id="metrics">
-                <div id="engine-name"><i class="fas fa-microchip"></i><span>Engine: -</span></div>
-                <!-- <div id="step-time"><i class="fas fa-stopwatch"></i><span>Step Time: 0 μs</span></div> -->
-                <div id="avg-step-time"><i class="fas fa-history"></i><span>Avg Step: 0 μs</span></div>
-                <div id="bodies"><i class="fas fa-cubes"></i><span>Bodies: 0</span></div>
-                <div id="memory" style="display: none;"><i class="fas fa-memory"></i><span>Memory: 0 MB</span></div>
-                <div id="fps"><i class="fas fa-tachometer-alt"></i><span>FPS: 0</span></div>
-                <div id="metric-chart-container">
-                    <canvas id="metric-chart"></canvas>
-                </div>
-                <div id="engine-legend">
-                    <div class="legend-item"><span class="legend-color" style="color: #4ade80; background: #4ade80;"></span>Gearbox2D</div>
-                    <div class="legend-item"><span class="legend-color" style="color: #f472b6; background: #f472b6;"></span>Matter.js</div>
-                    <div class="legend-item"><span class="legend-color" style="color: #a855f7; background: #a855f7;"></span>P2.js</div>
-                    <div class="legend-item"><span class="legend-color" style="color: #60a5fa; background: #60a5fa;"></span>Box2D-WASM</div>
-                </div>
-            </div>
-
-            <div id="status-text" style="padding: 10px 20px; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border);">Ready to benchmark</div>
-        </div>
-    </div>
-
-    <!-- Engine Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p2.js/0.7.1/p2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd/entry.js" data-box2d-dir="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <script type="module">
-        import gearbox from 'gearbox2d';
-        import { GearboxAdapter } from './utils/adapters/gearbox-adapter.ts';
-        import { MatterAdapter, P2Adapter, Box2DAdapter } from './utils/adapters/competitor-adapters.ts';
-        import { ProtocolRenderer } from './utils/protocol-renderer.ts';
-        import { scenarios } from './benchmarks/scenarios.ts';
-
-        const canvasContainer = document.getElementById('canvas-container');
-        const metricsContainer = document.getElementById('metrics');
-        const scenarioNameH1 = document.getElementById('scenario-name');
-        const scenariosList = document.getElementById('scenarios-list');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const resetButton = document.getElementById('reset-button');
-        const resetButtonMobile = document.getElementById('reset-button-mobile');
-        const engineNameEl = document.getElementById('engine-name');
-        const engineLegend = document.getElementById('engine-legend');
-        
-        class BenchmarkChart {
-            constructor(canvasId) {
-                const ctx = document.getElementById(canvasId).getContext('2d');
-                this.chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        datasets: [
-                            { label: 'Gearbox2D', borderColor: '#4ade80', data: [], tension: 0.1, pointRadius: 0 },
-                            { label: 'Matter.js', borderColor: '#f472b6', data: [], tension: 0.1, pointRadius: 0 },
-                            { label: 'P2.js', borderColor: '#a855f7', data: [], tension: 0.1, pointRadius: 0 },
-                            { label: 'Box2D-WASM', borderColor: '#60a5fa', data: [], tension: 0.1, pointRadius: 0 }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false,
-                        scales: {
-                            x: { 
-                                type: 'linear', 
-                                position: 'bottom', 
-                                title: { display: true, text: 'Time (s)', color: '#94a3b8', font: { size: 10 } },
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                                ticks: { color: '#94a3b8', font: { size: 8 } }
-                            },
-                            y: { 
-                                beginAtZero: true,
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                                ticks: { color: '#94a3b8', font: { size: 8 } },
-                                title: { display: true, text: '', color: '#94a3b8', font: { size: 10 } }
-                            }
-                        },
-                        plugins: {
-                            legend: { display: false }
-                        }
-                    }
-                });
-                this.engineMap = { 'gearbox2d': 0, 'matterjs': 1, 'p2js': 2, 'box2dwasm': 3 };
-            }
-
-            addPoint(engine, time, value) {
-                const datasetIndex = this.engineMap[engine];
-                if (datasetIndex !== undefined) {
-                    this.chart.data.datasets[datasetIndex].data.push({ x: time, y: value });
-                }
-            }
-
-            clear() {
-                this.chart.data.datasets.forEach(ds => ds.data = []);
-                this.chart.update();
-            }
-
-            clearEngine(engine) {
-                const datasetIndex = this.engineMap[engine];
-                if (datasetIndex !== undefined) {
-                    this.chart.data.datasets[datasetIndex].data = [];
-                    this.chart.update();
-                }
-            }
-
-            updateLabel(label) {
-                this.chart.options.scales.y.title.text = label;
-                this.chart.update();
-            }
-
-            render() {
-                this.chart.update();
-            }
-        }
-
-        const benchmarkChart = new BenchmarkChart('metric-chart');
-        let activeEngines = []; // Array of { type, adapter, renderer, canvas, state, stepTimes: [] }
-        let enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
-        let isRunning = false;
-        let frameId = null;
-        let gearboxWorld = null;
-        let currentScenarioKey = 'large-stack';
-        let benchmarkStartTime = 0;
-        let lastChartUpdateTime = 0;
-
-        function updateURL(replace = false) {
-            const activeTab = document.querySelector('.engine-tab.active');
-            const engine = activeTab ? activeTab.dataset.engine : 'all';
-            const params = new URLSearchParams(window.location.search);
-            params.set('scenario', currentScenarioKey);
-            params.set('engine', engine);
-            
-            if (engine === 'all') {
-                params.set('enabled', enabledEngines.join(','));
-            } else {
-                params.delete('enabled');
-            }
-            
-            const newURL = `${window.location.pathname}?${params.toString()}`;
-            if (replace) {
-                window.history.replaceState({ scenario: currentScenarioKey, engine, enabled: [...enabledEngines] }, '', newURL);
-            } else {
-                window.history.pushState({ scenario: currentScenarioKey, engine, enabled: [...enabledEngines] }, '', newURL);
-            }
-        }
-
-        function applyURLParams() {
-            const params = new URLSearchParams(window.location.search);
-            const scenarioParam = params.get('scenario');
-            const engineParam = params.get('engine');
-            const enabledParam = params.get('enabled');
-
-            if (scenarioParam && scenarios[scenarioParam]) {
-                currentScenarioKey = scenarioParam;
-            }
-
-            if (enabledParam) {
-                enabledEngines = enabledParam.split(',').filter(e => ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'].includes(e));
-                // Update checkboxes
-                document.querySelectorAll('.engine-toggle').forEach(toggle => {
-                    toggle.checked = enabledEngines.includes(toggle.dataset.engine);
-                });
-            } else {
-                enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
-                document.querySelectorAll('.engine-toggle').forEach(toggle => {
-                    toggle.checked = true;
-                });
-            }
-
-            if (engineParam) {
-                const tabs = document.querySelectorAll('.engine-tab');
-                let found = false;
-                tabs.forEach(tab => {
-                    if (tab.dataset.engine === engineParam) {
-                        tabs.forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        found = true;
-                    }
-                });
-                // If not found (e.g. invalid param), default to first tab (all)
-                if (!found && tabs.length > 0) {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tabs[0].classList.add('active');
-                }
-            }
-            
-            // Sync scenario list UI
-            document.querySelectorAll('#scenarios-list li').forEach(el => {
-                if (el.dataset.key === currentScenarioKey) {
-                    el.classList.add('selected');
-                } else {
-                    el.classList.remove('selected');
-                }
-            });
-        }
-
-        // Initialize Gearbox once
-        async function initGearbox() {
-            try {
-                await gearbox.init();
-                gearboxWorld = gearbox.makeWorld();
-                console.log("Gearbox2D initialized globally");
-                // Auto-start first benchmark
-                startBenchmark();
-            } catch (e) {
-                console.error("Failed to initialize Gearbox2D:", e);
-            }
-        }
-
-        function populateScenarios() {
-            scenariosList.innerHTML = '';
-            Object.keys(scenarios).forEach(key => {
-                const scenario = scenarios[key];
-                const li = document.createElement('li');
-                li.className = 'example' + (key === currentScenarioKey ? ' selected' : '');
-                li.textContent = scenario.name;
-                li.dataset.key = key;
-                li.addEventListener('click', () => {
-                    const isNew = currentScenarioKey !== key;
-                    if (isNew) {
-                        document.querySelectorAll('#scenarios-list li').forEach(el => el.classList.remove('selected'));
-                        li.classList.add('selected');
-                        currentScenarioKey = key;
-                        updateURL();
-                    }
-                    
-                    benchmarkChart.clear();
-                    startBenchmark();
-                    
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.add('collapsed');
-                    }
-                });
-                scenariosList.appendChild(li);
-            });
-        }
-
-        function syncSize() {
-            activeEngines.forEach(engine => {
-                const canvas = engine.canvas;
-                canvas.width = canvas.clientWidth;
-                canvas.height = canvas.clientHeight;
-                engine.renderer.offsetX = canvas.width / 2;
-                engine.renderer.offsetY = canvas.height / 2;
-            });
-        }
-        window.addEventListener('resize', syncSize);
-
-        window.addEventListener('popstate', (event) => {
-            applyURLParams();
-            benchmarkChart.clear();
-            startBenchmark();
-        });
-
-        async function createEngineInstance(engineType, alignRight = false, zoom = 1.0) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'engine-canvas-wrapper';
-            
-            const label = document.createElement('div');
-            label.className = 'engine-label' + (alignRight ? ' right-aligned' : '');
-            label.textContent = engineType === 'gearbox2d' ? 'Gearbox2D' : 
-                               engineType === 'matterjs' ? 'Matter.js' :
-                               engineType === 'p2js' ? 'P2.js' : 'Box2D-WASM';
-            wrapper.appendChild(label);
-            
-            const canvas = document.createElement('canvas');
-            canvas.style.width = '100%';
-            canvas.style.height = '100%';
-            wrapper.appendChild(canvas);
-            
-            canvasContainer.appendChild(wrapper);
-            
-            let adapter;
-            switch (engineType) {
-                case 'gearbox2d': 
-                    if (!gearboxWorld) await gearbox.init();
-                    if (!gearboxWorld) gearboxWorld = gearbox.makeWorld();
-                    adapter = new GearboxAdapter(gearboxWorld); 
-                    break;
-                case 'matterjs': adapter = new MatterAdapter(); break;
-                case 'p2js': adapter = new P2Adapter(); break;
-                case 'box2dwasm': adapter = new Box2DAdapter(); break;
-            }
-            
-            const renderer = new ProtocolRenderer(canvas);
-            renderer.zoom = zoom;
-            
-            return {
-                type: engineType,
-                adapter,
-                renderer,
-                canvas,
-                state: {},
-                stepTimes: []
-            };
-        }
-
-        async function startBenchmark() {
-            const activeTab = document.querySelector('.engine-tab.active');
-            const selectedEngine = activeTab ? activeTab.dataset.engine : 'all';
-            const scenario = scenarios[currentScenarioKey];
-            
-            scenarioNameH1.textContent = scenario.name;
-            benchmarkChart.updateLabel(scenario.metricLabel || 'Metric');
-            
-            if (frameId) cancelAnimationFrame(frameId);
-            isRunning = false;
-
-            // Clear existing canvases
-            canvasContainer.innerHTML = '';
-            activeEngines = [];
-            canvasContainer.className = '';
-
-            if (selectedEngine === 'all') {
-                canvasContainer.classList.add('all-mode');
-                metricsContainer.classList.add('all-mode');
-                engineLegend.style.display = 'grid';
-                engineNameEl.style.display = 'none';
-                
-                const engineConfigs = [
-                    { type: 'gearbox2d', alignRight: false },
-                    { type: 'matterjs', alignRight: true },
-                    { type: 'p2js', alignRight: false },
-                    { type: 'box2dwasm', alignRight: true }
-                ];
-
-                const filteredConfigs = engineConfigs.filter(config => enabledEngines.includes(config.type));
-                
-                if (filteredConfigs.length === 1) {
-                    // Switch to single engine mode
-                    const engine = filteredConfigs[0].type;
-                    const tab = document.querySelector(`.engine-tab[data-engine="${engine}"]`);
-                    if (tab) {
-                        tabs.forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        updateURL();
-                        return startBenchmark();
-                    }
-                }
-
-                canvasContainer.classList.add(`layout-${filteredConfigs.length}`);
-                
-                if (filteredConfigs.length === 3) {
-                    // Special case: TL, TR, BL empty, BR
-                    // TL
-                    activeEngines.push(await createEngineInstance(filteredConfigs[0].type, filteredConfigs[0].alignRight, 0.6));
-                    // TR
-                    activeEngines.push(await createEngineInstance(filteredConfigs[1].type, filteredConfigs[1].alignRight, 0.6));
-                    // BL Empty
-                    const empty = document.createElement('div');
-                    empty.className = 'engine-canvas-wrapper empty-slot';
-                    canvasContainer.appendChild(empty);
-                    // BR
-                    activeEngines.push(await createEngineInstance(filteredConfigs[2].type, filteredConfigs[2].alignRight, 0.6));
-                } else {
-                    for (const config of filteredConfigs) {
-                        activeEngines.push(await createEngineInstance(config.type, config.alignRight, 0.6));
-                    }
-                }
-            } else {
-                canvasContainer.classList.remove('all-mode');
-                metricsContainer.classList.remove('all-mode');
-                engineLegend.style.display = 'none';
-                engineNameEl.style.display = 'flex';
-                activeEngines.push(await createEngineInstance(selectedEngine, false, 1.0));
-            }
-
-            syncSize();
-            
-            benchmarkStartTime = performance.now();
-            lastChartUpdateTime = benchmarkStartTime;
-
-            document.getElementById('status-text').textContent = `Initializing ${selectedEngine === 'all' ? 'comparison' : selectedEngine}...`;
-
-            try {
-                for (const engine of activeEngines) {
-                    await engine.adapter.init();
-                    engine.adapter.clear();
-                    if (scenario) {
-                        scenario.setup(engine.adapter);
-                    }
-                    
-                    // Add initial 0s point
-                    const metricValue = scenario.getMetric(engine.adapter, engine.state);
-                    benchmarkChart.addPoint(engine.type, 0, metricValue);
-                }
-                
-                benchmarkChart.render();
-                isRunning = true;
-                lastTime = performance.now();
-                fpsLastTime = performance.now();
-                frames = 0;
-                
-                loop();
-                document.getElementById('status-text').textContent = `Running ${currentScenarioKey} on ${selectedEngine === 'all' ? 'comparison' : selectedEngine}`;
-            } catch (e) {
-                console.error(e);
-                document.getElementById('status-text').textContent = `Error: ${e.message}`;
-            }
-        }
-
-        let lastTime = 0;
-        let fpsLastTime = 0;
-        let frames = 0;
-
-        function loop() {
-            if (!isRunning) return;
-
-            const now = performance.now();
-            const scenario = scenarios[currentScenarioKey];
-            
-            for (const engine of activeEngines) {
-                const startTime = performance.now();
-                engine.adapter.step(1/60);
-                const endTime = performance.now();
-                
-                const stepTimeMicros = (endTime - startTime) * 1000;
-                engine.stepTimes.push(stepTimeMicros);
-                if (engine.stepTimes.length > 60) engine.stepTimes.shift();
-
-                const avgStepMicros = engine.stepTimes.reduce((a, b) => a + b, 0) / engine.stepTimes.length;
-                
-                // Update UI for the first engine (or specific one if not in all mode)
-                if (activeEngines.length === 1 || engine.type === 'gearbox2d') {
-                    document.getElementById('engine-name').querySelector('span').textContent = `Engine: ${engine.type.toUpperCase()}`;
-                    document.getElementById('avg-step-time').querySelector('span').textContent = `Avg Step: ${avgStepMicros.toFixed(0)} μs`;
-                    document.getElementById('bodies').querySelector('span').textContent = `Bodies: ${engine.adapter.getBodyCount()}`;
-
-                    const memoryEl = document.getElementById('memory');
-                    if (engine.adapter.getMemoryUsage) {
-                        const mem = engine.adapter.getMemoryUsage();
-                        memoryEl.style.display = 'flex';
-                        memoryEl.querySelector('span').textContent = mem < 1048576 ? `Memory: ${(mem / 1024).toFixed(2)} KB` : `Memory: ${(mem / 1048576).toFixed(2)} MB`;
-                    } else {
-                        memoryEl.style.display = 'none';
-                    }
-                }
-
-                // Update Scenario Metrics
-                if (scenario) {
-                    engine.state.avgStepTime = avgStepMicros / 1000; // to ms
-                    const metricValue = scenario.getMetric(engine.adapter, engine.state);
-                    
-                    const timeSinceStart = (now - benchmarkStartTime) / 1000;
-                    
-                    if (timeSinceStart <= 60 && now - lastChartUpdateTime >= 1000) {
-                        benchmarkChart.addPoint(engine.type, timeSinceStart, metricValue);
-                        if (engine === activeEngines[activeEngines.length - 1]) {
-                            benchmarkChart.render();
-                            lastChartUpdateTime = now;
-                        }
-                    }
-                }
-
-                const frame = engine.adapter.getDebugFrame();
-                engine.renderer.render(frame);
-            }
-
-            frames++;
-            if (now - fpsLastTime > 1000) {
-                document.getElementById('fps').querySelector('span').textContent = `FPS: ${frames}`;
-                frames = 0;
-                fpsLastTime = now;
-            }
-
-            frameId = requestAnimationFrame(loop);
-        }
-
-        const handleReset = () => {
-            benchmarkChart.clear();
-            startBenchmark();
-            document.getElementById('status-text').textContent = 'Benchmark reset';
-        };
-
-        resetButton.addEventListener('click', handleReset);
-        resetButtonMobile.addEventListener('click', handleReset);
-
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-        });
-
-        // Tab selection logic
-        const tabs = document.querySelectorAll('.engine-tab');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                // Ignore clicks on checkbox area
-                if (e.target.closest('.engine-toggle-wrapper')) return;
-
-                const engine = tab.dataset.engine;
-                if (tab.classList.contains('active')) {
-                    // Reset current simulation if re-clicked
-                    handleReset();
-                    return;
-                }
-                
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                
-                if (engine === 'all') {
-                    // Reset enabled engines to all
-                    enabledEngines = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
-                    document.querySelectorAll('.engine-toggle').forEach(toggle => {
-                        toggle.checked = true;
-                    });
-                }
-                
-                benchmarkChart.clear();
-                updateURL();
-                startBenchmark();
-            });
-        });
-
-        // Toggle selection logic
-        document.querySelectorAll('.engine-toggle').forEach(toggle => {
-            toggle.addEventListener('change', () => {
-                const engine = toggle.dataset.engine;
-                if (toggle.checked) {
-                    if (!enabledEngines.includes(engine)) {
-                        enabledEngines.push(engine);
-                    }
-                } else {
-                    enabledEngines = enabledEngines.filter(e => e !== engine);
-                }
-                
-                // Sort enabledEngines to maintain consistent order
-                const order = ['gearbox2d', 'matterjs', 'p2js', 'box2dwasm'];
-                enabledEngines.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-
-                // Always clear chart when engine selection changes
-                benchmarkChart.clear();
-                updateURL();
-                startBenchmark();
-            });
-        });
-
-        // Initial setup
-        applyURLParams();
-        populateScenarios();
-        initGearbox();
-        updateURL(true);
-    </script>
-</body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Gearbox2D Benchmarks | Performance Comparison</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+		<link rel="stylesheet" href="./styles/examples-styles.css" />
+		<style>
+			.engine-tabs {
+				display: flex;
+				background: var(--bg-surface);
+				border-bottom: 1px solid var(--border);
+				padding: 0 20px;
+				gap: 15px;
+			}
+
+			.engine-tab {
+				cursor: pointer;
+				font-family: "Orbitron", sans-serif;
+				font-size: 0.8rem;
+				color: var(--text-muted);
+				border-bottom: 2px solid transparent;
+				transition: all 0.2s;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				display: flex;
+				align-items: stretch;
+				padding: 0;
+			}
+
+			.engine-tab-text {
+				padding: 12px 10px;
+				display: flex;
+				align-items: center;
+			}
+
+			.engine-toggle-wrapper {
+				display: none;
+				padding: 12px 10px;
+				cursor: pointer;
+				transition: all 0.2s;
+				border-right: 1px solid transparent;
+			}
+
+			.engine-toggle-wrapper:hover {
+				background: rgba(255, 255, 255, 0.1);
+			}
+
+			.engine-tab.active[data-engine="all"] ~ .engine-tab .engine-toggle-wrapper,
+			.engine-tab.active[data-engine="all"] .engine-toggle-wrapper {
+				display: flex;
+				align-items: center;
+				border-right: 1px solid var(--border);
+			}
+
+			.engine-toggle {
+				width: 14px;
+				height: 14px;
+				cursor: pointer;
+				accent-color: var(--accent-cyan);
+				margin: 0;
+			}
+
+			.engine-tab:hover {
+				color: var(--text-main);
+				background: rgba(255, 255, 255, 0.05);
+			}
+
+			.engine-tab.active {
+				color: var(--accent-cyan);
+				border-bottom-color: var(--accent-cyan);
+				background: rgba(0, 242, 255, 0.05);
+			}
+
+			#metrics {
+				width: 320px;
+			}
+
+			#metric-chart-container {
+				width: 100%;
+				height: 180px;
+				margin-top: 15px;
+				padding-top: 10px;
+				border-top: 1px solid var(--border);
+			}
+
+			#metric-chart {
+				width: 100% !important;
+				height: 100% !important;
+			}
+
+			/* Benchmark specific overrides */
+			#main {
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				flex: 1;
+				height: 100vh;
+				min-width: 0;
+			}
+
+			#main-header {
+				padding: 16px 20px;
+				flex-shrink: 0;
+			}
+
+			#content {
+				padding: 0;
+				display: flex;
+				flex-direction: column;
+				flex: 1;
+				overflow: hidden;
+				min-height: 0;
+				position: relative;
+			}
+
+			#canvas-container {
+				margin-bottom: 0;
+				border-radius: 0;
+				border-left: none;
+				border-right: none;
+				max-width: none !important;
+				flex: 1;
+				position: relative;
+				background: #000;
+				aspect-ratio: auto !important;
+				min-height: 0;
+				display: grid;
+			}
+
+			#canvas-container.all-mode {
+				background: var(--border);
+				gap: 1px;
+			}
+
+			/* Layouts for all-mode */
+			#canvas-container.all-mode.layout-4 {
+				grid-template-columns: 1fr 1fr;
+				grid-template-rows: 1fr 1fr;
+			}
+
+			#canvas-container.all-mode.layout-3 {
+				grid-template-columns: 1fr 1fr;
+				grid-template-rows: 1fr 1fr;
+			}
+
+			#canvas-container.all-mode.layout-2 {
+				grid-template-columns: 1fr 1fr;
+				grid-template-rows: 1fr;
+			}
+
+			#canvas-container.all-mode.layout-1 {
+				grid-template-columns: 1fr;
+				grid-template-rows: 1fr;
+			}
+
+			.engine-canvas-wrapper {
+				position: relative;
+				background: #000;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			.engine-canvas-wrapper.empty-slot {
+				background: #050505;
+			}
+
+			.engine-label {
+				position: absolute;
+				top: 10px;
+				left: 10px;
+				background: rgba(0, 0, 0, 0.7);
+				color: var(--accent-cyan);
+				padding: 4px 10px;
+				font-family: "Orbitron", sans-serif;
+				font-size: 0.6rem;
+				letter-spacing: 1px;
+				border: 1px solid var(--border);
+				border-radius: 2px;
+				z-index: 5;
+				pointer-events: none;
+				text-transform: uppercase;
+			}
+
+			.engine-label.right-aligned {
+				left: auto;
+				right: 10px;
+			}
+
+			#benchmark-canvas {
+				width: 100% !important;
+				height: 100% !important;
+				display: block;
+			}
+
+			/* Centered metrics for ALL mode */
+			#metrics.all-mode {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				right: auto;
+				margin: 0;
+				background: rgba(5, 5, 5, 0.9);
+				box-shadow:
+					0 0 30px rgba(0, 0, 0, 0.8),
+					var(--shadow-glow);
+				z-index: 1000;
+			}
+
+			#engine-legend {
+				display: none;
+				grid-template-columns: repeat(2, auto);
+				justify-content: start;
+				column-gap: 20px;
+				row-gap: 4px;
+				margin-top: 10px;
+				padding-top: 10px;
+				border-top: 1px solid var(--border);
+			}
+
+			.legend-item {
+				display: flex;
+				align-items: center;
+				justify-content: flex-start;
+				font-size: 0.65rem;
+				color: var(--text-main);
+				font-family: "Orbitron", sans-serif;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				margin: 0 !important;
+			}
+
+			.legend-color {
+				width: 10px;
+				height: 10px;
+				border-radius: 50%;
+				margin-right: 8px;
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				box-shadow: 0 0 8px currentColor;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="sidebar">
+			<div id="sidebar-header">
+				<h2 id="sidebar-title">Scenarios</h2>
+				<div id="sidebar-actions">
+					<a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+					<button id="reset-button-mobile" class="sidebar-icon-button" title="Reset">
+						<i class="fas fa-redo-alt"></i>
+					</button>
+					<button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+				</div>
+			</div>
+			<ul id="scenarios-list">
+				<!-- Scenarios will be dynamically generated -->
+			</ul>
+		</div>
+
+		<div id="main">
+			<div id="main-header">
+				<div class="header-left">
+					<a href="index.html" class="home-link" title="Back to Home">
+						<i class="fas fa-home"></i>
+						<span>Home</span>
+					</a>
+					<h1 id="scenario-name">Loading benchmark...</h1>
+				</div>
+				<div class="header-right">
+					<button id="reset-button" title="Reset current benchmark">
+						<i class="fas fa-redo-alt"></i>
+						<span class="button-text">Reset</span>
+					</button>
+				</div>
+			</div>
+
+			<div id="content">
+				<div class="engine-tabs">
+					<div class="engine-tab active" data-engine="all">
+						<span class="engine-tab-text">All Engines</span>
+					</div>
+					<div class="engine-tab" data-engine="gearbox2d">
+						<label class="engine-toggle-wrapper">
+							<input type="checkbox" class="engine-toggle" checked data-engine="gearbox2d" />
+						</label>
+						<span class="engine-tab-text">Gearbox2D</span>
+					</div>
+					<div class="engine-tab" data-engine="matterjs">
+						<label class="engine-toggle-wrapper">
+							<input type="checkbox" class="engine-toggle" checked data-engine="matterjs" />
+						</label>
+						<span class="engine-tab-text">Matter.js</span>
+					</div>
+					<div class="engine-tab" data-engine="p2js">
+						<label class="engine-toggle-wrapper">
+							<input type="checkbox" class="engine-toggle" checked data-engine="p2js" />
+						</label>
+						<span class="engine-tab-text">P2.js</span>
+					</div>
+					<div class="engine-tab" data-engine="box2dwasm">
+						<label class="engine-toggle-wrapper">
+							<input type="checkbox" class="engine-toggle" checked data-engine="box2dwasm" />
+						</label>
+						<span class="engine-tab-text">Box2D-WASM</span>
+					</div>
+				</div>
+
+				<div id="canvas-container">
+					<canvas id="benchmark-canvas"></canvas>
+				</div>
+
+				<div id="metrics">
+					<div id="engine-name"><i class="fas fa-microchip"></i><span>Engine: -</span></div>
+					<!-- <div id="step-time"><i class="fas fa-stopwatch"></i><span>Step Time: 0 μs</span></div> -->
+					<div id="avg-step-time"><i class="fas fa-history"></i><span>Avg Step: 0 μs</span></div>
+					<div id="bodies"><i class="fas fa-cubes"></i><span>Bodies: 0</span></div>
+					<div id="memory" style="display: none"><i class="fas fa-memory"></i><span>Memory: 0 MB</span></div>
+					<div id="fps"><i class="fas fa-tachometer-alt"></i><span>FPS: 0</span></div>
+					<div id="metric-chart-container">
+						<canvas id="metric-chart"></canvas>
+					</div>
+					<div id="engine-legend">
+						<div class="legend-item">
+							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>Gearbox2D
+						</div>
+						<div class="legend-item">
+							<span class="legend-color" style="color: #f472b6; background: #f472b6"></span>Matter.js
+						</div>
+						<div class="legend-item">
+							<span class="legend-color" style="color: #a855f7; background: #a855f7"></span>P2.js
+						</div>
+						<div class="legend-item">
+							<span class="legend-color" style="color: #60a5fa; background: #60a5fa"></span>Box2D-WASM
+						</div>
+					</div>
+				</div>
+
+				<div
+					id="status-text"
+					style="
+						padding: 10px 20px;
+						font-size: 0.8rem;
+						color: var(--text-muted);
+						border-top: 1px solid var(--border);
+					"
+				>
+					Ready to benchmark
+				</div>
+			</div>
+		</div>
+
+		<!-- Engine Libraries -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p2.js/0.7.1/p2.min.js"></script>
+		<script
+			src="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd/entry.js"
+			data-box2d-dir="https://cdn.jsdelivr.net/npm/box2d-wasm@7.0.0/dist/umd"
+		></script>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+		<script type="module">
+			import gearbox from "gearbox2d";
+			import { GearboxAdapter } from "./utils/adapters/gearbox-adapter.ts";
+			import { MatterAdapter, P2Adapter, Box2DAdapter } from "./utils/adapters/competitor-adapters.ts";
+			import { ProtocolRenderer } from "./utils/protocol-renderer.ts";
+			import { scenarios } from "./benchmarks/scenarios.ts";
+
+			const canvasContainer = document.getElementById("canvas-container");
+			const metricsContainer = document.getElementById("metrics");
+			const scenarioNameH1 = document.getElementById("scenario-name");
+			const scenariosList = document.getElementById("scenarios-list");
+			const sidebar = document.getElementById("sidebar");
+			const sidebarToggle = document.getElementById("sidebar-toggle");
+			const resetButton = document.getElementById("reset-button");
+			const resetButtonMobile = document.getElementById("reset-button-mobile");
+			const engineNameEl = document.getElementById("engine-name");
+			const engineLegend = document.getElementById("engine-legend");
+
+			class BenchmarkChart {
+				constructor(canvasId) {
+					const ctx = document.getElementById(canvasId).getContext("2d");
+					this.chart = new Chart(ctx, {
+						type: "line",
+						data: {
+							datasets: [
+								{ label: "Gearbox2D", borderColor: "#4ade80", data: [], tension: 0.1, pointRadius: 0 },
+								{ label: "Matter.js", borderColor: "#f472b6", data: [], tension: 0.1, pointRadius: 0 },
+								{ label: "P2.js", borderColor: "#a855f7", data: [], tension: 0.1, pointRadius: 0 },
+								{ label: "Box2D-WASM", borderColor: "#60a5fa", data: [], tension: 0.1, pointRadius: 0 },
+							],
+						},
+						options: {
+							responsive: true,
+							maintainAspectRatio: false,
+							animation: false,
+							scales: {
+								x: {
+									type: "linear",
+									position: "bottom",
+									title: { display: true, text: "Time (s)", color: "#94a3b8", font: { size: 10 } },
+									grid: { color: "rgba(255, 255, 255, 0.05)" },
+									ticks: { color: "#94a3b8", font: { size: 8 } },
+								},
+								y: {
+									beginAtZero: true,
+									grid: { color: "rgba(255, 255, 255, 0.05)" },
+									ticks: { color: "#94a3b8", font: { size: 8 } },
+									title: { display: true, text: "", color: "#94a3b8", font: { size: 10 } },
+								},
+							},
+							plugins: {
+								legend: { display: false },
+							},
+						},
+					});
+					this.engineMap = { gearbox2d: 0, matterjs: 1, p2js: 2, box2dwasm: 3 };
+				}
+
+				addPoint(engine, time, value) {
+					const datasetIndex = this.engineMap[engine];
+					if (datasetIndex !== undefined) {
+						this.chart.data.datasets[datasetIndex].data.push({ x: time, y: value });
+					}
+				}
+
+				clear() {
+					this.chart.data.datasets.forEach((ds) => (ds.data = []));
+					this.chart.update();
+				}
+
+				clearEngine(engine) {
+					const datasetIndex = this.engineMap[engine];
+					if (datasetIndex !== undefined) {
+						this.chart.data.datasets[datasetIndex].data = [];
+						this.chart.update();
+					}
+				}
+
+				updateLabel(label) {
+					this.chart.options.scales.y.title.text = label;
+					this.chart.update();
+				}
+
+				render() {
+					this.chart.update();
+				}
+			}
+
+			const benchmarkChart = new BenchmarkChart("metric-chart");
+			let activeEngines = []; // Array of { type, adapter, renderer, canvas, state, stepTimes: [] }
+			let enabledEngines = ["gearbox2d", "matterjs", "p2js", "box2dwasm"];
+			let isRunning = false;
+			let frameId = null;
+			let gearboxWorld = null;
+			let currentScenarioKey = "large-stack";
+			let benchmarkStartTime = 0;
+			let lastChartUpdateTime = 0;
+
+			function updateURL(replace = false) {
+				const activeTab = document.querySelector(".engine-tab.active");
+				const engine = activeTab ? activeTab.dataset.engine : "all";
+				const params = new URLSearchParams(window.location.search);
+				params.set("scenario", currentScenarioKey);
+				params.set("engine", engine);
+
+				if (engine === "all") {
+					params.set("enabled", enabledEngines.join(","));
+				} else {
+					params.delete("enabled");
+				}
+
+				const newURL = `${window.location.pathname}?${params.toString()}`;
+				if (replace) {
+					window.history.replaceState(
+						{ scenario: currentScenarioKey, engine, enabled: [...enabledEngines] },
+						"",
+						newURL,
+					);
+				} else {
+					window.history.pushState(
+						{ scenario: currentScenarioKey, engine, enabled: [...enabledEngines] },
+						"",
+						newURL,
+					);
+				}
+			}
+
+			function applyURLParams() {
+				const params = new URLSearchParams(window.location.search);
+				const scenarioParam = params.get("scenario");
+				const engineParam = params.get("engine");
+				const enabledParam = params.get("enabled");
+
+				if (scenarioParam && scenarios[scenarioParam]) {
+					currentScenarioKey = scenarioParam;
+				}
+
+				if (enabledParam) {
+					enabledEngines = enabledParam
+						.split(",")
+						.filter((e) => ["gearbox2d", "matterjs", "p2js", "box2dwasm"].includes(e));
+					// Update checkboxes
+					document.querySelectorAll(".engine-toggle").forEach((toggle) => {
+						toggle.checked = enabledEngines.includes(toggle.dataset.engine);
+					});
+				} else {
+					enabledEngines = ["gearbox2d", "matterjs", "p2js", "box2dwasm"];
+					document.querySelectorAll(".engine-toggle").forEach((toggle) => {
+						toggle.checked = true;
+					});
+				}
+
+				if (engineParam) {
+					const tabs = document.querySelectorAll(".engine-tab");
+					let found = false;
+					tabs.forEach((tab) => {
+						if (tab.dataset.engine === engineParam) {
+							tabs.forEach((t) => t.classList.remove("active"));
+							tab.classList.add("active");
+							found = true;
+						}
+					});
+					// If not found (e.g. invalid param), default to first tab (all)
+					if (!found && tabs.length > 0) {
+						tabs.forEach((t) => t.classList.remove("active"));
+						tabs[0].classList.add("active");
+					}
+				}
+
+				// Sync scenario list UI
+				document.querySelectorAll("#scenarios-list li").forEach((el) => {
+					if (el.dataset.key === currentScenarioKey) {
+						el.classList.add("selected");
+					} else {
+						el.classList.remove("selected");
+					}
+				});
+			}
+
+			// Initialize Gearbox once
+			async function initGearbox() {
+				try {
+					await gearbox.init();
+					gearboxWorld = gearbox.makeWorld();
+					console.log("Gearbox2D initialized globally");
+					// Auto-start first benchmark
+					startBenchmark();
+				} catch (e) {
+					console.error("Failed to initialize Gearbox2D:", e);
+				}
+			}
+
+			function populateScenarios() {
+				scenariosList.innerHTML = "";
+				Object.keys(scenarios).forEach((key) => {
+					const scenario = scenarios[key];
+					const li = document.createElement("li");
+					li.className = "example" + (key === currentScenarioKey ? " selected" : "");
+					li.textContent = scenario.name;
+					li.dataset.key = key;
+					li.addEventListener("click", () => {
+						const isNew = currentScenarioKey !== key;
+						if (isNew) {
+							document
+								.querySelectorAll("#scenarios-list li")
+								.forEach((el) => el.classList.remove("selected"));
+							li.classList.add("selected");
+							currentScenarioKey = key;
+							updateURL();
+						}
+
+						benchmarkChart.clear();
+						startBenchmark();
+
+						if (window.innerWidth <= 768) {
+							sidebar.classList.add("collapsed");
+						}
+					});
+					scenariosList.appendChild(li);
+				});
+			}
+
+			function syncSize() {
+				activeEngines.forEach((engine) => {
+					const canvas = engine.canvas;
+					canvas.width = canvas.clientWidth;
+					canvas.height = canvas.clientHeight;
+					engine.renderer.offsetX = canvas.width / 2;
+					engine.renderer.offsetY = canvas.height / 2;
+				});
+			}
+			window.addEventListener("resize", syncSize);
+
+			window.addEventListener("popstate", (event) => {
+				applyURLParams();
+				benchmarkChart.clear();
+				startBenchmark();
+			});
+
+			async function createEngineInstance(engineType, alignRight = false, zoom = 1.0) {
+				const wrapper = document.createElement("div");
+				wrapper.className = "engine-canvas-wrapper";
+
+				const label = document.createElement("div");
+				label.className = "engine-label" + (alignRight ? " right-aligned" : "");
+				label.textContent =
+					engineType === "gearbox2d"
+						? "Gearbox2D"
+						: engineType === "matterjs"
+							? "Matter.js"
+							: engineType === "p2js"
+								? "P2.js"
+								: "Box2D-WASM";
+				wrapper.appendChild(label);
+
+				const canvas = document.createElement("canvas");
+				canvas.style.width = "100%";
+				canvas.style.height = "100%";
+				wrapper.appendChild(canvas);
+
+				canvasContainer.appendChild(wrapper);
+
+				let adapter;
+				switch (engineType) {
+					case "gearbox2d":
+						if (!gearboxWorld) await gearbox.init();
+						if (!gearboxWorld) gearboxWorld = gearbox.makeWorld();
+						adapter = new GearboxAdapter(gearboxWorld);
+						break;
+					case "matterjs":
+						adapter = new MatterAdapter();
+						break;
+					case "p2js":
+						adapter = new P2Adapter();
+						break;
+					case "box2dwasm":
+						adapter = new Box2DAdapter();
+						break;
+				}
+
+				const renderer = new ProtocolRenderer(canvas);
+				renderer.zoom = zoom;
+
+				return {
+					type: engineType,
+					adapter,
+					renderer,
+					canvas,
+					state: {},
+					stepTimes: [],
+				};
+			}
+
+			async function startBenchmark() {
+				const activeTab = document.querySelector(".engine-tab.active");
+				const selectedEngine = activeTab ? activeTab.dataset.engine : "all";
+				const scenario = scenarios[currentScenarioKey];
+
+				scenarioNameH1.textContent = scenario.name;
+				benchmarkChart.updateLabel(scenario.metricLabel || "Metric");
+
+				if (frameId) cancelAnimationFrame(frameId);
+				isRunning = false;
+
+				// Clear existing canvases
+				canvasContainer.innerHTML = "";
+				activeEngines = [];
+				canvasContainer.className = "";
+
+				if (selectedEngine === "all") {
+					canvasContainer.classList.add("all-mode");
+					metricsContainer.classList.add("all-mode");
+					engineLegend.style.display = "grid";
+					engineNameEl.style.display = "none";
+
+					const engineConfigs = [
+						{ type: "gearbox2d", alignRight: false },
+						{ type: "matterjs", alignRight: true },
+						{ type: "p2js", alignRight: false },
+						{ type: "box2dwasm", alignRight: true },
+					];
+
+					const filteredConfigs = engineConfigs.filter((config) => enabledEngines.includes(config.type));
+
+					if (filteredConfigs.length === 1) {
+						// Switch to single engine mode
+						const engine = filteredConfigs[0].type;
+						const tab = document.querySelector(`.engine-tab[data-engine="${engine}"]`);
+						if (tab) {
+							tabs.forEach((t) => t.classList.remove("active"));
+							tab.classList.add("active");
+							updateURL();
+							return startBenchmark();
+						}
+					}
+
+					canvasContainer.classList.add(`layout-${filteredConfigs.length}`);
+
+					if (filteredConfigs.length === 3) {
+						// Special case: TL, TR, BL empty, BR
+						// TL
+						activeEngines.push(
+							await createEngineInstance(filteredConfigs[0].type, filteredConfigs[0].alignRight, 0.6),
+						);
+						// TR
+						activeEngines.push(
+							await createEngineInstance(filteredConfigs[1].type, filteredConfigs[1].alignRight, 0.6),
+						);
+						// BL Empty
+						const empty = document.createElement("div");
+						empty.className = "engine-canvas-wrapper empty-slot";
+						canvasContainer.appendChild(empty);
+						// BR
+						activeEngines.push(
+							await createEngineInstance(filteredConfigs[2].type, filteredConfigs[2].alignRight, 0.6),
+						);
+					} else {
+						for (const config of filteredConfigs) {
+							activeEngines.push(await createEngineInstance(config.type, config.alignRight, 0.6));
+						}
+					}
+				} else {
+					canvasContainer.classList.remove("all-mode");
+					metricsContainer.classList.remove("all-mode");
+					engineLegend.style.display = "none";
+					engineNameEl.style.display = "flex";
+					activeEngines.push(await createEngineInstance(selectedEngine, false, 1.0));
+				}
+
+				syncSize();
+
+				benchmarkStartTime = performance.now();
+				lastChartUpdateTime = benchmarkStartTime;
+
+				document.getElementById("status-text").textContent =
+					`Initializing ${selectedEngine === "all" ? "comparison" : selectedEngine}...`;
+
+				try {
+					for (const engine of activeEngines) {
+						await engine.adapter.init();
+						engine.adapter.clear();
+						if (scenario) {
+							scenario.setup(engine.adapter);
+						}
+
+						// Add initial 0s point
+						const metricValue = scenario.getMetric(engine.adapter, engine.state);
+						benchmarkChart.addPoint(engine.type, 0, metricValue);
+					}
+
+					benchmarkChart.render();
+					isRunning = true;
+					lastTime = performance.now();
+					fpsLastTime = performance.now();
+					frames = 0;
+
+					loop();
+					document.getElementById("status-text").textContent =
+						`Running ${currentScenarioKey} on ${selectedEngine === "all" ? "comparison" : selectedEngine}`;
+				} catch (e) {
+					console.error(e);
+					document.getElementById("status-text").textContent = `Error: ${e.message}`;
+				}
+			}
+
+			let lastTime = 0;
+			let fpsLastTime = 0;
+			let frames = 0;
+
+			function loop() {
+				if (!isRunning) return;
+
+				const now = performance.now();
+				const scenario = scenarios[currentScenarioKey];
+
+				for (const engine of activeEngines) {
+					const startTime = performance.now();
+					engine.adapter.step(1 / 60);
+					const endTime = performance.now();
+
+					const stepTimeMicros = (endTime - startTime) * 1000;
+					engine.stepTimes.push(stepTimeMicros);
+					if (engine.stepTimes.length > 60) engine.stepTimes.shift();
+
+					const avgStepMicros = engine.stepTimes.reduce((a, b) => a + b, 0) / engine.stepTimes.length;
+
+					// Update UI for the first engine (or specific one if not in all mode)
+					if (activeEngines.length === 1 || engine.type === "gearbox2d") {
+						document.getElementById("engine-name").querySelector("span").textContent =
+							`Engine: ${engine.type.toUpperCase()}`;
+						document.getElementById("avg-step-time").querySelector("span").textContent =
+							`Avg Step: ${avgStepMicros.toFixed(0)} μs`;
+						document.getElementById("bodies").querySelector("span").textContent =
+							`Bodies: ${engine.adapter.getBodyCount()}`;
+
+						const memoryEl = document.getElementById("memory");
+						if (engine.adapter.getMemoryUsage) {
+							const mem = engine.adapter.getMemoryUsage();
+							memoryEl.style.display = "flex";
+							memoryEl.querySelector("span").textContent =
+								mem < 1048576
+									? `Memory: ${(mem / 1024).toFixed(2)} KB`
+									: `Memory: ${(mem / 1048576).toFixed(2)} MB`;
+						} else {
+							memoryEl.style.display = "none";
+						}
+					}
+
+					// Update Scenario Metrics
+					if (scenario) {
+						engine.state.avgStepTime = avgStepMicros / 1000; // to ms
+						const metricValue = scenario.getMetric(engine.adapter, engine.state);
+
+						const timeSinceStart = (now - benchmarkStartTime) / 1000;
+
+						if (timeSinceStart <= 60 && now - lastChartUpdateTime >= 1000) {
+							benchmarkChart.addPoint(engine.type, timeSinceStart, metricValue);
+							if (engine === activeEngines[activeEngines.length - 1]) {
+								benchmarkChart.render();
+								lastChartUpdateTime = now;
+							}
+						}
+					}
+
+					const frame = engine.adapter.getDebugFrame();
+					engine.renderer.render(frame);
+				}
+
+				frames++;
+				if (now - fpsLastTime > 1000) {
+					document.getElementById("fps").querySelector("span").textContent = `FPS: ${frames}`;
+					frames = 0;
+					fpsLastTime = now;
+				}
+
+				frameId = requestAnimationFrame(loop);
+			}
+
+			const handleReset = () => {
+				benchmarkChart.clear();
+				startBenchmark();
+				document.getElementById("status-text").textContent = "Benchmark reset";
+			};
+
+			resetButton.addEventListener("click", handleReset);
+			resetButtonMobile.addEventListener("click", handleReset);
+
+			sidebarToggle.addEventListener("click", () => {
+				sidebar.classList.toggle("collapsed");
+			});
+
+			// Tab selection logic
+			const tabs = document.querySelectorAll(".engine-tab");
+			tabs.forEach((tab) => {
+				tab.addEventListener("click", (e) => {
+					// Ignore clicks on checkbox area
+					if (e.target.closest(".engine-toggle-wrapper")) return;
+
+					const engine = tab.dataset.engine;
+					if (tab.classList.contains("active")) {
+						// Reset current simulation if re-clicked
+						handleReset();
+						return;
+					}
+
+					tabs.forEach((t) => t.classList.remove("active"));
+					tab.classList.add("active");
+
+					if (engine === "all") {
+						// Reset enabled engines to all
+						enabledEngines = ["gearbox2d", "matterjs", "p2js", "box2dwasm"];
+						document.querySelectorAll(".engine-toggle").forEach((toggle) => {
+							toggle.checked = true;
+						});
+					}
+
+					benchmarkChart.clear();
+					updateURL();
+					startBenchmark();
+				});
+			});
+
+			// Toggle selection logic
+			document.querySelectorAll(".engine-toggle").forEach((toggle) => {
+				toggle.addEventListener("change", () => {
+					const engine = toggle.dataset.engine;
+					if (toggle.checked) {
+						if (!enabledEngines.includes(engine)) {
+							enabledEngines.push(engine);
+						}
+					} else {
+						enabledEngines = enabledEngines.filter((e) => e !== engine);
+					}
+
+					// Sort enabledEngines to maintain consistent order
+					const order = ["gearbox2d", "matterjs", "p2js", "box2dwasm"];
+					enabledEngines.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+					// Always clear chart when engine selection changes
+					benchmarkChart.clear();
+					updateURL();
+					startBenchmark();
+				});
+			});
+
+			// Initial setup
+			applyURLParams();
+			populateScenarios();
+			initGearbox();
+			updateURL(true);
+		</script>
+	</body>
 </html>

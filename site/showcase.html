@@ -1,161 +1,176 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gearbox2D Examples | Protocol Interface</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-    <link rel="stylesheet" href="./styles/examples-styles.css">
-</head>
-<body>
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <h2 id="sidebar-title">Examples</h2>
-            <div id="sidebar-actions">
-                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
-                <button id="reset-button-mobile" class="sidebar-icon-button" title="Reset"><i class="fas fa-redo-alt"></i></button>
-                <button id="info-toggle-mobile" class="sidebar-icon-button" title="Information"><i class="fas fa-info-circle"></i></button>
-                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
-            </div>
-        </div>
-        <ul id="examples-list">
-            <!-- Examples will be dynamically generated from the examples.js data -->
-        </ul>
-    </div>
-    
-    <div id="main">
-        <div id="main-header">
-            <div class="header-left">
-                <a href="index.html" class="home-link" title="Back to Home">
-                    <i class="fas fa-home"></i>
-                    <span>Home</span>
-                </a>
-                <h1 id="example-name">Loading example...</h1>
-            </div>
-            <div class="header-right">
-                <button id="info-toggle" title="Show Information">
-                    <i class="fas fa-info-circle"></i>
-                    <span class="button-text">Info</span>
-                </button>
-                <button id="reset-button" title="Reset current example">
-                    <i class="fas fa-redo-alt"></i>
-                    <span class="button-text">Reset Example</span>
-                </button>
-            </div>
-        </div>
-        
-        <div id="content">
-            <div id="canvas-container">
-                <canvas id="debug-canvas" width="1000" height="1000"></canvas>
-            </div>
-            
-            <div id="metrics">
-                <div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
-                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
-                <div id="fps"><i class="fas fa-tachometer-alt"></i>Render FPS: 0</div>
-            </div>
-            
-            <div id="description"></div>
-            
-            <div id="code-container">
-                <div id="code-header">
-                    <div id="code-header-title">Example Code</div>
-                    <button id="toggle-code">
-                        <span>Show Code</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-                
-                <div id="code-section" style="display: none;">
-                    <div id="code-tabs">
-                        <div class="code-tabs-left">
-                            <button class="code-tab" data-panel="general">Setup</button>
-                            <button class="code-tab active" data-panel="init">Init</button>
-                            <button class="code-tab" data-panel="tick">Tick</button>
-                            <button class="code-tab" data-panel="render">Render</button>
-                        </div>
-                        <button id="copy-code" title="Copy code to clipboard">
-                            <i class="fas fa-copy"></i>
-                            <span>Copy</span>
-                        </button>
-                    </div>
-                    
-                    <div class="code-panel" id="general-panel">
-                        <pre id="general-code"></pre>
-                    </div>
-                    
-                    <div class="code-panel active" id="init-panel">
-                        <pre id="init-code"></pre>
-                    </div>
-                    
-                    <div class="code-panel" id="tick-panel">
-                        <pre id="tick-code"></pre>
-                    </div>
-                    
-                    <div class="code-panel" id="render-panel">
-                        <pre id="render-code"></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        var hljs;
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
-    <script type="module">
-        import gearbox from 'gearbox2d';
-        import { generalExamples } from './examples/categories/general-examples.ts';
-        import { constraintsExamples } from './examples/categories/constraints-examples.ts';
-        import { optimizationExamples } from './examples/categories/optimization-examples.ts';
-        import { stressTestExamples } from './examples/categories/stress-test-examples.ts';
-        import { issuesExamples } from './examples/categories/issues-examples.ts';
-        import { showcaseExamples } from './examples/categories/showcase-examples.ts';
-        import MarkdownParser from './utils/markdown.ts';
-        
-        const isProduction = !['localhost', '127.0.0.1'].includes(window.location.hostname);
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Gearbox2D Examples | Protocol Interface</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css"
+		/>
+		<link rel="stylesheet" href="./styles/examples-styles.css" />
+	</head>
+	<body>
+		<div id="sidebar">
+			<div id="sidebar-header">
+				<h2 id="sidebar-title">Examples</h2>
+				<div id="sidebar-actions">
+					<a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+					<button id="reset-button-mobile" class="sidebar-icon-button" title="Reset">
+						<i class="fas fa-redo-alt"></i>
+					</button>
+					<button id="info-toggle-mobile" class="sidebar-icon-button" title="Information">
+						<i class="fas fa-info-circle"></i>
+					</button>
+					<button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+				</div>
+			</div>
+			<ul id="examples-list">
+				<!-- Examples will be dynamically generated from the examples.js data -->
+			</ul>
+		</div>
 
-        /**
-         * We'll add examples here, grouped by category.
-         * I'm also using this page to plan out which examples to add. Don't remove those comments!
-         */
-        const examples = [
-            { // Showcase
-                name: "Showcase",
-                examples: showcaseExamples
-            },
-            { // General
-                name: "General",
-                examples: generalExamples
-            },
-            { // Constraints
-                name: "Constraints",
-                examples: constraintsExamples
-            },
-            { // Optimizations
-                name: "Optimizations",
-                examples: optimizationExamples
-            },
+		<div id="main">
+			<div id="main-header">
+				<div class="header-left">
+					<a href="index.html" class="home-link" title="Back to Home">
+						<i class="fas fa-home"></i>
+						<span>Home</span>
+					</a>
+					<h1 id="example-name">Loading example...</h1>
+				</div>
+				<div class="header-right">
+					<button id="info-toggle" title="Show Information">
+						<i class="fas fa-info-circle"></i>
+						<span class="button-text">Info</span>
+					</button>
+					<button id="reset-button" title="Reset current example">
+						<i class="fas fa-redo-alt"></i>
+						<span class="button-text">Reset Example</span>
+					</button>
+				</div>
+			</div>
 
-            { // Stress tests
-                name: "Stress Tests",
-                examples: stressTestExamples,
-            },
+			<div id="content">
+				<div id="canvas-container">
+					<canvas id="debug-canvas" width="1000" height="1000"></canvas>
+				</div>
 
-            { // Known Issues
-                name: "Known Issues",
-                examples: issuesExamples
+				<div id="metrics">
+					<div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
+					<div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
+					<div id="fps"><i class="fas fa-tachometer-alt"></i>Render FPS: 0</div>
+				</div>
 
-            },
-        ].filter(category => !isProduction || category.name !== "Known Issues");
+				<div id="description"></div>
 
-        let generalSetupTemplate = `
+				<div id="code-container">
+					<div id="code-header">
+						<div id="code-header-title">Example Code</div>
+						<button id="toggle-code">
+							<span>Show Code</span>
+							<i class="fas fa-chevron-down"></i>
+						</button>
+					</div>
+
+					<div id="code-section" style="display: none">
+						<div id="code-tabs">
+							<div class="code-tabs-left">
+								<button class="code-tab" data-panel="general">Setup</button>
+								<button class="code-tab active" data-panel="init">Init</button>
+								<button class="code-tab" data-panel="tick">Tick</button>
+								<button class="code-tab" data-panel="render">Render</button>
+							</div>
+							<button id="copy-code" title="Copy code to clipboard">
+								<i class="fas fa-copy"></i>
+								<span>Copy</span>
+							</button>
+						</div>
+
+						<div class="code-panel" id="general-panel">
+							<pre id="general-code"></pre>
+						</div>
+
+						<div class="code-panel active" id="init-panel">
+							<pre id="init-code"></pre>
+						</div>
+
+						<div class="code-panel" id="tick-panel">
+							<pre id="tick-code"></pre>
+						</div>
+
+						<div class="code-panel" id="render-panel">
+							<pre id="render-code"></pre>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			var hljs;
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
+		<script type="module">
+			import gearbox from "gearbox2d";
+			import { generalExamples } from "./examples/categories/general-examples.ts";
+			import { constraintsExamples } from "./examples/categories/constraints-examples.ts";
+			import { optimizationExamples } from "./examples/categories/optimization-examples.ts";
+			import { stressTestExamples } from "./examples/categories/stress-test-examples.ts";
+			import { issuesExamples } from "./examples/categories/issues-examples.ts";
+			import { showcaseExamples } from "./examples/categories/showcase-examples.ts";
+			import MarkdownParser from "./utils/markdown.ts";
+
+			const isProduction = !["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+			/**
+			 * We'll add examples here, grouped by category.
+			 * I'm also using this page to plan out which examples to add. Don't remove those comments!
+			 */
+			const examples = [
+				{
+					// Showcase
+					name: "Showcase",
+					examples: showcaseExamples,
+				},
+				{
+					// General
+					name: "General",
+					examples: generalExamples,
+				},
+				{
+					// Constraints
+					name: "Constraints",
+					examples: constraintsExamples,
+				},
+				{
+					// Optimizations
+					name: "Optimizations",
+					examples: optimizationExamples,
+				},
+
+				{
+					// Stress tests
+					name: "Stress Tests",
+					examples: stressTestExamples,
+				},
+
+				{
+					// Known Issues
+					name: "Known Issues",
+					examples: issuesExamples,
+				},
+			].filter((category) => !isProduction || category.name !== "Known Issues");
+
+			let generalSetupTemplate = `
 import gearbox from "gearbox2d";
 
 let world;
@@ -190,642 +205,673 @@ gearbox.init().then(()=>{
 })
 `.trim();
 
-        const isMobileLayout = () => window.innerWidth <= 768;
-
-        // Create data-driven map for faster lookups
-        let examplesMap = {};
-        let currentExample = null;
-        
-        // Function to populate the sidebar from examples data
-        function populateSidebar() {
-            const sidebarList = document.getElementById("examples-list");
-            
-            // Clear any existing content
-            sidebarList.innerHTML = '';
-            
-            // Iterate through each category
-            examples.forEach((category, categoryIndex) => {
-                // Create category header
-                const categoryElement = document.createElement('li');
-                categoryElement.className = 'section';
-                categoryElement.textContent = category.name;
-                sidebarList.appendChild(categoryElement);
-                
-                // Create examples under this category
-                if (category.examples && Array.isArray(category.examples)) {
-                    category.examples.forEach((example, exampleIndex) => {
-                        // Get the example key
-                        const exampleKey = example.key || `${categoryIndex}-${exampleIndex}`;
-                        
-                        // Store in our lookup map
-                        examplesMap[exampleKey] = {
-                            category: categoryIndex,
-                            index: exampleIndex,
-                            example: example
-                        };
-                        
-                        // Create the example element
-                        const exampleElement = document.createElement('li');
-                        exampleElement.className = 'example';
-                        exampleElement.textContent = example.name;
-                        exampleElement.setAttribute('data-example', exampleKey);
-                        
-                        sidebarList.appendChild(exampleElement);
-                    });
-                }
-            });
-            
-            // Add event listeners to the newly created example items
-            document.querySelectorAll("#sidebar li.example").forEach(item => {
-                item.addEventListener("click", () => {
-                    document.querySelectorAll("#sidebar li.example.selected").forEach(el => {
-                        el.classList.remove("selected");
-                    });
-                    item.classList.add("selected");
-                    const exampleKey = item.getAttribute("data-example");
-                    loadExample(exampleKey, 'push');
-                    
-                    // Auto-collapse sidebar on mobile
-                    if (isMobileLayout()) {
-                        sidebar.classList.add('collapsed');
-                    }
-                });
-            });
-        }
-
-        let world;
-        let lastTime = 0;
-        let h1 = document.getElementById("example-name");
-        let canvas = document.getElementById("debug-canvas");
-        let codeSection = document.getElementById("code-section");
-        let generalCodePre = document.getElementById("general-code");
-        let initCodePre = document.getElementById("init-code");
-        let tickCodePre = document.getElementById("tick-code");
-        let renderCodePre = document.getElementById("render-code");
-        let toggleCode = document.getElementById("toggle-code");
-        let fpsDiv = document.getElementById("fps");
-        let memoryDiv = document.getElementById("memory");
-        let stepTimeDiv = document.getElementById("step-time");
-        let codeTabs = document.querySelectorAll(".code-tab");
-        let codePanels = document.querySelectorAll(".code-panel");
-        let sidebarToggle = document.getElementById("sidebar-toggle");
-        let sidebar = document.getElementById("sidebar");
-        let resetButton = document.getElementById("reset-button");
-        let resetButtonMobile = document.getElementById("reset-button-mobile");
-        let infoToggle = document.getElementById("info-toggle");
-        let infoToggleMobile = document.getElementById("info-toggle-mobile");
-        
-        h1.innerHTML = "Loading example...";
-
-        // Metrics tracking
-        let dataPtr = 0;
-        let animTimeData = [];
-        let memoryData = [];
-        let stepTimeData = [];
-
-        let avgAnimFrame = 1000 / 60;
-        let avgMemory = 0;
-        let avgStepTime = 0;
-
-        // Initialize the physics engine
-        gearbox.init().then(() => {
-            world = gearbox.makeWorld();
-            gearbox.debug.enableDebugGraphics(canvas, world);
-
-            let lastTime = performance.now();
-            let accumulator = 0;
-            const physicsStep = 1/60;
-
-            function animate(now) {
-                let dt = (now - lastTime) / 1000;
-                lastTime = now;
-                if (dt > 0.25) dt = 0.25;
-                accumulator += dt;
-
-                const startTime = performance.now();
-
-                while (accumulator >= physicsStep) {
-                    world.step();
-                    if (currentExample && examplesMap[currentExample]) {
-                        const exampleObj = examplesMap[currentExample].example;
-                        if (exampleObj && typeof exampleObj.onTick === 'function') {
-                            exampleObj.onTick(world, physicsStep);
-                        }
-                    }
-                    accumulator -= physicsStep;
-                }
-                world.interpolationAlpha = accumulator / physicsStep;
-
-                if (currentExample && examplesMap[currentExample]) {
-                    const exampleObj = examplesMap[currentExample].example;
-                    if (exampleObj && typeof exampleObj.onRender === 'function') {
-                        exampleObj.onRender(world);
-                    }
-                }
-
-                const endTime = performance.now();
-                const stepTime = (endTime - startTime) * 1000;
-
-                // Update metrics
-                let removedAnimTime = animTimeData[dataPtr % 100] ?? avgAnimFrame;
-                let removedMemory = memoryData[dataPtr % 100] ?? 0;
-                let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
-
-                animTimeData[dataPtr % 100] = dt * 1000 || 16.67;
-                memoryData[dataPtr % 100] = (world ? world.getMemoryUsage() : 0);
-                stepTimeData[dataPtr % 100] = stepTime;
-
-                avgAnimFrame += (animTimeData[dataPtr % 100] - removedAnimTime) / 100;
-                avgMemory += (memoryData[dataPtr % 100] - removedMemory) / 100;
-                avgStepTime += (stepTimeData[dataPtr % 100] - removedStepTime) / 100;
-
-                dataPtr++;
-
-                const fps = avgAnimFrame > 0 ? Math.round(1000 / avgAnimFrame) : 0;
-                fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>Render FPS: ${fps}`;
-                
-                if (avgMemory < 1048576) {
-                    memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${(avgMemory / 1024).toFixed(2)} KB`;
-                } else {
-                    memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${(avgMemory / 1048576).toFixed(2)} MB`;
-                }
-                
-                stepTimeDiv.innerHTML = `<i class="fas fa-stopwatch"></i>Step Time: ${avgStepTime.toFixed(0)} μs`;
-
-                requestAnimationFrame(animate);
-            }
-
-            // Populate the sidebar based on data
-            populateSidebar();
-            
-            // Check if we need to load an example from the hash
-            loadExampleFromHash(true);
-            
-            // Add event listener for the reset button
-            const handleReset = () => {
-                if (currentExample) {
-                    loadExample(currentExample, 'none');
-                }
-            };
-            resetButton.addEventListener("click", handleReset);
-            resetButtonMobile.addEventListener("click", handleReset);
-            
-            // Info toggle logic
-            const toggleInfo = () => {
-                document.body.classList.toggle('info-mode');
-                const isInfoMode = document.body.classList.contains('info-mode');
-                
-                // Update button icons and text
-                const iconClass = isInfoMode ? 'fa-th-large' : 'fa-info-circle';
-                const buttonText = isInfoMode ? 'Show Canvas' : 'Info';
-                
-                [infoToggle, infoToggleMobile].forEach(btn => {
-                    const icon = btn.querySelector('i');
-                    const span = btn.querySelector('.button-text');
-                    
-                    if (icon) icon.className = `fas ${iconClass}`;
-                    if (span) span.textContent = buttonText;
-                    btn.title = isInfoMode ? "Show Canvas" : "Show Information";
-                });
-                
-                // Re-run camera center if we just showed it
-                if (!isInfoMode) {
-                    gearbox.debug.centerCamera(5, 5);
-                }
-            };
-            
-            infoToggle.addEventListener("click", toggleInfo);
-            infoToggleMobile.addEventListener("click", toggleInfo);
-            
-            // Start animation loop
-            requestAnimationFrame(animate);
-
-            // Auto-collapse sidebar on mobile on initial load
-            if (isMobileLayout()) {
-                sidebar.classList.add('collapsed');
-            }
-
-            // Zoom and Pan event listeners
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const zoomSpeed = 0.05;
-                const mouseX = e.offsetX;
-                const mouseY = e.offsetY;
-
-                // Calculate world coordinates before zoom
-                const worldX = (mouseX - gearbox.debug.offsetX) / gearbox.debug.zoom;
-                const worldY = (mouseY - gearbox.debug.offsetY) / gearbox.debug.zoom;
-
-                const delta = -Math.sign(e.deltaY);
-                const zoomFactor = Math.pow(1 + zoomSpeed, delta);
-                const newZoom = Math.min(Math.max(gearbox.debug.zoom * zoomFactor, 0.1), 10);
-
-                gearbox.debug.zoom = newZoom;
-
-                // Adjust offset to keep mouse position fixed in world space
-                gearbox.debug.offsetX = mouseX - worldX * gearbox.debug.zoom;
-                gearbox.debug.offsetY = mouseY - worldY * gearbox.debug.zoom;
-            }, { passive: false });
-
-            let isPanning = false;
-            let lastMouseX = 0;
-            let lastMouseY = 0;
-
-            canvas.addEventListener('mousedown', (e) => {
-                if (e.button === 2) { // Right mouse button
-                    isPanning = true;
-                    lastMouseX = e.clientX;
-                    lastMouseY = e.clientY;
-                }
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (isPanning) {
-                    const dx = e.clientX - lastMouseX;
-                    const dy = e.clientY - lastMouseY;
-                    gearbox.debug.offsetX += dx;
-                    gearbox.debug.offsetY += dy;
-                    lastMouseX = e.clientX;
-                    lastMouseY = e.clientY;
-                }
-            });
-
-            window.addEventListener('mouseup', (e) => {
-                if (e.button === 2) {
-                    isPanning = false;
-                }
-            });
-
-            canvas.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-            });
-
-            // Touch events for mobile zooming and panning
-            let lastTouchDistance = 0;
-            let isPinching = false;
-            let lastTouchX = 0;
-            let lastTouchY = 0;
-
-            canvas.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    lastTouchX = e.touches[0].clientX;
-                    lastTouchY = e.touches[0].clientY;
-                    isPinching = false;
-                } else if (e.touches.length === 2) {
-                    isPinching = true;
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 0) return;
-                
-                // Always prevent default to stop scrolling while interacting with canvas
-                e.preventDefault();
-
-                if (e.touches.length === 1 && !isPinching) {
-                    const touchX = e.touches[0].clientX;
-                    const touchY = e.touches[0].clientY;
-                    const dx = touchX - lastTouchX;
-                    const dy = touchY - lastTouchY;
-
-                    gearbox.debug.offsetX += dx;
-                    gearbox.debug.offsetY += dy;
-
-                    lastTouchX = touchX;
-                    lastTouchY = touchY;
-                } else if (e.touches.length === 2) {
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const dx = touch1.clientX - touch2.clientX;
-                    const dy = touch1.clientY - touch2.clientY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (lastTouchDistance > 0) {
-                        const zoomFactor = distance / lastTouchDistance;
-                        const newZoom = Math.min(Math.max(gearbox.debug.zoom * zoomFactor, 0.1), 10);
-
-                        // Midpoint in screen coordinates
-                        const midX = (touch1.clientX + touch2.clientX) / 2;
-                        const midY = (touch1.clientY + touch2.clientY) / 2;
-                        
-                        // Adjust for canvas position
-                        const rect = canvas.getBoundingClientRect();
-                        const canvasMidX = midX - rect.left;
-                        const canvasMidY = midY - rect.top;
-
-                        // Calculate world coordinates before zoom
-                        const worldX = (canvasMidX - gearbox.debug.offsetX) / gearbox.debug.zoom;
-                        const worldY = (canvasMidY - gearbox.debug.offsetY) / gearbox.debug.zoom;
-
-                        gearbox.debug.zoom = newZoom;
-
-                        // Adjust offset to keep midpoint fixed in world space
-                        gearbox.debug.offsetX = canvasMidX - worldX * gearbox.debug.zoom;
-                        gearbox.debug.offsetY = canvasMidY - worldY * gearbox.debug.zoom;
-                    }
-                    lastTouchDistance = distance;
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
-                    isPinching = false;
-                    lastTouchDistance = 0;
-                }
-                if (e.touches.length === 1) {
-                    lastTouchX = e.touches[0].clientX;
-                    lastTouchY = e.touches[0].clientY;
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchcancel', (e) => {
-                isPinching = false;
-                lastTouchDistance = 0;
-            }, { passive: false });
-        });
-
-        // Code to load an example
-        function loadExample(exampleKey, historyMode = 'push') {
-            if (!world || !examplesMap[exampleKey]) return;
-
-            // Cleanup the current example if it exists
-            if (currentExample && examplesMap[currentExample]) {
-                const prevExample = examplesMap[currentExample].example;
-                if (prevExample && typeof prevExample.cleanup === 'function') {
-                    prevExample.cleanup(world);
-                }
-            }
-
-            // Update the URL hash based on historyMode
-            const targetHash = '#' + exampleKey;
-            if (window.location.hash !== targetHash) {
-                if (historyMode === 'push') {
-                    history.pushState(null, '', targetHash);
-                } else if (historyMode === 'replace') {
-                    history.replaceState(null, '', targetHash);
-                }
-            }
-
-            world.clear();
-            gearbox.debug.clearLabels();
-            gearbox.debug.showForceVectors = true;
-            gearbox.debug.showImpulseVectors = true;
-            world.setHasPenetrationResolution(true);
-            world.setHasRestitution(true);
-            world.setHasFriction(true);
-            world.setGravity(0, 0);
-
-            // Reset camera position and zoom (center at 5,5 world coordinates)
-            gearbox.debug.zoom = 1.0;
-            gearbox.debug.centerCamera(5, 5);
-            gearbox.debug.showAabbs = true;
-            
-            currentExample = exampleKey;
-            const exampleInfo = examplesMap[exampleKey];
-            const exampleObj = exampleInfo.example;
-            
-            // console.log("Loading example:", exampleObj.name, "with key:", exampleKey);
-            
-            // Initialize the example
-            if (exampleObj && typeof exampleObj.onInit === 'function') {
-                exampleObj.onInit(world);
-            } else {
-                console.error("Example onInit method not found:", exampleObj);
-            }
-
-            // Function to format and dedent example code
-            function formatExampleCode(source, functionName) {
-                if (!source) return `function ${functionName}${functionName === 'tick' ? '(dt)' : '()'} {}`;
-                
-                // Normalize tabs to 4 spaces
-                let code = source.split("\t").join("    ");
-                
-                // Replace signature to look like a standard function for the display
-                const signatures = [
-                    /^\(world\)\s*=>\s*\{/,
-                    /^\(world,\s*dt\)\s*=>\s*\{/,
-                    /^function\s*\(world\)\s*\{/,
-                    /^function\s*\(world,\s*dt\)\s*\{/,
-                    /^function\s+init\s*\(world\)\s*\{/,
-                    /^function\s+tick\s*\(world,\s*dt\)\s*\{/,
-                    /^function\s+render\s*\(world\)\s*\{/
-                ];
-                
-                let processed = false;
-                let trimmedCode = code.trim();
-                for (const sig of signatures) {
-                    if (sig.test(trimmedCode)) {
-                        code = trimmedCode.replace(sig, `function ${functionName}${functionName === 'tick' ? '(dt)' : '()'} {`);
-                        processed = true;
-                        break;
-                    }
-                }
-                
-                if (!processed) {
-                    // Fallback for other arrow function shapes
-                    code = trimmedCode.replace(/^.*?=>\s*\{/, `function ${functionName}${functionName === 'tick' ? '(dt)' : '()'} {`);
-                }
-
-                let lines = code.split("\n");
-                if (lines.length <= 1) return code;
-
-                // Find the minimum indentation of non-empty lines (excluding the first line)
-                let minIndent = Infinity;
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i];
-                    if (line.trim().length === 0) continue;
-                    const indent = line.search(/\S/);
-                    if (indent !== -1 && indent < minIndent) {
-                        minIndent = indent;
-                    }
-                }
-                
-                if (minIndent === Infinity) minIndent = 0;
-
-                // Strip the common indentation from all lines except the first
-                return lines.map((line, i) => {
-                    if (i === 0) return line; // Already trimmed/processed
-                    return line.substring(Math.min(line.length, minIndent));
-                }).join("\n");
-            }
-
-            // Display the init and tick code
-            let globalLines = (exampleObj.globalLines?.join("\n") ?? "");
-            let initCodeSource = exampleObj.onInitRaw || exampleObj.onInit?.toString() || '';
-            let tickCodeSource = exampleObj.onTickRaw || exampleObj.onTick?.toString() || '';
-            let renderCodeSource = exampleObj.onRenderRaw || exampleObj.onRender?.toString() || '';
-
-            generalCodePre.textContent = (generalSetupTemplate.split("{{GLOBAL}}").join(globalLines));
-            initCodePre.textContent = formatExampleCode(initCodeSource, "init");
-            tickCodePre.textContent = formatExampleCode(tickCodeSource, "tick");
-            renderCodePre.textContent = formatExampleCode(renderCodeSource, "render");
-
-            // Apply syntax highlighting
-            applyHighlighting();
-
-            // Update example name in header
-            h1.textContent = exampleObj.name || "Unknown Example";
-
-            // Update description
-            document.getElementById("description").innerHTML = MarkdownParser.parse(exampleObj.description || "");
-        }
-
-        // Load example from URL hash
-        function loadExampleFromHash(isInitialLoad = false) {
-            let hash = window.location.hash.substring(1);
-            const wasEmpty = !hash;
-            
-            // Default to "sandbox" if no hash specified
-            if (!hash) {
-                hash = "sandbox";
-            }
-            
-            // Check if the hash is directly in our map
-            if (!examplesMap[hash]) {
-                // If not found, we'll have to search for it
-                console.log("Example not found directly, searching...");
-                let found = false;
-                
-                // Search through all categories and examples
-                for (let categoryIndex = 0; categoryIndex < examples.length; categoryIndex++) {
-                    const category = examples[categoryIndex];
-                    if (category.examples && Array.isArray(category.examples)) {
-                        for (let exampleIndex = 0; exampleIndex < category.examples.length; exampleIndex++) {
-                            const example = category.examples[exampleIndex];
-                            if (example.key === hash) {
-                                console.log(`Found example ${hash} in category ${categoryIndex}, index ${exampleIndex}`);
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (found) break;
-                }
-                
-                // If still not found, default to first example
-                if (!found) {
-                    console.warn(`Example with key '${hash}' not found, defaulting to first available example`);
-                    if (examples.length > 0 && examples[0].examples && examples[0].examples.length > 0) {
-                        hash = examples[0].examples[0].key || "0-0";
-                    } else {
-                        console.error("No examples found");
-                        return;
-                    }
-                }
-            }
-            
-            // Find and update the selected item in the sidebar
-            const selectedElement = document.querySelector(`#sidebar li.example[data-example="${hash}"]`);
-            if (selectedElement) {
-                document.querySelectorAll("#sidebar li.example.selected").forEach(el => {
-                    el.classList.remove("selected");
-                });
-                selectedElement.classList.add("selected");
-            }
-            
-            // Load the example
-            loadExample(hash, (wasEmpty && isInitialLoad) ? 'replace' : 'none');
-        }
-
-        // Event listeners for code tabs and toggle
-        codeTabs.forEach(tab => {
-            tab.addEventListener("click", () => {
-                codeTabs.forEach(t => t.classList.remove("active"));
-                codePanels.forEach(p => p.classList.remove("active"));
-                
-                tab.classList.add("active");
-                const panel = document.getElementById(`${tab.dataset.panel}-panel`);
-                panel.classList.add("active");
-            });
-        });
-
-        // Function to apply syntax highlighting
-        function applyHighlighting() {
-            const codeElements = document.querySelectorAll('pre');
-            codeElements.forEach((block) => {
-                // Get the raw code text
-                const codeText = block.textContent;
-                // Apply highlighting manually
-                block.innerHTML = hljs?.highlight(codeText, {language: 'javascript'}).value;
-            });
-        }
-
-        // Code toggle
-        toggleCode.addEventListener("click", () => {
-            if (codeSection.style.display === "none") {
-                codeSection.style.display = "block";
-                toggleCode.querySelector("span").textContent = "Hide Code";
-                toggleCode.querySelector("i").classList.remove("fa-chevron-down");
-                toggleCode.querySelector("i").classList.add("fa-chevron-up");
-                
-                // Apply syntax highlighting when code is shown
-                applyHighlighting();
-            } else {
-                codeSection.style.display = "none";
-                toggleCode.querySelector("span").textContent = "Show Code";
-                toggleCode.querySelector("i").classList.remove("fa-chevron-up");
-                toggleCode.querySelector("i").classList.add("fa-chevron-down");
-            }
-        });
-
-        // Sidebar toggle for mobile
-        sidebarToggle.addEventListener("click", () => {
-            sidebar.classList.toggle("collapsed");
-        });
-
-        // Resize handler to reset info mode if switching to desktop
-        window.addEventListener('resize', () => {
-            if (!isMobileLayout()) {
-                document.body.classList.remove('info-mode');
-            }
-            
-            // Auto-collapse sidebar if shrinking to mobile
-            if (isMobileLayout() && !sidebar.classList.contains('collapsed')) {
-                sidebar.classList.add('collapsed');
-            }
-        });
-
-        // Close sidebar on click outside on mobile
-        window.addEventListener('click', (e) => {
-            if (isMobileLayout() && !sidebar.classList.contains('collapsed')) {
-                if (!sidebar.contains(e.target) && e.target !== sidebarToggle) {
-                    sidebar.classList.add('collapsed');
-                }
-            }
-        });
-
-        // Copy to clipboard
-        const copyButton = document.getElementById("copy-code");
-        copyButton.addEventListener("click", () => {
-            const activePanel = document.querySelector(".code-panel.active");
-            const codeToCopy = activePanel.querySelector("pre").textContent;
-            
-            navigator.clipboard.writeText(codeToCopy).then(() => {
-                const span = copyButton.querySelector("span");
-                const icon = copyButton.querySelector("i");
-                const originalText = span.textContent;
-                
-                copyButton.classList.add("success");
-                span.textContent = "Copied!";
-                icon.classList.remove("fa-copy");
-                icon.classList.add("fa-check");
-                
-                setTimeout(() => {
-                    copyButton.classList.remove("success");
-                    span.textContent = originalText;
-                    icon.classList.remove("fa-check");
-                    icon.classList.add("fa-copy");
-                }, 2000);
-            });
-        });
-
-        // Handle history navigation
-        window.addEventListener('popstate', function(event) {
-            loadExampleFromHash(false);
-        });
-    </script>
-</body>
+			const isMobileLayout = () => window.innerWidth <= 768;
+
+			// Create data-driven map for faster lookups
+			let examplesMap = {};
+			let currentExample = null;
+
+			// Function to populate the sidebar from examples data
+			function populateSidebar() {
+				const sidebarList = document.getElementById("examples-list");
+
+				// Clear any existing content
+				sidebarList.innerHTML = "";
+
+				// Iterate through each category
+				examples.forEach((category, categoryIndex) => {
+					// Create category header
+					const categoryElement = document.createElement("li");
+					categoryElement.className = "section";
+					categoryElement.textContent = category.name;
+					sidebarList.appendChild(categoryElement);
+
+					// Create examples under this category
+					if (category.examples && Array.isArray(category.examples)) {
+						category.examples.forEach((example, exampleIndex) => {
+							// Get the example key
+							const exampleKey = example.key || `${categoryIndex}-${exampleIndex}`;
+
+							// Store in our lookup map
+							examplesMap[exampleKey] = {
+								category: categoryIndex,
+								index: exampleIndex,
+								example: example,
+							};
+
+							// Create the example element
+							const exampleElement = document.createElement("li");
+							exampleElement.className = "example";
+							exampleElement.textContent = example.name;
+							exampleElement.setAttribute("data-example", exampleKey);
+
+							sidebarList.appendChild(exampleElement);
+						});
+					}
+				});
+
+				// Add event listeners to the newly created example items
+				document.querySelectorAll("#sidebar li.example").forEach((item) => {
+					item.addEventListener("click", () => {
+						document.querySelectorAll("#sidebar li.example.selected").forEach((el) => {
+							el.classList.remove("selected");
+						});
+						item.classList.add("selected");
+						const exampleKey = item.getAttribute("data-example");
+						loadExample(exampleKey, "push");
+
+						// Auto-collapse sidebar on mobile
+						if (isMobileLayout()) {
+							sidebar.classList.add("collapsed");
+						}
+					});
+				});
+			}
+
+			let world;
+			let lastTime = 0;
+			let h1 = document.getElementById("example-name");
+			let canvas = document.getElementById("debug-canvas");
+			let codeSection = document.getElementById("code-section");
+			let generalCodePre = document.getElementById("general-code");
+			let initCodePre = document.getElementById("init-code");
+			let tickCodePre = document.getElementById("tick-code");
+			let renderCodePre = document.getElementById("render-code");
+			let toggleCode = document.getElementById("toggle-code");
+			let fpsDiv = document.getElementById("fps");
+			let memoryDiv = document.getElementById("memory");
+			let stepTimeDiv = document.getElementById("step-time");
+			let codeTabs = document.querySelectorAll(".code-tab");
+			let codePanels = document.querySelectorAll(".code-panel");
+			let sidebarToggle = document.getElementById("sidebar-toggle");
+			let sidebar = document.getElementById("sidebar");
+			let resetButton = document.getElementById("reset-button");
+			let resetButtonMobile = document.getElementById("reset-button-mobile");
+			let infoToggle = document.getElementById("info-toggle");
+			let infoToggleMobile = document.getElementById("info-toggle-mobile");
+
+			h1.innerHTML = "Loading example...";
+
+			// Metrics tracking
+			let dataPtr = 0;
+			let animTimeData = [];
+			let memoryData = [];
+			let stepTimeData = [];
+
+			let avgAnimFrame = 1000 / 60;
+			let avgMemory = 0;
+			let avgStepTime = 0;
+
+			// Initialize the physics engine
+			gearbox.init().then(() => {
+				world = gearbox.makeWorld();
+				gearbox.debug.enableDebugGraphics(canvas, world);
+
+				let lastTime = performance.now();
+				let accumulator = 0;
+				const physicsStep = 1 / 60;
+
+				function animate(now) {
+					let dt = (now - lastTime) / 1000;
+					lastTime = now;
+					if (dt > 0.25) dt = 0.25;
+					accumulator += dt;
+
+					const startTime = performance.now();
+
+					while (accumulator >= physicsStep) {
+						world.step();
+						if (currentExample && examplesMap[currentExample]) {
+							const exampleObj = examplesMap[currentExample].example;
+							if (exampleObj && typeof exampleObj.onTick === "function") {
+								exampleObj.onTick(world, physicsStep);
+							}
+						}
+						accumulator -= physicsStep;
+					}
+					world.interpolationAlpha = accumulator / physicsStep;
+
+					if (currentExample && examplesMap[currentExample]) {
+						const exampleObj = examplesMap[currentExample].example;
+						if (exampleObj && typeof exampleObj.onRender === "function") {
+							exampleObj.onRender(world);
+						}
+					}
+
+					const endTime = performance.now();
+					const stepTime = (endTime - startTime) * 1000;
+
+					// Update metrics
+					let removedAnimTime = animTimeData[dataPtr % 100] ?? avgAnimFrame;
+					let removedMemory = memoryData[dataPtr % 100] ?? 0;
+					let removedStepTime = stepTimeData[dataPtr % 100] ?? 0;
+
+					animTimeData[dataPtr % 100] = dt * 1000 || 16.67;
+					memoryData[dataPtr % 100] = world ? world.getMemoryUsage() : 0;
+					stepTimeData[dataPtr % 100] = stepTime;
+
+					avgAnimFrame += (animTimeData[dataPtr % 100] - removedAnimTime) / 100;
+					avgMemory += (memoryData[dataPtr % 100] - removedMemory) / 100;
+					avgStepTime += (stepTimeData[dataPtr % 100] - removedStepTime) / 100;
+
+					dataPtr++;
+
+					const fps = avgAnimFrame > 0 ? Math.round(1000 / avgAnimFrame) : 0;
+					fpsDiv.innerHTML = `<i class="fas fa-tachometer-alt"></i>Render FPS: ${fps}`;
+
+					if (avgMemory < 1048576) {
+						memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${(avgMemory / 1024).toFixed(2)} KB`;
+					} else {
+						memoryDiv.innerHTML = `<i class="fas fa-memory"></i>Memory: ${(avgMemory / 1048576).toFixed(2)} MB`;
+					}
+
+					stepTimeDiv.innerHTML = `<i class="fas fa-stopwatch"></i>Step Time: ${avgStepTime.toFixed(0)} μs`;
+
+					requestAnimationFrame(animate);
+				}
+
+				// Populate the sidebar based on data
+				populateSidebar();
+
+				// Check if we need to load an example from the hash
+				loadExampleFromHash(true);
+
+				// Add event listener for the reset button
+				const handleReset = () => {
+					if (currentExample) {
+						loadExample(currentExample, "none");
+					}
+				};
+				resetButton.addEventListener("click", handleReset);
+				resetButtonMobile.addEventListener("click", handleReset);
+
+				// Info toggle logic
+				const toggleInfo = () => {
+					document.body.classList.toggle("info-mode");
+					const isInfoMode = document.body.classList.contains("info-mode");
+
+					// Update button icons and text
+					const iconClass = isInfoMode ? "fa-th-large" : "fa-info-circle";
+					const buttonText = isInfoMode ? "Show Canvas" : "Info";
+
+					[infoToggle, infoToggleMobile].forEach((btn) => {
+						const icon = btn.querySelector("i");
+						const span = btn.querySelector(".button-text");
+
+						if (icon) icon.className = `fas ${iconClass}`;
+						if (span) span.textContent = buttonText;
+						btn.title = isInfoMode ? "Show Canvas" : "Show Information";
+					});
+
+					// Re-run camera center if we just showed it
+					if (!isInfoMode) {
+						gearbox.debug.centerCamera(5, 5);
+					}
+				};
+
+				infoToggle.addEventListener("click", toggleInfo);
+				infoToggleMobile.addEventListener("click", toggleInfo);
+
+				// Start animation loop
+				requestAnimationFrame(animate);
+
+				// Auto-collapse sidebar on mobile on initial load
+				if (isMobileLayout()) {
+					sidebar.classList.add("collapsed");
+				}
+
+				// Zoom and Pan event listeners
+				canvas.addEventListener(
+					"wheel",
+					(e) => {
+						e.preventDefault();
+						const zoomSpeed = 0.05;
+						const mouseX = e.offsetX;
+						const mouseY = e.offsetY;
+
+						// Calculate world coordinates before zoom
+						const worldX = (mouseX - gearbox.debug.offsetX) / gearbox.debug.zoom;
+						const worldY = (mouseY - gearbox.debug.offsetY) / gearbox.debug.zoom;
+
+						const delta = -Math.sign(e.deltaY);
+						const zoomFactor = Math.pow(1 + zoomSpeed, delta);
+						const newZoom = Math.min(Math.max(gearbox.debug.zoom * zoomFactor, 0.1), 10);
+
+						gearbox.debug.zoom = newZoom;
+
+						// Adjust offset to keep mouse position fixed in world space
+						gearbox.debug.offsetX = mouseX - worldX * gearbox.debug.zoom;
+						gearbox.debug.offsetY = mouseY - worldY * gearbox.debug.zoom;
+					},
+					{ passive: false },
+				);
+
+				let isPanning = false;
+				let lastMouseX = 0;
+				let lastMouseY = 0;
+
+				canvas.addEventListener("mousedown", (e) => {
+					if (e.button === 2) {
+						// Right mouse button
+						isPanning = true;
+						lastMouseX = e.clientX;
+						lastMouseY = e.clientY;
+					}
+				});
+
+				window.addEventListener("mousemove", (e) => {
+					if (isPanning) {
+						const dx = e.clientX - lastMouseX;
+						const dy = e.clientY - lastMouseY;
+						gearbox.debug.offsetX += dx;
+						gearbox.debug.offsetY += dy;
+						lastMouseX = e.clientX;
+						lastMouseY = e.clientY;
+					}
+				});
+
+				window.addEventListener("mouseup", (e) => {
+					if (e.button === 2) {
+						isPanning = false;
+					}
+				});
+
+				canvas.addEventListener("contextmenu", (e) => {
+					e.preventDefault();
+				});
+
+				// Touch events for mobile zooming and panning
+				let lastTouchDistance = 0;
+				let isPinching = false;
+				let lastTouchX = 0;
+				let lastTouchY = 0;
+
+				canvas.addEventListener(
+					"touchstart",
+					(e) => {
+						if (e.touches.length === 1) {
+							lastTouchX = e.touches[0].clientX;
+							lastTouchY = e.touches[0].clientY;
+							isPinching = false;
+						} else if (e.touches.length === 2) {
+							isPinching = true;
+							const dx = e.touches[0].clientX - e.touches[1].clientX;
+							const dy = e.touches[0].clientY - e.touches[1].clientY;
+							lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+						}
+					},
+					{ passive: false },
+				);
+
+				canvas.addEventListener(
+					"touchmove",
+					(e) => {
+						if (e.touches.length === 0) return;
+
+						// Always prevent default to stop scrolling while interacting with canvas
+						e.preventDefault();
+
+						if (e.touches.length === 1 && !isPinching) {
+							const touchX = e.touches[0].clientX;
+							const touchY = e.touches[0].clientY;
+							const dx = touchX - lastTouchX;
+							const dy = touchY - lastTouchY;
+
+							gearbox.debug.offsetX += dx;
+							gearbox.debug.offsetY += dy;
+
+							lastTouchX = touchX;
+							lastTouchY = touchY;
+						} else if (e.touches.length === 2) {
+							const touch1 = e.touches[0];
+							const touch2 = e.touches[1];
+							const dx = touch1.clientX - touch2.clientX;
+							const dy = touch1.clientY - touch2.clientY;
+							const distance = Math.sqrt(dx * dx + dy * dy);
+
+							if (lastTouchDistance > 0) {
+								const zoomFactor = distance / lastTouchDistance;
+								const newZoom = Math.min(Math.max(gearbox.debug.zoom * zoomFactor, 0.1), 10);
+
+								// Midpoint in screen coordinates
+								const midX = (touch1.clientX + touch2.clientX) / 2;
+								const midY = (touch1.clientY + touch2.clientY) / 2;
+
+								// Adjust for canvas position
+								const rect = canvas.getBoundingClientRect();
+								const canvasMidX = midX - rect.left;
+								const canvasMidY = midY - rect.top;
+
+								// Calculate world coordinates before zoom
+								const worldX = (canvasMidX - gearbox.debug.offsetX) / gearbox.debug.zoom;
+								const worldY = (canvasMidY - gearbox.debug.offsetY) / gearbox.debug.zoom;
+
+								gearbox.debug.zoom = newZoom;
+
+								// Adjust offset to keep midpoint fixed in world space
+								gearbox.debug.offsetX = canvasMidX - worldX * gearbox.debug.zoom;
+								gearbox.debug.offsetY = canvasMidY - worldY * gearbox.debug.zoom;
+							}
+							lastTouchDistance = distance;
+						}
+					},
+					{ passive: false },
+				);
+
+				canvas.addEventListener(
+					"touchend",
+					(e) => {
+						if (e.touches.length < 2) {
+							isPinching = false;
+							lastTouchDistance = 0;
+						}
+						if (e.touches.length === 1) {
+							lastTouchX = e.touches[0].clientX;
+							lastTouchY = e.touches[0].clientY;
+						}
+					},
+					{ passive: false },
+				);
+
+				canvas.addEventListener(
+					"touchcancel",
+					(e) => {
+						isPinching = false;
+						lastTouchDistance = 0;
+					},
+					{ passive: false },
+				);
+			});
+
+			// Code to load an example
+			function loadExample(exampleKey, historyMode = "push") {
+				if (!world || !examplesMap[exampleKey]) return;
+
+				// Cleanup the current example if it exists
+				if (currentExample && examplesMap[currentExample]) {
+					const prevExample = examplesMap[currentExample].example;
+					if (prevExample && typeof prevExample.cleanup === "function") {
+						prevExample.cleanup(world);
+					}
+				}
+
+				// Update the URL hash based on historyMode
+				const targetHash = "#" + exampleKey;
+				if (window.location.hash !== targetHash) {
+					if (historyMode === "push") {
+						history.pushState(null, "", targetHash);
+					} else if (historyMode === "replace") {
+						history.replaceState(null, "", targetHash);
+					}
+				}
+
+				world.clear();
+				gearbox.debug.clearLabels();
+				gearbox.debug.showForceVectors = true;
+				gearbox.debug.showImpulseVectors = true;
+				world.setHasPenetrationResolution(true);
+				world.setHasRestitution(true);
+				world.setHasFriction(true);
+				world.setGravity(0, 0);
+
+				// Reset camera position and zoom (center at 5,5 world coordinates)
+				gearbox.debug.zoom = 1.0;
+				gearbox.debug.centerCamera(5, 5);
+				gearbox.debug.showAabbs = true;
+
+				currentExample = exampleKey;
+				const exampleInfo = examplesMap[exampleKey];
+				const exampleObj = exampleInfo.example;
+
+				// console.log("Loading example:", exampleObj.name, "with key:", exampleKey);
+
+				// Initialize the example
+				if (exampleObj && typeof exampleObj.onInit === "function") {
+					exampleObj.onInit(world);
+				} else {
+					console.error("Example onInit method not found:", exampleObj);
+				}
+
+				// Function to format and dedent example code
+				function formatExampleCode(source, functionName) {
+					if (!source) return `function ${functionName}${functionName === "tick" ? "(dt)" : "()"} {}`;
+
+					// Normalize tabs to 4 spaces
+					let code = source.split("\t").join("    ");
+
+					// Replace signature to look like a standard function for the display
+					const signatures = [
+						/^\(world\)\s*=>\s*\{/,
+						/^\(world,\s*dt\)\s*=>\s*\{/,
+						/^function\s*\(world\)\s*\{/,
+						/^function\s*\(world,\s*dt\)\s*\{/,
+						/^function\s+init\s*\(world\)\s*\{/,
+						/^function\s+tick\s*\(world,\s*dt\)\s*\{/,
+						/^function\s+render\s*\(world\)\s*\{/,
+					];
+
+					let processed = false;
+					let trimmedCode = code.trim();
+					for (const sig of signatures) {
+						if (sig.test(trimmedCode)) {
+							code = trimmedCode.replace(
+								sig,
+								`function ${functionName}${functionName === "tick" ? "(dt)" : "()"} {`,
+							);
+							processed = true;
+							break;
+						}
+					}
+
+					if (!processed) {
+						// Fallback for other arrow function shapes
+						code = trimmedCode.replace(
+							/^.*?=>\s*\{/,
+							`function ${functionName}${functionName === "tick" ? "(dt)" : "()"} {`,
+						);
+					}
+
+					let lines = code.split("\n");
+					if (lines.length <= 1) return code;
+
+					// Find the minimum indentation of non-empty lines (excluding the first line)
+					let minIndent = Infinity;
+					for (let i = 1; i < lines.length; i++) {
+						const line = lines[i];
+						if (line.trim().length === 0) continue;
+						const indent = line.search(/\S/);
+						if (indent !== -1 && indent < minIndent) {
+							minIndent = indent;
+						}
+					}
+
+					if (minIndent === Infinity) minIndent = 0;
+
+					// Strip the common indentation from all lines except the first
+					return lines
+						.map((line, i) => {
+							if (i === 0) return line; // Already trimmed/processed
+							return line.substring(Math.min(line.length, minIndent));
+						})
+						.join("\n");
+				}
+
+				// Display the init and tick code
+				let globalLines = exampleObj.globalLines?.join("\n") ?? "";
+				let initCodeSource = exampleObj.onInitRaw || exampleObj.onInit?.toString() || "";
+				let tickCodeSource = exampleObj.onTickRaw || exampleObj.onTick?.toString() || "";
+				let renderCodeSource = exampleObj.onRenderRaw || exampleObj.onRender?.toString() || "";
+
+				generalCodePre.textContent = generalSetupTemplate.split("{{GLOBAL}}").join(globalLines);
+				initCodePre.textContent = formatExampleCode(initCodeSource, "init");
+				tickCodePre.textContent = formatExampleCode(tickCodeSource, "tick");
+				renderCodePre.textContent = formatExampleCode(renderCodeSource, "render");
+
+				// Apply syntax highlighting
+				applyHighlighting();
+
+				// Update example name in header
+				h1.textContent = exampleObj.name || "Unknown Example";
+
+				// Update description
+				document.getElementById("description").innerHTML = MarkdownParser.parse(exampleObj.description || "");
+			}
+
+			// Load example from URL hash
+			function loadExampleFromHash(isInitialLoad = false) {
+				let hash = window.location.hash.substring(1);
+				const wasEmpty = !hash;
+
+				// Default to "sandbox" if no hash specified
+				if (!hash) {
+					hash = "sandbox";
+				}
+
+				// Check if the hash is directly in our map
+				if (!examplesMap[hash]) {
+					// If not found, we'll have to search for it
+					console.log("Example not found directly, searching...");
+					let found = false;
+
+					// Search through all categories and examples
+					for (let categoryIndex = 0; categoryIndex < examples.length; categoryIndex++) {
+						const category = examples[categoryIndex];
+						if (category.examples && Array.isArray(category.examples)) {
+							for (let exampleIndex = 0; exampleIndex < category.examples.length; exampleIndex++) {
+								const example = category.examples[exampleIndex];
+								if (example.key === hash) {
+									console.log(
+										`Found example ${hash} in category ${categoryIndex}, index ${exampleIndex}`,
+									);
+									found = true;
+									break;
+								}
+							}
+						}
+						if (found) break;
+					}
+
+					// If still not found, default to first example
+					if (!found) {
+						console.warn(`Example with key '${hash}' not found, defaulting to first available example`);
+						if (examples.length > 0 && examples[0].examples && examples[0].examples.length > 0) {
+							hash = examples[0].examples[0].key || "0-0";
+						} else {
+							console.error("No examples found");
+							return;
+						}
+					}
+				}
+
+				// Find and update the selected item in the sidebar
+				const selectedElement = document.querySelector(`#sidebar li.example[data-example="${hash}"]`);
+				if (selectedElement) {
+					document.querySelectorAll("#sidebar li.example.selected").forEach((el) => {
+						el.classList.remove("selected");
+					});
+					selectedElement.classList.add("selected");
+				}
+
+				// Load the example
+				loadExample(hash, wasEmpty && isInitialLoad ? "replace" : "none");
+			}
+
+			// Event listeners for code tabs and toggle
+			codeTabs.forEach((tab) => {
+				tab.addEventListener("click", () => {
+					codeTabs.forEach((t) => t.classList.remove("active"));
+					codePanels.forEach((p) => p.classList.remove("active"));
+
+					tab.classList.add("active");
+					const panel = document.getElementById(`${tab.dataset.panel}-panel`);
+					panel.classList.add("active");
+				});
+			});
+
+			// Function to apply syntax highlighting
+			function applyHighlighting() {
+				const codeElements = document.querySelectorAll("pre");
+				codeElements.forEach((block) => {
+					// Get the raw code text
+					const codeText = block.textContent;
+					// Apply highlighting manually
+					block.innerHTML = hljs?.highlight(codeText, { language: "javascript" }).value;
+				});
+			}
+
+			// Code toggle
+			toggleCode.addEventListener("click", () => {
+				if (codeSection.style.display === "none") {
+					codeSection.style.display = "block";
+					toggleCode.querySelector("span").textContent = "Hide Code";
+					toggleCode.querySelector("i").classList.remove("fa-chevron-down");
+					toggleCode.querySelector("i").classList.add("fa-chevron-up");
+
+					// Apply syntax highlighting when code is shown
+					applyHighlighting();
+				} else {
+					codeSection.style.display = "none";
+					toggleCode.querySelector("span").textContent = "Show Code";
+					toggleCode.querySelector("i").classList.remove("fa-chevron-up");
+					toggleCode.querySelector("i").classList.add("fa-chevron-down");
+				}
+			});
+
+			// Sidebar toggle for mobile
+			sidebarToggle.addEventListener("click", () => {
+				sidebar.classList.toggle("collapsed");
+			});
+
+			// Resize handler to reset info mode if switching to desktop
+			window.addEventListener("resize", () => {
+				if (!isMobileLayout()) {
+					document.body.classList.remove("info-mode");
+				}
+
+				// Auto-collapse sidebar if shrinking to mobile
+				if (isMobileLayout() && !sidebar.classList.contains("collapsed")) {
+					sidebar.classList.add("collapsed");
+				}
+			});
+
+			// Close sidebar on click outside on mobile
+			window.addEventListener("click", (e) => {
+				if (isMobileLayout() && !sidebar.classList.contains("collapsed")) {
+					if (!sidebar.contains(e.target) && e.target !== sidebarToggle) {
+						sidebar.classList.add("collapsed");
+					}
+				}
+			});
+
+			// Copy to clipboard
+			const copyButton = document.getElementById("copy-code");
+			copyButton.addEventListener("click", () => {
+				const activePanel = document.querySelector(".code-panel.active");
+				const codeToCopy = activePanel.querySelector("pre").textContent;
+
+				navigator.clipboard.writeText(codeToCopy).then(() => {
+					const span = copyButton.querySelector("span");
+					const icon = copyButton.querySelector("i");
+					const originalText = span.textContent;
+
+					copyButton.classList.add("success");
+					span.textContent = "Copied!";
+					icon.classList.remove("fa-copy");
+					icon.classList.add("fa-check");
+
+					setTimeout(() => {
+						copyButton.classList.remove("success");
+						span.textContent = originalText;
+						icon.classList.remove("fa-check");
+						icon.classList.add("fa-copy");
+					}, 2000);
+				});
+			});
+
+			// Handle history navigation
+			window.addEventListener("popstate", function (event) {
+				loadExampleFromHash(false);
+			});
+		</script>
+	</body>
 </html>

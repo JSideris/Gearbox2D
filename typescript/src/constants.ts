@@ -1,4 +1,3 @@
-
 // --- Body Data Layout ---
 export const BODY_SIZE_I = 4;
 export const BODY_ID_OFFSET = 0;
@@ -76,7 +75,7 @@ export const EVENT_TYPES = {
 	COLLISION_START: 0,
 	COLLISION_END: 1,
 	SLEEP: 2,
-	WAKE: 3
+	WAKE: 3,
 };
 
 export const SHAPES = {
@@ -86,7 +85,7 @@ export const SHAPES = {
 	BOX: 3,
 	ELLIPSE: 4,
 	CAPSULE: 5,
-	POLYGON: 6
+	POLYGON: 6,
 };
 
 export const BODY_TYPES = {
@@ -97,12 +96,12 @@ export const BODY_TYPES = {
 
 export const FIXTURE_FLAGS = {
 	IS_SENSOR: 0x4,
-	WANTS_EVENTS: 0x8
+	WANTS_EVENTS: 0x8,
 };
 
 export const JOINT_TYPES = {
 	HINGE: 0,
 	DISTANCE: 1,
 	SPRING: 2,
-	GEAR: 3
+	GEAR: 3,
 };

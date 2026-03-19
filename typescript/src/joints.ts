@@ -1,7 +1,6 @@
-
-import type { World } from './world.js';
-import type { Body } from './Body.js';
-import { JOINT_TYPES } from './constants.js';
+import type { World } from "./world.js";
+import type { Body } from "./Body.js";
+import { JOINT_TYPES } from "./constants.js";
 
 export class HingeJoint {
 	readonly type = JOINT_TYPES.HINGE;
@@ -10,7 +9,14 @@ export class HingeJoint {
 	bodyA: Body;
 	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: Body, bodyB: Body, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }) {
+	constructor(
+		id: number,
+		world: World,
+		bodyA: Body,
+		bodyB: Body,
+		localAnchorA: { x: number; y: number },
+		localAnchorB: { x: number; y: number },
+	) {
 		this.id = id;
 		this.world = world;
 		this.bodyA = bodyA;
@@ -24,7 +30,7 @@ export class HingeJoint {
 		if (!cppJoint) return { x: 0, y: 0 };
 		// We need to pass the inverse dt to get the force from the impulse
 		// For now, let's just return the impulse or assume 1/60 step
-		const f = cppJoint.getReactionForce(60.0); 
+		const f = cppJoint.getReactionForce(60.0);
 		return { x: f.x, y: f.y };
 	}
 
@@ -40,7 +46,7 @@ export class HingeJoint {
 		return cppJoint.getLocalAnchorA();
 	}
 
-	set localAnchorA(v: { x: number, y: number }) {
+	set localAnchorA(v: { x: number; y: number }) {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (cppJoint) cppJoint.setLocalAnchorA(v);
 	}
@@ -51,7 +57,7 @@ export class HingeJoint {
 		return cppJoint.getLocalAnchorB();
 	}
 
-	set localAnchorB(v: { x: number, y: number }) {
+	set localAnchorB(v: { x: number; y: number }) {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (cppJoint) cppJoint.setLocalAnchorB(v);
 	}
@@ -64,7 +70,15 @@ export class DistanceJoint {
 	bodyA: Body;
 	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: Body, bodyB: Body, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number) {
+	constructor(
+		id: number,
+		world: World,
+		bodyA: Body,
+		bodyB: Body,
+		localAnchorA: { x: number; y: number },
+		localAnchorB: { x: number; y: number },
+		length: number,
+	) {
 		this.id = id;
 		this.world = world;
 		this.bodyA = bodyA;
@@ -104,7 +118,7 @@ export class DistanceJoint {
 		return cppJoint.getLocalAnchorA();
 	}
 
-	set localAnchorA(v: { x: number, y: number }) {
+	set localAnchorA(v: { x: number; y: number }) {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (cppJoint) cppJoint.setLocalAnchorA(v);
 	}
@@ -115,7 +129,7 @@ export class DistanceJoint {
 		return cppJoint.getLocalAnchorB();
 	}
 
-	set localAnchorB(v: { x: number, y: number }) {
+	set localAnchorB(v: { x: number; y: number }) {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (cppJoint) cppJoint.setLocalAnchorB(v);
 	}
@@ -128,7 +142,17 @@ export class SpringJoint {
 	bodyA: Body;
 	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: Body, bodyB: Body, localAnchorA: { x: number, y: number }, localAnchorB: { x: number, y: number }, length: number, frequencyHz: number, dampingRatio: number) {
+	constructor(
+		id: number,
+		world: World,
+		bodyA: Body,
+		bodyB: Body,
+		localAnchorA: { x: number; y: number },
+		localAnchorB: { x: number; y: number },
+		length: number,
+		frequencyHz: number,
+		dampingRatio: number,
+	) {
 		this.id = id;
 		this.world = world;
 		this.bodyA = bodyA;
@@ -192,7 +216,7 @@ export class SpringJoint {
 		return cppJoint.getLocalAnchorA();
 	}
 
-	set localAnchorA(v: { x: number, y: number }) {
+	set localAnchorA(v: { x: number; y: number }) {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (cppJoint) cppJoint.setLocalAnchorA(v);
 	}
@@ -203,7 +227,7 @@ export class SpringJoint {
 		return cppJoint.getLocalAnchorB();
 	}
 
-	set localAnchorB(v: { x: number, y: number }) {
+	set localAnchorB(v: { x: number; y: number }) {
 		const cppJoint = this.world.world.getJoint(this.id);
 		if (cppJoint) cppJoint.setLocalAnchorB(v);
 	}
@@ -245,4 +269,3 @@ export class GearJoint {
 		if (cppJoint) cppJoint.setRatio(v);
 	}
 }
-

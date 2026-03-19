@@ -1,103 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gearbox2D Blog | Physics & AI</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <style>
-        :root {
-            --bg-deep: #050505;
-            --bg-surface: #0f172a;
-            --bg-card: rgba(30, 41, 59, 0.7);
-            --border: #1e293b;
-            --accent-cyan: #00f2ff;
-            --accent-purple: #a855f7;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-        }
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Gearbox2D Blog | Physics & AI</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+		<style>
+			:root {
+				--bg-deep: #050505;
+				--bg-surface: #0f172a;
+				--bg-card: rgba(30, 41, 59, 0.7);
+				--border: #1e293b;
+				--accent-cyan: #00f2ff;
+				--accent-purple: #a855f7;
+				--text-main: #f1f5f9;
+				--text-muted: #94a3b8;
+			}
 
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-deep);
-            color: var(--text-main);
-        }
+			body {
+				font-family: "Inter", sans-serif;
+				margin: 0;
+				padding: 0;
+				background-color: var(--bg-deep);
+				color: var(--text-main);
+			}
 
-        header {
-            padding: 60px 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border);
-        }
+			header {
+				padding: 60px 20px;
+				text-align: center;
+				border-bottom: 1px solid var(--border);
+			}
 
-        h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 3em;
-            background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+			h1 {
+				font-family: "Orbitron", sans-serif;
+				font-size: 3em;
+				background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+				-webkit-background-clip: text;
+				background-clip: text;
+				-webkit-text-fill-color: transparent;
+			}
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
+			.container {
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 40px 20px;
+			}
 
-        .nav {
-            margin-bottom: 40px;
-        }
+			.nav {
+				margin-bottom: 40px;
+			}
 
-        .nav a {
-            color: var(--accent-cyan);
-            text-decoration: none;
-            margin-right: 20px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.9em;
-        }
+			.nav a {
+				color: var(--accent-cyan);
+				text-decoration: none;
+				margin-right: 20px;
+				font-family: "Orbitron", sans-serif;
+				font-size: 0.9em;
+			}
 
-        .post-preview {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-        }
+			.post-preview {
+				background: var(--bg-card);
+				border: 1px solid var(--border);
+				padding: 30px;
+				border-radius: 12px;
+				margin-bottom: 30px;
+			}
 
-        .post-preview h2 {
-            margin-top: 0;
-            color: var(--accent-cyan);
-        }
+			.post-preview h2 {
+				margin-top: 0;
+				color: var(--accent-cyan);
+			}
 
-        .post-date {
-            font-size: 0.8em;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="nav">
-            <a href="index.html">Home</a>
-            <a href="showcase.html">Showcase</a>
-            <a href="documentation.html">Docs</a>
-        </div>
-        <h1>Gearbox2D Blog</h1>
-        <p>Technical deep-dives into physics and AI.</p>
-    </header>
+			.post-date {
+				font-size: 0.8em;
+				color: var(--text-muted);
+				margin-bottom: 15px;
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<div class="nav">
+				<a href="index.html">Home</a>
+				<a href="showcase.html">Showcase</a>
+				<a href="documentation.html">Docs</a>
+			</div>
+			<h1>Gearbox2D Blog</h1>
+			<p>Technical deep-dives into physics and AI.</p>
+		</header>
 
-    <div class="container">
-        <div class="post-preview">
-            <div class="post-date">March 3, 2026</div>
-            <h2>Coming Soon: The Future of Web Physics</h2>
-            <p>We are preparing a series of articles about the architecture of Gearbox2D and the Kinematic Restitution Balancing system.</p>
-        </div>
-    </div>
-</body>
+		<div class="container">
+			<div class="post-preview">
+				<div class="post-date">March 3, 2026</div>
+				<h2>Coming Soon: The Future of Web Physics</h2>
+				<p>
+					We are preparing a series of articles about the architecture of Gearbox2D and the Kinematic
+					Restitution Balancing system.
+				</p>
+			</div>
+		</div>
+	</body>
 </html>

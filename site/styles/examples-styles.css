@@ -8,9 +8,9 @@
 	--text-main: #f1f5f9;
 	--text-muted: #94a3b8;
 	--shadow-glow: 0 0 20px rgba(0, 242, 255, 0.15);
-	
-	--font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-	--font-header: 'Orbitron', sans-serif;
+
+	--font-main: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	--font-header: "Orbitron", sans-serif;
 	--font-mono: "Fira Code", "SFMono-Regular", Consolas, monospace;
 	--transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -301,14 +301,14 @@ body {
 
 /* High-tech grid background for canvas */
 #canvas-container::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-image: linear-gradient(var(--border) 1px, transparent 1px),
-	                  linear-gradient(90deg, var(--border) 1px, transparent 1px);
+	background-image:
+		linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
 	background-size: 50px 50px;
 	pointer-events: none;
 	opacity: 0.2;
@@ -341,7 +341,7 @@ body {
 }
 
 #metrics::before {
-	content: 'DIAGNOSTICS';
+	content: "DIAGNOSTICS";
 	display: block;
 	font-family: var(--font-header);
 	font-size: 0.6rem;
@@ -388,7 +388,8 @@ body {
 	margin-bottom: 0;
 }
 
-#description ul, #description ol {
+#description ul,
+#description ol {
 	margin-bottom: 16px;
 	padding-left: 24px;
 }
@@ -401,13 +402,20 @@ body {
 	margin-bottom: 0;
 }
 
-#description h1, #description h2, #description h3, #description h4, #description h5, #description h6 {
+#description h1,
+#description h2,
+#description h3,
+#description h4,
+#description h5,
+#description h6 {
 	color: var(--text-main);
 	margin: 24px 0 12px 0;
 	font-family: var(--font-header);
 }
 
-#description h1:first-child, #description h2:first-child, #description h3:first-child {
+#description h1:first-child,
+#description h2:first-child,
+#description h3:first-child {
 	margin-top: 0;
 }
 
@@ -756,7 +764,8 @@ body {
 		min-width: 140px;
 	}
 
-	#description, #code-container {
+	#description,
+	#code-container {
 		margin-bottom: 20px;
 		max-width: 100%;
 	}
@@ -768,13 +777,13 @@ body {
 
 /* Hide main header when sidebar is narrow or rail mode, BUT NOT ON PORTRAIT MOBILE */
 @media (min-width: 769px) {
-    #sidebar.collapsed ~ #main #main-header {
-        display: none;
-    }
+	#sidebar.collapsed ~ #main #main-header {
+		display: none;
+	}
 
-    #sidebar.collapsed ~ #main #content {
-        height: 100vh;
-    }
+	#sidebar.collapsed ~ #main #content {
+		height: 100vh;
+	}
 }
 
 /* Landscape Mode for Mobile */

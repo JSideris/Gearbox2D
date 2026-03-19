@@ -1,5 +1,4 @@
-
-import gearbox from './engine.js';
+import gearbox from "./engine.js";
 
 /**
  * Standalone CDN entry point.
@@ -8,23 +7,22 @@ import gearbox from './engine.js';
  */
 
 // @ts-ignore
-const inlinedWasmBase64 = typeof __WASM_BASE64__ !== 'undefined' ? __WASM_BASE64__ : null;
+const inlinedWasmBase64 = typeof __WASM_BASE64__ !== "undefined" ? __WASM_BASE64__ : null;
 
 if (inlinedWasmBase64) {
-    const binaryString = atob(inlinedWasmBase64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
+	const binaryString = atob(inlinedWasmBase64);
+	const len = binaryString.length;
+	const bytes = new Uint8Array(len);
+	for (let i = 0; i < len; i++) {
+		bytes[i] = binaryString.charCodeAt(i);
+	}
 
-    const originalInit = gearbox.init.bind(gearbox);
-    gearbox.init = async (options: { wasmBinary?: Uint8Array } = {}) => {
-        return originalInit({ wasmBinary: bytes, ...options });
-    };
+	const originalInit = gearbox.init.bind(gearbox);
+	gearbox.init = async (options: { wasmBinary?: Uint8Array } = {}) => {
+		return originalInit({ wasmBinary: bytes, ...options });
+	};
 }
 
 (window as any).gearbox = gearbox;
 
 export default gearbox;
-

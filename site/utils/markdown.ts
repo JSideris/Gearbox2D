@@ -3,251 +3,255 @@
  * Supports headings, bold, italic, links, lists, and paragraphs.
  */
 export default class MarkdownParser {
-    /**
-     * Parses a markdown string and returns the corresponding HTML.
-     * @param markdown The markdown string to parse.
-     * @returns The generated HTML string.
-     */
-    public static parse(markdown: string): string {
-        if (!markdown) return "";
+	/**
+	 * Parses a markdown string and returns the corresponding HTML.
+	 * @param markdown The markdown string to parse.
+	 * @returns The generated HTML string.
+	 */
+	public static parse(markdown: string): string {
+		if (!markdown) return "";
 
-        // Normalize newlines
-        let html = markdown.replace(/\r\n/g, "\n").trim();
+		// Normalize newlines
+		let html = markdown.replace(/\r\n/g, "\n").trim();
 
-        // 0. Pre-process: Code Blocks (```language ... ```)
-        // We do this first and replace with placeholders to avoid other rules touching the code content
-        const codeBlocks: string[] = [];
-        html = html.replace(/^(\s*)```(\w+)?\n([\s\S]*?)\n\s*```/gm, (match, indent, lang, code) => {
-            const index = codeBlocks.length;
-            const languageClass = lang ? ` class="language-${lang}"` : '';
-            
-            let lines = code.split('\n');
-            
-            // Strip the leading indentation of the backticks from all lines if present
-            if (indent) {
-                lines = lines.map(line => line.startsWith(indent) ? line.substring(indent.length) : line);
-            }
+		// 0. Pre-process: Code Blocks (```language ... ```)
+		// We do this first and replace with placeholders to avoid other rules touching the code content
+		const codeBlocks: string[] = [];
+		html = html.replace(/^(\s*)```(\w+)?\n([\s\S]*?)\n\s*```/gm, (match, indent, lang, code) => {
+			const index = codeBlocks.length;
+			const languageClass = lang ? ` class="language-${lang}"` : "";
 
-            // Find minimum remaining indentation of non-empty lines
-            const minIndent = lines.reduce((min, line) => {
-                if (line.trim().length === 0) return min;
-                const match = line.match(/^(\s*)/);
-                const count = match ? match[1].length : 0;
-                return Math.min(min, count);
-            }, Infinity);
+			let lines = code.split("\n");
 
-            if (minIndent !== Infinity && minIndent > 0) {
-                lines = lines.map(line => line.substring(Math.min(line.length, minIndent)));
-            }
+			// Strip the leading indentation of the backticks from all lines if present
+			if (indent) {
+				lines = lines.map((line) => (line.startsWith(indent) ? line.substring(indent.length) : line));
+			}
 
-            const escapedCode = this.escapeHtml(lines.join('\n').trim());
-            codeBlocks.push(`<pre><code${languageClass}>${escapedCode}</code></pre>`);
-            return `${indent}:::CB-ID-${index}:::`;
-        });
+			// Find minimum remaining indentation of non-empty lines
+			const minIndent = lines.reduce((min, line) => {
+				if (line.trim().length === 0) return min;
+				const match = line.match(/^(\s*)/);
+				const count = match ? match[1].length : 0;
+				return Math.min(min, count);
+			}, Infinity);
 
-        // Escape HTML tags in the remaining markdown to prevent unintended rendering
-        html = this.escapeHtml(html);
+			if (minIndent !== Infinity && minIndent > 0) {
+				lines = lines.map((line) => line.substring(Math.min(line.length, minIndent)));
+			}
 
-        // 1. Block Elements
-        
-        // Horizontal Rules
-        html = html.replace(/^---$/gm, "<hr />");
+			const escapedCode = this.escapeHtml(lines.join("\n").trim());
+			codeBlocks.push(`<pre><code${languageClass}>${escapedCode}</code></pre>`);
+			return `${indent}:::CB-ID-${index}:::`;
+		});
 
-        // Headings (# h1, ## h2, etc.)
-        html = html.replace(/^###### (.*$)/gm, "<h6>$1</h6>");
-        html = html.replace(/^##### (.*$)/gm, "<h5>$1</h5>");
-        html = html.replace(/^#### (.*$)/gm, "<h4>$1</h4>");
-        html = html.replace(/^### (.*$)/gm, "<h3>$1</h3>");
-        html = html.replace(/^## (.*$)/gm, "<h2>$1</h2>");
-        html = html.replace(/^# (.*$)/gm, "<h1>$1</h1>");
+		// Escape HTML tags in the remaining markdown to prevent unintended rendering
+		html = this.escapeHtml(html);
 
-        // Blockquotes
-        // Matches one or more lines starting with &gt;
-        html = html.replace(/((?:^(?:[ \t]*)&gt;[ \t]?.*(?:\n|$))+)/gm, (match) => {
-            const lines = match.split('\n');
-            const content = lines
-                .map(line => line.trim().replace(/^&gt;[ \t]?/, ''))
-                .filter(line => line !== null)
-                .join('\n')
-                .trim();
+		// 1. Block Elements
 
-            if (!content) return "";
+		// Horizontal Rules
+		html = html.replace(/^---$/gm, "<hr />");
 
-            // Check for callouts
-            let className = '';
-            if (content.startsWith('**Note**:') || content.startsWith('**Note** :')) {
-                className = ' class="blockquote-note"';
-            } else if (content.startsWith('**Warning**:') || content.startsWith('**Warning** :')) {
-                className = ' class="blockquote-warning"';
-            }
+		// Headings (# h1, ## h2, etc.)
+		html = html.replace(/^###### (.*$)/gm, "<h6>$1</h6>");
+		html = html.replace(/^##### (.*$)/gm, "<h5>$1</h5>");
+		html = html.replace(/^#### (.*$)/gm, "<h4>$1</h4>");
+		html = html.replace(/^### (.*$)/gm, "<h3>$1</h3>");
+		html = html.replace(/^## (.*$)/gm, "<h2>$1</h2>");
+		html = html.replace(/^# (.*$)/gm, "<h1>$1</h1>");
 
-            return `<blockquote${className}>${content.replace(/\n/g, "<br />")}</blockquote>\n`;
-        });
+		// Blockquotes
+		// Matches one or more lines starting with &gt;
+		html = html.replace(/((?:^(?:[ \t]*)&gt;[ \t]?.*(?:\n|$))+)/gm, (match) => {
+			const lines = match.split("\n");
+			const content = lines
+				.map((line) => line.trim().replace(/^&gt;[ \t]?/, ""))
+				.filter((line) => line !== null)
+				.join("\n")
+				.trim();
 
-        // Tables
-        // Matches header, separator, and data rows
-        html = html.replace(/^(\|.*\|)\n[ \t]*(\|[ \t]*:?---*:?[ \t]*(?:\|[ \t]*:?---*:?[ \t]*)*\|)[ \t]*\n((?:\|.*\|(?:\n|$))*)/gm, (match, header, separator, rows) => {
-            const getCells = (row: string) => {
-                const cells = row.trim().split('|');
-                // Remove empty strings at start and end if they exist (due to leading/trailing pipes)
-                if (cells[0] === "") cells.shift();
-                if (cells[cells.length - 1] === "") cells.pop();
-                return cells.map(c => c.trim());
-            };
+			if (!content) return "";
 
-            const headerCells = getCells(header);
-            const sepCells = getCells(separator);
-            const alignments = sepCells.map(c => {
-                if (c.startsWith(":") && c.endsWith(":")) return "center";
-                if (c.endsWith(":")) return "right";
-                if (c.startsWith(":")) return "left";
-                return "";
-            });
+			// Check for callouts
+			let className = "";
+			if (content.startsWith("**Note**:") || content.startsWith("**Note** :")) {
+				className = ' class="blockquote-note"';
+			} else if (content.startsWith("**Warning**:") || content.startsWith("**Warning** :")) {
+				className = ' class="blockquote-warning"';
+			}
 
-            let tableHtml = "<table><thead><tr>";
-            headerCells.forEach((cell, i) => {
-                const align = alignments[i] ? ` align="${alignments[i]}"` : "";
-                tableHtml += `<th${align}>${cell}</th>`;
-            });
-            tableHtml += "</tr></thead><tbody>";
+			return `<blockquote${className}>${content.replace(/\n/g, "<br />")}</blockquote>\n`;
+		});
 
-            const rowLines = rows.trim().split("\n");
-            rowLines.forEach(rowLine => {
-                if (!rowLine.trim()) return;
-                const cells = getCells(rowLine);
-                tableHtml += "<tr>";
-                headerCells.forEach((_, i) => {
-                    const align = alignments[i] ? ` align="${alignments[i]}"` : "";
-                    tableHtml += `<td${align}>${cells[i] || ""}</td>`;
-                });
-                tableHtml += "</tr>";
-            });
+		// Tables
+		// Matches header, separator, and data rows
+		html = html.replace(
+			/^(\|.*\|)\n[ \t]*(\|[ \t]*:?---*:?[ \t]*(?:\|[ \t]*:?---*:?[ \t]*)*\|)[ \t]*\n((?:\|.*\|(?:\n|$))*)/gm,
+			(match, header, separator, rows) => {
+				const getCells = (row: string) => {
+					const cells = row.trim().split("|");
+					// Remove empty strings at start and end if they exist (due to leading/trailing pipes)
+					if (cells[0] === "") cells.shift();
+					if (cells[cells.length - 1] === "") cells.pop();
+					return cells.map((c) => c.trim());
+				};
 
-            tableHtml += "</tbody></table>";
-            return tableHtml;
-        });
+				const headerCells = getCells(header);
+				const sepCells = getCells(separator);
+				const alignments = sepCells.map((c) => {
+					if (c.startsWith(":") && c.endsWith(":")) return "center";
+					if (c.endsWith(":")) return "right";
+					if (c.startsWith(":")) return "left";
+					return "";
+				});
 
-        // 1. Task List Checkboxes
-        html = html.replace(/^([ \t]*[\-\*\d\.]+[ \t]+)\[ \] /gm, "$1<input type=\"checkbox\" disabled /> ");
-        html = html.replace(/^([ \t]*[\-\*\d\.]+[ \t]+)\[[xX]\] /gm, "$1<input type=\"checkbox\" checked disabled /> ");
+				let tableHtml = "<table><thead><tr>";
+				headerCells.forEach((cell, i) => {
+					const align = alignments[i] ? ` align="${alignments[i]}"` : "";
+					tableHtml += `<th${align}>${cell}</th>`;
+				});
+				tableHtml += "</tr></thead><tbody>";
 
-        // 2. List Items (single line)
-        // Mark them so we can wrap them later
-        html = html.replace(/^([ \t]*)[\-\*] (.*)/gm, "$1<li data-list=\"ul\">$2</li>");
-        html = html.replace(/^([ \t]*)\d+\. (.*)/gm, "$1<li data-list=\"ol\">$2</li>");
+				const rowLines = rows.trim().split("\n");
+				rowLines.forEach((rowLine) => {
+					if (!rowLine.trim()) return;
+					const cells = getCells(rowLine);
+					tableHtml += "<tr>";
+					headerCells.forEach((_, i) => {
+						const align = alignments[i] ? ` align="${alignments[i]}"` : "";
+						tableHtml += `<td${align}>${cells[i] || ""}</td>`;
+					});
+					tableHtml += "</tr>";
+				});
 
-        // 3. List Wrapping
-        // We process the lines to handle nesting and proper UL/OL wrapping
-        const lines = html.split('\n');
-        const processedLines: string[] = [];
-        const listStack: { indent: number, type: string }[] = [];
+				tableHtml += "</tbody></table>";
+				return tableHtml;
+			},
+		);
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const liMatch = line.match(/^([ \t]*)<li data-list="(ul|ol)">(.*)<\/li>/);
+		// 1. Task List Checkboxes
+		html = html.replace(/^([ \t]*[\-\*\d\.]+[ \t]+)\[ \] /gm, '$1<input type="checkbox" disabled /> ');
+		html = html.replace(/^([ \t]*[\-\*\d\.]+[ \t]+)\[[xX]\] /gm, '$1<input type="checkbox" checked disabled /> ');
 
-            if (liMatch) {
-                const indent = liMatch[1].replace(/\t/g, '    ').length;
-                const type = liMatch[2];
-                const content = liMatch[3];
+		// 2. List Items (single line)
+		// Mark them so we can wrap them later
+		html = html.replace(/^([ \t]*)[\-\*] (.*)/gm, '$1<li data-list="ul">$2</li>');
+		html = html.replace(/^([ \t]*)\d+\. (.*)/gm, '$1<li data-list="ol">$2</li>');
 
-                // Close nested lists that have higher indentation
-                while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
-                    const closed = listStack.pop()!;
-                    processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
-                }
+		// 3. List Wrapping
+		// We process the lines to handle nesting and proper UL/OL wrapping
+		const lines = html.split("\n");
+		const processedLines: string[] = [];
+		const listStack: { indent: number; type: string }[] = [];
 
-                // Open new nested list or switch type
-                if (listStack.length === 0 || listStack[listStack.length - 1].indent < indent) {
-                    listStack.push({ indent, type });
-                    processedLines.push(`${' '.repeat(indent)}<${type}>`);
-                } else if (listStack[listStack.length - 1].type !== type) {
-                    // Switch type at same indent level
-                    const closed = listStack.pop()!;
-                    processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
-                    listStack.push({ indent, type });
-                    processedLines.push(`${' '.repeat(indent)}<${type}>`);
-                }
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const liMatch = line.match(/^([ \t]*)<li data-list="(ul|ol)">(.*)<\/li>/);
 
-                processedLines.push(`${' '.repeat(indent)}<li>${content}</li>`);
-            } else if (line.trim() === "" && listStack.length > 0) {
-                // Keep empty lines between list items without closing the list
-                processedLines.push(line);
-            } else {
-                // Not a list item, close all open lists
-                while (listStack.length > 0) {
-                    const closed = listStack.pop()!;
-                    processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
-                }
-                processedLines.push(line);
-            }
-        }
-        // Close any remaining lists
-        while (listStack.length > 0) {
-            const closed = listStack.pop()!;
-            processedLines.push(`${' '.repeat(closed.indent)}</${closed.type}>`);
-        }
-        html = processedLines.join('\n');
+			if (liMatch) {
+				const indent = liMatch[1].replace(/\t/g, "    ").length;
+				const type = liMatch[2];
+				const content = liMatch[3];
 
-        // 2. Inline Elements
+				// Close nested lists that have higher indentation
+				while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
+					const closed = listStack.pop()!;
+					processedLines.push(`${" ".repeat(closed.indent)}</${closed.type}>`);
+				}
 
-        // Bold (**text** or __text__)
-        html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-        html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
+				// Open new nested list or switch type
+				if (listStack.length === 0 || listStack[listStack.length - 1].indent < indent) {
+					listStack.push({ indent, type });
+					processedLines.push(`${" ".repeat(indent)}<${type}>`);
+				} else if (listStack[listStack.length - 1].type !== type) {
+					// Switch type at same indent level
+					const closed = listStack.pop()!;
+					processedLines.push(`${" ".repeat(closed.indent)}</${closed.type}>`);
+					listStack.push({ indent, type });
+					processedLines.push(`${" ".repeat(indent)}<${type}>`);
+				}
 
-        // Italic (*text* or _text_)
-        html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
-        html = html.replace(/_(.*?)_/g, "<em>$1</em>");
+				processedLines.push(`${" ".repeat(indent)}<li>${content}</li>`);
+			} else if (line.trim() === "" && listStack.length > 0) {
+				// Keep empty lines between list items without closing the list
+				processedLines.push(line);
+			} else {
+				// Not a list item, close all open lists
+				while (listStack.length > 0) {
+					const closed = listStack.pop()!;
+					processedLines.push(`${" ".repeat(closed.indent)}</${closed.type}>`);
+				}
+				processedLines.push(line);
+			}
+		}
+		// Close any remaining lists
+		while (listStack.length > 0) {
+			const closed = listStack.pop()!;
+			processedLines.push(`${" ".repeat(closed.indent)}</${closed.type}>`);
+		}
+		html = processedLines.join("\n");
 
-        // Links ([text](url))
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-            // Convert relative .md links to hashes for our docs viewer
-            if (url.endsWith('.md') && !url.startsWith('http') && !url.startsWith('//') && !url.startsWith('/')) {
-                const hash = url.replace('.md', '');
-                return `<a href="#${hash}">${text}</a>`;
-            }
-            return `<a href="${url}">${text}</a>`;
-        });
+		// 2. Inline Elements
 
-        // Inline Code (`code`)
-        html = html.replace(/`(.*?)`/g, "<code>$1</code>");
+		// Bold (**text** or __text__)
+		html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+		html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
 
-        // 3. Paragraphs
-        // Split by double newlines and wrap in <p>, excluding already wrapped blocks
-        const blocks = html.split(/\n\n+/);
-        html = blocks.map(block => {
-            block = block.trim();
-            if (!block) return "";
-            
-            // If it's a code block placeholder, return as is
-            if (block.startsWith(":::CB-ID-") && block.endsWith(":::")) {
-                return block;
-            }
+		// Italic (*text* or _text_)
+		html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+		html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
-            // If it starts with a block-level tag, don't wrap in <p>
-            // We use \/? to match both opening and closing tags (like </ul>)
-            if (/^<\/?(h[1-6]|ul|ol|li|hr|code|pre|blockquote|table|thead|tbody|tr|th|td)/i.test(block)) {
-                return block;
-            }
-            return `<p>${block.replace(/\n/g, "<br />")}</p>`;
-        }).join("\n");
+		// Links ([text](url))
+		html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+			// Convert relative .md links to hashes for our docs viewer
+			if (url.endsWith(".md") && !url.startsWith("http") && !url.startsWith("//") && !url.startsWith("/")) {
+				const hash = url.replace(".md", "");
+				return `<a href="#${hash}">${text}</a>`;
+			}
+			return `<a href="${url}">${text}</a>`;
+		});
 
-        // 4. Restore Code Blocks
-        codeBlocks.forEach((codeHtml, index) => {
-            // Using split/join instead of replace to avoid $ special character issues in replacement string
-            html = html.split(`:::CB-ID-${index}:::`).join(codeHtml);
-        });
+		// Inline Code (`code`)
+		html = html.replace(/`(.*?)`/g, "<code>$1</code>");
 
-        return html;
-    }
+		// 3. Paragraphs
+		// Split by double newlines and wrap in <p>, excluding already wrapped blocks
+		const blocks = html.split(/\n\n+/);
+		html = blocks
+			.map((block) => {
+				block = block.trim();
+				if (!block) return "";
 
-    private static escapeHtml(text: string): string {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
+				// If it's a code block placeholder, return as is
+				if (block.startsWith(":::CB-ID-") && block.endsWith(":::")) {
+					return block;
+				}
+
+				// If it starts with a block-level tag, don't wrap in <p>
+				// We use \/? to match both opening and closing tags (like </ul>)
+				if (/^<\/?(h[1-6]|ul|ol|li|hr|code|pre|blockquote|table|thead|tbody|tr|th|td)/i.test(block)) {
+					return block;
+				}
+				return `<p>${block.replace(/\n/g, "<br />")}</p>`;
+			})
+			.join("\n");
+
+		// 4. Restore Code Blocks
+		codeBlocks.forEach((codeHtml, index) => {
+			// Using split/join instead of replace to avoid $ special character issues in replacement string
+			html = html.split(`:::CB-ID-${index}:::`).join(codeHtml);
+		});
+
+		return html;
+	}
+
+	private static escapeHtml(text: string): string {
+		return text
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#039;");
+	}
 }
-

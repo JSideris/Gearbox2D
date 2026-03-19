@@ -1,15 +1,15 @@
 {
-    "extends": "../tsconfig.json",
-    "compilerOptions": {
-      "module": "ESNext",
-      "moduleResolution": "bundler",
-      "noImplicitAny": false,
-      "strict": false,
-      "baseUrl": ".",
-      "rootDir": "..", // Point rootDir to the project root instead of typescript/src
-      "paths": {
-        "gearbox2d": ["../typescript/src/gearbox.ts"]
-      }
-    },
-    "include": ["**/*", "../typescript/src/**/*"]
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"noImplicitAny": false,
+		"strict": false,
+		"baseUrl": ".",
+		"rootDir": "..", // Point rootDir to the project root instead of typescript/src
+		"paths": {
+			"gearbox2d": ["../typescript/src/gearbox.ts"]
+		}
+	},
+	"include": ["**/*", "../typescript/src/**/*"]
 }

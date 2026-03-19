@@ -1,4 +1,3 @@
-
 export interface Point {
 	x: number;
 	y: number;
@@ -110,10 +109,10 @@ export function isConcave(vertices: Point[]): boolean {
  */
 export function decompose(poly: Point[]): Point[][] {
 	const polys: Point[][] = [];
-	
+
 	// Ensure CCW order
 	const ccwPoly = makeCCW(poly);
-	
+
 	function decomposeInternal(currentPoly: Point[]) {
 		for (let i = 0; i < currentPoly.length; ++i) {
 			if (isReflex(currentPoly, i)) {
@@ -136,7 +135,12 @@ export function decompose(poly: Point[]): Point[][] {
 						rightOn(at(currentPoly, i - 1), at(currentPoly, i), at(currentPoly, j - 1))
 					) {
 						// if line intersects with an edge
-						p = intersection(at(currentPoly, i - 1), at(currentPoly, i), at(currentPoly, j), at(currentPoly, j - 1));
+						p = intersection(
+							at(currentPoly, i - 1),
+							at(currentPoly, i),
+							at(currentPoly, j),
+							at(currentPoly, j - 1),
+						);
 						if (right(at(currentPoly, i + 1), at(currentPoly, i), p)) {
 							// make sure it's inside the poly
 							d = sqdist(currentPoly[i], p);
@@ -152,7 +156,12 @@ export function decompose(poly: Point[]): Point[][] {
 						left(at(currentPoly, i + 1), at(currentPoly, i), at(currentPoly, j + 1)) &&
 						rightOn(at(currentPoly, i + 1), at(currentPoly, i), at(currentPoly, j))
 					) {
-						p = intersection(at(currentPoly, i + 1), at(currentPoly, i), at(currentPoly, j), at(currentPoly, j + 1));
+						p = intersection(
+							at(currentPoly, i + 1),
+							at(currentPoly, i),
+							at(currentPoly, j),
+							at(currentPoly, j + 1),
+						);
 						if (left(at(currentPoly, i - 1), at(currentPoly, i), p)) {
 							d = sqdist(currentPoly[i], p);
 							if (d < upperDist) {
@@ -242,7 +251,7 @@ export function makeRegularPolygon(sides: number, radius: number): Point[] {
 		const angle = (i / sides) * Math.PI * 2;
 		vertices.push({
 			x: Math.cos(angle) * radius,
-			y: Math.sin(angle) * radius
+			y: Math.sin(angle) * radius,
 		});
 	}
 	return vertices;
@@ -259,7 +268,7 @@ export function makeStar(points: number, outerRadius: number, innerRadius: numbe
 		const angle = (i / (points * 2)) * Math.PI * 2;
 		vertices.push({
 			x: Math.cos(angle) * r,
-			y: Math.sin(angle) * r
+			y: Math.sin(angle) * r,
 		});
 	}
 	return vertices;
