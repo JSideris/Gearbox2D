@@ -371,6 +371,10 @@ export class World {
 		return this.jointsById[id];
 	}
 
+	setTimeStep(dt: number) {
+		this.world.setTimeStep(dt);
+	}
+
 	setGravity(x: number, y: number) {
 		this.world.setGravity(x, y);
 	}
