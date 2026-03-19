@@ -73,7 +73,7 @@ export class Fixture {
 
 			for (const piece of pieces) {
 				const pieceOptions = { ...options, vertices: piece };
-				const fIndex = world.world.addFixture(body.id, 0, pieceOptions, false);
+				const fIndex = world.world.createFixture(body.id, 0, pieceOptions, false);
 				world.refreshViews();
 				const id = world.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
 
@@ -89,7 +89,7 @@ export class Fixture {
 			return firstProxy!;
 		}
 
-		const fIndex = world.world.addFixture(body.id, fixtureId || 0, options, true);
+		const fIndex = world.world.createFixture(body.id, fixtureId || 0, options, true);
 		world.refreshViews();
 		const fixture = new Fixture(fIndex, body);
 		world.fixturesById[fixture.id] = fixture;

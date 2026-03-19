@@ -404,7 +404,7 @@
 			async function initHero() {
 				await gearbox.init();
 				const canvas = document.getElementById("hero-canvas");
-				const world = gearbox.makeWorld();
+				const world = gearbox.createWorld();
 				const debug = new DebugGraphics();
 
 				function resize() {
@@ -434,13 +434,13 @@
 
 				// 1. Drive Wheel (Kinematic)
 				const wheelId = nextId++;
-				const wheel = world.makeBody(wheelId, {
+				const wheel = world.createBody(wheelId, {
 					x: -7,
 					y: 0,
 					type: gearbox.bodyTypes.KINEMATIC_OBJECT,
 					color: white,
 				});
-				wheel.addFixture(wheelId, {
+				wheel.createFixture(wheelId, {
 					shape: gearbox.shapes.CIRCLE,
 					radius: 6.0,
 					categoryBits: CAT_GEAR,
@@ -450,13 +450,13 @@
 
 				// Hubs for Gear Joint (fixed points for hinges)
 				const wheelHubId = nextId++;
-				const wheelHub = world.makeBody(wheelHubId, {
+				const wheelHub = world.createBody(wheelHubId, {
 					x: -7,
 					y: 0,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "transparent",
 				});
-				wheelHub.addFixture(wheelHubId, {
+				wheelHub.createFixture(wheelHubId, {
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.1,
 					maskBits: 0,
@@ -465,13 +465,13 @@
 				const smallWheelX = -7 - 1.414 * 1.5;
 				const smallWheelY = -1.414 * 1.5;
 				const smallWheelHubId = nextId++;
-				const smallWheelHub = world.makeBody(smallWheelHubId, {
+				const smallWheelHub = world.createBody(smallWheelHubId, {
 					x: smallWheelX,
 					y: smallWheelY,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "transparent",
 				});
-				smallWheelHub.addFixture(smallWheelHubId, {
+				smallWheelHub.createFixture(smallWheelHubId, {
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.1,
 					maskBits: 0,
@@ -479,14 +479,14 @@
 
 				// Small Wheel
 				const smallWheelId = nextId++;
-				const smallWheel = world.makeBody(smallWheelId, {
+				const smallWheel = world.createBody(smallWheelId, {
 					x: smallWheelX,
 					y: smallWheelY,
 					mass: 1.0,
 					color: white,
 					r: 0.8, // Non-zero initial rotation
 				});
-				smallWheel.addFixture(smallWheelId, {
+				smallWheel.createFixture(smallWheelId, {
 					shape: gearbox.shapes.CIRCLE,
 					radius: 2.8,
 					categoryBits: CAT_GEAR,
@@ -507,13 +507,13 @@
 
 				// 3. Piston
 				const pistonId = nextId++;
-				const piston = world.makeBody(pistonId, {
+				const piston = world.createBody(pistonId, {
 					x: 5.5,
 					y: 0,
 					mass: 2.0,
 					color: white,
 				});
-				piston.addFixture(pistonId, {
+				piston.createFixture(pistonId, {
 					width: 2.5,
 					height: 1.8,
 					shape: gearbox.shapes.BOX,
@@ -523,13 +523,13 @@
 
 				// 4. Connecting Rod
 				const rodId = nextId++;
-				const rod = world.makeBody(rodId, {
+				const rod = world.createBody(rodId, {
 					x: 0,
 					y: 0,
 					mass: 1.0,
 					color: white,
 				});
-				rod.addFixture(rodId, {
+				rod.createFixture(rodId, {
 					width: 10.0,
 					height: 0.4,
 					shape: gearbox.shapes.BOX,
@@ -562,12 +562,12 @@
 
 				const topWallId = nextId++;
 				world
-					.makeBody(topWallId, { ...wallOptionsBody, x: 3, y: -1.35 })
-					.addFixture(topWallId, wallOptionsFixture); // Top wall
+					.createBody(topWallId, { ...wallOptionsBody, x: 3, y: -1.35 })
+					.createFixture(topWallId, wallOptionsFixture); // Top wall
 				const bottomWallId = nextId++;
 				world
-					.makeBody(bottomWallId, { ...wallOptionsBody, x: 3, y: 1.35 })
-					.addFixture(bottomWallId, wallOptionsFixture); // Bottom wall
+					.createBody(bottomWallId, { ...wallOptionsBody, x: 3, y: 1.35 })
+					.createFixture(bottomWallId, wallOptionsFixture); // Bottom wall
 
 				let lastTime = performance.now();
 				let accumulator = 0;
@@ -594,7 +594,7 @@
 				await gearbox.init();
 
 				const canvas = document.getElementById("gearbox2d-demo");
-				const world = gearbox.makeWorld();
+				const world = gearbox.createWorld();
 
 				// Setup initial world state
 				world.setGravity(0, 9.8);
@@ -615,13 +615,13 @@
 				// Floor
 				const floorId = nextId++;
 				world
-					.makeBody(floorId, {
+					.createBody(floorId, {
 						x: 0,
 						y: 5.5,
 						type: gearbox.bodyTypes.FIXED_OBJECT,
 						color: "#1e293b",
 					})
-					.addFixture(floorId, {
+					.createFixture(floorId, {
 						width: 20,
 						height: 1,
 						shape: gearbox.shapes.BOX,
@@ -633,26 +633,26 @@
 
 				// 3. Central Rotating Gear
 				const gearHubId = nextId++;
-				const gearHub = world.makeBody(gearHubId, {
+				const gearHub = world.createBody(gearHubId, {
 					x: 0,
 					y: 2.5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "transparent",
 				});
-				gearHub.addFixture(gearHubId, {
+				gearHub.createFixture(gearHubId, {
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.1,
 					maskBits: 0,
 				});
 
 				const gearCross1Id = nextId++;
-				const gearCross1 = world.makeBody(gearCross1Id, {
+				const gearCross1 = world.createBody(gearCross1Id, {
 					x: 0,
 					y: 2.5,
 					mass: 2.0,
 					color: "#a855f7",
 				});
-				gearCross1.addFixture(gearCross1Id, {
+				gearCross1.createFixture(gearCross1Id, {
 					width: 3.0,
 					height: 0.4,
 					shape: gearbox.shapes.BOX,
@@ -661,13 +661,13 @@
 				});
 
 				const gearCross2Id = nextId++;
-				const gearCross2 = world.makeBody(gearCross2Id, {
+				const gearCross2 = world.createBody(gearCross2Id, {
 					x: 0,
 					y: 2.5,
 					mass: 2.0,
 					color: "#a855f7",
 				});
-				gearCross2.addFixture(gearCross2Id, {
+				gearCross2.createFixture(gearCross2Id, {
 					width: 0.4,
 					height: 3.0,
 					shape: gearbox.shapes.BOX,
@@ -700,13 +700,13 @@
 					for (let i = 0; i < 5; i++) {
 						const bodyId = nextId++;
 						world
-							.makeBody(bodyId, {
+							.createBody(bodyId, {
 								x: pos.x + (Math.random() - 0.5) * 0.2,
 								y: pos.y + (Math.random() - 0.5) * 0.2,
 								mass: 0.5,
 								color: `hsl(${Math.random() * 360}, 70%, 60%)`,
 							})
-							.addFixture(bodyId, {
+							.createFixture(bodyId, {
 								shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
 								radius: 0.15,
 								width: 0.3,
@@ -724,13 +724,13 @@
 						const target = world.getBodyById(hits[0]);
 						if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
 							const bodyId = 999999;
-							mouseAnchor = world.makeBody(bodyId, {
+							mouseAnchor = world.createBody(bodyId, {
 								x: pos.x,
 								y: pos.y,
 								type: gearbox.bodyTypes.FIXED_OBJECT,
 								color: "transparent",
 							});
-							mouseAnchor.addFixture(bodyId, {
+							mouseAnchor.createFixture(bodyId, {
 								shape: gearbox.shapes.CIRCLE,
 								radius: 0.05,
 								maskBits: 0,
@@ -861,14 +861,14 @@
 						if (frameCount % 40 === 0 && world.getBodyCount() < 40) {
 							const bodyId = nextId++;
 							world
-								.makeBody(bodyId, {
+								.createBody(bodyId, {
 									x: (Math.random() - 0.5) * 3,
 									y: -2,
 									mass: 1.0,
 									color: `hsl(${Math.random() * 360}, 70%, 60%)`,
 									vx: (Math.random() - 0.5) * 1,
 								})
-								.addFixture(bodyId, {
+								.createFixture(bodyId, {
 									shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
 									radius: 0.2,
 									width: 0.4,
@@ -930,14 +930,14 @@
     <span class="comment">// Initialize the WASM core and prepare shared memory. Call this once.</span>
     <span class="keyword">await</span> gearbox.<span class="function">init</span>();
 
-    <span class="keyword">const</span> world = gearbox.<span class="function">makeWorld</span>();
+    <span class="keyword">const</span> world = gearbox.<span class="function">createWorld</span>();
 
     <span class="comment">// Add a ground box</span>
-    const ground = world.<span class="function">makeBody</span>(<span class="string">1</span>, {
+    const ground = world.<span class="function">createBody</span>(<span class="string">1</span>, {
         x: <span class="string">0</span>, y: <span class="string">10</span>,
         type: gearbox.bodyTypes.FIXED_OBJECT
     });
-    ground.<span class="function">addFixture</span>(<span class="string">1</span>, {
+    ground.<span class="function">createFixture</span>(<span class="string">1</span>, {
         width: <span class="string">20</span>, height: <span class="string">1</span>,
         shape: gearbox.shapes.BOX,
     });

@@ -22,8 +22,8 @@ TEST(CollisionEventTest, StartAndEndEvents) {
     
     // 1. Create two objects that are NOT colliding initially
     // Radius is 1.0, so they touch at distance 2.0.
-    world.makeBody(1, createEventOptions(0.0f, 0.0f, true));
-    world.makeBody(2, createEventOptions(5.0f, 0.0f, true));
+    world.createBody(1, createEventOptions(0.0f, 0.0f, true));
+    world.createBody(2, createEventOptions(5.0f, 0.0f, true));
     
     world.step();
     
@@ -63,8 +63,8 @@ TEST(CollisionEventTest, OptInMechanism) {
     world.setGravity(0.0f, 0.0f);
     
     // One object wants events, the other doesn't.
-    world.makeBody(1, createEventOptions(0.0f, 0.0f, true));
-    world.makeBody(2, createEventOptions(5.0f, 0.0f, false));
+    world.createBody(1, createEventOptions(0.0f, 0.0f, true));
+    world.createBody(2, createEventOptions(5.0f, 0.0f, false));
     
     world.step();
     EXPECT_EQ(world.getEventCount(), 0);
@@ -79,8 +79,8 @@ TEST(CollisionEventTest, OptInMechanism) {
     world.clear();
     
     // Neither wants events
-    world.makeBody(3, createEventOptions(0.0f, 0.0f, false));
-    world.makeBody(4, createEventOptions(5.0f, 0.0f, false));
+    world.createBody(3, createEventOptions(0.0f, 0.0f, false));
+    world.createBody(4, createEventOptions(5.0f, 0.0f, false));
     
     world.getBody(4)->setX(1.0f);
     world.step();
@@ -99,26 +99,26 @@ TEST(CollisionEventTest, FixtureLevelOptIn) {
     b1Options.properties["y"] = 0.0f;
     b1Options.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
     b1Options.properties["wantsEvents"] = false;
-    world.makeBody(1, b1Options);
+    world.createBody(1, b1Options);
 
     emscripten_val f1Options;
     f1Options.properties["shape"] = (int)ObjectShape::CIRCLE;
     f1Options.properties["radius"] = 1.0f;
     f1Options.properties["wantsEvents"] = true; // Fixture opts in!
-    world.addFixture(1, 101, f1Options);
+    world.createFixture(1, 101, f1Options);
 
     // Body 2: neither wants events
     emscripten_val b2Options;
     b2Options.properties["x"] = 5.0f;
     b2Options.properties["y"] = 0.0f;
     b2Options.properties["wantsEvents"] = false;
-    world.makeBody(2, b2Options);
+    world.createBody(2, b2Options);
 
     emscripten_val f2Options;
     f2Options.properties["shape"] = (int)ObjectShape::CIRCLE;
     f2Options.properties["radius"] = 1.0f;
     f2Options.properties["wantsEvents"] = false;
-    world.addFixture(2, 201, f2Options);
+    world.createFixture(2, 201, f2Options);
 
     world.step();
     EXPECT_EQ(world.getEventCount(), 0);

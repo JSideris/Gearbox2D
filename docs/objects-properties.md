@@ -49,7 +49,7 @@ The mass of a fixture is calculated as `density * area`. A density of `1.0` is r
 If `true`, the fixture will still trigger collision events but will **not** produce a physical response (objects will pass through it).
 
 ```typescript
-const fixture = body.addFixture({
+const fixture = body.createFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 0.5,
     isSensor: true,
@@ -64,7 +64,7 @@ const fixture = body.addFixture({
 
 When a concave polygon is added to a body, it is internally decomposed into multiple convex sub-fixtures. To ensure a consistent user experience, Gearbox2D automatically synchronizes properties across all these sub-fixtures.
 
-When you modify a property on a proxy fixture (the `Fixture` object returned by `addFixture` for a concave polygon), the engine:
+When you modify a property on a proxy fixture (the `Fixture` object returned by `createFixture` for a concave polygon), the engine:
 1.  **Iterates** through all internal sub-fixtures.
 2.  **Updates** the corresponding property in the Live Data Buffers for each sub-fixture.
 3.  **Refreshes** internal C++ state if necessary (e.g., updating the sensor flag in the core engine).
@@ -73,8 +73,8 @@ This ensures that the entire concave shape behaves as a single cohesive unit, wi
 
 ### Example: Updating a Concave Shape
 ```typescript
-const star = world.makeBody(nextId++, { x: 0, y: 0 });
-const starFixture = star.addFixture({
+const star = world.createBody(nextId++, { x: 0, y: 0 });
+const starFixture = star.createFixture({
     shape: gearbox.shapes.POLYGON,
     vertices: gearbox.polygon.makeStar(5, 1.0, 0.4)
 });

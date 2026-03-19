@@ -18,7 +18,7 @@ TEST(KinematicObjectTest, CreationAndMass) {
     World world;
     emscripten_val options = createKinematicOptions(10.0f, 20.0f);
     
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     EXPECT_EQ(obj->getId(), 1);
@@ -33,7 +33,7 @@ TEST(KinematicObjectTest, MovementByVelocity) {
     world.setGravity(0.0f, 10.0f); // Gravity should NOT affect kinematic objects
     
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     obj->setVelocityX(10.0f);
@@ -58,7 +58,7 @@ TEST(KinematicObjectTest, MovementByVelocity) {
 TEST(KinematicObjectTest, IgnoresForces) {
     World world;
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     obj->applyForce(100.0f, 100.0f);
@@ -73,7 +73,7 @@ TEST(KinematicObjectTest, IgnoresForces) {
 TEST(KinematicObjectTest, IgnoresImpulses) {
     World world;
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     obj->applyImpulse(100.0f, 100.0f, 0.0f, 0.0f);
@@ -89,7 +89,7 @@ TEST(KinematicObjectTest, RotationalStability) {
     World world;
     emscripten_val options = createKinematicOptions(0.0f, 0.0f);
     options.properties["angularDamping"] = 0.5f; // High damping
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     float initialRS = 10.0f;

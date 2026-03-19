@@ -28,13 +28,13 @@ async function start() {
     await gearbox.init();
     
     // Now you can create worlds
-    const world = gearbox.makeWorld();
+    const world = gearbox.createWorld();
 }
 ```
 
 ### 2. World Creation
 
-`gearbox.makeWorld()` allocates a new physics world in the WebAssembly heap. While you can create multiple worlds for side-by-side simulations or isolated UI physics, each world consumes a significant block of WASM memory.
+`gearbox.createWorld()` allocates a new physics world in the WebAssembly heap. While you can create multiple worlds for side-by-side simulations or isolated UI physics, each world consumes a significant block of WASM memory.
 
 ### 3. Stepping the Simulation
 
@@ -126,7 +126,7 @@ Objects are created with a unique ID and a specification object. You can attach 
 
 ```typescript
 // Atomic creation with multiple fixtures
-const obj = world.makeBody(101, {
+const obj = world.createBody(101, {
     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
     x: 0,
     y: 0,
@@ -239,8 +239,8 @@ This is useful for scenarios like:
 - **Multi-room environments**: Managing different rooms or levels that don't interact with each other physically.
 
 ```typescript
-const gameWorld = gearbox.makeWorld();
-const uiWorld = gearbox.makeWorld();
+const gameWorld = gearbox.createWorld();
+const uiWorld = gearbox.createWorld();
 
 // These worlds are completely isolated
 gameWorld.setGravity(0, 9.81);
@@ -252,5 +252,5 @@ uiWorld.step();
 
 Gearbox2D is backed by C++, which does not have automatic garbage collection for WASM heap allocations.
 
-*   **Never leave worlds dangling**: If you call `makeWorld()` repeatedly without calling `destroy()`, your application will eventually crash with an **Out of Memory (OOM)** error.
+*   **Never leave worlds dangling**: If you call `createWorld()` repeatedly without calling `destroy()`, your application will eventually crash with an **Out of Memory (OOM)** error.
 *   **Reference Cleanup**: When you call `world.destroy()`, ensure you also nullify any JavaScript references to that world to allow the JS garbage collector to clean up the wrapper object.

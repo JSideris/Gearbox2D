@@ -59,7 +59,7 @@ export class Gearbox {
 		return buffer ? buffer.byteLength : 0;
 	}
 
-	makeWorld() {
+	createWorld() {
 		this._initCheck();
 		if (!this._worldC) throw new Error("WASM World constructor not found.");
 		const world = new World(new this._worldC());

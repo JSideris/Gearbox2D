@@ -21,8 +21,8 @@ protected:
 };
 
 TEST_F(SpringJointTest, Creation) {
-    world.makeBody(1, createOptions(0, 0));
-    world.makeBody(2, createOptions(2, 0));
+    world.createBody(1, createOptions(0, 0));
+    world.createBody(2, createOptions(2, 0));
     
     int jointId = world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
     EXPECT_EQ(jointId, 1);
@@ -39,8 +39,8 @@ TEST_F(SpringJointTest, Creation) {
 
 TEST_F(SpringJointTest, PullsTogether) {
     // Two objects separated by 4 units, spring length 2 units
-    world.makeBody(1, createOptions(0, 0));
-    world.makeBody(2, createOptions(4, 0));
+    world.createBody(1, createOptions(0, 0));
+    world.createBody(2, createOptions(4, 0));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
     
@@ -57,8 +57,8 @@ TEST_F(SpringJointTest, PullsTogether) {
 
 TEST_F(SpringJointTest, PushesApart) {
     // Two objects separated by 1 unit, spring length 2 units
-    world.makeBody(1, createOptions(0, 0));
-    world.makeBody(2, createOptions(1, 0));
+    world.createBody(1, createOptions(0, 0));
+    world.createBody(2, createOptions(1, 0));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
     
@@ -75,10 +75,10 @@ TEST_F(SpringJointTest, PushesApart) {
 
 TEST_F(SpringJointTest, Damping) {
     // Check if damping reduces velocity over time
-    world.makeBody(1, createOptions(0, 0, 0.0f)); // Fixed
+    world.createBody(1, createOptions(0, 0, 0.0f)); // Fixed
     world.getBody(1)->type = ObjectType::FIXED_OBJECT;
     
-    world.makeBody(2, createOptions(4, 0, 1.0f));
+    world.createBody(2, createOptions(4, 0, 1.0f));
     
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 2.0f, 0.1f);
     
@@ -88,9 +88,9 @@ TEST_F(SpringJointTest, Damping) {
     
     // Reset and try with more damping
     world.clear();
-    world.makeBody(1, createOptions(0, 0, 0.0f));
+    world.createBody(1, createOptions(0, 0, 0.0f));
     world.getBody(1)->type = ObjectType::FIXED_OBJECT;
-    world.makeBody(2, createOptions(4, 0, 1.0f));
+    world.createBody(2, createOptions(4, 0, 1.0f));
     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 2.0f, 0.9f);
     
     for (int i = 0; i < 60; ++i) world.step();
@@ -101,9 +101,9 @@ TEST_F(SpringJointTest, Damping) {
 
 // TODO: get this test case working again or rewrite it.
 // TEST_F(SpringJointTest, UpdateParametersAtRuntime) {
-//     world.makeBody(1, createOptions(0, 0, 0.0f));
+//     world.createBody(1, createOptions(0, 0, 0.0f));
 //     world.getBody(1)->type = ObjectType::FIXED_OBJECT;
-//     world.makeBody(2, createOptions(5, 0, 1.0f));
+//     world.createBody(2, createOptions(5, 0, 1.0f));
     
 //     world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 5.0f, 5.0f, 0.7f);
 //     Joint* joint = world.getJoint(1);

@@ -69,7 +69,7 @@ export class Body {
 	/** @internal Create a new body (handles WASM object creation and initial fixtures) */
 	static create(world: World, id: number, options: BodyOptions): Body {
 		const { fixtures, shape, ...rest } = options;
-		const index = world.world.makeBody(id, rest);
+		const index = world.world.createBody(id, rest);
 		world.refreshViews();
 		const body = new Body(index, world);
 		body.color = options.color;
@@ -91,7 +91,7 @@ export class Body {
 		return this.world.world.getBody(this.id);
 	}
 
-	addFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
+	createFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
 		if (Array.isArray(options)) {
 			return options.map((opt) => Fixture.create(this, opt));
 		}

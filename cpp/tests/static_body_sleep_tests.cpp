@@ -22,14 +22,14 @@ TEST(StaticBodySleepTest, StaticBodyStaysAsleepOnCollision) {
     world.setGravity(0.0f, 0.0f);
     
     // Create a static body and put it to sleep
-    world.makeBody(1, createTestOptions(0.0f, 0.0f, ObjectType::FIXED_OBJECT));
+    world.createBody(1, createTestOptions(0.0f, 0.0f, ObjectType::FIXED_OBJECT));
     Body* staticBody = world.getBody(1);
     staticBody->sleep();
     EXPECT_TRUE(staticBody->isSleeping);
     
     // Create a dynamic body that will hit the static body
     // Position it so it's moving towards the static body
-    world.makeBody(2, createTestOptions(-3.0f, 0.0f, ObjectType::DYNAMIC_OBJECT));
+    world.createBody(2, createTestOptions(-3.0f, 0.0f, ObjectType::DYNAMIC_OBJECT));
     Body* dynamicBody = world.getBody(2);
     dynamicBody->setVelocityInternal(Vec2(10.0f, 0.0f)); // Moving right
     
@@ -56,8 +56,8 @@ TEST(StaticBodySleepTest, StaticBodyStaysAsleepWithJoint) {
     world.setGravity(0.0f, 0.0f);
     
     // Create a static body and a dynamic body
-    world.makeBody(1, createTestOptions(0.0f, 0.0f, ObjectType::FIXED_OBJECT));
-    world.makeBody(2, createTestOptions(5.0f, 0.0f, ObjectType::DYNAMIC_OBJECT));
+    world.createBody(1, createTestOptions(0.0f, 0.0f, ObjectType::FIXED_OBJECT));
+    world.createBody(2, createTestOptions(5.0f, 0.0f, ObjectType::DYNAMIC_OBJECT));
     
     Body* staticBody = world.getBody(1);
     Body* dynamicBody = world.getBody(2);
@@ -81,7 +81,7 @@ TEST(StaticBodySleepTest, StaticBodyStaysAsleepOnExternalForce) {
     world.setGravity(0.0f, 0.0f);
     
     // Create a static body and put it to sleep
-    world.makeBody(1, createTestOptions(0.0f, 0.0f, ObjectType::FIXED_OBJECT));
+    world.createBody(1, createTestOptions(0.0f, 0.0f, ObjectType::FIXED_OBJECT));
     Body* staticBody = world.getBody(1);
     staticBody->sleep();
     EXPECT_TRUE(staticBody->isSleeping);

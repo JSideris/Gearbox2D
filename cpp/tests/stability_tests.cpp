@@ -23,7 +23,7 @@ TEST(StabilityTest, SlowMotionPreventsSleep) {
     world.setTimeStep(1.0f / 60.0f);
     
     // Create an object moving very slowly (below the old 0.1 threshold, but above the new 0.005 threshold)
-    int id = world.makeBody(1, createTestOptions(0.0f, 0.0f, 1.0f));
+    int id = world.createBody(1, createTestOptions(0.0f, 0.0f, 1.0f));
     Body* obj = world.getBodyAtIndex(id);
     
     // Set a very slow velocity
@@ -44,12 +44,12 @@ TEST(StabilityTest, ContactWakesSleepingObject) {
     world.setTimeStep(1.0f / 60.0f);
     
     // A: Moving object
-    int idA = world.makeBody(1, createTestOptions(0.0f, 0.0f, 1.0f));
+    int idA = world.createBody(1, createTestOptions(0.0f, 0.0f, 1.0f));
     Body* objA = world.getBodyAtIndex(idA);
     objA->setVelocityX(5.0f);
     
     // B: Stationary object far away, forced to sleep
-    int idB = world.makeBody(2, createTestOptions(10.0f, 0.0f, 1.0f));
+    int idB = world.createBody(2, createTestOptions(10.0f, 0.0f, 1.0f));
     Body* objB = world.getBody(2);
     objB->sleep();
     EXPECT_TRUE(objB->isSleeping);
@@ -72,12 +72,12 @@ TEST(StabilityTest, JointMovementWakesSleepingObject) {
     world.setTimeStep(1.0f / 60.0f);
     
     // Anchor (Fixed)
-    int idA = world.makeBody(1, createTestOptions(0.0f, 0.0f, 0.0f));
+    int idA = world.createBody(1, createTestOptions(0.0f, 0.0f, 0.0f));
     Body* anchor = world.getBody(1);
     anchor->type = ObjectType::FIXED_OBJECT;
     
     // Pendulum (Dynamic)
-    int idP = world.makeBody(2, createTestOptions(2.0f, 0.0f, 1.0f));
+    int idP = world.createBody(2, createTestOptions(2.0f, 0.0f, 1.0f));
     Body* pendulum = world.getBody(2);
     
     // Connect them
@@ -100,7 +100,7 @@ TEST(StabilityTest, NaNRecovery) {
     world.setGravity(0.0f, 0.0f);
     world.setTimeStep(1.0f / 60.0f);
     
-    int id = world.makeBody(1, createTestOptions(10.0f, 10.0f, 1.0f));
+    int id = world.createBody(1, createTestOptions(10.0f, 10.0f, 1.0f));
     Body* obj = world.getBodyAtIndex(id);
     
     // Simulate a NaN explosion (e.g. from an invalid joint or contact)
@@ -122,7 +122,7 @@ TEST(StabilityTest, VelocityClamping) {
     world.setGravity(0.0f, 0.0f);
     world.setTimeStep(1.0f / 60.0f);
     
-    int id = world.makeBody(1, createTestOptions(0.0f, 0.0f, 1.0f));
+    int id = world.createBody(1, createTestOptions(0.0f, 0.0f, 1.0f));
     Body* obj = world.getBodyAtIndex(id);
     
     // Set a velocity way beyond the cap (1000.0f)
@@ -145,7 +145,7 @@ TEST(StabilityTest, RestitutionEnergyConservation) {
     floorOptions.properties["width"] = 20.0f;
     floorOptions.properties["height"] = 1.0f;
     floorOptions.properties["restitution"] = 1.0f;
-    world.makeBody(1, floorOptions);
+    world.createBody(1, floorOptions);
 
     // 2. Create a bouncy ball starting at y=0 (10 units above floor)
     emscripten_val ballOptions = createTestOptions(0.0f, 0.0f, 1.0f);
@@ -153,7 +153,7 @@ TEST(StabilityTest, RestitutionEnergyConservation) {
     ballOptions.properties["radius"] = 0.5f;
     ballOptions.properties["restitution"] = 1.0f;
     ballOptions.properties["linearDamping"] = 0.0f; // No air resistance
-    world.makeBody(2, ballOptions);
+    world.createBody(2, ballOptions);
     Body* ball = world.getBody(2);
 
     float initialHeight = ball->getY();

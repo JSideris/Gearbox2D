@@ -151,13 +151,13 @@ export const clockworkExample = new Example({
 		const rockerPinDist = pendulumLength - p.rockerLength;
 
 		const pendCenterId = nextId++;
-		const pendCenter = world.makeBody(pendCenterId, {
+		const pendCenter = world.createBody(pendCenterId, {
 			x: cx,
 			y: pendPivotY,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#888",
 		});
-		pendCenter.addFixture(pendCenterId, {
+		pendCenter.createFixture(pendCenterId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_STATIC,
@@ -165,13 +165,13 @@ export const clockworkExample = new Example({
 		});
 
 		const escCenterId = nextId++;
-		const escCenter = world.makeBody(escCenterId, {
+		const escCenter = world.createBody(escCenterId, {
 			x: cx,
 			y: escapementY,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#888",
 		});
-		escCenter.addFixture(escCenterId, {
+		escCenter.createFixture(escCenterId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_STATIC,
@@ -179,8 +179,13 @@ export const clockworkExample = new Example({
 		});
 
 		const centerId = nextId++;
-		const center = world.makeBody(centerId, { x: cx, y: cy, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#888" });
-		center.addFixture(centerId, {
+		const center = world.createBody(centerId, {
+			x: cx,
+			y: cy,
+			type: gearbox.bodyTypes.FIXED_OBJECT,
+			color: "#888",
+		});
+		center.createFixture(centerId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_STATIC,
@@ -189,14 +194,14 @@ export const clockworkExample = new Example({
 
 		const initialPendAngle = 0.5;
 		const pendulumId = nextId++;
-		pendulum = world.makeBody(pendulumId, {
+		pendulum = world.createBody(pendulumId, {
 			x: cx + Math.sin(initialPendAngle) * pendulumLength,
 			y: pendPivotY + Math.cos(initialPendAngle) * pendulumLength,
 			r: -initialPendAngle,
 			mass: 5.0,
 			color: "#cd853f",
 		});
-		pendulum.addFixture(pendulumId, {
+		pendulum.createFixture(pendulumId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.4,
 			categoryBits: CAT_MECH,
@@ -209,14 +214,14 @@ export const clockworkExample = new Example({
 		});
 
 		const fastGearId = nextId++;
-		const fastGear = world.makeBody(fastGearId, {
+		const fastGear = world.createBody(fastGearId, {
 			x: cx + p.escXOffset,
 			y: escapementY,
 			r: 0,
 			type: gearbox.bodyTypes.KINEMATIC_OBJECT,
 			color: "#aaa",
 		});
-		fastGear.addFixture(fastGearId, {
+		fastGear.createFixture(fastGearId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.5,
 			categoryBits: CAT_GEAR,
@@ -299,13 +304,13 @@ export const clockworkExample = new Example({
 		const inter1X = cx + 1.5;
 		const inter1Y = escapementY + 0.5;
 		const inter1CenterId = nextId++;
-		const inter1Center = world.makeBody(inter1CenterId, {
+		const inter1Center = world.createBody(inter1CenterId, {
 			x: inter1X,
 			y: inter1Y,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#888",
 		});
-		inter1Center.addFixture(inter1CenterId, {
+		inter1Center.createFixture(inter1CenterId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_STATIC,
@@ -313,14 +318,14 @@ export const clockworkExample = new Example({
 		});
 
 		const inter1GearId = nextId++;
-		const inter1Gear = world.makeBody(inter1GearId, {
+		const inter1Gear = world.createBody(inter1GearId, {
 			x: inter1X,
 			y: inter1Y,
 			mass: 0.2,
 			r: 0,
 			color: "#44ff44",
 		});
-		inter1Gear.addFixture(inter1GearId, {
+		inter1Gear.createFixture(inter1GearId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 1.0,
 			categoryBits: CAT_GEAR,
@@ -335,14 +340,14 @@ export const clockworkExample = new Example({
 
 		const secHandAngle = (seconds / 60) * Math.PI * 2;
 		const secondGearObjId = nextId++;
-		const secondGearObj = world.makeBody(secondGearObjId, {
+		const secondGearObj = world.createBody(secondGearObjId, {
 			x: cx,
 			y: cy,
 			mass: 0.2,
 			r: secHandAngle,
 			color: "#ff4444",
 		});
-		secondGearObj.addFixture(secondGearObjId, {
+		secondGearObj.createFixture(secondGearObjId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.6,
 			categoryBits: CAT_GEAR,
@@ -370,14 +375,14 @@ export const clockworkExample = new Example({
 			const r2 = 4.0;
 			const tickId = nextId++;
 			world
-				.makeBody(tickId, {
+				.createBody(tickId, {
 					x: cx + (Math.cos(angle) * (r1 + r2)) / 2,
 					y: cy + (Math.sin(angle) * (r1 + r2)) / 2,
 					r: angle + Math.PI / 2,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#999",
 				})
-				.addFixture(tickId, {
+				.createFixture(tickId, {
 					shape: gearbox.shapes.BOX,
 					width: i % 3 === 0 ? 0.2 : 0.1,
 					height: 0.4,
@@ -387,14 +392,14 @@ export const clockworkExample = new Example({
 		}
 
 		const secondHandId = nextId++;
-		secondHand = world.makeBody(secondHandId, {
+		secondHand = world.createBody(secondHandId, {
 			x: cx + Math.sin(secHandAngle) * (secLen / 2 - 0.2),
 			y: cy - Math.cos(secHandAngle) * (secLen / 2 - 0.2),
 			r: secHandAngle,
 			mass: 0.1,
 			color: "#ff4444",
 		});
-		secondHand.addFixture(secondHandId, {
+		secondHand.createFixture(secondHandId, {
 			shape: gearbox.shapes.BOX,
 			width: 0.05,
 			height: secLen,
@@ -410,27 +415,27 @@ export const clockworkExample = new Example({
 		const inter2X = cx - 1.5;
 		const inter2Y = cy - 1.5;
 		const inter2CenterId = nextId++;
-		const inter2Center = world.makeBody(inter2CenterId, {
+		const inter2Center = world.createBody(inter2CenterId, {
 			x: inter2X,
 			y: inter2Y,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#888",
 		});
-		inter2Center.addFixture(inter2CenterId, {
+		inter2Center.createFixture(inter2CenterId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_STATIC,
 			maskBits: 0,
 		});
 		const inter2GearId = nextId++;
-		const inter2Gear = world.makeBody(inter2GearId, {
+		const inter2Gear = world.createBody(inter2GearId, {
 			x: inter2X,
 			y: inter2Y,
 			mass: 0.2,
 			r: 0,
 			color: "#4444ff",
 		});
-		inter2Gear.addFixture(inter2GearId, {
+		inter2Gear.createFixture(inter2GearId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 1.0,
 			categoryBits: CAT_GEAR,
@@ -443,14 +448,14 @@ export const clockworkExample = new Example({
 		world.createGearJoint(nextId++, secondHinge, inter2Hinge, 1 / 10);
 
 		const minuteGearId = nextId++;
-		const minuteGear = world.makeBody(minuteGearId, {
+		const minuteGear = world.createBody(minuteGearId, {
 			x: cx,
 			y: cy,
 			mass: 0.2,
 			r: minHandAngle,
 			color: "#4444ff",
 		});
-		minuteGear.addFixture(minuteGearId, {
+		minuteGear.createFixture(minuteGearId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.8,
 			categoryBits: CAT_GEAR,
@@ -463,14 +468,14 @@ export const clockworkExample = new Example({
 		world.createGearJoint(nextId++, inter2Hinge, minuteHinge, 1 / 6);
 
 		const minuteHandId = nextId++;
-		minuteHand = world.makeBody(minuteHandId, {
+		minuteHand = world.createBody(minuteHandId, {
 			x: cx + Math.sin(minHandAngle) * (minLen / 2 - 0.3),
 			y: cy - Math.cos(minHandAngle) * (minLen / 2 - 0.3),
 			r: minHandAngle,
 			mass: 0.2,
 			color: "#4444ff",
 		});
-		minuteHand.addFixture(minuteHandId, {
+		minuteHand.createFixture(minuteHandId, {
 			shape: gearbox.shapes.BOX,
 			width: 0.12,
 			height: minLen,
@@ -486,27 +491,27 @@ export const clockworkExample = new Example({
 		const inter3X = cx + 2.0;
 		const inter3Y = cy - 1.0;
 		const inter3CenterId = nextId++;
-		const inter3Center = world.makeBody(inter3CenterId, {
+		const inter3Center = world.createBody(inter3CenterId, {
 			x: inter3X,
 			y: inter3Y,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#888",
 		});
-		inter3Center.addFixture(inter3CenterId, {
+		inter3Center.createFixture(inter3CenterId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_STATIC,
 			maskBits: 0,
 		});
 		const inter3GearId = nextId++;
-		const inter3Gear = world.makeBody(inter3GearId, {
+		const inter3Gear = world.createBody(inter3GearId, {
 			x: inter3X,
 			y: inter3Y,
 			mass: 0.2,
 			r: 0,
 			color: "#cccc44",
 		});
-		inter3Gear.addFixture(inter3GearId, {
+		inter3Gear.createFixture(inter3GearId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 1.0,
 			categoryBits: CAT_GEAR,
@@ -519,14 +524,14 @@ export const clockworkExample = new Example({
 		world.createGearJoint(nextId++, minuteHinge, inter3Hinge, 1 / 3);
 
 		const hourGearId = nextId++;
-		const hourGear = world.makeBody(hourGearId, {
+		const hourGear = world.createBody(hourGearId, {
 			x: cx,
 			y: cy,
 			mass: 0.2,
 			r: hourHandAngle,
 			color: "#cc8844",
 		});
-		hourGear.addFixture(hourGearId, {
+		hourGear.createFixture(hourGearId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 1.1,
 			categoryBits: CAT_GEAR,
@@ -539,14 +544,14 @@ export const clockworkExample = new Example({
 		world.createGearJoint(nextId++, inter3Hinge, hourHinge, 1 / 4);
 
 		const hourHandId = nextId++;
-		hourHand = world.makeBody(hourHandId, {
+		hourHand = world.createBody(hourHandId, {
 			x: cx + Math.sin(hourHandAngle) * (hourLen / 2 - 0.4),
 			y: cy - Math.cos(hourHandAngle) * (hourLen / 2 - 0.4),
 			r: hourHandAngle,
 			mass: 0.3,
 			color: "#cc8844",
 		});
-		hourHand.addFixture(hourHandId, {
+		hourHand.createFixture(hourHandId, {
 			shape: gearbox.shapes.BOX,
 			width: 0.18,
 			height: hourLen,

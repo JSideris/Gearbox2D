@@ -11,12 +11,12 @@ To improve performance, events are opt-in per object. You must set `wantsEvents:
 If you set `wantsEvents: true` on a body, you will receive events for all collisions involving any of its fixtures.
 
 ```typescript
-const obj = world.makeBody(id, {
+const obj = world.createBody(id, {
   type: gearbox.bodyTypes.DYNAMIC_OBJECT,
   x: 5, y: 5,
   wantsEvents: true // Enable for all fixtures on this body
 });
-obj.addFixture({
+obj.createFixture({
   shape: gearbox.shapes.CIRCLE,
   radius: 1,
 });
@@ -27,8 +27,8 @@ obj.addFixture({
 Alternatively, you can enable events only for specific fixtures. This is useful for large objects where you only care about certain parts (e.g., a car bumper or a character's feet).
 
 ```typescript
-const obj = world.makeBody(id, { x: 5, y: 5 });
-obj.addFixture({
+const obj = world.createBody(id, { x: 5, y: 5 });
+obj.createFixture({
   shape: gearbox.shapes.CIRCLE,
   radius: 1,
   wantsEvents: true // Only collisions with this fixture trigger events
@@ -85,8 +85,8 @@ world.onWake = (id) => {
 Alternatively, you can set event handlers directly on `Body` instances.
 
 ```typescript
-const obj = world.makeBody(id, { x: 5, y: 5, wantsEvents: true });
-obj.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 1 });
+const obj = world.createBody(id, { x: 5, y: 5, wantsEvents: true });
+obj.createFixture({ shape: gearbox.shapes.CIRCLE, radius: 1 });
 
 obj.onSleep = () => {
   console.log("I am going to sleep!");

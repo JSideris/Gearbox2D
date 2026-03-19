@@ -40,13 +40,44 @@ export interface CppWorld {
 	getLiveFixtureIntData(): Int32Array;
 	clear(): void;
 	delete(): void;
-	addFixture(bodyId: number, fixtureId: number, options: any, isMain: boolean): number;
+	createBody(id: number, options: any): number;
+	createFixture(bodyId: number, fixtureId: number, options: any, isMain: boolean): number;
 	removeObject(id: number): void;
+	getBody(id: number): any;
+	getFixture(id: number): CppFixture | null;
 	getBodyCount(): number;
 	getFixtureCount(): number;
-	createHingeJoint(id: number, bodyIdA: number, bodyIdB: number, axA: number, ayA: number, axB: number, ayB: number): void;
-	createDistanceJoint(id: number, bodyIdA: number, bodyIdB: number, axA: number, ayA: number, axB: number, ayB: number, length: number): void;
-	createSpringJoint(id: number, bodyIdA: number, bodyIdB: number, axA: number, ayA: number, axB: number, ayB: number, length: number, frequencyHz: number, dampingRatio: number): void;
+	createHingeJoint(
+		id: number,
+		bodyIdA: number,
+		bodyIdB: number,
+		axA: number,
+		ayA: number,
+		axB: number,
+		ayB: number,
+	): void;
+	createDistanceJoint(
+		id: number,
+		bodyIdA: number,
+		bodyIdB: number,
+		axA: number,
+		ayA: number,
+		axB: number,
+		ayB: number,
+		length: number,
+	): void;
+	createSpringJoint(
+		id: number,
+		bodyIdA: number,
+		bodyIdB: number,
+		axA: number,
+		ayA: number,
+		axB: number,
+		ayB: number,
+		length: number,
+		frequencyHz: number,
+		dampingRatio: number,
+	): void;
 	createGearJoint(id: number, jointId1: number, jointId2: number, ratio: number): void;
 	removeJoint(id: number): void;
 	getJoint(id: number): CppJoint | null;

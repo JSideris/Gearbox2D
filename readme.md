@@ -27,7 +27,7 @@ import gearbox from 'gearbox2d';
 
 async function init() {
     await gearbox.init();
-    const world = gearbox.makeWorld();
+    const world = gearbox.createWorld();
     world.setGravity(0, 9.8);
     
     // ... setup world ...

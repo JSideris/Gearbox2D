@@ -7,7 +7,7 @@ Gearbox2D achieve its industry-leading performance by leveraging a hybrid memory
 Unlike standard JavaScript objects, which are managed by a garbage collector, Gearbox2D objects live in a dedicated block of memory called the **WASM Heap**.
 
 ### Manual Allocation
-When you call `world.makeBody()` or `world.createJoint()`, the engine allocates space on the C++ heap. This memory **persists** even if you lose all JavaScript references to the object. 
+When you call `world.createBody()` or `world.createJoint()`, the engine allocates space on the C++ heap. This memory **persists** even if you lose all JavaScript references to the object. 
 
 ### Manual Disposal
 Because WASM cannot see JS references and JS cannot automatically free WASM memory, you must manage the lifecycle of your physics world:

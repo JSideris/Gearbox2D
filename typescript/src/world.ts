@@ -78,11 +78,11 @@ export class World {
 		this.jointsById = {};
 	}
 
-	makeBody(id: number, options: BodyOptions): Body {
+	createBody(id: number, options: BodyOptions): Body {
 		return Body.create(this, id, options);
 	}
 
-	addFixture(bodyId: number, options: FixtureOptions, fixtureId?: number): Fixture {
+	createFixture(bodyId: number, options: FixtureOptions, fixtureId?: number): Fixture {
 		const body = this.bodiesById[bodyId];
 		if (!body) throw new Error(`Body with id ${bodyId} not found`);
 		return Fixture.create(body, options, fixtureId);

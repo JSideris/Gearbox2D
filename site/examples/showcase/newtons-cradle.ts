@@ -31,13 +31,13 @@ export const newtonsCradleExample = new Example({
 			const ballId = 2000 + i;
 
 			// Create anchor (static body)
-			const anchor = world.makeBody(anchorId, {
+			const anchor = world.createBody(anchorId, {
 				x: x,
 				y: startY,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#555",
 			});
-			anchor.addFixture(anchorId, {
+			anchor.createFixture(anchorId, {
 				shape: gearbox.shapes.BOX,
 				width: 0.2,
 				height: 0.2,
@@ -49,7 +49,7 @@ export const newtonsCradleExample = new Example({
 			const ballX = i === 0 ? x - 3 : x;
 			const ballY = i === 0 ? startY + Math.sqrt(length * length - 3 * 3) : startY + length;
 
-			const ball = world.makeBody(ballId, {
+			const ball = world.createBody(ballId, {
 				x: ballX,
 				y: ballY,
 				mass: 1.0,
@@ -58,7 +58,7 @@ export const newtonsCradleExample = new Example({
 				angularDamping: 0.0,
 			});
 
-			ball.addFixture(ballId, {
+			ball.createFixture(ballId, {
 				shape: gearbox.shapes.CIRCLE,
 				radius: radius,
 				restitution: 1.0,

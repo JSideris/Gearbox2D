@@ -6,7 +6,7 @@ Understanding these three fundamental concepts will help you build stable and pr
 The `World` is the heart of your simulation. It is the container for all bodys, joints, and global settings like gravity.
 
 ```javascript
-const world = gearbox.makeWorld();
+const world = gearbox.createWorld();
 world.setGravity(0, 9.8); // Set gravity to 9.8 m/s² downwards
 ```
 

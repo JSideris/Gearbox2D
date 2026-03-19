@@ -38,13 +38,13 @@ export const gnomeOmegaExample = new Example({
 
 		// Stationary center of the rotation
 		const hubAnchorId = nextId++;
-		const hubAnchor = world.makeBody(hubAnchorId, {
+		const hubAnchor = world.createBody(hubAnchorId, {
 			x: cx,
 			y: cy,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#888",
 		});
-		hubAnchor.addFixture(hubAnchorId, {
+		hubAnchor.createFixture(hubAnchorId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.15,
 			categoryBits: CAT_FIXED,
@@ -53,13 +53,13 @@ export const gnomeOmegaExample = new Example({
 
 		// The fixed crank pin (stationary throw)
 		const crankPinId = nextId++;
-		const crankPin = world.makeBody(crankPinId, {
+		const crankPin = world.createBody(crankPinId, {
 			x: cx,
 			y: cy + crankOffset,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
 			color: "#ff4444",
 		});
-		crankPin.addFixture(crankPinId, {
+		crankPin.createFixture(crankPinId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.1,
 			categoryBits: CAT_FIXED,
@@ -68,13 +68,13 @@ export const gnomeOmegaExample = new Example({
 
 		// The rotating hub (crankcase)
 		const engineHubId = nextId++;
-		engineHub = world.makeBody(engineHubId, {
+		engineHub = world.createBody(engineHubId, {
 			x: cx,
 			y: cy,
 			mass: 50.0, // Increased mass for stability
 			color: "#aaa",
 		});
-		engineHub.addFixture(engineHubId, {
+		engineHub.createFixture(engineHubId, {
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.8,
 			categoryBits: CAT_HUB,
@@ -107,14 +107,14 @@ export const gnomeOmegaExample = new Example({
 				const wallY = cy + sin * wallDist + cos * ((side * wallGap) / 2);
 
 				const wallId = nextId++;
-				const wall = world.makeBody(wallId, {
+				const wall = world.createBody(wallId, {
 					x: wallX,
 					y: wallY,
 					r: orientation,
 					mass: 1.0,
 					color: "#bbb",
 				});
-				wall.addFixture(wallId, {
+				wall.createFixture(wallId, {
 					shape: gearbox.shapes.BOX,
 					width: wallWidth,
 					height: wallHeight,
@@ -145,14 +145,14 @@ export const gnomeOmegaExample = new Example({
 			const pistonX = cx + cos * pistonDist;
 			const pistonY = cy + sin * pistonDist;
 			const pistonId = nextId++;
-			const piston = world.makeBody(pistonId, {
+			const piston = world.createBody(pistonId, {
 				x: pistonX,
 				y: pistonY,
 				r: orientation,
 				mass: 0.5,
 				color: "#ddd",
 			});
-			piston.addFixture(pistonId, {
+			piston.createFixture(pistonId, {
 				shape: gearbox.shapes.BOX,
 				width: 0.7,
 				height: 1.0, // Piston width (0.7) is now less than inner gap (0.8)
@@ -169,14 +169,14 @@ export const gnomeOmegaExample = new Example({
 			const rodAngle = Math.atan2(pistonY - (cy + crankOffset), pistonX - cx) - Math.PI / 2;
 
 			const rodId = nextId++;
-			const rod = world.makeBody(rodId, {
+			const rod = world.createBody(rodId, {
 				x: rodX,
 				y: rodY,
 				r: rodAngle,
 				mass: 0.2,
 				color: "#fff",
 			});
-			rod.addFixture(rodId, {
+			rod.createFixture(rodId, {
 				shape: gearbox.shapes.BOX,
 				width: 0.15,
 				height: rodLength,

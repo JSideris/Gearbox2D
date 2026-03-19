@@ -41,13 +41,13 @@ TEST(RegressionTC14Test, TopBoxShouldNotClipThroughBottomBox) {
 	floorOptions.properties["height"] = 1.0f;
 	floorOptions.properties["sFriction"] = 10.0f;
 	floorOptions.properties["kFriction"] = 10.0f;
-	world.makeBody(1, floorOptions);
+	world.createBody(1, floorOptions);
 
 	// 2. Create a stack of 2 boxes
 	// i=0: y = 8.0
 	// i=1: y = 6.9
-	world.makeBody(2, createTC14Options(5.0f, 8.0f, 1.0f));
-	world.makeBody(3, createTC14Options(5.0f, 6.9f, 1.0f));
+	world.createBody(2, createTC14Options(5.0f, 8.0f, 1.0f));
+	world.createBody(3, createTC14Options(5.0f, 6.9f, 1.0f));
 	
 	Body* bottomBox = world.getBody(2);
 	Body* topBox = world.getBody(3);
@@ -102,11 +102,11 @@ TEST(RegressionTC14Test, StackShouldStayAsleepWithoutJitter) {
 	floorOptions.properties["height"] = 1.0f;
 	floorOptions.properties["sFriction"] = 10.0f;
 	floorOptions.properties["kFriction"] = 10.0f;
-	world.makeBody(1, floorOptions);
+	world.createBody(1, floorOptions);
 
 	// 2. Create a stack of 2 boxes
-	world.makeBody(2, createTC14Options(5.0f, 8.0f, 1.0f));
-	world.makeBody(3, createTC14Options(5.0f, 6.9f, 1.0f));
+	world.createBody(2, createTC14Options(5.0f, 8.0f, 1.0f));
+	world.createBody(3, createTC14Options(5.0f, 6.9f, 1.0f));
 	
 	Body* bottomBox = world.getBody(2);
 	Body* topBox = world.getBody(3);

@@ -4,13 +4,13 @@ Understanding the lifecycle of a `Body` is crucial for efficient simulation mana
 
 ## Creation
 
-Bodies are instantiated using the `world.makeBody()` method. You can create a body with an initial shape, or add fixtures later using `body.addFixture()`.
+Bodies are instantiated using the `world.createBody()` method. You can create a body with an initial shape, or add fixtures later using `body.createFixture()`.
 
 ### Atomic Creation
 You can provide an array of fixtures during body creation.
 
 ```typescript
-const obj = world.makeBody(id, {
+const obj = world.createBody(id, {
     x: 10,
     y: 20,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
@@ -25,7 +25,7 @@ const obj = world.makeBody(id, {
 Fixtures can also be added to an existing body.
 
 ```typescript
-const fixture = obj.addFixture({
+const fixture = obj.createFixture({
     shape: gearbox.shapes.BOX,
     width: 2,
     height: 0.5,
@@ -33,7 +33,7 @@ const fixture = obj.addFixture({
 });
 ```
 
-> **Note on Concave Polygons**: When you add a concave polygon fixture, Gearbox2D decomposes it into multiple convex pieces internally. However, `addFixture` will still return a **single proxy Fixture object**. This proxy manages all the internal pieces transparently.
+> **Note on Concave Polygons**: When you add a concave polygon fixture, Gearbox2D decomposes it into multiple convex pieces internally. However, `createFixture` will still return a **single proxy Fixture object**. This proxy manages all the internal pieces transparently.
 
 Upon creation, the engine:
 1. Allocates space in the **Live Data Buffers**.

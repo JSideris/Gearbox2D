@@ -6,7 +6,7 @@ Gearbox2D is designed for high-performance physics, but how you use the engine c
 
 Creating and destroying worlds is an expensive operation that involves allocating memory on the WebAssembly heap.
 
-*   **Tip**: Instead of creating a `new gearbox.makeWorld()` every time you change a level, use `world.clear()`.
+*   **Tip**: Instead of creating a `new gearbox.createWorld()` every time you change a level, use `world.clear()`.
 *   **Benefit**: This reuses the same memory pool and avoids the overhead of WASM memory allocation and fragmentation.
 
 ## 2. Batch State Access

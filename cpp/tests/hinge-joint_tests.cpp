@@ -23,8 +23,8 @@ protected:
 TEST_F(HingeJointTest, JointCreationAndCleanup) {
     int idA = 1, idB = 2, jointId = 100;
     
-    world.makeBody(idA, options);
-    world.makeBody(idB, options);
+    world.createBody(idA, options);
+    world.createBody(idB, options);
     
     world.createHingeJoint(jointId, idA, idB, 1.0f, 0.0f, -1.0f, 0.0f);
     
@@ -40,10 +40,10 @@ TEST_F(HingeJointTest, HingeKeepsBodiesTogether) {
     int idA = 1, idB = 2, jointId = 100;
     
     options.properties["x"] = 0.0f;
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     options.properties["x"] = 2.0f;
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     Body* objA = world.getBody(idA);
     Body* objB = world.getBody(idB);
@@ -74,14 +74,14 @@ TEST_F(HingeJointTest, ReactionForceCalculation) {
     options.properties["x"] = 0.0f;
     options.properties["y"] = 0.0f;
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     // Rigid body at (0, -3) - vertically below idA
     options.properties["x"] = 0.0f;
     options.properties["y"] = -3.0f;
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["mass"] = 1.0f;
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     // Hinge joint at (0, 0) in world space
     // For idA at (0,0), world (0,0) is local (0,0)
@@ -106,12 +106,12 @@ TEST_F(HingeJointTest, UpdateAnchorsAtRuntime) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     // Rigid body at (2, 0)
     options.properties["x"] = 2.0f;
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     // Hinge at (1, 0) in world space
     world.createHingeJoint(jointId, idA, idB, 1.0f, 0.0f, -1.0f, 0.0f);

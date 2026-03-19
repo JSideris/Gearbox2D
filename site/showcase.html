@@ -176,7 +176,7 @@ import gearbox from "gearbox2d";
 let world;
 {{GLOBAL}}
 gearbox.init().then(()=>{
-    world = gearbox.makeWorld();
+    world = gearbox.createWorld();
     
     // Optional:
     gearbox.debug.enableDebugGraphics(document.getElementById("debug-canvas"), world);
@@ -304,7 +304,7 @@ gearbox.init().then(()=>{
 
 			// Initialize the physics engine
 			gearbox.init().then(() => {
-				world = gearbox.makeWorld();
+				world = gearbox.createWorld();
 				gearbox.debug.enableDebugGraphics(canvas, world);
 
 				let lastTime = performance.now();

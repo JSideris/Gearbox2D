@@ -27,16 +27,16 @@ TEST_F(GearJointTest, GearRatioConstraint) {
     
     // Static body to anchor both hinges
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idStatic, options);
+    world.createBody(idStatic, options);
     
     // First gear body
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["x"] = 1.0f;
-    world.makeBody(id1, options);
+    world.createBody(id1, options);
     
     // Second gear body
     options.properties["x"] = -1.0f;
-    world.makeBody(id2, options);
+    world.createBody(id2, options);
     
     // Hinge for first gear
     world.createHingeJoint(hinge1Id, idStatic, id1, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -69,10 +69,10 @@ TEST_F(GearJointTest, GearCleanup) {
     int hinge1Id = 101, hinge2Id = 102, gearId = 200;
     
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idStatic, options);
+    world.createBody(idStatic, options);
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    world.makeBody(id1, options);
-    world.makeBody(id2, options);
+    world.createBody(id1, options);
+    world.createBody(id2, options);
     
     world.createHingeJoint(hinge1Id, idStatic, id1, 0.0f, 0.0f, 0.0f, 0.0f);
     world.createHingeJoint(hinge2Id, idStatic, id2, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -99,16 +99,16 @@ TEST_F(GearJointTest, UpdateRatioAtRuntime) {
     
     // Static body to anchor both hinges
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idStatic, options);
+    world.createBody(idStatic, options);
     
     // First gear body
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["x"] = 1.0f;
-    world.makeBody(id1, options);
+    world.createBody(id1, options);
     
     // Second gear body
     options.properties["x"] = -1.0f;
-    world.makeBody(id2, options);
+    world.createBody(id2, options);
     
     // Hinge for first gear
     world.createHingeJoint(hinge1Id, idStatic, id1, 1.0f, 0.0f, 0.0f, 0.0f);

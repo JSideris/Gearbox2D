@@ -14,7 +14,7 @@ In Gearbox2D, geometry is defined using **Fixtures**. A single **Body** can have
 A zero-radius marker. Points are useful for simple particles or as anchors. They have very low mass and can collide with other shapes, but do not collide with other points.
 
 ```typescript
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.POINT
 });
 ```
@@ -24,7 +24,7 @@ body.addFixture({
 An optimized circular shape defined by a radius. Circles are the most computationally efficient shape for collision detection.
 
 ```typescript
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 0.5
 });
@@ -35,7 +35,7 @@ body.addFixture({
 An Axis-Aligned Bounding Box. It is defined by a `width` and `height`. Unlike other shapes, an AABB **does not rotate** even if the parent body rotates. It always remains aligned with the world axes.
 
 ```typescript
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.AABB,
     width: 2.0,
     height: 1.0
@@ -47,7 +47,7 @@ body.addFixture({
 An Oriented Bounding Box (OBB). Like an AABB, it is defined by `width` and `height`, but it **rotates with the body**.
 
 ```typescript
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.BOX,
     width: 2.0,
     height: 1.0
@@ -59,7 +59,7 @@ body.addFixture({
 A pill-shaped geometry defined by a `radius` and a `height`. The total height includes the hemispherical caps at both ends. Capsules are excellent for character controllers as they slide smoothly over edges.
 
 ```typescript
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.CAPSULE,
     radius: 0.25,
     height: 1.5
@@ -71,7 +71,7 @@ body.addFixture({
 A polygon defined by an array of vertices. Gearbox2D supports both **convex** and **concave** polygons.
 
 ```typescript
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.POLYGON,
     vertices: [
         { x: -0.5, y: 0.5 },
@@ -97,7 +97,7 @@ Generates vertices for an equilateral shape with N sides.
 // Create a hexagon
 const hexVertices = gearbox.polygon.makeRegularPolygon(6, 0.5);
 
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.POLYGON,
     vertices: hexVertices
 });
@@ -110,7 +110,7 @@ Generates vertices for a star shape. Stars are concave and will be automatically
 // Create a 5-pointed star
 const starVertices = gearbox.polygon.makeStar(5, 0.5, 0.2);
 
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.POLYGON,
     vertices: starVertices
 });

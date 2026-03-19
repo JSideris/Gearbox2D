@@ -31,7 +31,7 @@ World::~World() {
     clear();
 }
 
-int World::makeBody(int id, emscripten_val options) {
+int World::createBody(int id, emscripten_val options) {
     auto* body = new Body(*this, id, options);
     body->worldIndex = bodiesList.size();
     bodiesMap[id] = body;
@@ -42,20 +42,20 @@ int World::makeBody(int id, emscripten_val options) {
         emscripten_val fixtures = options["fixtures"];
         int length = fixtures["length"].as<int>();
         for (int i = 0; i < length; ++i) {
-            addFixture(id, 0, fixtures[i], true);
+            createFixture(id, 0, fixtures[i], true);
         }
     }
 
     // Only create an initial fixture if shape is specified (legacy/single fixture support)
     if (!options["shape"].isUndefined()) {
         int fId = (!options["fixtureId"].isUndefined()) ? options["fixtureId"].as<int>() : nextFixtureId++;
-        addFixture(id, fId, options, true);
+        createFixture(id, fId, options, true);
     }
 
     return body->worldIndex;
 }
 
-int World::addFixture(int bodyId, int fixtureId, emscripten_val options, bool recomputeMass) {
+int World::createFixture(int bodyId, int fixtureId, emscripten_val options, bool recomputeMass) {
     auto it = bodiesMap.find(bodyId);
     if (it == bodiesMap.end()) return -1;
     Body* body = it->second;

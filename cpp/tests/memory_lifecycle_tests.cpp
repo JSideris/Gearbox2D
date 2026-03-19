@@ -22,14 +22,14 @@ TEST(MemoryLifecycleTest, GearJointDanglingPointerOnHingeRemoval) {
     emscripten_val options = createSimpleOptions(0, 0);
     
     // Setup a GearJoint
-    world.makeBody(1, options); // Static base
+    world.createBody(1, options); // Static base
     world.getBody(1)->setMass(0); // Make it static
     
     options.properties["x"] = 1.0f;
-    world.makeBody(2, options);
+    world.createBody(2, options);
     
     options.properties["x"] = -1.0f;
-    world.makeBody(3, options);
+    world.createBody(3, options);
     
     world.createHingeJoint(101, 1, 2, 1, 0, 0, 0);
     world.createHingeJoint(102, 1, 3, -1, 0, 0, 0);
@@ -52,9 +52,9 @@ TEST(MemoryLifecycleTest, StaleContactStateAfterClear) {
     emscripten_val options = createSimpleOptions(0, 0);
     
     // 1. Create two colliding bodies
-    world.makeBody(1, options);
+    world.createBody(1, options);
     options.properties["x"] = 0.1f;
-    world.makeBody(2, options);
+    world.createBody(2, options);
     
     world.step();
     
@@ -62,8 +62,8 @@ TEST(MemoryLifecycleTest, StaleContactStateAfterClear) {
     world.clear();
     
     // 3. Create two NEW bodies with same IDs but NOT colliding
-    world.makeBody(1, createSimpleOptions(10, 10));
-    world.makeBody(2, createSimpleOptions(20, 20));
+    world.createBody(1, createSimpleOptions(10, 10));
+    world.createBody(2, createSimpleOptions(20, 20));
     
     // We expect 0 events. If stale state exists, it might emit COLLISION_END
     EXPECT_EQ(world.getEventCount(), 0);
@@ -78,8 +78,8 @@ TEST(MemoryLifecycleTest, IDReuseMemorySafety) {
     World world;
     
     for (int i = 0; i < 5; ++i) {
-        world.makeBody(1, createSimpleOptions(0, 0));
-        world.makeBody(2, createSimpleOptions(0.1f, 0));
+        world.createBody(1, createSimpleOptions(0, 0));
+        world.createBody(2, createSimpleOptions(0.1f, 0));
         world.step();
         world.clear();
     }

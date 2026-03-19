@@ -23,26 +23,26 @@ export const constraintsExamples = [
 		onInit: (world) => {
 			nextId = 1;
 			const anchorId = nextId++;
-			const anchor = world.makeBody(anchorId, {
+			const anchor = world.createBody(anchorId, {
 				x: 5,
 				y: 3,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#ff4444",
 			});
-			anchor.addFixture({
+			anchor.createFixture({
 				shape: gearbox.shapes.BOX,
 				width: 1,
 				height: 1,
 			});
 
 			const pendulumId = nextId++;
-			const pendulum = world.makeBody(pendulumId, {
+			const pendulum = world.createBody(pendulumId, {
 				x: 8,
 				y: 3,
 				mass: 0.1,
 				color: "#44ff44",
 			});
-			pendulum.addFixture({
+			pendulum.createFixture({
 				shape: gearbox.shapes.BOX,
 				width: 4,
 				height: 0.5,
@@ -78,25 +78,25 @@ export const constraintsExamples = [
 
 			// 1. Suspension System (higher up and smaller)
 			const anchorId = nextId++;
-			const anchor = world.makeBody(anchorId, {
+			const anchor = world.createBody(anchorId, {
 				x: 5,
 				y: 1,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#ff4444",
 			});
-			anchor.addFixture({
+			anchor.createFixture({
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.2,
 			});
 
 			const massObjectId = nextId++;
-			massObject = world.makeBody(massObjectId, {
+			massObject = world.createBody(massObjectId, {
 				x: 5,
 				y: 2.3,
 				mass: 0.05,
 				color: "#888888",
 			});
-			massObject.addFixture(massObjectId, {
+			massObject.createFixture(massObjectId, {
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.6,
 			});
@@ -114,26 +114,26 @@ export const constraintsExamples = [
 			const segmentHeight = 0.2;
 
 			const bridgeAnchorLeftId = nextId++;
-			const bridgeAnchorLeft = world.makeBody(bridgeAnchorLeftId, {
+			const bridgeAnchorLeft = world.createBody(bridgeAnchorLeftId, {
 				x: startX - segmentWidth / 2,
 				y: bridgeY,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#aaaaaa",
 			});
-			bridgeAnchorLeft.addFixture({
+			bridgeAnchorLeft.createFixture({
 				shape: gearbox.shapes.BOX,
 				width: segmentWidth,
 				height: 0.5,
 			});
 
 			const bridgeAnchorRightId = nextId++;
-			const bridgeAnchorRight = world.makeBody(bridgeAnchorRightId, {
+			const bridgeAnchorRight = world.createBody(bridgeAnchorRightId, {
 				x: endX + segmentWidth / 2,
 				y: bridgeY,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#aaaaaa",
 			});
-			bridgeAnchorRight.addFixture({
+			bridgeAnchorRight.createFixture({
 				shape: gearbox.shapes.BOX,
 				width: segmentWidth,
 				height: 0.5,
@@ -142,13 +142,13 @@ export const constraintsExamples = [
 			let prevBody = bridgeAnchorLeft;
 			for (let i = 0; i < segments; i++) {
 				const segmentBodyId = nextId++;
-				const segmentBody = world.makeBody(segmentBodyId, {
+				const segmentBody = world.createBody(segmentBodyId, {
 					x: startX + i * segmentWidth + segmentWidth / 2,
 					y: bridgeY,
 					mass: 0.2, // Slightly heavier for stability
 					color: "#cd853f",
 				});
-				segmentBody.addFixture({
+				segmentBody.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: segmentWidth * 0.9,
 					height: segmentHeight,
@@ -229,13 +229,13 @@ export const constraintsExamples = [
 			const spacing = 1.5;
 
 			const staticBodyId = nextId++;
-			const staticBody = world.makeBody(staticBodyId, {
+			const staticBody = world.createBody(staticBodyId, {
 				x: 5,
 				y: 5,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#888",
 			});
-			staticBody.addFixture({
+			staticBody.createFixture({
 				shape: gearbox.shapes.AABB,
 				width: 6.2,
 				height: 0.2,
@@ -248,13 +248,13 @@ export const constraintsExamples = [
 			for (let i = 0; i < numGears; i++) {
 				const size = i % 2 === 0 ? 1.0 : 0.5;
 				const gearId = nextId++;
-				const gear = world.makeBody(gearId, {
+				const gear = world.createBody(gearId, {
 					x: startX + i * spacing,
 					y: y,
 					mass: size,
 					color: `hsl(${i * 60}, 70%, 60%)`,
 				});
-				gear.addFixture({
+				gear.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: size,
 				});
@@ -302,27 +302,27 @@ export const constraintsExamples = [
 
 			// The Drum Hub (fixed rotation center)
 			const hubId = nextId++;
-			const hub = world.makeBody(hubId, {
+			const hub = world.createBody(hubId, {
 				x: cx,
 				y: cy,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#ff4444",
 			});
-			hub.addFixture({
+			hub.createFixture({
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.5,
 			});
 
 			// The rotating drum (structure only)
 			const drumId = nextId++;
-			drum = world.makeBody(drumId, {
+			drum = world.createBody(drumId, {
 				x: cx,
 				y: cy,
 				mass: 100,
 				color: "rgba(255, 255, 255, 0.05)",
 				angularDamping: 0.5, // Add some damping to stabilize
 			});
-			drum.addFixture(drumId, {
+			drum.createFixture(drumId, {
 				shape: gearbox.shapes.CIRCLE,
 				radius: drumRadius,
 				maskBits: 0,
@@ -353,13 +353,13 @@ export const constraintsExamples = [
 				const shape1X = pinX - Math.cos(angle) * 0.5;
 				const shape1Y = pinY - Math.sin(angle) * 0.5;
 				const shape1Id = nextId++;
-				const shape1 = world.makeBody(shape1Id, {
+				const shape1 = world.createBody(shape1Id, {
 					x: shape1X,
 					y: shape1Y,
 					mass: 0.5,
 					color: `hsl(${(i * 360) / numChains}, 70%, 60%)`,
 				});
-				shape1.addFixture({
+				shape1.createFixture({
 					shape: i % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
 					width: 0.5,
 					height: 0.5,
@@ -378,13 +378,13 @@ export const constraintsExamples = [
 				const shape2X = shape1X - Math.cos(angle) * linkDist;
 				const shape2Y = shape1Y - Math.sin(angle) * linkDist;
 				const shape2Id = nextId++;
-				const shape2 = world.makeBody(shape2Id, {
+				const shape2 = world.createBody(shape2Id, {
 					x: shape2X,
 					y: shape2Y,
 					mass: 0.5,
 					color: `hsl(${(i * 360) / numChains}, 70%, 50%)`,
 				});
-				shape2.addFixture({
+				shape2.createFixture({
 					shape: (i + 1) % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
 					width: 0.5,
 					height: 0.5,
@@ -402,13 +402,13 @@ export const constraintsExamples = [
 				const shape3X = shape2X - Math.cos(angle) * linkDist;
 				const shape3Y = shape2Y - Math.sin(angle) * linkDist;
 				const shape3Id = nextId++;
-				const shape3 = world.makeBody(shape3Id, {
+				const shape3 = world.createBody(shape3Id, {
 					x: shape3X,
 					y: shape3Y,
 					mass: 0.5,
 					color: `hsl(${(i * 360) / numChains}, 70%, 40%)`,
 				});
-				shape3.addFixture({
+				shape3.createFixture({
 					shape: (i + 2) % 2 === 0 ? gearbox.shapes.BOX : gearbox.shapes.CIRCLE,
 					width: 0.5,
 					height: 0.5,
@@ -479,13 +479,13 @@ export const constraintsExamples = [
 
 			// Hub (fixed center)
 			const hubId = nextId++;
-			const hub = world.makeBody(hubId, {
+			const hub = world.createBody(hubId, {
 				x: cx,
 				y: cy,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "#666666",
 			});
-			hub.addFixture({
+			hub.createFixture({
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.1,
 				maskBits: 0,
@@ -493,7 +493,7 @@ export const constraintsExamples = [
 
 			// Central rotating body (Pulley)
 			const rotatorId = nextId++;
-			rotator = world.makeBody(rotatorId, {
+			rotator = world.createBody(rotatorId, {
 				x: cx,
 				y: cy,
 				rs: 2.5,
@@ -502,7 +502,7 @@ export const constraintsExamples = [
 				color: "#888888",
 				angularDamping: 0.1,
 			});
-			rotator.addFixture(rotatorId, {
+			rotator.createFixture(rotatorId, {
 				shape: gearbox.shapes.CIRCLE,
 				radius: innerRadius,
 				sFriction: 1.0,
@@ -521,7 +521,7 @@ export const constraintsExamples = [
 				const sy = cy + Math.sin(angle) * outerRadius;
 
 				const shapeId = nextId++;
-				const body = world.makeBody(shapeId, {
+				const body = world.createBody(shapeId, {
 					x: sx,
 					y: sy,
 					mass: 0.1,
@@ -533,7 +533,7 @@ export const constraintsExamples = [
 				else if (i % 3 === 1) sType = gearbox.shapes.CIRCLE;
 				else sType = gearbox.shapes.CAPSULE;
 
-				body.addFixture({
+				body.createFixture({
 					shape: sType,
 					width: 0.6,
 					height: sType === gearbox.shapes.CAPSULE ? 1.0 : 0.6,
@@ -595,13 +595,13 @@ export const constraintsExamples = [
 
 			// Center point (Axel)
 			const centerId = nextId++;
-			const center = world.makeBody(centerId, {
+			const center = world.createBody(centerId, {
 				x: cx,
 				y: cy,
 				mass: 2.0, // Heavier axel for more stability
 				color: "#ff8888",
 			});
-			center.addFixture({
+			center.createFixture({
 				shape: gearbox.shapes.CIRCLE,
 				radius: axelRadius,
 				sFriction: 0.9,
@@ -618,13 +618,13 @@ export const constraintsExamples = [
 				const py = cy + Math.sin(angle) * radius;
 
 				const pId = nextId++;
-				const p = world.makeBody(pId, {
+				const p = world.createBody(pId, {
 					x: px,
 					y: py,
 					mass: 0.5,
 					color: "#8888ff",
 				});
-				p.addFixture({
+				p.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.2,
 					sFriction: 0.9,
@@ -660,13 +660,13 @@ export const constraintsExamples = [
 			// Ground - made wider to accommodate movement
 			const groundId = nextId++;
 			world
-				.makeBody(groundId, {
+				.createBody(groundId, {
 					x: 5,
 					y: 10,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#aaaaaa",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 15,
 					height: 2,
@@ -677,26 +677,26 @@ export const constraintsExamples = [
 			// Barriers to keep the ball from rolling off - taller and thicker
 			const barrier1Id = nextId++;
 			world
-				.makeBody(barrier1Id, {
+				.createBody(barrier1Id, {
 					x: -3.5,
 					y: 4.25,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#aaaaaa",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 2.0,
 					height: 10,
 				});
 			const barrier2Id = nextId++;
 			world
-				.makeBody(barrier2Id, {
+				.createBody(barrier2Id, {
 					x: 13.5,
 					y: 4.25,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#aaaaaa",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 2.0,
 					height: 10,

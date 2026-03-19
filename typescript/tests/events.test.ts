@@ -20,7 +20,7 @@ const createMockCppWorld = () => {
 	const eventData = new Float32Array(100);
 
 	return {
-		makeBody: jest.fn((id, options) => {
+		createBody: jest.fn((id, options) => {
 			// Minimal mock implementation
 			liveBodyIntData[0 * BODY_SIZE_I + 0] = id; // ID
 			if (options.wantsEvents) {
@@ -28,7 +28,7 @@ const createMockCppWorld = () => {
 			}
 			return 0; // index
 		}),
-		addFixture: jest.fn((bodyId, fixtureId, options) => {
+		createFixture: jest.fn((bodyId, fixtureId, options) => {
 			const fIndex = 0;
 			liveFixtureIntData[fIndex * FIXTURE_SIZE_I + 0] = fixtureId || 999;
 			if (options.wantsEvents) {
@@ -57,15 +57,15 @@ describe("TypeScript Event Opt-in Support", () => {
 	});
 
 	describe("Body Event Opt-in", () => {
-		it("should correctly initialize wantsEvents from options in makeBody", () => {
-			const body = world.makeBody(1, { wantsEvents: true });
+		it("should correctly initialize wantsEvents from options in createBody", () => {
+			const body = world.createBody(1, { wantsEvents: true });
 			expect(body.wantsEvents).toBe(true);
 			const flags = world.liveBodyIntData[body.index * BODY_SIZE_I + BODY_FLAGS_OFFSET];
 			expect(flags & WANTS_EVENTS).toBe(WANTS_EVENTS);
 		});
 
 		it("should correctly toggle wantsEvents at runtime on Body", () => {
-			const body = world.makeBody(1, { wantsEvents: false });
+			const body = world.createBody(1, { wantsEvents: false });
 			expect(body.wantsEvents).toBe(false);
 
 			body.wantsEvents = true;
@@ -81,9 +81,9 @@ describe("TypeScript Event Opt-in Support", () => {
 	});
 
 	describe("Fixture Event Opt-in", () => {
-		it("should correctly initialize wantsEvents from options in addFixture", () => {
-			const body = world.makeBody(1, {});
-			const fixture = world.addFixture(body.id, { shape: SHAPES.CIRCLE, radius: 1, wantsEvents: true });
+		it("should correctly initialize wantsEvents from options in createFixture", () => {
+			const body = world.createBody(1, {});
+			const fixture = world.createFixture(body.id, { shape: SHAPES.CIRCLE, radius: 1, wantsEvents: true });
 
 			expect(fixture.wantsEvents).toBe(true);
 			const flags = world.liveFixtureIntData[fixture.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET];
@@ -91,8 +91,8 @@ describe("TypeScript Event Opt-in Support", () => {
 		});
 
 		it("should correctly toggle wantsEvents at runtime on Fixture", () => {
-			const body = world.makeBody(1, {});
-			const fixture = world.addFixture(body.id, { shape: SHAPES.CIRCLE, radius: 1, wantsEvents: false });
+			const body = world.createBody(1, {});
+			const fixture = world.createFixture(body.id, { shape: SHAPES.CIRCLE, radius: 1, wantsEvents: false });
 
 			expect(fixture.wantsEvents).toBe(false);
 

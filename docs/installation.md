@@ -20,7 +20,7 @@ async function startPhysics() {
     await gearbox.init();
 
     // 2. Create your physics world
-    const world = gearbox.makeWorld();
+    const world = gearbox.createWorld();
     
     // ... setup simulation ...
 }
@@ -44,7 +44,7 @@ For simple projects, prototyping, or environments without a build step, use the 
     await gearbox.init();
     
     // 3. Create your physics world
-    const world = gearbox.makeWorld();
+    const world = gearbox.createWorld();
     console.log("Physics World Created:", world);
   }
 

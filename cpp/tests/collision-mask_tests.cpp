@@ -24,9 +24,9 @@ TEST(CollisionMaskTest, NoCollisionBetweenDifferentMasks) {
     
     // Two overlapping circles with incompatible bitmasks
     // Category 1, Mask 2 (collides with 2)
-    world.makeBody(1, createMaskOptions(0.0f, 0.0f, 0x1, 0x2));
+    world.createBody(1, createMaskOptions(0.0f, 0.0f, 0x1, 0x2));
     // Category 1, Mask 1 (collides with 1)
-    world.makeBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
+    world.createBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
     
     world.step();
     
@@ -48,9 +48,9 @@ TEST(CollisionMaskTest, CollisionBetweenCompatibleMasks) {
     
     // Two overlapping circles with compatible bitmasks
     // Category 1, Mask 1
-    world.makeBody(1, createMaskOptions(0.0f, 0.0f, 0x1, 0x1));
+    world.createBody(1, createMaskOptions(0.0f, 0.0f, 0x1, 0x1));
     // Category 1, Mask 1
-    world.makeBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
+    world.createBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
     
     world.step();
     
@@ -66,8 +66,8 @@ TEST(CollisionMaskTest, RuntimeUpdateMasks) {
     world.setGravity(0.0f, 0.0f);
     
     // Initially compatible
-    world.makeBody(1, createMaskOptions(0.0f, 0.0f, 0x1, 0x1));
-    world.makeBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
+    world.createBody(1, createMaskOptions(0.0f, 0.0f, 0x1, 0x1));
+    world.createBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
     
     world.step();
     EXPECT_TRUE(world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & HAS_PHYSICAL_COLLISION);

@@ -28,13 +28,13 @@ const onMouseDown = (e: MouseEvent, world: any) => {
 
 		if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
 			// Create a temporary mouse anchor
-			mouseAnchor = world.makeBody(999999, {
+			mouseAnchor = world.createBody(999999, {
 				x: pos.x,
 				y: pos.y,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "transparent",
 			});
-			mouseAnchor.addFixture(999999, {
+			mouseAnchor.createFixture(999999, {
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.05,
 				maskBits: 0,
@@ -105,13 +105,13 @@ export const generalExamples = [
 
 			// Floor
 			world
-				.makeBody(nextId++, {
+				.createBody(nextId++, {
 					x: 5,
 					y: 9.0 + thickness / 2,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#444",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: boundaryWidth,
 					height: thickness,
@@ -119,13 +119,13 @@ export const generalExamples = [
 
 			// Roof
 			world
-				.makeBody(nextId++, {
+				.createBody(nextId++, {
 					x: 5,
 					y: 0.0 - thickness / 2,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#444",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: boundaryWidth,
 					height: thickness,
@@ -133,25 +133,25 @@ export const generalExamples = [
 
 			// Walls
 			world
-				.makeBody(nextId++, {
+				.createBody(nextId++, {
 					x: 5 - innerWidth / 2 - thickness / 2,
 					y: 4.5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#444",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: thickness,
 					height: wallHeight,
 				});
 			world
-				.makeBody(nextId++, {
+				.createBody(nextId++, {
 					x: 5 + innerWidth / 2 + thickness / 2,
 					y: 4.5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#444",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: thickness,
 					height: wallHeight,
@@ -195,22 +195,22 @@ export const generalExamples = [
 					if (rand < 0.25) {
 						// Circle
 						world
-							.makeBody(nextId++, {
+							.createBody(nextId++, {
 								...commonProps,
 								r: Math.random() * Math.PI,
 							})
-							.addFixture({
+							.createFixture({
 								shape: gearbox.shapes.CIRCLE,
 								radius: 0.1 + Math.random() * 0.3,
 							});
 					} else if (rand < 0.5) {
 						// Box
 						world
-							.makeBody(nextId++, {
+							.createBody(nextId++, {
 								...commonProps,
 								r: Math.random() * Math.PI,
 							})
-							.addFixture({
+							.createFixture({
 								shape: gearbox.shapes.BOX,
 								width: 0.2 + Math.random() * 0.6,
 								height: 0.2 + Math.random() * 0.6,
@@ -219,11 +219,11 @@ export const generalExamples = [
 						// Capsule
 						const capRadius = 0.1 + Math.random() * 0.1;
 						world
-							.makeBody(nextId++, {
+							.createBody(nextId++, {
 								...commonProps,
 								r: Math.random() * Math.PI,
 							})
-							.addFixture({
+							.createFixture({
 								shape: gearbox.shapes.CAPSULE,
 								radius: capRadius,
 								height: capRadius * 2 + 0.2 + Math.random() * 0.4,
@@ -253,11 +253,11 @@ export const generalExamples = [
 						}
 
 						world
-							.makeBody(nextId++, {
+							.createBody(nextId++, {
 								...commonProps,
 								r: Math.random() * Math.PI,
 							})
-							.addFixture({
+							.createFixture({
 								shape: gearbox.shapes.POLYGON,
 								vertices: vertices,
 							});
@@ -271,7 +271,7 @@ export const generalExamples = [
 				const y = 5.5 + Math.random() * 1.5;
 				const color = colors[Math.floor(Math.random() * colors.length)];
 
-				const body = world.makeBody(nextId++, {
+				const body = world.createBody(nextId++, {
 					x,
 					y,
 					mass: 1.0 + Math.random() * 3.0,
@@ -287,14 +287,14 @@ export const generalExamples = [
 					const offsetY = (Math.random() - 0.5) * 1.2;
 
 					if (shapeType < 0.4) {
-						body.addFixture({
+						body.createFixture({
 							shape: gearbox.shapes.CIRCLE,
 							radius: 0.1 + Math.random() * 0.25,
 							localX: offsetX,
 							localY: offsetY,
 						});
 					} else {
-						body.addFixture({
+						body.createFixture({
 							shape: gearbox.shapes.BOX,
 							width: 0.2 + Math.random() * 0.5,
 							height: 0.2 + Math.random() * 0.5,
@@ -314,7 +314,7 @@ export const generalExamples = [
 				const jType = jointTypes[Math.floor(Math.random() * jointTypes.length)];
 				const color = colors[Math.floor(Math.random() * colors.length)];
 
-				const b1 = world.makeBody(nextId++, {
+				const b1 = world.createBody(nextId++, {
 					x,
 					y,
 					mass: 0.5 + Math.random(),
@@ -324,15 +324,15 @@ export const generalExamples = [
 				});
 
 				const s1 = Math.random();
-				if (s1 < 0.5) b1.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.15 + Math.random() * 0.2 });
+				if (s1 < 0.5) b1.createFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.15 + Math.random() * 0.2 });
 				else
-					b1.addFixture({
+					b1.createFixture({
 						shape: gearbox.shapes.BOX,
 						width: 0.3 + Math.random() * 0.4,
 						height: 0.3 + Math.random() * 0.4,
 					});
 
-				const b2 = world.makeBody(nextId++, {
+				const b2 = world.createBody(nextId++, {
 					x: x + 0.5 + Math.random() * 0.5,
 					y: y + (Math.random() - 0.5) * 0.5,
 					mass: 0.5 + Math.random(),
@@ -342,9 +342,9 @@ export const generalExamples = [
 				});
 
 				const s2 = Math.random();
-				if (s2 < 0.5) b2.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.15 + Math.random() * 0.2 });
+				if (s2 < 0.5) b2.createFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.15 + Math.random() * 0.2 });
 				else
-					b2.addFixture({
+					b2.createFixture({
 						shape: gearbox.shapes.BOX,
 						width: 0.3 + Math.random() * 0.4,
 						height: 0.3 + Math.random() * 0.4,
@@ -431,7 +431,7 @@ export const generalExamples = [
 		onInit: (world) => {
 			// This small circle will orbit the bigger one.
 			world
-				.makeBody(1, {
+				.createBody(1, {
 					x: 5.0,
 					y: 2.5,
 					vx: 5.0,
@@ -441,14 +441,14 @@ export const generalExamples = [
 					angularDamping: 0.0,
 					linearDamping: 0.0, // Set to 0 to prevent the orbit from slowing down.
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.3,
 				});
 
 			// For decoration, let's add a shape in the middle.
 			world
-				.makeBody(2, {
+				.createBody(2, {
 					x: 5.0,
 					y: 5.0,
 					r: (Math.PI / 2) * Math.random(),
@@ -456,7 +456,7 @@ export const generalExamples = [
 					type: gearbox.bodyTypes.KINEMATIC_OBJECT, // Use Kinematic for moving sensor decoration
 					angularDamping: 0.0,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 1.0,
 					isSensor: true,
@@ -502,41 +502,41 @@ export const generalExamples = [
 		onInit: (world) => {
 			// Linear impulse targets
 			world
-				.makeBody(1, {
+				.createBody(1, {
 					x: 2.5,
 					y: 5.0,
 					r: (Math.PI / 2) * Math.random(),
 					mass: 1,
 					linearDamping: 0.1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.3,
 				});
 
 			world
-				.makeBody(2, {
+				.createBody(2, {
 					x: 5.0,
 					y: 5.0,
 					r: (Math.PI / 2) * Math.random(),
 					mass: 2,
 					linearDamping: 0.02,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.6,
 				});
 
 			// Angular impulse target
 			world
-				.makeBody(3, {
+				.createBody(3, {
 					x: 7.5,
 					y: 5.0,
 					mass: 100,
 					linearDamping: 0.05,
 					angularDamping: 0.05,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1.0,
 					height: 0.3,
@@ -586,48 +586,48 @@ export const generalExamples = [
 
 			// Walls
 			world
-				.makeBody(1, {
+				.createBody(1, {
 					x: 5,
 					y: 0,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 11,
 					height: 2,
 					restitution: 1.0,
 				});
 			world
-				.makeBody(2, {
+				.createBody(2, {
 					x: 5,
 					y: 10,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 11,
 					height: 2,
 					restitution: 1.0,
 				});
 			world
-				.makeBody(3, {
+				.createBody(3, {
 					x: 0,
 					y: 5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 2,
 					height: 11,
 					restitution: 1.0,
 				});
 			world
-				.makeBody(4, {
+				.createBody(4, {
 					x: 10,
 					y: 5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 2,
 					height: 11,
@@ -636,7 +636,7 @@ export const generalExamples = [
 
 			// Bouncy Ball
 			world
-				.makeBody(5, {
+				.createBody(5, {
 					x: 5,
 					y: 2,
 					vx: (Math.random() < 0.5 ? -1 : 1) * (1.5 + Math.random() * 1.5),
@@ -646,7 +646,7 @@ export const generalExamples = [
 					linearDamping: 0.0,
 					rs: -2 + Math.random() * 4,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.75,
 					// The most important part. 100% bouncy.
@@ -712,7 +712,7 @@ export const generalExamples = [
 				}
 
 				const bodyId = nextId++;
-				const body = world.makeBody(bodyId, {
+				const body = world.createBody(bodyId, {
 					x: 5.0 - dir * 5.0,
 					y: 7.5,
 					r: (Math.PI / 2) * Math.random(),
@@ -739,12 +739,12 @@ export const generalExamples = [
 						polyVertices = gearbox.polygon.makeStar(points, polyRadius, polyRadius * 0.5);
 					}
 
-					body.addFixture({
+					body.createFixture({
 						shape: shape,
 						vertices: polyVertices,
 					});
 				} else {
-					body.addFixture({
+					body.createFixture({
 						shape: shape,
 						radius: shape === gearbox.shapes.BOX || shape === gearbox.shapes.AABB ? w : r,
 						height:
@@ -801,13 +801,13 @@ export const generalExamples = [
 			// Platforms.
 			for (; id <= 3; id++) {
 				world
-					.makeBody(id, {
+					.createBody(id, {
 						x: 4.5,
 						y: 2.5 * id - 0.5,
 						type: gearbox.bodyTypes.FIXED_OBJECT,
 						mass: 1,
 					})
-					.addFixture({
+					.createFixture({
 						shape: gearbox.shapes.AABB,
 						width: 9.0,
 						height: 1,
@@ -826,14 +826,14 @@ export const generalExamples = [
 			// One more (tilted) platform for static friction.
 			const tiltedPlatformId = id++;
 			world
-				.makeBody(tiltedPlatformId, {
+				.createBody(tiltedPlatformId, {
 					x: 4.5,
 					y: 9.7,
 					r: 0.1,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 9.0,
 					height: 1,
@@ -851,7 +851,7 @@ export const generalExamples = [
 			// Linear to angular rolling object.
 			const rollingObj1Id = id++;
 			world
-				.makeBody(rollingObj1Id, {
+				.createBody(rollingObj1Id, {
 					x: 0,
 					y: 1.0,
 					vx: 5,
@@ -859,7 +859,7 @@ export const generalExamples = [
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.5,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.5,
 					kFriction: 0.8,
@@ -876,14 +876,14 @@ export const generalExamples = [
 			// Angular to linear rolling object.
 			const rollingObj2Id = id++;
 			world
-				.makeBody(rollingObj2Id, {
+				.createBody(rollingObj2Id, {
 					x: 0.5,
 					y: 3.5,
 					rs: 15,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.5,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.5,
 					kFriction: 0.2,
@@ -900,14 +900,14 @@ export const generalExamples = [
 			// Sliding box slows down.
 			const slidingBoxId = id++;
 			world
-				.makeBody(slidingBoxId, {
+				.createBody(slidingBoxId, {
 					x: 0.5,
 					y: 6,
 					vx: 7,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.5,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -925,14 +925,14 @@ export const generalExamples = [
 			// Sliding box stops due to static friction.
 			const staticBoxId = id++;
 			world
-				.makeBody(staticBoxId, {
+				.createBody(staticBoxId, {
 					x: 0.5,
 					y: 8.0,
 					vx: 0.5,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.5,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 0.5,
@@ -950,14 +950,14 @@ export const generalExamples = [
 			// Another sliding box but with no static friction.
 			const kineticBoxId = id++;
 			world
-				.makeBody(kineticBoxId, {
+				.createBody(kineticBoxId, {
 					x: 1.6,
 					y: 8.0,
 					vx: 0.5,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.5,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 0.5,
@@ -996,13 +996,13 @@ export const generalExamples = [
 			// Blue Platform (Collides with category 1 and 4)
 			const bluePlatId = nextId++;
 			world
-				.makeBody(bluePlatId, {
+				.createBody(bluePlatId, {
 					x: 2.5,
 					y: 8,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#00f2ff",
 				})
-				.addFixture({
+				.createFixture({
 					width: 4,
 					height: 0.5,
 					shape: gearbox.shapes.AABB,
@@ -1019,13 +1019,13 @@ export const generalExamples = [
 			// Red Platform (Collides with category 2 and 4)
 			const redPlatId = nextId++;
 			world
-				.makeBody(redPlatId, {
+				.createBody(redPlatId, {
 					x: 7.5,
 					y: 8,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#ff4444",
 				})
-				.addFixture({
+				.createFixture({
 					width: 4,
 					height: 0.5,
 					shape: gearbox.shapes.AABB,
@@ -1042,13 +1042,13 @@ export const generalExamples = [
 			// Universal Platform (Collides with everything: 0x1 | 0x2 | 0x4)
 			const universalPlatId = nextId++;
 			world
-				.makeBody(universalPlatId, {
+				.createBody(universalPlatId, {
 					x: 5,
 					y: 4,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#44ff44",
 				})
-				.addFixture({
+				.createFixture({
 					width: 2,
 					height: 0.5,
 					shape: gearbox.shapes.AABB,
@@ -1086,14 +1086,14 @@ export const generalExamples = [
 				}
 
 				world
-					.makeBody(id, {
+					.createBody(id, {
 						x: 2 + Math.random() * 6,
 						y: 0,
 						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 						mass: 1,
 						color: color,
 					})
-					.addFixture({
+					.createFixture({
 						radius: 0.3,
 						shape: gearbox.shapes.CIRCLE,
 						categoryBits: cat,
@@ -1138,13 +1138,13 @@ export const generalExamples = [
 			// 1. Fixed Objects: The Foundation
 			// Ground
 			world
-				.makeBody(nextId++, {
+				.createBody(nextId++, {
 					x: 5,
 					y: 9.7,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#444",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 8,
 					height: 0.6,
@@ -1152,22 +1152,22 @@ export const generalExamples = [
 
 			// Side barriers
 			world
-				.makeBody(nextId++, { x: 1, y: 7, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
-				.addFixture({ width: 0.2, height: 6, shape: gearbox.shapes.BOX });
+				.createBody(nextId++, { x: 1, y: 7, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
+				.createFixture({ width: 0.2, height: 6, shape: gearbox.shapes.BOX });
 			world
-				.makeBody(nextId++, { x: 9, y: 7, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
-				.addFixture({ width: 0.2, height: 6, shape: gearbox.shapes.BOX });
+				.createBody(nextId++, { x: 9, y: 7, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
+				.createFixture({ width: 0.2, height: 6, shape: gearbox.shapes.BOX });
 
 			// 2. Kinematic Objects: The Machinery
 			// A rotating center piece
-			const rotor = world.makeBody(nextId++, {
+			const rotor = world.createBody(nextId++, {
 				x: 5,
 				y: 4,
 				type: gearbox.bodyTypes.KINEMATIC_OBJECT,
 				color: "#a0f",
 				rs: 1.5, // Radians per second
 			});
-			rotor.addFixture({
+			rotor.createFixture({
 				width: 3.5,
 				height: 0.3,
 				shape: gearbox.shapes.BOX,
@@ -1175,14 +1175,14 @@ export const generalExamples = [
 			gearbox.debug.addLabel({ text: "Kinematic Rotor", objectId: rotor.id, position: "above", color: "#a0f" });
 
 			// A moving side platform
-			const elevator = world.makeBody(nextId++, {
+			const elevator = world.createBody(nextId++, {
 				x: 2.5,
 				y: 7,
 				type: gearbox.bodyTypes.KINEMATIC_OBJECT,
 				color: "#a0f",
 				vx: 1.0,
 			});
-			elevator.addFixture({
+			elevator.createFixture({
 				width: 1.5,
 				height: 0.3,
 				shape: gearbox.shapes.BOX,
@@ -1197,14 +1197,14 @@ export const generalExamples = [
 
 			// 4. Sensor: The Recycling Zone
 			const recyclerId = nextId++;
-			const recycler = world.makeBody(recyclerId, {
+			const recycler = world.createBody(recyclerId, {
 				x: 5,
 				y: 8.8,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "rgba(0, 255, 100, 0.15)",
 				wantsEvents: true,
 			});
-			recycler.addFixture({
+			recycler.createFixture({
 				width: 4,
 				height: 1.2,
 				shape: gearbox.shapes.BOX,
@@ -1259,7 +1259,7 @@ export const generalExamples = [
 				const x = 3 + Math.random() * 4;
 
 				const bodyId = nextId++;
-				const body = world.makeBody(bodyId, {
+				const body = world.createBody(bodyId, {
 					x,
 					y: 0.5,
 					mass: 0.5 + Math.random() * 1.0,
@@ -1268,11 +1268,11 @@ export const generalExamples = [
 				});
 
 				if (spawnRand < 0.33) {
-					body.addFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.25, restitution: 0.3 });
+					body.createFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.25, restitution: 0.3 });
 				} else if (spawnRand < 0.66) {
-					body.addFixture({ shape: gearbox.shapes.BOX, width: 0.5, height: 0.5, restitution: 0.3 });
+					body.createFixture({ shape: gearbox.shapes.BOX, width: 0.5, height: 0.5, restitution: 0.3 });
 				} else {
-					body.addFixture({ shape: gearbox.shapes.CAPSULE, radius: 0.15, height: 0.6, restitution: 0.3 });
+					body.createFixture({ shape: gearbox.shapes.CAPSULE, radius: 0.15, height: 0.6, restitution: 0.3 });
 				}
 			}
 

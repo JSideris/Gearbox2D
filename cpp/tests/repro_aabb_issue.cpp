@@ -25,12 +25,12 @@ TEST(ReproAabbIssue, FloatingPaddingBug) {
     // AABB 1 at (0,0) size 2x2, moving right at 1.0m/s
     // Physical bounds: x in [-1, 1]
     // Fat AABB will include x up to ~1.3 due to padding/margin
-    int id1 = world.makeBody(1, createAabbOptions(0.0f, 0.0f, 2.0f, 2.0f, 1.0f, 0.0f));
+    int id1 = world.createBody(1, createAabbOptions(0.0f, 0.0f, 2.0f, 2.0f, 1.0f, 0.0f));
     
     // AABB 2 at (2.1, 0) size 2x2, static
     // Physical bounds: x in [1.1, 3.1]
     // Separation is 0.1m. They should NOT collide.
-    int id2 = world.makeBody(2, createAabbOptions(2.1f, 0.0f, 2.0f, 2.0f, 0.0f, 0.0f));
+    int id2 = world.createBody(2, createAabbOptions(2.1f, 0.0f, 2.0f, 2.0f, 0.0f, 0.0f));
     
     // Update AABBs (this happens in world.step or manually)
     world.getBodyAtIndex(id1)->fixtures[0]->updateAabb(0); // Fat AABB
@@ -49,13 +49,13 @@ TEST(ReproAabbIssue, MissingRotationalVelocity) {
     World world;
     
     // AABB 1 at (0,0) size 2x2, static
-    int id1 = world.makeBody(1, createAabbOptions(0.0f, 0.0f, 2.0f, 2.0f));
+    int id1 = world.createBody(1, createAabbOptions(0.0f, 0.0f, 2.0f, 2.0f));
     
     // AABB 2 at (1.9, 0) size 2x2, rotating at 1 rad/s
     // Overlap is 0.1m.
     emscripten_val options2 = createAabbOptions(1.9f, 0.0f, 2.0f, 2.0f);
     options2.properties["rs"] = 1.0f; // Angular velocity
-    int id2 = world.makeBody(2, options2);
+    int id2 = world.createBody(2, options2);
     
     CollisionSolver solver(world);
     bool colliding = solver.solve(world.getBodyAtIndex(id1)->fixtures[0]->worldIndex, 

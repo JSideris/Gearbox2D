@@ -21,7 +21,7 @@ TEST(SleepEventTest, SleepAndWakeEvents) {
     world.setGravity(0.0f, 0.0f);
     
     // Create an object that wants events
-    world.makeBody(1, createSleepEventOptions(0.0f, 0.0f, true));
+    world.createBody(1, createSleepEventOptions(0.0f, 0.0f, true));
     Body* obj = world.getBody(1);
     
     // Initially awake
@@ -72,7 +72,7 @@ TEST(SleepEventTest, AutomaticSleepEvent) {
     
     // Create an object with a very short sleep time required
     emscripten_val options = createSleepEventOptions(0.0f, 0.0f, true);
-    world.makeBody(1, options);
+    world.createBody(1, options);
     Body* obj = world.getBody(1);
     obj->sleepTimeRequired = 0.02f; // Longer than one step (0.0166s), shorter than two (0.0333s)
     
@@ -92,7 +92,7 @@ TEST(SleepEventTest, OptInMechanism) {
     world.setGravity(0.0f, 0.0f);
     
     // Object that doesn't want events
-    world.makeBody(1, createSleepEventOptions(0.0f, 0.0f, false));
+    world.createBody(1, createSleepEventOptions(0.0f, 0.0f, false));
     Body* obj = world.getBody(1);
     
     obj->sleep();

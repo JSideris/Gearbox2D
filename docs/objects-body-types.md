@@ -11,13 +11,13 @@ Dynamic bodies are fully simulated by the physics engine. They are affected by g
 
 ```typescript
 const bodyId = nextId++;
-const body = world.makeBody(bodyId, {
+const body = world.createBody(bodyId, {
     x: 5, y: 5,
     mass: 1.0,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT
 });
 
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 0.5
 });
@@ -30,12 +30,12 @@ Fixed objects have infinite mass and are immovable by the physics simulation. Th
 
 ```typescript
 const bodyId = nextId++;
-const body = world.makeBody(bodyId, {
+const body = world.createBody(bodyId, {
     x: 5, y: 9,
     type: gearbox.bodyTypes.FIXED_OBJECT
 });
 
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.AABB,
     width: 10, height: 1
 });
@@ -48,13 +48,13 @@ Kinematic objects are a hybrid between dynamic and fixed objects. Like fixed obj
 
 ```typescript
 const bodyId = nextId++;
-const body = world.makeBody(bodyId, {
+const body = world.createBody(bodyId, {
     x: 2, y: 5,
     vx: 2.0, // Moves horizontally
     type: gearbox.bodyTypes.KINEMATIC_OBJECT
 });
 
-body.addFixture({
+body.createFixture({
     shape: gearbox.shapes.BOX,
     width: 2, height: 0.5
 });
@@ -74,10 +74,10 @@ To create a sensor, set the `isSensor` property to `true` on the fixture options
 ### Example: Static Trigger Zone
 ```typescript
 const bodyId = nextId++;
-world.makeBody(bodyId, {
+world.createBody(bodyId, {
     x: 5, y: 5,
     type: gearbox.bodyTypes.FIXED_OBJECT,
-}).addFixture({
+}).createFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 2.0,
     isSensor: true // This fixture will trigger events but not block movement
@@ -86,19 +86,19 @@ world.makeBody(bodyId, {
 
 ### Example: Attached Vision Cone
 ```typescript
-const player = world.makeBody(nextId++, {
+const player = world.createBody(nextId++, {
     x: 5, y: 5,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT
 });
 
 // Physical body
-player.addFixture({
+player.createFixture({
     shape: gearbox.shapes.CIRCLE,
     radius: 0.5
 });
 
 // Vision cone (sensor)
-player.addFixture({
+player.createFixture({
     shape: gearbox.shapes.BOX,
     width: 4, height: 2,
     localX: 2.5, // Positioned in front of the player

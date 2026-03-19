@@ -40,7 +40,7 @@ TEST(RegressionPileTest, StackOfBoxesShouldSleepAndNotSlide) {
     floorOptions.properties["height"] = 1.0f;
     floorOptions.properties["sFriction"] = 10.0f;
     floorOptions.properties["kFriction"] = 10.0f;
-    world.makeBody(1, floorOptions);
+    world.createBody(1, floorOptions);
 
     // 2. Create a stack of 4 boxes
     // We'll place them slightly overlapping or just touching to trigger resolution
@@ -48,7 +48,7 @@ TEST(RegressionPileTest, StackOfBoxesShouldSleepAndNotSlide) {
     for (int i = 0; i < 4; ++i) {
         // Initial Y: 7.0, 5.9, 4.8, 3.7
         // They will fall and stack.
-        int id = world.makeBody(i + 2, createPileTestOptions(5.0f, 7.0f - i * 1.1f, 1.0f));
+        int id = world.createBody(i + 2, createPileTestOptions(5.0f, 7.0f - i * 1.1f, 1.0f));
         boxes.push_back(world.getBody(i + 2));
     }
 
@@ -112,10 +112,10 @@ TEST(RegressionPileTest, SlidingThreshold) {
     floorOptions.properties["height"] = 1.0f;
     floorOptions.properties["sFriction"] = 10.0f;
     floorOptions.properties["kFriction"] = 10.0f;
-    world.makeBody(1, floorOptions);
+    world.createBody(1, floorOptions);
 
     // Box on the tilted floor
-    int id = world.makeBody(2, createPileTestOptions(5.0f, 7.5f, 1.0f));
+    int id = world.createBody(2, createPileTestOptions(5.0f, 7.5f, 1.0f));
     Body* box = world.getBody(2);
     box->setRotation(0.1f);
 

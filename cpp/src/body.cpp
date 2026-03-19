@@ -421,4 +421,4 @@ void Body::setSolverData(const SolverData& data) {
     world.liveBodyFloatData[idx + BODY_FDATA_RS] = data.w;
 }
 
-int Body::createFixture(emscripten_val options) { return world.addFixture(id, 0, options); }
+int Body::createFixture(emscripten_val options) { return world.createFixture(id, 0, options); }

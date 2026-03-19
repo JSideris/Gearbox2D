@@ -155,7 +155,7 @@ TEST(ConcavePolygonTest, StarCollisions) {
     bodyOptions["type"] = (int)ObjectType::DYNAMIC_OBJECT;
     
     int starId = 1;
-    world.makeBody(starId, bodyOptions);
+    world.createBody(starId, bodyOptions);
     Body* starBody = world.getBody(starId);
 
     // Decompose star into convex pieces
@@ -189,7 +189,7 @@ TEST(ConcavePolygonTest, StarCollisions) {
         circleOptions["vx"] = -tipX * 2.0f; // Moving towards center
         circleOptions["vy"] = -tipY * 2.0f;
 
-        world.makeBody(10 + i, circleOptions);
+        world.createBody(10 + i, circleOptions);
     }
 
     // 3. Step simulation and verify repel

@@ -550,7 +550,7 @@
 			async function initGearbox() {
 				try {
 					await gearbox.init();
-					gearboxWorld = gearbox.makeWorld();
+					gearboxWorld = gearbox.createWorld();
 					console.log("Gearbox2D initialized globally");
 					// Auto-start first benchmark
 					startBenchmark();
@@ -633,7 +633,7 @@
 				switch (engineType) {
 					case "gearbox2d":
 						if (!gearboxWorld) await gearbox.init();
-						if (!gearboxWorld) gearboxWorld = gearbox.makeWorld();
+						if (!gearboxWorld) gearboxWorld = gearbox.createWorld();
 						adapter = new GearboxAdapter(gearboxWorld);
 						break;
 					case "matterjs":

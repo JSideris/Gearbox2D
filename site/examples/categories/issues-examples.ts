@@ -17,14 +17,14 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 8,
 					// r: Math.PI,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -32,14 +32,14 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 7,
 					y: 2,
 					// r: Math.PI,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					// radius: 1,
 					width: 5,
@@ -47,14 +47,14 @@ export const issuesExamples = [
 				});
 
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 3,
 					y: 5,
 					// r: Math.PI,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					// radius: 1,
 					width: 5,
@@ -76,14 +76,14 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 8,
 					r: Math.PI / 2,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 1,
 					height: 1,
@@ -91,27 +91,27 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 7,
 					y: 2,
 					// r: Math.PI / 2,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 5,
 					height: 1,
 				});
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 3,
 					y: 5,
 					// r: Math.PI / 2,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 5,
 					height: 1,
@@ -132,14 +132,14 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 8,
 					y: 5,
 					// r: Math.PI,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -147,14 +147,14 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 2,
 					y: 3,
 					vx: 3,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					// radius: 1,
 					width: 1,
@@ -176,14 +176,14 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 8,
 					y: 5,
 					// r: Math.PI,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -191,14 +191,14 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 2,
 					y: 6,
 					vx: 3,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					// radius: 1,
 					width: 1,
@@ -220,19 +220,19 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 5,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 4,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 1,
 				});
 
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 2.8,
 					y: 2.0,
 					vx: 3,
@@ -242,7 +242,7 @@ export const issuesExamples = [
 					// rs: 10,
 					rs: 0.01,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.5,
 				});
@@ -263,13 +263,13 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 6,
 					r: Math.PI / 8,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 8,
 					height: 1,
@@ -277,13 +277,13 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 2,
 					y: 2,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -305,14 +305,14 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 6,
 					// r: Math.PI / 8,
 					r: 0.1,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 8,
 					height: 1,
@@ -321,13 +321,13 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 2,
 					y: 2,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -359,7 +359,7 @@ export const issuesExamples = [
 				let r = 0.2 + m * m * 0.8;
 				let id1 = nextId++;
 				world
-					.makeBody(id1, {
+					.createBody(id1, {
 						x: 0,
 						y: 7.5,
 						r: (Math.PI / 2) * Math.random(),
@@ -369,7 +369,7 @@ export const issuesExamples = [
 						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 						mass: m,
 					})
-					.addFixture({
+					.createFixture({
 						shape: gearbox.shapes.CIRCLE,
 						radius: r,
 					});
@@ -378,7 +378,7 @@ export const issuesExamples = [
 				r = 0.2 + m * m * 0.8;
 				let id2 = nextId++;
 				world
-					.makeBody(id2, {
+					.createBody(id2, {
 						x: 10,
 						y: 7.5,
 						r: (Math.PI / 2) * Math.random(),
@@ -388,7 +388,7 @@ export const issuesExamples = [
 						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 						mass: m,
 					})
-					.addFixture({
+					.createFixture({
 						shape: gearbox.shapes.CIRCLE,
 						radius: r,
 					});
@@ -426,13 +426,13 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 6,
 					r: Math.PI / 2,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 8,
@@ -440,13 +440,13 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 7,
 					y: 5,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -468,12 +468,12 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 8,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 8,
 					height: 1,
@@ -482,14 +482,14 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 7,
 					y: 2,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 					rs: -0.1,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 1,
 					restitution: 1,
@@ -507,12 +507,12 @@ export const issuesExamples = [
 		onInit: (world) => {
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 1,
 					height: 5,
@@ -520,14 +520,14 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5.2,
 					y: 5,
 					// vx: -50,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.1,
 					restitution: 0.5,
@@ -549,12 +549,12 @@ export const issuesExamples = [
 
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 6,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.AABB,
 					width: 8,
 					height: 1,
@@ -562,13 +562,13 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 7,
 					y: 4,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 1,
@@ -587,12 +587,12 @@ export const issuesExamples = [
 		onInit: (world) => {
 			let id = 1;
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 1,
 					height: 5,
@@ -600,14 +600,14 @@ export const issuesExamples = [
 
 			// Anohter box but this time a rigid body.
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5.2,
 					y: 5,
 					// vx: -50,
 					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 					mass: 0.2,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.1,
 					restitution: 0.5,
@@ -629,12 +629,12 @@ export const issuesExamples = [
 			let id = 1;
 			// Ground
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 5,
 					y: 9,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 10,
 					height: 1,
@@ -645,13 +645,13 @@ export const issuesExamples = [
 			// Stack of boxes
 			for (let i = 0; i < 4; i++) {
 				world
-					.makeBody(id++, {
+					.createBody(id++, {
 						x: 5,
 						y: 8 - i * 1.1,
 						type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 						mass: 1,
 					})
-					.addFixture({
+					.createFixture({
 						shape: gearbox.shapes.BOX,
 						width: 2,
 						height: 1,
@@ -677,20 +677,20 @@ export const issuesExamples = [
 			let id = 1;
 			// Thin wall
 			world
-				.makeBody(id++, {
+				.createBody(id++, {
 					x: 7,
 					y: 5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "#ccc",
 				})
-				.addFixture({
+				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 0.05,
 					height: 4,
 				});
 
 			// Fast bullet
-			const bullet = world.makeBody(id++, {
+			const bullet = world.createBody(id++, {
 				x: 1,
 				y: 5,
 				vx: 50,
@@ -698,7 +698,7 @@ export const issuesExamples = [
 				mass: 1.0,
 				color: "#ffff44",
 			});
-			bullet.addFixture({
+			bullet.createFixture({
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.1,
 			});

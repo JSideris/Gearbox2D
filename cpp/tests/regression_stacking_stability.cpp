@@ -36,13 +36,13 @@ TEST(RegressionStackingTest, TenStackedBoxesStability) {
     groundOptions.properties["shape"] = (int)ObjectShape::BOX;
     groundOptions.properties["width"] = 10.0f;
     groundOptions.properties["height"] = 1.0f;
-    world.makeBody(1, groundOptions);
+    world.createBody(1, groundOptions);
 
     // 2. Create a stack of 10 boxes
     std::vector<Body*> boxes;
     for (int i = 0; i < 10; i++) {
         // Initial y centers: 8.5, 7.9, 7.3, ...
-        world.makeBody(i + 2, createStackBoxOptions(5.0f, 8.5f - i * 0.6f, 1.0f));
+        world.createBody(i + 2, createStackBoxOptions(5.0f, 8.5f - i * 0.6f, 1.0f));
         boxes.push_back(world.getBody(i + 2));
     }
 

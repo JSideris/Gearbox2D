@@ -25,12 +25,12 @@ TEST_F(DistanceJointTest, DistanceIsMaintained) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     // Rigid body at (5, 0)
     options.properties["x"] = 5.0f;
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     Body* objB = world.getBody(idB);
     
@@ -52,12 +52,12 @@ TEST_F(DistanceJointTest, CentrifugalForce) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     // Rigid body at (2, 0) with vertical velocity
     options.properties["x"] = 2.0f;
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     Body* objB = world.getBody(idB);
     objB->setVelocity(Vec2(0.0f, 10.0f));
@@ -80,14 +80,14 @@ TEST_F(DistanceJointTest, ReactionForce) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     // Rigid body at (0, -2)
     options.properties["x"] = 0.0f;
     options.properties["y"] = -2.0f;
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
     options.properties["mass"] = 1.0f;
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     // Distance joint with length 2.0
     world.createDistanceJoint(jointId, idA, idB, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
@@ -108,12 +108,12 @@ TEST_F(DistanceJointTest, SetLengthAtRuntime) {
     
     // Fixed object at (0, 0)
     options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.makeBody(idA, options);
+    world.createBody(idA, options);
     
     // Rigid body at (5, 0)
     options.properties["x"] = 5.0f;
     options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    world.makeBody(idB, options);
+    world.createBody(idB, options);
     
     Body* objB = world.getBody(idB);
     

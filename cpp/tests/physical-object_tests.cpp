@@ -19,7 +19,7 @@ TEST(BodyTest, CreationAndInitialization) {
     World world;
     emscripten_val options = createOptions(10.0f, 20.0f, 5.0f);
     
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     EXPECT_EQ(obj->getId(), 1);
@@ -32,7 +32,7 @@ TEST(BodyTest, CreationAndInitialization) {
 TEST(BodyTest, MovementAndSleepState) {
     World world;
     emscripten_val options = createOptions();
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     // Initial state
@@ -59,8 +59,8 @@ TEST(BodyTest, MovementAndSleepState) {
 TEST(BodyTest, ContactManagement) {
     World world;
     emscripten_val options = createOptions();
-    int indexA = world.makeBody(1, options);
-    int indexB = world.makeBody(2, options);
+    int indexA = world.createBody(1, options);
+    int indexB = world.createBody(2, options);
     Body* objA = world.getBodyAtIndex(indexA);
     Body* objB = world.getBodyAtIndex(indexB);
     
@@ -91,7 +91,7 @@ TEST(BodyTest, AabbRecomputation) {
     World world;
     emscripten_val options = createOptions(0, 0);
     options.properties["radius"] = 1.0f;
-    int index = world.makeBody(1, options);
+    int index = world.createBody(1, options);
     Body* obj = world.getBodyAtIndex(index);
     
     // Initial AABB for circle at (0,0) with radius 1 should be (-1,-1) to (1,1)

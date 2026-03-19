@@ -30,7 +30,7 @@ TEST(WorldTest, BasicStepKinematics) {
     world.setGravity(0.0f, -10.0f); // 10 units/s^2 downwards
     world.setTimeStep(0.1f);
     
-    int id = world.makeBody(1, createWorldOptions(0.0f, 10.0f));
+    int id = world.createBody(1, createWorldOptions(0.0f, 10.0f));
     Body* obj = world.getBodyAtIndex(id);
     
     // Initial velocity should be 0
@@ -51,8 +51,8 @@ TEST(WorldTest, CollisionFlagsUpdate) {
     world.setGravity(0.0f, 0.0f);
     
     // Two circles overlapping at the start
-    world.makeBody(1, createWorldOptions(0.0f, 0.0f));
-    world.makeBody(2, createWorldOptions(1.0f, 0.0f));
+    world.createBody(1, createWorldOptions(0.0f, 0.0f));
+    world.createBody(2, createWorldOptions(1.0f, 0.0f));
     
     world.step();
     
@@ -68,8 +68,8 @@ TEST(WorldTest, CollisionFlagsUpdate) {
 
 TEST(WorldTest, ObjectRemoval) {
     World world;
-    world.makeBody(1, createWorldOptions(0, 0));
-    world.makeBody(2, createWorldOptions(10, 10));
+    world.createBody(1, createWorldOptions(0, 0));
+    world.createBody(2, createWorldOptions(10, 10));
     
     EXPECT_EQ(world.getBodyCount(), 2);
     
@@ -83,19 +83,19 @@ TEST(WorldTest, ObjectRemovalIndexConsistency) {
     
     // Create body A (ID 1)
     int bIdA = 1;
-    world.makeBody(bIdA, createWorldOptions(0, 0));
-    // makeBody with createWorldOptions already adds 1 fixture.
+    world.createBody(bIdA, createWorldOptions(0, 0));
+    // createBody with createWorldOptions already adds 1 fixture.
     
     // Create body B (ID 2)
     int bIdB = 2;
-    world.makeBody(bIdB, createWorldOptions(10, 10));
-    // makeBody with createWorldOptions already adds 1 fixture.
+    world.createBody(bIdB, createWorldOptions(10, 10));
+    // createBody with createWorldOptions already adds 1 fixture.
     
     // Add another fixture to body B
     emscripten_val b2Options = createFixtureOptions((int)ObjectShape::CIRCLE, 0.5f);
     b2Options.properties["localX"] = 2.0f;
     b2Options.properties["localY"] = 2.0f;
-    world.addFixture(bIdB, 0, b2Options);
+    world.createFixture(bIdB, 0, b2Options);
     
     // Index mapping should be:
     // Body A: index 0 (ID 1)
@@ -127,7 +127,7 @@ TEST(WorldTest, ObjectRemovalIndexConsistency) {
 TEST(WorldTest, RemoveLastObject) {
     World world;
     int bId = 1;
-    world.makeBody(bId, createWorldOptions(0, 0));
+    world.createBody(bId, createWorldOptions(0, 0));
     
     EXPECT_EQ(world.getBodyCount(), 1);
     EXPECT_EQ(world.getFixtureCount(), 1);

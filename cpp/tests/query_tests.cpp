@@ -25,7 +25,7 @@ static emscripten_val createShapeOptions(float x, float y, ObjectShape shape, fl
 TEST(QueryTest, CircleHitTest) {
     World world;
     // Circle at (5, 5) with radius 1
-    world.makeBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::CIRCLE, 1.0f));
+    world.createBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::CIRCLE, 1.0f));
     
     Body* obj = world.getBody(1);
     
@@ -40,7 +40,7 @@ TEST(QueryTest, CircleHitTest) {
 TEST(QueryTest, AabbHitTest) {
     World world;
     // AABB at (5, 5) with width 2, height 2 (range 4-6)
-    world.makeBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::AABB, 2.0f, 2.0f));
+    world.createBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::AABB, 2.0f, 2.0f));
     
     Body* obj = world.getBody(1);
     
@@ -54,7 +54,7 @@ TEST(QueryTest, AabbHitTest) {
 TEST(QueryTest, BoxHitTest) {
     World world;
     // Box at (5, 5) with width 2, height 1, rotated 0
-    world.makeBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::BOX, 2.0f, 1.0f, 0.0f));
+    world.createBody(1, createShapeOptions(5.0f, 5.0f, ObjectShape::BOX, 2.0f, 1.0f, 0.0f));
     
     Body* obj = world.getBody(1);
     
@@ -72,11 +72,11 @@ TEST(QueryTest, BoxHitTest) {
 TEST(QueryTest, WorldQueryPoint) {
     World world;
     // Obj 1: Circle at (2, 2) rad 1
-    world.makeBody(1, createShapeOptions(2.0f, 2.0f, ObjectShape::CIRCLE, 1.0f));
+    world.createBody(1, createShapeOptions(2.0f, 2.0f, ObjectShape::CIRCLE, 1.0f));
     // Obj 2: Box at (2, 2) width 0.5, height 0.5
-    world.makeBody(2, createShapeOptions(2.0f, 2.0f, ObjectShape::BOX, 0.5f, 0.5f));
+    world.createBody(2, createShapeOptions(2.0f, 2.0f, ObjectShape::BOX, 0.5f, 0.5f));
     // Obj 3: Circle far away at (10, 10)
-    world.makeBody(3, createShapeOptions(10.0f, 10.0f, ObjectShape::CIRCLE, 1.0f));
+    world.createBody(3, createShapeOptions(10.0f, 10.0f, ObjectShape::CIRCLE, 1.0f));
     
     // Query at (2, 2) should return 1 and 2
     std::vector<int> hits = world.queryBodiesAtPoint(2.0f, 2.0f);
@@ -106,11 +106,11 @@ TEST(QueryTest, WorldQueryWithMask) {
     
     auto opt1 = createShapeOptions(5.0f, 5.0f, ObjectShape::CIRCLE, 1.0f);
     opt1.properties["categoryBits"] = 0x1;
-    world.makeBody(1, opt1);
+    world.createBody(1, opt1);
     
     auto opt2 = createShapeOptions(5.0f, 5.0f, ObjectShape::BOX, 1.0f, 1.0f);
     opt2.properties["categoryBits"] = 0x2;
-    world.makeBody(2, opt2);
+    world.createBody(2, opt2);
     
     // Query with mask 0x1 (should only hit obj 1)
     std::vector<int> hits = world.queryBodiesAtPoint(5.0f, 5.0f, 0x1);
