@@ -33,6 +33,7 @@ import {
 	BODY_TYPES,
 	WANTS_EVENTS,
 } from "./constants.js";
+import { RowView } from "./BufferAccessor.js";
 import type { World, FixtureOptions } from "./world.js";
 import type { Fixture } from "./Fixture.js";
 
@@ -43,10 +44,25 @@ export class Body {
 	fixtures: Fixture[] = [];
 	color?: string;
 
+	private floats: RowView<Float32Array>;
+	private ints: RowView<Int32Array>;
+
 	constructor(index: number, world: World) {
 		this.index = index;
 		this.world = world;
-		this.id = world.liveBodyIntData[index * BODY_SIZE_I + BODY_ID_OFFSET];
+
+		this.floats = new RowView(
+			() => this.world.liveBodyFloatData,
+			BODY_SIZE_F,
+			() => this.index,
+		);
+		this.ints = new RowView(
+			() => this.world.liveBodyIntData,
+			BODY_SIZE_I,
+			() => this.index,
+		);
+
+		this.id = this.ints.get(BODY_ID_OFFSET);
 	}
 
 	createFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
@@ -61,10 +77,10 @@ export class Body {
 	}
 
 	get type() {
-		return this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_TYPE_OFFSET];
+		return this.ints.get(BODY_TYPE_OFFSET);
 	}
 	get flags() {
-		return this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_FLAGS_OFFSET];
+		return this.ints.get(BODY_FLAGS_OFFSET);
 	}
 
 	get wantsEvents() {
@@ -72,129 +88,129 @@ export class Body {
 	}
 	set wantsEvents(v: boolean) {
 		if (v) {
-			this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_FLAGS_OFFSET] |= WANTS_EVENTS;
+			this.ints.set(BODY_FLAGS_OFFSET, this.ints.get(BODY_FLAGS_OFFSET) | WANTS_EVENTS);
 		} else {
-			this.world.liveBodyIntData[this.index * BODY_SIZE_I + BODY_FLAGS_OFFSET] &= ~WANTS_EVENTS;
+			this.ints.set(BODY_FLAGS_OFFSET, this.ints.get(BODY_FLAGS_OFFSET) & ~WANTS_EVENTS);
 		}
 	}
 
 	get x() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_X_OFFSET];
+		return this.floats.get(BODY_X_OFFSET);
 	}
 	set x(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_X_OFFSET] = v;
+		this.floats.set(BODY_X_OFFSET, v);
 		this.wakeUp();
 	}
 	get y() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_Y_OFFSET];
+		return this.floats.get(BODY_Y_OFFSET);
 	}
 	set y(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_Y_OFFSET] = v;
+		this.floats.set(BODY_Y_OFFSET, v);
 		this.wakeUp();
 	}
 	get r() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_R_OFFSET];
+		return this.floats.get(BODY_R_OFFSET);
 	}
 	set r(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_R_OFFSET] = v;
+		this.floats.set(BODY_R_OFFSET, v);
 		this.wakeUp();
 	}
 
 	get vx() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_VX_OFFSET];
+		return this.floats.get(BODY_VX_OFFSET);
 	}
 	set vx(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_VX_OFFSET] = v;
+		this.floats.set(BODY_VX_OFFSET, v);
 		this.wakeUp();
 	}
 	get vy() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_VY_OFFSET];
+		return this.floats.get(BODY_VY_OFFSET);
 	}
 	set vy(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_VY_OFFSET] = v;
+		this.floats.set(BODY_VY_OFFSET, v);
 		this.wakeUp();
 	}
 	get rs() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_RS_OFFSET];
+		return this.floats.get(BODY_RS_OFFSET);
 	}
 	set rs(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_RS_OFFSET] = v;
+		this.floats.set(BODY_RS_OFFSET, v);
 		this.wakeUp();
 	}
 
 	get mass() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_MASS_OFFSET];
+		return this.floats.get(BODY_MASS_OFFSET);
 	}
 	set mass(v) {
 		if (this.type !== BODY_TYPES.FIXED_OBJECT && this.type !== BODY_TYPES.KINEMATIC_OBJECT) {
-			this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_MASS_OFFSET] = v;
-			this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_INV_MASS_OFFSET] = v !== 0 ? 1 / v : 0;
+			this.floats.set(BODY_MASS_OFFSET, v);
+			this.floats.set(BODY_INV_MASS_OFFSET, v !== 0 ? 1 / v : 0);
 		}
 	}
 
 	get gScale() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_G_SCALE_OFFSET];
+		return this.floats.get(BODY_G_SCALE_OFFSET);
 	}
 	set gScale(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_G_SCALE_OFFSET] = v;
+		this.floats.set(BODY_G_SCALE_OFFSET, v);
 	}
 
 	get linearDamping() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_DAMPING_OFFSET];
+		return this.floats.get(BODY_DAMPING_OFFSET);
 	}
 	set linearDamping(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_DAMPING_OFFSET] = v;
+		this.floats.set(BODY_DAMPING_OFFSET, v);
 	}
 
 	get angularDamping() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_ANGULAR_DAMPING_OFFSET];
+		return this.floats.get(BODY_ANGULAR_DAMPING_OFFSET);
 	}
 	set angularDamping(v) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_ANGULAR_DAMPING_OFFSET] = v;
+		this.floats.set(BODY_ANGULAR_DAMPING_OFFSET, v);
 	}
 
 	get prevX() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_PREV_X_OFFSET];
+		return this.floats.get(BODY_PREV_X_OFFSET);
 	}
 	get prevY() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_PREV_Y_OFFSET];
+		return this.floats.get(BODY_PREV_Y_OFFSET);
 	}
 	get prevR() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_PREV_R_OFFSET];
+		return this.floats.get(BODY_PREV_R_OFFSET);
 	}
 
 	get fx() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_FX_OFFSET];
+		return this.floats.get(BODY_FX_OFFSET);
 	}
 	get fy() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_FY_OFFSET];
+		return this.floats.get(BODY_FY_OFFSET);
 	}
 	get ix() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_IX_OFFSET];
+		return this.floats.get(BODY_IX_OFFSET);
 	}
 	get iy() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_IY_OFFSET];
+		return this.floats.get(BODY_IY_OFFSET);
 	}
 	get nfx() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NFX_OFFSET];
+		return this.floats.get(BODY_NFX_OFFSET);
 	}
 	get nfy() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NFY_OFFSET];
+		return this.floats.get(BODY_NFY_OFFSET);
 	}
 	get nix() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NIX_OFFSET];
+		return this.floats.get(BODY_NIX_OFFSET);
 	}
 	get niy() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NIY_OFFSET];
+		return this.floats.get(BODY_NIY_OFFSET);
 	}
 	get ia() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_IA_OFFSET];
+		return this.floats.get(BODY_IA_OFFSET);
 	}
 	get nia() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NIA_OFFSET];
+		return this.floats.get(BODY_NIA_OFFSET);
 	}
 	get angularImpulse() {
-		return this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_IA_OFFSET];
+		return this.floats.get(BODY_IA_OFFSET);
 	}
 
 	recomputeMassProperties() {
@@ -211,14 +227,14 @@ export class Body {
 	}
 
 	applyForce(x: number, y: number) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NFX_OFFSET] += x;
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NFY_OFFSET] += y;
+		this.floats.add(BODY_NFX_OFFSET, x);
+		this.floats.add(BODY_NFY_OFFSET, y);
 		this.wakeUp();
 	}
 
 	applyImpulse(x: number, y: number, px = 0, py = 0) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NIX_OFFSET] += x;
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NIY_OFFSET] += y;
+		this.floats.add(BODY_NIX_OFFSET, x);
+		this.floats.add(BODY_NIY_OFFSET, y);
 		if (px !== 0 || py !== 0) {
 			const torque = x * py - y * px;
 			this.applyAngularImpulse(torque);
@@ -228,7 +244,7 @@ export class Body {
 	}
 
 	applyAngularImpulse(torque: number) {
-		this.world.liveBodyFloatData[this.index * BODY_SIZE_F + BODY_NIA_OFFSET] += torque;
+		this.floats.add(BODY_NIA_OFFSET, torque);
 		this.wakeUp();
 	}
 

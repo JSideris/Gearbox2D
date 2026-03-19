@@ -8,6 +8,7 @@ import {
 	BODY_FIXTURE_COUNT_OFFSET,
 	SHAPES,
 } from "./constants.js";
+import { BufferView } from "./BufferAccessor.js";
 import { Body } from "./Body.js";
 import { Fixture } from "./Fixture.js";
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from "./joints.js";
@@ -84,6 +85,11 @@ export class World {
 	liveFixtureFloatData: Float32Array;
 	liveFixtureIntData: Int32Array;
 
+	bodyFloats: BufferView<Float32Array>;
+	bodyInts: BufferView<Int32Array>;
+	fixtureFloats: BufferView<Float32Array>;
+	fixtureInts: BufferView<Int32Array>;
+
 	bodiesById: { [key: number]: Body } = {};
 	fixturesById: { [key: number]: Fixture } = {};
 	jointsById: { [key: number]: Joint } = {};
@@ -106,6 +112,11 @@ export class World {
 		this.liveBodyIntData = this.world.getLiveBodyIntData();
 		this.liveFixtureFloatData = this.world.getLiveFixtureFloatData();
 		this.liveFixtureIntData = this.world.getLiveFixtureIntData();
+
+		this.bodyFloats = new BufferView(this.liveBodyFloatData, BODY_SIZE_F);
+		this.bodyInts = new BufferView(this.liveBodyIntData, BODY_SIZE_I);
+		this.fixtureFloats = new BufferView(this.liveFixtureFloatData, FIXTURE_SIZE_F);
+		this.fixtureInts = new BufferView(this.liveFixtureIntData, FIXTURE_SIZE_I);
 	}
 
 	clear() {
@@ -158,7 +169,7 @@ export class World {
 				const pieceOptions = { ...options, vertices: piece };
 				const fIndex = this.world.addFixture(bodyId, 0, pieceOptions, false);
 				this.refreshViews();
-				const id = this.liveFixtureIntData[fIndex * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
+				const id = this.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
 
 				if (!firstProxy) {
 					firstProxy = new Fixture(fIndex, body, id);
@@ -200,14 +211,14 @@ export class World {
 	syncIndices() {
 		const bodyCount = this.world.getBodyCount();
 		for (let i = 0; i < bodyCount; i++) {
-			const id = this.liveBodyIntData[i * BODY_SIZE_I + BODY_ID_OFFSET];
+			const id = this.bodyInts.get(i, BODY_ID_OFFSET);
 			if (this.bodiesById[id]) {
 				this.bodiesById[id].index = i;
 			}
 		}
 		const fixtureCount = this.world.getFixtureCount();
 		for (let i = 0; i < fixtureCount; i++) {
-			const id = this.liveFixtureIntData[i * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
+			const id = this.fixtureInts.get(i, FIXTURE_ID_OFFSET);
 			const fixture = this.fixturesById[id];
 			if (fixture) {
 				fixture.updateSubIndex(id, i);
@@ -226,7 +237,7 @@ export class World {
 	iterateBodies(callback: (body: Body) => void) {
 		const count = this.world.getBodyCount();
 		for (let i = 0; i < count; i++) {
-			const id = this.liveBodyIntData[i * BODY_SIZE_I + BODY_ID_OFFSET];
+			const id = this.bodyInts.get(i, BODY_ID_OFFSET);
 			const body = this.bodiesById[id];
 			if (body) callback(body);
 		}

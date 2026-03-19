@@ -26,6 +26,7 @@ import {
 	FIXTURE_VERTEX_START_OFFSET,
 	FIXTURE_FLAGS,
 } from "./constants.js";
+import { RowView } from "./BufferAccessor.js";
 import type { Body } from "./Body.js";
 
 export class Fixture {
@@ -33,10 +34,29 @@ export class Fixture {
 	/** @internal Internal sub-fixtures for concave polygons */
 	subFixtures: { id: number; index: number }[] = [];
 
+	private floats: RowView<Float32Array>;
+	private ints: RowView<Int32Array>;
+
 	constructor(index: number, body: Body, id?: number) {
 		this.body = body;
-		const actualId = id ?? body.world.liveFixtureIntData[index * FIXTURE_SIZE_I + FIXTURE_ID_OFFSET];
-		this.subFixtures.push({ id: actualId, index });
+
+		// Initialize subFixtures with the initial index so that this.index (and thus RowView) works
+		this.subFixtures.push({ id: id ?? 0, index });
+
+		this.floats = new RowView(
+			() => this.body.world.liveFixtureFloatData,
+			FIXTURE_SIZE_F,
+			() => this.index,
+		);
+		this.ints = new RowView(
+			() => this.body.world.liveFixtureIntData,
+			FIXTURE_SIZE_I,
+			() => this.index,
+		);
+
+		if (id === undefined) {
+			this.subFixtures[0].id = this.ints.get(FIXTURE_ID_OFFSET);
+		}
 	}
 
 	/** The primary sub-fixture ID (used as the user-facing ID) */
@@ -63,16 +83,16 @@ export class Fixture {
 	}
 
 	get shape() {
-		return this.body.world.liveFixtureIntData[this.index * FIXTURE_SIZE_I + FIXTURE_SHAPE_OFFSET];
+		return this.ints.get(FIXTURE_SHAPE_OFFSET);
 	}
 	get categoryBits() {
-		return this.body.world.liveFixtureIntData[this.index * FIXTURE_SIZE_I + FIXTURE_CATEGORY_BITS_OFFSET];
+		return this.ints.get(FIXTURE_CATEGORY_BITS_OFFSET);
 	}
 	get maskBits() {
-		return this.body.world.liveFixtureIntData[this.index * FIXTURE_SIZE_I + FIXTURE_MASK_BITS_OFFSET];
+		return this.ints.get(FIXTURE_MASK_BITS_OFFSET);
 	}
 	get flags() {
-		return this.body.world.liveFixtureIntData[this.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET];
+		return this.ints.get(FIXTURE_FLAGS_OFFSET);
 	}
 
 	get isSensor() {
@@ -94,101 +114,107 @@ export class Fixture {
 	set wantsEvents(v: boolean) {
 		for (const sub of this.subFixtures) {
 			if (v) {
-				this.body.world.liveFixtureIntData[sub.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET] |=
-					FIXTURE_FLAGS.WANTS_EVENTS;
+				this.body.world.fixtureInts.set(
+					sub.index,
+					FIXTURE_FLAGS_OFFSET,
+					this.body.world.fixtureInts.get(sub.index, FIXTURE_FLAGS_OFFSET) | FIXTURE_FLAGS.WANTS_EVENTS,
+				);
 			} else {
-				this.body.world.liveFixtureIntData[sub.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET] &=
-					~FIXTURE_FLAGS.WANTS_EVENTS;
+				this.body.world.fixtureInts.set(
+					sub.index,
+					FIXTURE_FLAGS_OFFSET,
+					this.body.world.fixtureInts.get(sub.index, FIXTURE_FLAGS_OFFSET) & ~FIXTURE_FLAGS.WANTS_EVENTS,
+				);
 			}
 		}
 	}
 
 	get localX() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_LOCAL_X_OFFSET];
+		return this.floats.get(FIXTURE_LOCAL_X_OFFSET);
 	}
 	get localY() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_LOCAL_Y_OFFSET];
+		return this.floats.get(FIXTURE_LOCAL_Y_OFFSET);
 	}
 	get localR() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_LOCAL_R_OFFSET];
+		return this.floats.get(FIXTURE_LOCAL_R_OFFSET);
 	}
 
 	get radius() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_RADIUS_OFFSET];
+		return this.floats.get(FIXTURE_RADIUS_OFFSET);
 	}
 	set radius(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_RADIUS_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_RADIUS_OFFSET, v);
 		}
 	}
 
 	get width() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_WIDTH_OFFSET];
+		return this.floats.get(FIXTURE_WIDTH_OFFSET);
 	}
 	set width(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_WIDTH_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_WIDTH_OFFSET, v);
 		}
 	}
 
 	get height() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_HEIGHT_OFFSET];
+		return this.floats.get(FIXTURE_HEIGHT_OFFSET);
 	}
 	set height(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_HEIGHT_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_HEIGHT_OFFSET, v);
 		}
 	}
 
 	get restitution() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_RESTITUTION_OFFSET];
+		return this.floats.get(FIXTURE_RESTITUTION_OFFSET);
 	}
 	set restitution(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_RESTITUTION_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_RESTITUTION_OFFSET, v);
 		}
 	}
 
 	get staticFriction() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_S_FRICTION_OFFSET];
+		return this.floats.get(FIXTURE_S_FRICTION_OFFSET);
 	}
 	set staticFriction(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_S_FRICTION_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_S_FRICTION_OFFSET, v);
 		}
 	}
 
 	get kineticFriction() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_K_FRICTION_OFFSET];
+		return this.floats.get(FIXTURE_K_FRICTION_OFFSET);
 	}
 	set kineticFriction(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_K_FRICTION_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_K_FRICTION_OFFSET, v);
 		}
 	}
 
 	get ax1() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_AX1_OFFSET];
+		return this.floats.get(FIXTURE_AX1_OFFSET);
 	}
 	get ay1() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_AY1_OFFSET];
+		return this.floats.get(FIXTURE_AY1_OFFSET);
 	}
 	get ax2() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_AX2_OFFSET];
+		return this.floats.get(FIXTURE_AX2_OFFSET);
 	}
 	get ay2() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_AY2_OFFSET];
+		return this.floats.get(FIXTURE_AY2_OFFSET);
 	}
 	get maxExtent() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_MAX_EXTENT_OFFSET];
+		return this.floats.get(FIXTURE_MAX_EXTENT_OFFSET);
 	}
 
 	get density() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_DENSITY_OFFSET];
+		return this.floats.get(FIXTURE_DENSITY_OFFSET);
 	}
 	set density(v) {
 		for (const sub of this.subFixtures) {
-			this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_DENSITY_OFFSET] = v;
+			this.body.world.fixtureFloats.set(sub.index, FIXTURE_DENSITY_OFFSET, v);
 			const cppObj = this.body.world.world.getFixture(sub.id);
 			if (cppObj) {
 				cppObj.setDensity(v);
@@ -200,14 +226,13 @@ export class Fixture {
 	/** @internal Returns vertices for all internal sub-fixtures for debugging/rendering */
 	get debugVertices(): { x: number; y: number }[][] {
 		return this.subFixtures.map((sub) => {
-			const count =
-				this.body.world.liveFixtureFloatData[sub.index * FIXTURE_SIZE_F + FIXTURE_VERTEX_COUNT_OFFSET];
+			const count = this.body.world.fixtureFloats.get(sub.index, FIXTURE_VERTEX_COUNT_OFFSET);
 			const verts: { x: number; y: number }[] = [];
-			const start = sub.index * FIXTURE_SIZE_F + FIXTURE_VERTEX_START_OFFSET;
+			const startOffset = FIXTURE_VERTEX_START_OFFSET;
 			for (let i = 0; i < count; i++) {
 				verts.push({
-					x: this.body.world.liveFixtureFloatData[start + i * 2],
-					y: this.body.world.liveFixtureFloatData[start + i * 2 + 1],
+					x: this.body.world.fixtureFloats.get(sub.index, startOffset + i * 2),
+					y: this.body.world.fixtureFloats.get(sub.index, startOffset + i * 2 + 1),
 				});
 			}
 			return verts;
@@ -215,16 +240,16 @@ export class Fixture {
 	}
 
 	get vertexCount() {
-		return this.body.world.liveFixtureFloatData[this.index * FIXTURE_SIZE_F + FIXTURE_VERTEX_COUNT_OFFSET];
+		return this.floats.get(FIXTURE_VERTEX_COUNT_OFFSET);
 	}
 	get vertices() {
 		const count = this.vertexCount;
 		const verts: { x: number; y: number }[] = [];
-		const start = this.index * FIXTURE_SIZE_F + FIXTURE_VERTEX_START_OFFSET;
+		const startOffset = FIXTURE_VERTEX_START_OFFSET;
 		for (let i = 0; i < count; i++) {
 			verts.push({
-				x: this.body.world.liveFixtureFloatData[start + i * 2],
-				y: this.body.world.liveFixtureFloatData[start + i * 2 + 1],
+				x: this.floats.get(startOffset + i * 2),
+				y: this.floats.get(startOffset + i * 2 + 1),
 			});
 		}
 		return verts;
