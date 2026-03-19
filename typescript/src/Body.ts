@@ -65,15 +65,15 @@ export class Body {
 		this.id = this.ints.get(BODY_ID_OFFSET);
 	}
 
-	createFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
+	private get cppBody() {
+		return this.world.world.getBody(this.id);
+	}
+
+	addFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
 		if (Array.isArray(options)) {
 			return options.map((opt) => this.world.addFixture(this.id, opt));
 		}
 		return this.world.addFixture(this.id, options, id);
-	}
-
-	addFixture(options: FixtureOptions, id?: number): Fixture {
-		return this.createFixture(options, id) as Fixture;
 	}
 
 	get type() {
@@ -209,12 +209,9 @@ export class Body {
 	get nia() {
 		return this.floats.get(BODY_NIA_OFFSET);
 	}
-	get angularImpulse() {
-		return this.floats.get(BODY_IA_OFFSET);
-	}
 
 	recomputeMassProperties() {
-		const cppObj = this.world.world.getBody(this.id);
+		const cppObj = this.cppBody;
 		if (cppObj) {
 			cppObj.recomputeMassProperties();
 			this.world.refreshViews();
@@ -222,8 +219,7 @@ export class Body {
 	}
 
 	wakeUp() {
-		const cppObj = this.world.world.getBody(this.id);
-		if (cppObj) cppObj.wakeUp();
+		this.cppBody?.wakeUp();
 	}
 
 	applyForce(x: number, y: number) {

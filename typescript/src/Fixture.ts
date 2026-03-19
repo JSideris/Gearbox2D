@@ -78,6 +78,19 @@ export class Fixture {
 		}
 	}
 
+	private forEachSubFixture(callback: (sub: { id: number; index: number }, cppObj: any) => void) {
+		for (const sub of this.subFixtures) {
+			const cppObj = this.body.world.world.getFixture(sub.id);
+			callback(sub, cppObj);
+		}
+	}
+
+	private setAllFloats(offset: number, value: number) {
+		for (const sub of this.subFixtures) {
+			this.body.world.fixtureFloats.set(sub.index, offset, value);
+		}
+	}
+
 	get shape() {
 		return this.ints.get(FIXTURE_SHAPE_OFFSET);
 	}
@@ -95,12 +108,7 @@ export class Fixture {
 		return (this.flags & FIXTURE_FLAGS.IS_SENSOR) !== 0;
 	}
 	set isSensor(v: boolean) {
-		for (const sub of this.subFixtures) {
-			const cppObj = this.body.world.world.getFixture(sub.id);
-			if (cppObj) {
-				cppObj.setSensor(v);
-			}
-		}
+		this.forEachSubFixture((_, cppObj) => cppObj?.setSensor(v));
 		this.body.world.refreshViews();
 	}
 
@@ -109,19 +117,9 @@ export class Fixture {
 	}
 	set wantsEvents(v: boolean) {
 		for (const sub of this.subFixtures) {
-			if (v) {
-				this.body.world.fixtureInts.set(
-					sub.index,
-					FIXTURE_FLAGS_OFFSET,
-					this.body.world.fixtureInts.get(sub.index, FIXTURE_FLAGS_OFFSET) | FIXTURE_FLAGS.WANTS_EVENTS,
-				);
-			} else {
-				this.body.world.fixtureInts.set(
-					sub.index,
-					FIXTURE_FLAGS_OFFSET,
-					this.body.world.fixtureInts.get(sub.index, FIXTURE_FLAGS_OFFSET) & ~FIXTURE_FLAGS.WANTS_EVENTS,
-				);
-			}
+			const current = this.body.world.fixtureInts.get(sub.index, FIXTURE_FLAGS_OFFSET);
+			const next = v ? current | FIXTURE_FLAGS.WANTS_EVENTS : current & ~FIXTURE_FLAGS.WANTS_EVENTS;
+			this.body.world.fixtureInts.set(sub.index, FIXTURE_FLAGS_OFFSET, next);
 		}
 	}
 
@@ -139,54 +137,42 @@ export class Fixture {
 		return this.floats.get(FIXTURE_RADIUS_OFFSET);
 	}
 	set radius(v) {
-		for (const sub of this.subFixtures) {
-			this.body.world.fixtureFloats.set(sub.index, FIXTURE_RADIUS_OFFSET, v);
-		}
+		this.setAllFloats(FIXTURE_RADIUS_OFFSET, v);
 	}
 
 	get width() {
 		return this.floats.get(FIXTURE_WIDTH_OFFSET);
 	}
 	set width(v) {
-		for (const sub of this.subFixtures) {
-			this.body.world.fixtureFloats.set(sub.index, FIXTURE_WIDTH_OFFSET, v);
-		}
+		this.setAllFloats(FIXTURE_WIDTH_OFFSET, v);
 	}
 
 	get height() {
 		return this.floats.get(FIXTURE_HEIGHT_OFFSET);
 	}
 	set height(v) {
-		for (const sub of this.subFixtures) {
-			this.body.world.fixtureFloats.set(sub.index, FIXTURE_HEIGHT_OFFSET, v);
-		}
+		this.setAllFloats(FIXTURE_HEIGHT_OFFSET, v);
 	}
 
 	get restitution() {
 		return this.floats.get(FIXTURE_RESTITUTION_OFFSET);
 	}
 	set restitution(v) {
-		for (const sub of this.subFixtures) {
-			this.body.world.fixtureFloats.set(sub.index, FIXTURE_RESTITUTION_OFFSET, v);
-		}
+		this.setAllFloats(FIXTURE_RESTITUTION_OFFSET, v);
 	}
 
 	get staticFriction() {
 		return this.floats.get(FIXTURE_S_FRICTION_OFFSET);
 	}
 	set staticFriction(v) {
-		for (const sub of this.subFixtures) {
-			this.body.world.fixtureFloats.set(sub.index, FIXTURE_S_FRICTION_OFFSET, v);
-		}
+		this.setAllFloats(FIXTURE_S_FRICTION_OFFSET, v);
 	}
 
 	get kineticFriction() {
 		return this.floats.get(FIXTURE_K_FRICTION_OFFSET);
 	}
 	set kineticFriction(v) {
-		for (const sub of this.subFixtures) {
-			this.body.world.fixtureFloats.set(sub.index, FIXTURE_K_FRICTION_OFFSET, v);
-		}
+		this.setAllFloats(FIXTURE_K_FRICTION_OFFSET, v);
 	}
 
 	get ax1() {
@@ -209,13 +195,10 @@ export class Fixture {
 		return this.floats.get(FIXTURE_DENSITY_OFFSET);
 	}
 	set density(v) {
-		for (const sub of this.subFixtures) {
+		this.forEachSubFixture((sub, cppObj) => {
 			this.body.world.fixtureFloats.set(sub.index, FIXTURE_DENSITY_OFFSET, v);
-			const cppObj = this.body.world.world.getFixture(sub.id);
-			if (cppObj) {
-				cppObj.setDensity(v);
-			}
-		}
+			cppObj?.setDensity(v);
+		});
 		this.body.world.refreshViews();
 	}
 

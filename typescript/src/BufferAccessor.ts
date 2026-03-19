@@ -5,19 +5,23 @@
 export class BufferView<T extends Float32Array | Int32Array> {
 	constructor(
 		public data: T,
-		public stride: number,
+		public readonly stride: number,
 	) {}
 
+	protected getIndexOffset(index: number, offset: number): number {
+		return index * this.stride + offset;
+	}
+
 	get(index: number, offset: number): number {
-		return this.data[index * this.stride + offset];
+		return this.data[this.getIndexOffset(index, offset)];
 	}
 
 	set(index: number, offset: number, value: number): void {
-		this.data[index * this.stride + offset] = value;
+		this.data[this.getIndexOffset(index, offset)] = value;
 	}
 
 	add(index: number, offset: number, value: number): void {
-		this.data[index * this.stride + offset] += value;
+		this.data[this.getIndexOffset(index, offset)] += value;
 	}
 }
 
@@ -28,19 +32,23 @@ export class BufferView<T extends Float32Array | Int32Array> {
 export class RowView<T extends Float32Array | Int32Array> {
 	constructor(
 		private getBuffer: () => T,
-		private stride: number,
+		private readonly stride: number,
 		private getIndex: () => number,
 	) {}
 
+	private getIndexOffset(offset: number): number {
+		return this.getIndex() * this.stride + offset;
+	}
+
 	get(offset: number): number {
-		return this.getBuffer()[this.getIndex() * this.stride + offset];
+		return this.getBuffer()[this.getIndexOffset(offset)];
 	}
 
 	set(offset: number, value: number): void {
-		this.getBuffer()[this.getIndex() * this.stride + offset] = value;
+		this.getBuffer()[this.getIndexOffset(offset)] = value;
 	}
 
 	add(offset: number, value: number): void {
-		this.getBuffer()[this.getIndex() * this.stride + offset] += value;
+		this.getBuffer()[this.getIndexOffset(offset)] += value;
 	}
 }

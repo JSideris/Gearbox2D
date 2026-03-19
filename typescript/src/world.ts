@@ -96,6 +96,7 @@ export class World {
 
 	interpolationAlpha: number = 1.0;
 	stepCount: number = 0;
+	invDt: number = 60.0;
 
 	onCollisionStart?: (idA: number, idB: number, fixtureIdA: number, fixtureIdB: number, impulse: number) => void;
 	onCollisionEnd?: (idA: number, idB: number, fixtureIdA: number, fixtureIdB: number) => void;
@@ -373,6 +374,7 @@ export class World {
 
 	setTimeStep(dt: number) {
 		this.world.setTimeStep(dt);
+		this.invDt = dt > 0 ? 1.0 / dt : 0;
 	}
 
 	setGravity(x: number, y: number) {
@@ -418,23 +420,11 @@ export class World {
 	}
 
 	queryBodiesAtPoint(x: number, y: number, mask: number = 0xffffffff): number[] {
-		const hits = this.world.queryBodiesAtPoint(x, y, mask);
-		const results: number[] = [];
-		for (let i = 0; i < hits.size(); i++) {
-			results.push(hits.get(i));
-		}
-		hits.delete();
-		return results;
+		return this.convertWasmVectorToArray(this.world.queryBodiesAtPoint(x, y, mask));
 	}
 
 	queryFixturesAtPoint(x: number, y: number, mask: number = 0xffffffff): number[] {
-		const hits = this.world.queryFixturesAtPoint(x, y, mask);
-		const results: number[] = [];
-		for (let i = 0; i < hits.size(); i++) {
-			results.push(hits.get(i));
-		}
-		hits.delete();
-		return results;
+		return this.convertWasmVectorToArray(this.world.queryFixturesAtPoint(x, y, mask));
 	}
 
 	step() {
@@ -462,5 +452,14 @@ export class World {
 				else if (type === 3 && this.onWake) this.onWake(idA);
 			}
 		}
+	}
+
+	private convertWasmVectorToArray(hits: any): number[] {
+		const results: number[] = [];
+		for (let i = 0; i < hits.size(); i++) {
+			results.push(hits.get(i));
+		}
+		hits.delete();
+		return results;
 	}
 }
