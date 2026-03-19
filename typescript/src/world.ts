@@ -11,11 +11,12 @@ import { Body } from "./Body.js";
 import { Fixture } from "./Fixture.js";
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from "./joints.js";
 import type { BodyOptions, FixtureOptions, JointOptions } from "./types.js";
+import type { CppWorld, WasmVector } from "./wasm-types.js";
 
 export type Joint = HingeJoint | DistanceJoint | SpringJoint | GearJoint;
 
 export class World {
-	world: any;
+	world: CppWorld;
 	liveBodyFloatData: Float32Array;
 	liveBodyIntData: Int32Array;
 	liveFixtureFloatData: Float32Array;
@@ -34,12 +35,15 @@ export class World {
 	stepCount: number = 0;
 	invDt: number = 60.0;
 
+	/** @internal */
+	_wasmMemoryGetter: (() => number) | null = null;
+
 	onCollisionStart?: (idA: number, idB: number, fixtureIdA: number, fixtureIdB: number, impulse: number) => void;
 	onCollisionEnd?: (idA: number, idB: number, fixtureIdA: number, fixtureIdB: number) => void;
 	onSleep?: (id: number) => void;
 	onWake?: (id: number) => void;
 
-	constructor(world: any) {
+	constructor(world: CppWorld) {
 		this.world = world;
 		this.refreshViews();
 	}
@@ -294,7 +298,7 @@ export class World {
 
 	getMemoryUsage(): number {
 		// 1. WASM Heap (C++ objects and buffers)
-		const wasmHeap = (this as any)._wasmMemoryGetter?.() || 0;
+		const wasmHeap = this._wasmMemoryGetter?.() || 0;
 
 		// 2. JS Wrapper Estimates
 		const bodyCount = Object.keys(this.bodiesById).length;
@@ -346,7 +350,7 @@ export class World {
 		}
 	}
 
-	private convertWasmVectorToArray(hits: any): number[] {
+	private convertWasmVectorToArray(hits: WasmVector): number[] {
 		const results: number[] = [];
 		for (let i = 0; i < hits.size(); i++) {
 			results.push(hits.get(i));

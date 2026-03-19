@@ -3,6 +3,7 @@ import { DebugGraphics } from "./debug-graphics.js";
 import { SHAPES, BODY_TYPES } from "./constants.js";
 import { World } from "./world.js";
 import * as polygon from "./polygon-utils.js";
+import type { WasmModule, CppWorld, CppVec2 } from "./wasm-types.js";
 
 /**@type {Gearbox} */
 export class Gearbox {
@@ -18,9 +19,9 @@ export class Gearbox {
 	};
 
 	// Wasm module constructors.
-	private _module: any;
-	private _worldC: any;
-	private _vec2C: any;
+	private _module: WasmModule | null = null;
+	private _worldC: { new (): CppWorld } | null = null;
+	private _vec2C: { new (x: number, y: number): CppVec2 } | null = null;
 
 	constructor() {}
 
@@ -35,7 +36,7 @@ export class Gearbox {
 	async init(options: { wasmBinary?: Uint8Array } = {}) {
 		if (this.isInitialized) return;
 
-		let Module = await gearboxModule(options);
+		let Module = (await gearboxModule(options)) as WasmModule;
 		this._module = Module;
 
 		const { Vec2, World: WorldConstructor } = Module;
@@ -48,6 +49,7 @@ export class Gearbox {
 
 	getWasmMemory() {
 		this._initCheck();
+		if (!this._module) return 0;
 		// Emscripten modularized builds might expose memory in different ways
 		const buffer =
 			this._module.HEAP8?.buffer ||
@@ -59,8 +61,9 @@ export class Gearbox {
 
 	makeWorld() {
 		this._initCheck();
+		if (!this._worldC) throw new Error("WASM World constructor not found.");
 		const world = new World(new this._worldC());
-		(world as any)._wasmMemoryGetter = () => this.getWasmMemory();
+		world._wasmMemoryGetter = () => this.getWasmMemory();
 		return world;
 	}
 }

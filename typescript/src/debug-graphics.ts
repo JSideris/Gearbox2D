@@ -255,7 +255,7 @@ export class DebugGraphics {
 				this.ctx.lineTo(0, halfL);
 				break;
 			case SHAPES.POLYGON:
-				const pieces = (fixture as any).debugVertices as { x: number; y: number }[][];
+				const pieces = fixture.debugVertices;
 				this.ctx.translate(fx, fy);
 				this.ctx.rotate(fr);
 				for (const vertices of pieces) {
@@ -379,8 +379,7 @@ export class DebugGraphics {
 		this.ctx.save();
 		this.ctx.lineWidth = 1;
 
-		let type = (joint as any).type;
-		// ... (lines 306-313)
+		let type = joint.type;
 		if (type === JOINT_TYPES.HINGE) {
 			const hinge = joint as HingeJoint;
 			const pA = this.getJointWorldPoint(hinge.bodyA, hinge.localAnchorA);

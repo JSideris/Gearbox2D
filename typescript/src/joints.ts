@@ -1,6 +1,7 @@
 import type { World } from "./world.js";
 import type { Body } from "./Body.js";
 import { JOINT_TYPES } from "./constants.js";
+import type { CppJoint } from "./wasm-types.js";
 
 abstract class JointBase {
 	abstract readonly type: number;
@@ -16,7 +17,7 @@ abstract class JointBase {
 		this.bodyB = bodyB;
 	}
 
-	protected get cppJoint() {
+	protected get cppJoint(): CppJoint | null {
 		return this.world.world.getJoint(this.id);
 	}
 
@@ -146,7 +147,7 @@ export class GearJoint {
 		this.ratio = ratio;
 	}
 
-	protected get cppJoint() {
+	protected get cppJoint(): CppJoint | null {
 		return this.world.world.getJoint(this.id);
 	}
 

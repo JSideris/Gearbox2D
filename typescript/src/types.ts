@@ -59,5 +59,3 @@ export interface JointOptions {
 	frequencyHz?: number;
 	dampingRatio?: number;
 }
-
-export type Joint = any; // Will be refined in Phase 3

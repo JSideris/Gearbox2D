@@ -31,6 +31,7 @@ import { RowView } from "./BufferAccessor.js";
 import type { Body } from "./Body.js";
 import { isConcave, decompose } from "./polygon-utils.js";
 import type { FixtureOptions } from "./types.js";
+import type { CppFixture } from "./wasm-types.js";
 
 export class Fixture {
 	body: Body;
@@ -116,7 +117,7 @@ export class Fixture {
 		}
 	}
 
-	private forEachSubFixture(callback: (sub: { id: number; index: number }, cppObj: any) => void) {
+	private forEachSubFixture(callback: (sub: { id: number; index: number }, cppObj: CppFixture | null) => void) {
 		for (const sub of this.subFixtures) {
 			const cppObj = this.body.world.world.getFixture(sub.id);
 			callback(sub, cppObj);
