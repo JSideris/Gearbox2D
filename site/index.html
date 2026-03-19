@@ -719,7 +719,7 @@
 				};
 
 				const startDragging = (pos) => {
-					const hits = world.queryPoint(pos.x, pos.y);
+					const hits = world.queryBodiesAtPoint(pos.x, pos.y);
 					if (hits.length > 0) {
 						const target = world.getBodyById(hits[0]);
 						if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {

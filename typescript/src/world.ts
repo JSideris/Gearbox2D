@@ -402,11 +402,6 @@ export class World {
 		return wasmHeap + jsOverhead;
 	}
 
-	/** @deprecated Use queryBodiesAtPoint instead */
-	queryPoint(x: number, y: number, mask: number = 0xffffffff): number[] {
-		return this.queryBodiesAtPoint(x, y, mask);
-	}
-
 	queryBodiesAtPoint(x: number, y: number, mask: number = 0xffffffff): number[] {
 		const hits = this.world.queryBodiesAtPoint(x, y, mask);
 		const results: number[] = [];

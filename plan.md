@@ -109,6 +109,8 @@
 
 ## Interactions
 - [x] Spatial picking (query BVH).
+- [ ] Raycasting (planned).
+- [ ] AABB queries (planned).
 
 ## Misc
 - [x] Elasticity (restitution).

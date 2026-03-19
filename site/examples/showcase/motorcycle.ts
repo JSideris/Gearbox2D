@@ -29,7 +29,7 @@ const onMouseDown = (e, world) => {
 	if (e.button !== 0) return;
 	const rect = canvas.getBoundingClientRect();
 	const pos = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-	const hits = world.queryPoint(pos.x, pos.y);
+	const hits = world.queryBodiesAtPoint(pos.x, pos.y);
 	if (hits.length > 0) {
 		const targetId = hits[0];
 		const target = world.getBodyById(targetId);

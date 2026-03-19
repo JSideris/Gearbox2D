@@ -20,7 +20,7 @@ const onMouseDown = (e: MouseEvent, world: any) => {
 	const rect = canvas!.getBoundingClientRect();
 	const pos = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
 
-	const hits = world.queryPoint(pos.x, pos.y);
+	const hits = world.queryBodiesAtPoint(pos.x, pos.y);
 	if (hits.length > 0) {
 		// Pick the first object hit
 		const targetId = hits[0];

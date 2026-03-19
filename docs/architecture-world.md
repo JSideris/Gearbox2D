@@ -169,14 +169,29 @@ world.removeJoint(201);
 
 ### Spatial Queries
 
-You can query the world to find objects at specific coordinates.
+You can query the world to find objects at specific coordinates. There are two levels of granularity:
+
+#### 1. Body Queries (High-Level)
+Use `queryBodiesAtPoint` to find which physical bodies exist at a given point. This automatically filters out duplicates if multiple shapes on the same body are hit.
 
 ```typescript
-// Find all objects at (x, y) that match a collision mask
-const hits = world.queryPoint(5.5, 10.2, 0xFFFF);
-hits.forEach(id => {
-    const obj = world.getBodyById(id);
-    console.log(`Hit object: ${id}`);
+// Find all unique bodies at (x, y) matching a collision mask
+const bodyHits = world.queryBodiesAtPoint(5.5, 10.2, 0xFFFF);
+bodyHits.forEach(id => {
+    const body = world.getBodyById(id);
+    console.log(`Hit body: ${id}`);
+});
+```
+
+#### 2. Fixture Queries (Fine-Grained)
+Use `queryFixturesAtPoint` to find exactly which shapes were hit. This is useful for detecting hits on specific parts of a complex object.
+
+```typescript
+// Find all specific fixtures at (x, y)
+const fixtureHits = world.queryFixturesAtPoint(5.5, 10.2, 0xFFFF);
+fixtureHits.forEach(fixtureId => {
+    const fixture = world.fixturesById[fixtureId];
+    console.log(`Hit fixture: ${fixtureId} on body ${fixture.body.id}`);
 });
 ```
 
