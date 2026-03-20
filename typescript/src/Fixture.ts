@@ -66,36 +66,45 @@ export class Fixture {
 	/** @internal Create a new fixture (handles decomposition and WASM object creation) */
 	static create(body: Body, options: FixtureOptions, fixtureId?: number): Fixture {
 		const world = body.world;
+		const pieces = Fixture.getFixturePieces(options);
+		const isConcave = pieces.length > 1;
 
-		if (options.shape === SHAPES.POLYGON && options.vertices && isConcave(options.vertices)) {
-			const pieces = decompose(options.vertices);
-			let firstProxy: Fixture | null = null;
+		let firstProxy: Fixture | null = null;
 
-			for (const piece of pieces) {
-				const pieceOptions = { ...options, vertices: piece };
-				const fIndex = world.world.createFixture(body.id, 0, pieceOptions, false);
-				world.refreshViews();
-				const id = world.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
+		for (let i = 0; i < pieces.length; i++) {
+			const pieceOptions = pieces[i];
+			// For concave polygons, we skip C++ mass recomputation until all pieces are added
+			const recomputeMass = !isConcave;
+			const idToUse = i === 0 ? fixtureId || 0 : 0;
 
-				if (!firstProxy) {
-					firstProxy = new Fixture(fIndex, body, id);
-				} else {
-					firstProxy.subFixtures.push({ id, index: fIndex });
-				}
-				world.fixturesById[id] = firstProxy;
+			const fIndex = world.world.createFixture(body.id, idToUse, pieceOptions, recomputeMass);
+			world.refreshViews();
+			const id = world.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
+
+			if (!firstProxy) {
+				firstProxy = new Fixture(fIndex, body, id);
+			} else {
+				firstProxy.subFixtures.push({ id, index: fIndex });
 			}
-			body.recomputeMassProperties();
-			body.fixtures.push(firstProxy!);
-			return firstProxy!;
+			world.fixturesById[id] = firstProxy;
 		}
 
-		const fIndex = world.world.createFixture(body.id, fixtureId || 0, options, true);
-		world.refreshViews();
-		const fixture = new Fixture(fIndex, body);
-		world.fixturesById[fixture.id] = fixture;
-		body.fixtures.push(fixture);
+		if (isConcave) {
+			body.recomputeMassProperties();
+		}
 
-		return fixture;
+		body.fixtures.push(firstProxy!);
+		return firstProxy!;
+	}
+
+	private static getFixturePieces(options: FixtureOptions): FixtureOptions[] {
+		if (options.shape === SHAPES.POLYGON && options.vertices && isConcave(options.vertices)) {
+			return decompose(options.vertices).map((vertices) => ({
+				...options,
+				vertices,
+			}));
+		}
+		return [options];
 	}
 
 	/** The primary sub-fixture ID (used as the user-facing ID) */
