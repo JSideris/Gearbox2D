@@ -32,6 +32,7 @@ import type { Body } from "./Body.js";
 import { isConcave, decompose } from "./polygon-utils.js";
 import type { FixtureOptions } from "./types.js";
 import type { CppFixture } from "./wasm-types.js";
+import { JS_OVERHEAD, estimateArrayMemory } from "./MemoryEstimator.js";
 
 export class Fixture {
 	body: Body;
@@ -280,5 +281,14 @@ export class Fixture {
 			});
 		}
 		return verts;
+	}
+
+	getMemoryUsage(): number {
+		return (
+			JS_OVERHEAD.OBJECT_BASE +
+			estimateArrayMemory(this.subFixtures) +
+			this.subFixtures.length * JS_OVERHEAD.OBJECT_BASE + // {id, index} objects
+			JS_OVERHEAD.ROW_VIEW * 2 // floats and ints RowViews
+		);
 	}
 }

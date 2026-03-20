@@ -12,6 +12,7 @@ import { Fixture } from "./Fixture.js";
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from "./joints.js";
 import type { BodyOptions, FixtureOptions, JointOptions } from "./types.js";
 import type { CppWorld, WasmVector } from "./wasm-types.js";
+import { JS_OVERHEAD, estimateMapMemory } from "./MemoryEstimator.js";
 
 export type Joint = HingeJoint | DistanceJoint | SpringJoint | GearJoint;
 
@@ -301,16 +302,34 @@ export class World {
 		const wasmHeap = this._wasmMemoryGetter?.() || 0;
 
 		// 2. JS Wrapper Estimates
-		const bodyCount = Object.keys(this.bodiesById).length;
-		const fixtureCount = Object.keys(this.fixturesById).length;
-		const jointCount = Object.keys(this.jointsById).length;
+		let jsOverhead = JS_OVERHEAD.OBJECT_BASE; // World object itself
 
-		// Estimates:
-		// TODO: this may be inaccurate. Put some thought into a better approach.
-		// Body: ~160 bytes
-		// Fixture: ~120 bytes
-		// Joint: ~140 bytes
-		const jsOverhead = bodyCount * 160 + fixtureCount * 120 + jointCount * 140;
+		// Internal Maps (Registry overhead)
+		jsOverhead += estimateMapMemory(this.bodiesById);
+		jsOverhead += estimateMapMemory(this.fixturesById);
+		jsOverhead += estimateMapMemory(this.jointsById);
+
+		// BufferViews
+		jsOverhead += JS_OVERHEAD.BUFFER_VIEW * 4;
+
+		// Bodies
+		for (const id in this.bodiesById) {
+			jsOverhead += this.bodiesById[id].getMemoryUsage();
+		}
+
+		// Fixtures (avoiding double-counting multi-ID fixtures)
+		const uniqueFixtures = new Set<Fixture>();
+		for (const id in this.fixturesById) {
+			uniqueFixtures.add(this.fixturesById[id]);
+		}
+		for (const fixture of uniqueFixtures) {
+			jsOverhead += fixture.getMemoryUsage();
+		}
+
+		// Joints
+		for (const id in this.jointsById) {
+			jsOverhead += this.jointsById[id].getMemoryUsage();
+		}
 
 		return wasmHeap + jsOverhead;
 	}

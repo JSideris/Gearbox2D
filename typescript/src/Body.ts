@@ -38,6 +38,7 @@ import { RowView } from "./BufferAccessor.js";
 import type { World } from "./world.js";
 import { Fixture } from "./Fixture.js";
 import type { BodyOptions, FixtureOptions } from "./types.js";
+import { JS_OVERHEAD, estimateStringMemory, estimateArrayMemory } from "./MemoryEstimator.js";
 
 export class Body {
 	id: number;
@@ -314,5 +315,14 @@ export class Body {
 			x: dx * cos - dy * sin,
 			y: dx * sin + dy * cos,
 		};
+	}
+
+	getMemoryUsage(): number {
+		return (
+			JS_OVERHEAD.OBJECT_BASE +
+			estimateStringMemory(this.color) +
+			estimateArrayMemory(this.fixtures) +
+			JS_OVERHEAD.ROW_VIEW * 2 // floats and ints RowViews
+		);
 	}
 }

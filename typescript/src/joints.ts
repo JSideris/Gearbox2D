@@ -2,6 +2,7 @@ import type { World } from "./world.js";
 import type { Body } from "./Body.js";
 import { JOINT_TYPES } from "./constants.js";
 import type { CppJoint } from "./wasm-types.js";
+import { JS_OVERHEAD } from "./MemoryEstimator.js";
 
 abstract class JointBase {
 	abstract readonly type: number;
@@ -44,6 +45,10 @@ abstract class JointBase {
 
 	set localAnchorB(v: { x: number; y: number }) {
 		this.cppJoint?.setLocalAnchorB(v);
+	}
+
+	getMemoryUsage(): number {
+		return JS_OVERHEAD.OBJECT_BASE;
 	}
 }
 
@@ -165,5 +170,9 @@ export class GearJoint {
 
 	set ratio(v: number) {
 		this.cppJoint?.setRatio(v);
+	}
+
+	getMemoryUsage(): number {
+		return JS_OVERHEAD.OBJECT_BASE;
 	}
 }
