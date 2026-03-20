@@ -18,7 +18,6 @@
 - `objects-body-types.md`: Body Types
 - `objects-lifecycle.md`: Object Lifecycle
 - `objects-properties.md`: Body Properties
-- `objects-state.md`: Body State
 
 ## Shapes & Geometry
 - `shapes.md`: Supported Shapes
@@ -52,7 +51,4 @@
 - `planned-fluid-dynamics.md`: Fluid Dynamics (Planned)
 - `planned-ai-pathfinding.md`: AI Pathfinding (Planned)
 - `planned-ccd.md`: Continuous Collision Detection (Planned)
-
-## API Reference
-- `api-reference.md`: API Reference
 

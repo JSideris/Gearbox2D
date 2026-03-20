@@ -71,6 +71,19 @@ An object is "woken up" when:
 - A property like `x`, `y`, or `vx` is changed via the JavaScript API.
 - When an object wakes up, it automatically wakes up all objects it is currently in contact with.
 
+### Manual Sleep Control
+While Gearbox2D handles sleeping automatically, you can also take manual control of an object's state:
+
+- **`body.sleep()`**: Immediately puts the object to sleep, zeroing out its velocity and removing it from the active simulation loop.
+- **`body.wakeUp()`**: Wakes the object up if it was sleeping.
+- **`body.forceWakeUp()`**: Wakes the object up and resets its internal sleep timer to zero, ensuring it stays awake for at least another full `sleepTimeRequired` period (even if it's not moving).
+
+### Configuration
+You can fine-tune how an object sleeps using these properties:
+
+- **`canSleep`**: Set to `false` to prevent an object from ever entering a sleep state automatically. Useful for player characters or important dynamic elements.
+- **`sleepTimeRequired`**: The amount of time (in seconds) an object must stay below the movement thresholds before it falls asleep. Default is `1.0`.
+
 ## Removal
 
 When an object is no longer needed, it must be removed from the world.

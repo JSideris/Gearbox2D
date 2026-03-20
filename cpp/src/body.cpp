@@ -17,9 +17,19 @@ Body::Body(World& world, int id, emscripten_val options)
         type = ObjectType::DYNAMIC_OBJECT;
     }
 
+    if (!options["canSleep"].isUndefined()) {
+        canSleep = options["canSleep"].as<bool>();
+    }
+    if (!options["sleepTimeRequired"].isUndefined()) {
+        sleepTimeRequired = options["sleepTimeRequired"].as<float>();
+    }
+
     int flags = 0;
     if (type == ObjectType::FIXED_OBJECT) {
         flags |= IS_SLEEPING | HAS_FIXED_MASS;
+        isSleeping = true;
+    } else if (!options["isSleeping"].isUndefined() && options["isSleeping"].as<bool>()) {
+        flags |= IS_SLEEPING;
         isSleeping = true;
     }
     float mass = (type != ObjectType::FIXED_OBJECT && type != ObjectType::KINEMATIC_OBJECT && !options["mass"].isUndefined()) ? options["mass"].as<float>() : 0.0f;
@@ -40,9 +50,9 @@ Body::Body(World& world, int id, emscripten_val options)
     world.liveBodyFloatData.push_back(initX);
     world.liveBodyFloatData.push_back(initY);
     world.liveBodyFloatData.push_back(initR);
-    world.liveBodyFloatData.push_back(!options["vx"].isUndefined() ? options["vx"].as<float>() : 0.0f);
-    world.liveBodyFloatData.push_back(!options["vy"].isUndefined() ? options["vy"].as<float>() : 0.0f);
-    world.liveBodyFloatData.push_back(!options["rs"].isUndefined() ? options["rs"].as<float>() : 0.0f);
+    world.liveBodyFloatData.push_back((!isSleeping && !options["vx"].isUndefined()) ? options["vx"].as<float>() : 0.0f);
+    world.liveBodyFloatData.push_back((!isSleeping && !options["vy"].isUndefined()) ? options["vy"].as<float>() : 0.0f);
+    world.liveBodyFloatData.push_back((!isSleeping && !options["rs"].isUndefined()) ? options["rs"].as<float>() : 0.0f);
     
     world.liveBodyFloatData.push_back(mass);
     world.liveBodyFloatData.push_back((mass > 0.0f) ? 1.0f / mass : 0.0f);

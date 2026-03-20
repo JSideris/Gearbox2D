@@ -22,6 +22,11 @@ Body properties define the state and movement of an object in the world.
 - `linearDamping`: Simulates air resistance or drag (0.0 to 1.0).
 - `angularDamping`: Simulates rotational friction (0.0 to 1.0).
 
+### Sleep Configuration
+- `canSleep` (boolean): Whether the body can automatically go to sleep when inactive.
+- `isSleeping` (boolean, read-only): Returns `true` if the body is currently in a sleep state.
+- `sleepTimeRequired` (number): The number of seconds of inactivity required before the body sleeps. Default is `1.0`.
+
 ---
 
 ## Fixture Properties

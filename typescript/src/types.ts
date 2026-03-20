@@ -10,6 +10,9 @@ export interface BodyOptions {
 	gscale?: number;
 	linearDamping?: number;
 	angularDamping?: number;
+	canSleep?: boolean;
+	isSleeping?: boolean;
+	sleepTimeRequired?: number;
 	color?: string;
 
 	// Initial fixture options

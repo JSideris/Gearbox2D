@@ -29,7 +29,11 @@ EMSCRIPTEN_BINDINGS(general) {
 
 EMSCRIPTEN_BINDINGS(world) {
     emscripten::class_<Body>("Body")
+        .function("sleep", &Body::sleep)
         .function("wakeUp", &Body::wakeUp)
+        .function("forceWakeUp", &Body::forceWakeUp)
+        .property("canSleep", &Body::canSleep)
+        .property("sleepTimeRequired", &Body::sleepTimeRequired)
         .function("getX", &Body::getX)
         .function("getY", &Body::getY)
         .function("getRotation", &Body::getRotation)

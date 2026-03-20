@@ -32,6 +32,7 @@ import {
 	BODY_PREV_R_OFFSET,
 	BODY_TYPES,
 	WANTS_EVENTS,
+	IS_SLEEPING,
 } from "./constants.js";
 import { RowView } from "./BufferAccessor.js";
 import type { World } from "./world.js";
@@ -103,6 +104,9 @@ export class Body {
 	}
 	get flags() {
 		return this.ints.get(BODY_FLAGS_OFFSET);
+	}
+	get isSleeping() {
+		return (this.flags & IS_SLEEPING) !== 0;
 	}
 
 	get wantsEvents() {
@@ -191,6 +195,26 @@ export class Body {
 		this.floats.set(BODY_ANGULAR_DAMPING_OFFSET, v);
 	}
 
+	get canSleep() {
+		return this.cppBody?.canSleep ?? true;
+	}
+	set canSleep(v: boolean) {
+		const cppObj = this.cppBody;
+		if (cppObj) {
+			cppObj.canSleep = v;
+		}
+	}
+
+	get sleepTimeRequired() {
+		return this.cppBody?.sleepTimeRequired ?? 1.0;
+	}
+	set sleepTimeRequired(v: number) {
+		const cppObj = this.cppBody;
+		if (cppObj) {
+			cppObj.sleepTimeRequired = v;
+		}
+	}
+
 	get prevX() {
 		return this.floats.get(BODY_PREV_X_OFFSET);
 	}
@@ -242,6 +266,12 @@ export class Body {
 
 	wakeUp() {
 		this.cppBody?.wakeUp();
+	}
+	sleep() {
+		this.cppBody?.sleep();
+	}
+	forceWakeUp() {
+		this.cppBody?.forceWakeUp();
 	}
 
 	applyForce(x: number, y: number) {
