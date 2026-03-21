@@ -368,7 +368,7 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
         v128_t nextVY = v128_add_f32(vy, dvy);
 
         // 6. Cap velocity
-        v128_t speedSq = v128_add_f32(v128_mul_f32(nextVX, nextVX), v128_mul_f32(nextVY, nextVY));
+        v128_t speedSq = v128_mag_sq_f32(nextVX, nextVY);
         v128_t speedLimitMask = v128_gt_f32(speedSq, maxVelSq_v);
         
         // if (speedSq > maxVelSq) v *= maxVel / sqrt(speedSq)
@@ -516,7 +516,7 @@ void World::_doIntegratePositionsSIMD(float dt) {
         v128_t moved = wasm_v128_or(wasm_v128_or(wasm_f32x4_ne(dx, zero_v), wasm_f32x4_ne(dy, zero_v)), wasm_f32x4_ne(dr, zero_v));
         v128_t significantMove = wasm_v128_or(wasm_v128_or(v128_gt_f32(absAccX, wake_threshold_v), v128_gt_f32(absAccY, wake_threshold_v)), v128_gt_f32(absAccR, wake_threshold_v));
         
-        v128_t velSq = v128_add_f32(v128_mul_f32(vx, vx), v128_mul_f32(vy, vy));
+        v128_t velSq = v128_mag_sq_f32(vx, vy);
         v128_t aboveSleepVel = wasm_v128_or(v128_gt_f32(velSq, sleep_vel_sq_v), v128_gt_f32(wasm_f32x4_abs(rs), sleep_ang_vel_v));
         
         v128_t resetTimerMask = wasm_v128_and(wasm_v128_and(moved, significantMove), aboveSleepVel);

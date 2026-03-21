@@ -69,6 +69,48 @@ for (int i = vectorizedCount; i < count; ++i) {
 }
 ```
 
+### SIMD Math Library Guidelines
+
+To maintain consistency and performance, all agents must use the centralized math macros in `cpp/include/simd-math.h` instead of manual intrinsic calls for common operations.
+
+#### 1. The 4-Way SoA Pattern
+The math library is designed for Structure-of-Arrays (SoA) layouts. This means geometric operations expect vectors to be split across registers:
+-   **Register A (X)**: Contains the X components of 4 vectors.
+-   **Register A (Y)**: Contains the Y components of 4 vectors.
+
+```cpp
+// Example: Dot product of 4 pairs of vectors
+v128_t ax = v128_load_f32(&x_array[i]);
+v128_t ay = v128_load_f32(&y_array[i]);
+v128_t bx = v128_load_f32(&other_x[i]);
+v128_t by = v128_load_f32(&other_y[i]);
+
+v128_t results = v128_dot_f32(ax, ay, bx, by); // Result contains 4 dot products
+```
+
+#### 2. Available High-Level Macros
+| Macro | Description | Logic |
+| :--- | :--- | :--- |
+| `v128_dot_f32(ax, ay, bx, by)` | 4-way Dot Product | `ax*bx + ay*by` |
+| `v128_cross_f32(ax, ay, bx, by)` | 4-way 2D Cross Product | `ax*by - ay*bx` |
+| `v128_mag_sq_f32(vx, vy)` | 4-way Magnitude Squared | `vx*vx + vy*vy` |
+| `v128_mag_f32(vx, vy)` | 4-way Magnitude | `sqrt(vx*vx + vy*vy)` |
+| `v128_rotate_x_f32(vx, vy, cosA, sinA)` | 4-way Rotation (X component) | `vx*cosA - vy*sinA` |
+| `v128_rotate_y_f32(vx, vy, cosA, sinA)` | 4-way Rotation (Y component) | `vx*sinA + vy*cosA` |
+
+#### 3. Usage Strategies
+-   **Global Passes**: Use for operations that touch every body (e.g., integration, gravity).
+-   **1-vs-4 Batching**: When testing one object against many (e.g., broad-phase or narrow-phase), splat the single object's properties to a register and load 4 neighbors into other registers.
+-   **Constraint Solvers**: Group constraints into batches of 4 that share no common bodies to avoid race conditions.
+
+#### 4. Implementation Rules
+1.  **Always Provide Native Fallbacks**: When adding a new macro to `simd-math.h`, you **MUST** implement a functional fallback in the `#else` block. This ensures native tests continue to pass.
+2.  **Avoid SIMD Branching**: Use comparison macros (e.g., `v128_gt_f32`) and `v128_select` to handle logic instead of `if` statements inside vectorized loops.
+3.  **Use `wasm_f32x4_sqrt` sparingly**: Sqrt is expensive even in SIMD. Prefer `v128_mag_sq_f32` for threshold checks.
+4.  **Alignment**: Ensure data arrays are aligned to 16-byte boundaries for optimal `v128_load` performance.
+
+---
+
 ## C++ Implementation Details (Multithreading)
 
 ### The `GEARBOX_MT` Macro
