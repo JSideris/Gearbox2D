@@ -40,6 +40,8 @@ public:
 
     void clear();
     bool solve(int indexA, int indexB, float dt);
+    int _solveCircleCircleSIMD(int indexA, const int indicesB[4], float dt);
+    int _solveCirclePointSIMD(int indexA, const int indicesB[4], float dt);
 
     static bool testPointCircle(const Vec2& point, const Vec2& center, float radius);
     static bool testPointAabb(const Vec2& point, const Vec2& center, float width, float height);
