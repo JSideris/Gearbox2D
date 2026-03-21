@@ -7,6 +7,11 @@
 #include <utility>
 #include <algorithm>
 #include <memory>
+#ifdef GEARBOX_MT
+#include <mutex>
+#include <future>
+#include "thread-pool.h"
+#endif
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
@@ -75,11 +80,15 @@ struct Island {
     std::vector<Body*> bodies;
     std::vector<ContactConstraint*> contacts;
     std::vector<Joint*> joints;
+    bool canSleep;
+
+    Island() : canSleep(false) {}
 
     void clear() {
         bodies.clear();
         contacts.clear();
         joints.clear();
+        canSleep = false;
     }
 };
 
@@ -103,14 +112,21 @@ private:
     bool hasFriction = true;
     std::vector<ContactConstraint> contactConstraints;
     std::vector<float> eventData;
+#ifdef GEARBOX_MT
+    std::mutex eventMutex;
+#endif
     int velocityIterations = 50;
     int positionIterations = 3;
     int velocitySubSteps = 1;
     float speculativeMargin = 0.01f; // Default speculative margin
     int nextFixtureId = 1;
 
+#ifdef GEARBOX_MT
+    std::unique_ptr<ThreadPool> threadPool;
+#endif
+
     std::vector<SolverData> solverBodies;
-    std::vector<bool> solverBodyActive;
+    std::vector<uint8_t> solverBodyActive;
 private:
 
     struct PairHash {

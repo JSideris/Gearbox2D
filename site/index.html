@@ -497,13 +497,14 @@
 				});
 
 				// Hinges
-				const hinge1 = world.createHingeJoint(nextId++, wheelHub, wheel, { worldAnchor: { x: -7, y: 0 } });
-				const hinge2 = world.createHingeJoint(nextId++, smallWheelHub, smallWheel, {
+				const hinge1 = world.createHingeJoint(wheelHub, wheel, { id: nextId++, worldAnchor: { x: -7, y: 0 } });
+				const hinge2 = world.createHingeJoint(smallWheelHub, smallWheel, {
+					id: nextId++,
 					worldAnchor: { x: smallWheelX, y: smallWheelY },
 				});
 
 				// Gear Joint: ratio = radius1 / radius2 = 6.0 / 2.0 = 3.0
-				world.createGearJoint(nextId++, hinge1, hinge2, -3.0);
+				world.createGearJoint(hinge1, hinge2, { id: nextId++, ratio: -3.0 });
 
 				// 2. Crank Pin (Attached to wheel)
 				// We'll use a local anchor on the wheel
@@ -532,12 +533,14 @@
 				});
 
 				// Joints
-				world.createHingeJoint(nextId++, wheel, rod, {
+				world.createHingeJoint(wheel, rod, {
+					id: nextId++,
 					anchorA: { x: 2.5, y: 0 }, // Crank offset (approx 40% of radius)
 					anchorB: { x: -5.0, y: 0 }, // Rod end
 				});
 
-				world.createHingeJoint(nextId++, rod, piston, {
+				world.createHingeJoint(rod, piston, {
+					id: nextId++,
 					anchorA: { x: 5.0, y: 0 }, // Rod other end
 					anchorB: { x: 0, y: 0 }, // Piston center
 				});
@@ -651,11 +654,17 @@
 				});
 
 				// Hinge them together at the hub
-				const hinge1 = world.createHingeJoint(nextId++, gearHub, gearCross1, { worldAnchor: { x: 0, y: 2.5 } });
-				const hinge2 = world.createHingeJoint(nextId++, gearHub, gearCross2, { worldAnchor: { x: 0, y: 2.5 } });
+				const hinge1 = world.createHingeJoint(gearHub, gearCross1, {
+					id: nextId++,
+					worldAnchor: { x: 0, y: 2.5 },
+				});
+				const hinge2 = world.createHingeJoint(gearHub, gearCross2, {
+					id: nextId++,
+					worldAnchor: { x: 0, y: 2.5 },
+				});
 
 				// Link their rotations so they behave as one body
-				world.createGearJoint(nextId++, hinge1, hinge2, 1.0);
+				world.createGearJoint(hinge1, hinge2, { id: nextId++, ratio: 1.0 });
 
 				// 4. Interaction State
 				let frameCount = 0;
@@ -714,7 +723,8 @@
 								radius: 0.05,
 								maskBits: 0,
 							});
-							dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
+							dragJoint = world.createSpringJoint(mouseAnchor, target, {
+								id: 999998,
 								worldAnchor: pos,
 								frequencyHz: 5.0,
 								dampingRatio: 1.0,

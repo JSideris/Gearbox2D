@@ -20,21 +20,29 @@ TEST_TARGET = runTests
 SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
 
 # Output files
-OUTPUT_JS = $(BUILD_DIR)/$(TARGET).js
+OUTPUT_JS_MT = $(BUILD_DIR)/gearbox-module-mt.js
+OUTPUT_JS_ST = $(BUILD_DIR)/gearbox-module-st.js
 
 # C++ compiler flags
-CXXFLAGS = -O3 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker'
-GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -pthread
+COMMON_FLAGS = -O3 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker'
+MT_FLAGS = -pthread -s PTHREAD_POOL_SIZE=4 -s ALLOW_MEMORY_GROWTH=1 -DGEARBOX_MT
+ST_FLAGS = 
+
+GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -pthread -DGEARBOX_MT
 
 # Default target to build the project
 all: wasm
 
 # WASM build
-wasm: $(OUTPUT_JS)
+wasm: $(OUTPUT_JS_MT) $(OUTPUT_JS_ST)
 
-$(OUTPUT_JS): $(SRC)
+$(OUTPUT_JS_MT): $(SRC)
 	mkdir -p $(BUILD_DIR)
-	$(EMCC) $(CXXFLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS)
+	$(EMCC) $(COMMON_FLAGS) $(MT_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_MT)
+
+$(OUTPUT_JS_ST): $(SRC)
+	mkdir -p $(BUILD_DIR)
+	$(EMCC) $(COMMON_FLAGS) $(ST_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_ST)
 
 # Test build
 test: $(TEST_TARGET)

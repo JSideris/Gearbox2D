@@ -25,6 +25,10 @@ World::World() : collisionSolver(*this) {
     solverBodies.reserve(maxSize);
     solverBodyActive.reserve(maxSize);
     nextFixtureId = 1;
+#ifdef GEARBOX_MT
+    // Initialize the thread pool with 4 threads matching PTHREAD_POOL_SIZE
+    threadPool = std::make_unique<ThreadPool>(4);
+#endif
 }
 
 World::~World() {
@@ -547,11 +551,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     // Clear collision tracking flags that we'll use during DFS if needed
     // or just use the local visited vector.
     
-    Island island;
-    island.bodies.reserve(bodyCount);
-    island.contacts.reserve(collisionSolver.collisions.size());
-    island.joints.reserve(jointsMap.size());
-    
     // 1. Generate all contact constraints first, so we can follow them in DFS
     contactConstraints.clear();
     for (auto& col : collisionSolver.collisions) {
@@ -619,11 +618,28 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
     
     // 2. DFS partitioning
+    std::vector<Island> islands;
+    
+    // 2.1 Pre-initialize solver data for all bodies to avoid race conditions 
+    // when multiple islands share a static body.
+    if (solverBodies.size() < (size_t)bodyCount) {
+        solverBodies.resize(bodyCount);
+        solverBodyActive.resize(bodyCount, 0);
+    }
+    for (int i = 0; i < bodyCount; ++i) {
+        solverBodies[i] = bodiesList[i]->getSolverData();
+        solverBodyActive[i] = 1; // Mark as initialized
+    }
+
     for (int i = 0; i < bodyCount; ++i) {
         Body* seed = bodiesList[i];
         if (visited[i] || seed->type == ObjectType::FIXED_OBJECT || seed->isSleeping) continue;
         
-        island.clear();
+        Island currentIsland;
+        currentIsland.bodies.reserve(bodyCount / 4 + 1); // Heuristic
+        currentIsland.contacts.reserve(contactConstraints.size() / 4 + 1);
+        currentIsland.joints.reserve(jointsMap.size() / 4 + 1);
+        
         stack.push_back(seed);
         visited[i] = true;
         
@@ -631,14 +647,16 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             Body* b = stack.back();
             stack.pop_back();
             
-            island.bodies.push_back(b);
+            currentIsland.bodies.push_back(b);
+            // Wake up body if it was sleeping (main thread safe)
+            if (b->isSleeping) b->wakeUp();
             
             // Follow contacts
             for (ContactConstraint* c : bodyToContacts[b->worldIndex]) {
                 // Add contact to island if not already added
                 if (!c->inIsland) {
                     c->inIsland = true;
-                    island.contacts.push_back(c);
+                    currentIsland.contacts.push_back(c);
                 }
                 
                 Body* other = (c->a == b) ? c->b : c->a;
@@ -652,7 +670,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             for (Joint* j : b->joints) {
                 if (!j->inIsland) {
                     j->inIsland = true;
-                    island.joints.push_back(j);
+                    currentIsland.joints.push_back(j);
                 }
                 
                 Body* bodies[6];
@@ -677,11 +695,43 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             }
         }
         
-        // 3. Process the island
-        if (!island.bodies.empty()) {
-            _solveIsland(island, dt, substepIndex);
+        if (!currentIsland.bodies.empty()) {
+            islands.push_back(std::move(currentIsland));
         }
     }
+    
+    // 3. Process the islands
+    if (!islands.empty()) {
+        if (islands.size() == 1) {
+            // Optimization for single island case
+            _solveIsland(islands[0], dt, substepIndex);
+        } else {
+#ifdef GEARBOX_MT
+            for (auto& isl : islands) {
+                threadPool->enqueue([this, &isl, dt, substepIndex]() {
+                    this->_solveIsland(isl, dt, substepIndex);
+                });
+            }
+            threadPool->wait();
+#else
+            for (auto& isl : islands) {
+                _solveIsland(isl, dt, substepIndex);
+            }
+#endif
+        }
+
+        // 4. Main-thread processing for sleeping (thread-safety for BVH)
+        if (substepIndex == velocitySubSteps - 1) {
+            for (auto& isl : islands) {
+                if (isl.canSleep) {
+                    for (Body* b : isl.bodies) b->sleep();
+                }
+            }
+        }
+    }
+    
+    // Reset solverBodyActive for all bodies (safe now that parallel processing is done)
+    std::fill(solverBodyActive.begin(), solverBodyActive.end(), 0);
     
     // 4. Update warm start storage on every substep
     warmStartImpulses.clear();
@@ -736,39 +786,11 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
         return a->id < b->id;
     });
 
-    // 2. Wake up bodies in island
-    for (Body* b : island.bodies) b->wakeUp();
-
-    // 3. Solve the island
-    int totalBodyCount = bodiesList.size();
-    if (solverBodies.size() < totalBodyCount) {
-        solverBodies.resize(totalBodyCount);
-        solverBodyActive.resize(totalBodyCount, false);
-    } else {
-        // Reset only the ones that will be used. 
-        // We'll reset all of them to false for safety before each solve, 
-        // or just rely on tracking which ones we activated.
-        // Actually, for performance, it's better to only reset what we used.
-    }
-    
-    // Initialize solver data for all dynamic/kinematic bodies in the island
-    std::vector<int> activeIndices;
-    activeIndices.reserve(island.bodies.size());
-
-    for (Body* b : island.bodies) {
-        solverBodies[b->worldIndex] = b->getSolverData();
-        solverBodyActive[b->worldIndex] = true;
-        activeIndices.push_back(b->worldIndex);
-    }
+    // 2. Process the island
+    // NOTE: Bodies were already woken up in _buildAndProcessIslands
     
     auto getSolverBody = [&](Body* b) -> SolverData& {
-        int idx = b->worldIndex;
-        if (!solverBodyActive[idx]) {
-            solverBodies[idx] = b->getSolverData();
-            solverBodyActive[idx] = true;
-            activeIndices.push_back(idx);
-        }
-        return solverBodies[idx];
+        return solverBodies[b->worldIndex];
     };
     
     // Prepare contacts
@@ -826,11 +848,6 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
         for (Joint* j : island.joints) j->solvePosition();
     }
 
-    // Reset solverBodyActive for used indices
-    for (int idx : activeIndices) {
-        solverBodyActive[idx] = false;
-    }
-
     // 3. Check if the island can go to sleep
     if (substepIndex == velocitySubSteps - 1) {
         bool canIslandSleep = true;
@@ -842,7 +859,7 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
         }
         
         if (canIslandSleep) {
-            for (Body* b : island.bodies) b->sleep();
+            island.canSleep = true;
         }
     }
 }
@@ -945,6 +962,9 @@ emscripten_val World::getEventData() { return emscripten_val(emscripten::typed_m
 
 int World::getEventCount() { return (int)eventData.size() / 6; }
 void World::addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB, float impulse) {
+#ifdef GEARBOX_MT
+    std::lock_guard<std::mutex> lock(eventMutex);
+#endif
     eventData.push_back((float)type);
     eventData.push_back((float)bodyA);
     eventData.push_back((float)bodyB);

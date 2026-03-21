@@ -1,14 +1,16 @@
-import gearboxModule from "../../dist/wasm/gearbox-module.js";
 import { DebugGraphics } from "./debug-graphics.js";
 import { SHAPES, BODY_TYPES } from "./constants.js";
 import { World } from "./world.js";
 import * as polygon from "./polygon-utils.js";
 import type { WasmModule, CppWorld, CppVec2 } from "./wasm-types.js";
 
+export type GearboxMode = "auto" | "mt" | "st";
+
 /**@type {Gearbox} */
 export class Gearbox {
 	isInitialized: boolean;
 	debug = new DebugGraphics();
+	mode: "mt" | "st" = "st";
 
 	// Enums.
 	shapes = SHAPES;
@@ -22,6 +24,7 @@ export class Gearbox {
 	private _module: WasmModule | null = null;
 	private _worldC: { new (): CppWorld } | null = null;
 	private _vec2C: { new (x: number, y: number): CppVec2 } | null = null;
+	private _initPromise: Promise<void> | null = null;
 
 	constructor() {}
 
@@ -33,18 +36,64 @@ export class Gearbox {
 		if (!this.isInitialized) throw new Error("Engine is not initialized. Call and await init() first.");
 	}
 
-	async init(options: { wasmBinary?: Uint8Array } = {}) {
+	async init(options: { wasmBinary?: Uint8Array; mode?: GearboxMode } = {}) {
 		if (this.isInitialized) return;
+		if (this._initPromise) return this._initPromise;
 
-		let Module = (await gearboxModule(options)) as WasmModule;
-		this._module = Module;
+		this._initPromise = (async () => {
+			const requestedMode = options.mode || "auto";
+			const isIsolated = typeof self !== "undefined" && self.crossOriginIsolated;
+			const supportsThreads = isIsolated && typeof SharedArrayBuffer !== "undefined";
 
-		const { Vec2, World: WorldConstructor } = Module;
+			let useMT = false;
+			if (requestedMode === "mt") {
+				if (!supportsThreads) {
+					throw new Error(
+						"Gearbox2D: Multithreading requested but cross-origin isolation is not enabled or SharedArrayBuffer is not supported.",
+					);
+				}
+				useMT = true;
+			} else if (requestedMode === "st") {
+				useMT = false;
+			} else {
+				// auto
+				if (supportsThreads) {
+					useMT = true;
+				} else {
+					console.warn(
+						"Gearbox2D: Cross-origin isolation is not enabled. Falling back to single-threaded mode. " +
+							"To enable multithreading, ensure your server sends: \n" +
+							"  Cross-Origin-Opener-Policy: same-origin\n" +
+							"  Cross-Origin-Embedder-Policy: require-corp\n" +
+							"To suppress this warning, explicitly set mode to 'st' in init().",
+					);
+					useMT = false;
+				}
+			}
 
-		this._worldC = WorldConstructor;
-		this._vec2C = Vec2;
+			this.mode = useMT ? "mt" : "st";
 
-		this.isInitialized = true;
+			let gearboxModule;
+			if (useMT) {
+				// @ts-ignore
+				gearboxModule = (await import("../../dist/wasm/gearbox-module-mt.js")).default;
+			} else {
+				// @ts-ignore
+				gearboxModule = (await import("../../dist/wasm/gearbox-module-st.js")).default;
+			}
+
+			let Module = (await gearboxModule(options)) as WasmModule;
+			this._module = Module;
+
+			const { Vec2, World: WorldConstructor } = Module;
+
+			this._worldC = WorldConstructor;
+			this._vec2C = Vec2;
+
+			this.isInitialized = true;
+		})();
+
+		return this._initPromise;
 	}
 
 	getWasmMemory() {

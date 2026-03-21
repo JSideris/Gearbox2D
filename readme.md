@@ -1,6 +1,6 @@
 # Gearbox2D - High-Speed 2D Physics Engine
 
-**⚠️ WORK IN PROGRESS (Alpha)** - *Gearbox2D is currently in active development. APIs are subject to change.*
+**⚠️ WORK IN PROGRESS (Beta)** - *Gearbox2D is currently in active development. APIs are subject to change.*
 
 Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the ground up for the modern browser. Built in C++ and compiled to WebAssembly (WASM), it provides a high-performance core with a developer-friendly TypeScript wrapper.
 
