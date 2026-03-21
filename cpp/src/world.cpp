@@ -28,6 +28,9 @@ World::World() : collisionSolver(*this) {
 #ifdef GEARBOX_MT
     // Initialize the thread pool with 4 threads matching PTHREAD_POOL_SIZE
     threadPool = std::make_unique<ThreadPool>(4);
+    for (int i = 0; i < 4; ++i) {
+        mtSolvers.push_back(std::make_unique<ThreadLocalSolver>(*this));
+    }
 #endif
 }
 
@@ -410,35 +413,88 @@ void World::_doBroadPhase() {
 
 void World::_doNarrowPhase(float dt) {
     collisionSolver.clear();
+
+    // Sequential pass for broadphase flags (very fast)
     for (auto& pair : bvh.collisionPairs) {
         Fixture* f1 = static_cast<Fixture*>(pair.first);
         Fixture* f2 = static_cast<Fixture*>(pair.second);
-        
+
+        liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+    }
+
+#ifdef GEARBOX_MT
+    int pairCount = bvh.collisionPairs.size();
+    if (pairCount > 0) {
+        // Narrow-Phase Solving in Parallel
+        int numThreads = mtSolvers.size();
+        int batchSize = (pairCount + numThreads - 1) / numThreads;
+
+        for (int i = 0; i < numThreads; ++i) {
+            int start = i * batchSize;
+            int end = std::min(start + batchSize, pairCount);
+            if (start >= end) continue;
+
+            mtSolvers[i]->solver.clear();
+            mtSolvers[i]->collisionPairs.clear();
+
+            threadPool->enqueue([this, i, start, end, dt]() {
+                for (int j = start; j < end; ++j) {
+                    auto& pair = bvh.collisionPairs[j];
+                    Fixture* f1 = static_cast<Fixture*>(pair.first);
+                    Fixture* f2 = static_cast<Fixture*>(pair.second);
+
+                    const auto& d1 = f1->body->_disabledBodyIds;
+                    if (!d1.empty() && std::find(d1.begin(), d1.end(), f2->body->id) != d1.end()) continue;
+
+                    if (mtSolvers[i]->solver.solve(f1->worldIndex, f2->worldIndex, dt)) {
+                        mtSolvers[i]->collisionPairs.insert({f1->id, f2->id});
+                    }
+                }
+            });
+        }
+        threadPool->wait();
+
+        // Merge results sequentially
+        for (int i = 0; i < numThreads; ++i) {
+            for (const auto& info : mtSolvers[i]->solver.collisions) {
+                collisionSolver.collisions.push_back(info);
+            }
+            for (const auto& pair : mtSolvers[i]->collisionPairs) {
+                currentPairs.insert(pair);
+
+                // Update HAS_PHYSICAL_COLLISION flags
+                Fixture* f1 = getFixture(pair.first);
+                Fixture* f2 = getFixture(pair.second);
+                if (f1 && f2) {
+                    liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+                    liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+                    liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+                    liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+                }
+            }
+        }
+    }
+#else
+    for (auto& pair : bvh.collisionPairs) {
+        Fixture* f1 = static_cast<Fixture*>(pair.first);
+        Fixture* f2 = static_cast<Fixture*>(pair.second);
+
         const auto& d1 = f1->body->_disabledBodyIds;
         if (!d1.empty() && std::find(d1.begin(), d1.end(), f2->body->id) != d1.end()) continue;
 
-        bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex, dt);
-        
-        // Mark as AABB collision (broadphase overlap)
-        liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-        liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-        
-        // Also mark bodies for backward compatibility
-        liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-        liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-
-        if (colliding) {
+        if (collisionSolver.solve(f1->worldIndex, f2->worldIndex, dt)) {
             currentPairs.insert({f1->id, f2->id});
 
-            // Mark fixtures as colliding for debug graphics
             liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
             liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-
-            // Also mark bodies for backward compatibility
             liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
             liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
         }
     }
+#endif
 }
 
 void World::_doContactManagement() {
