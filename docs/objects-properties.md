@@ -78,7 +78,7 @@ This ensures that the entire concave shape behaves as a single cohesive unit, wi
 
 ### Example: Updating a Concave Shape
 ```typescript
-const star = world.createBody(nextId++, { x: 0, y: 0 });
+const star = world.createBody({ id: nextId++,  x: 0, y: 0 });
 const starFixture = star.createFixture({
     shape: gearbox.shapes.POLYGON,
     vertices: gearbox.polygon.makeStar(5, 1.0, 0.4)

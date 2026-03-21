@@ -20,7 +20,8 @@ export const optimizationExamples = [
 			nextId = 0;
 
 			world
-				.createBody(nextId++, {
+				.createBody({
+					id: nextId++,
 					x: 5,
 					y: 8.5,
 					vx: 0.0,
@@ -43,7 +44,8 @@ export const optimizationExamples = [
 				if (nextId < nObjects) {
 					const bodyId = nextId++;
 					world
-						.createBody(bodyId, {
+						.createBody({
+							id: bodyId,
 							x: 5,
 							y: 0,
 							r: (Math.random() - 0.5) * 0.1, // Add small random rotation
@@ -73,7 +75,8 @@ export const optimizationExamples = [
 		globalLines: [],
 		onInit: (world) => {
 			world
-				.createBody(1, {
+				.createBody({
+					id: 1,
 					x: 10,
 					y: 10,
 					vx: -5.0,
@@ -87,14 +90,7 @@ export const optimizationExamples = [
 					restitution: 0,
 				});
 			world
-				.createBody(2, {
-					x: 0,
-					y: 0,
-					vx: 5.0,
-					vy: 5.0,
-					type: gearbox.bodyTypes.DYNAMIC_OBJECT,
-					mass: 0.2,
-				})
+				.createBody({ id: 2, x: 0, y: 0, vx: 5.0, vy: 5.0, type: gearbox.bodyTypes.DYNAMIC_OBJECT, mass: 0.2 })
 				.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 1,

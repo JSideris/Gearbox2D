@@ -23,7 +23,8 @@ export const constraintsExamples = [
 		onInit: (world) => {
 			nextId = 1;
 			const anchorId = nextId++;
-			const anchor = world.createBody(anchorId, {
+			const anchor = world.createBody({
+				id: anchorId,
 				x: 5,
 				y: 3,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -36,7 +37,8 @@ export const constraintsExamples = [
 			});
 
 			const pendulumId = nextId++;
-			const pendulum = world.createBody(pendulumId, {
+			const pendulum = world.createBody({
+				id: pendulumId,
 				x: 8,
 				y: 3,
 				mass: 0.1,
@@ -78,7 +80,8 @@ export const constraintsExamples = [
 
 			// 1. Suspension System (higher up and smaller)
 			const anchorId = nextId++;
-			const anchor = world.createBody(anchorId, {
+			const anchor = world.createBody({
+				id: anchorId,
 				x: 5,
 				y: 1,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -90,13 +93,15 @@ export const constraintsExamples = [
 			});
 
 			const massObjectId = nextId++;
-			massObject = world.createBody(massObjectId, {
+			massObject = world.createBody({
+				id: massObjectId,
 				x: 5,
 				y: 2.3,
 				mass: 0.05,
 				color: "#888888",
 			});
-			massObject.createFixture(massObjectId, {
+			massObject.createFixture({
+				id: massObjectId,
 				shape: gearbox.shapes.CIRCLE,
 				radius: 0.6,
 			});
@@ -114,7 +119,8 @@ export const constraintsExamples = [
 			const segmentHeight = 0.2;
 
 			const bridgeAnchorLeftId = nextId++;
-			const bridgeAnchorLeft = world.createBody(bridgeAnchorLeftId, {
+			const bridgeAnchorLeft = world.createBody({
+				id: bridgeAnchorLeftId,
 				x: startX - segmentWidth / 2,
 				y: bridgeY,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -127,7 +133,8 @@ export const constraintsExamples = [
 			});
 
 			const bridgeAnchorRightId = nextId++;
-			const bridgeAnchorRight = world.createBody(bridgeAnchorRightId, {
+			const bridgeAnchorRight = world.createBody({
+				id: bridgeAnchorRightId,
 				x: endX + segmentWidth / 2,
 				y: bridgeY,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -142,7 +149,8 @@ export const constraintsExamples = [
 			let prevBody = bridgeAnchorLeft;
 			for (let i = 0; i < segments; i++) {
 				const segmentBodyId = nextId++;
-				const segmentBody = world.createBody(segmentBodyId, {
+				const segmentBody = world.createBody({
+					id: segmentBodyId,
 					x: startX + i * segmentWidth + segmentWidth / 2,
 					y: bridgeY,
 					mass: 0.2, // Slightly heavier for stability
@@ -229,7 +237,8 @@ export const constraintsExamples = [
 			const spacing = 1.5;
 
 			const staticBodyId = nextId++;
-			const staticBody = world.createBody(staticBodyId, {
+			const staticBody = world.createBody({
+				id: staticBodyId,
 				x: 5,
 				y: 5,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -248,7 +257,8 @@ export const constraintsExamples = [
 			for (let i = 0; i < numGears; i++) {
 				const size = i % 2 === 0 ? 1.0 : 0.5;
 				const gearId = nextId++;
-				const gear = world.createBody(gearId, {
+				const gear = world.createBody({
+					id: gearId,
 					x: startX + i * spacing,
 					y: y,
 					mass: size,
@@ -302,7 +312,8 @@ export const constraintsExamples = [
 
 			// The Drum Hub (fixed rotation center)
 			const hubId = nextId++;
-			const hub = world.createBody(hubId, {
+			const hub = world.createBody({
+				id: hubId,
 				x: cx,
 				y: cy,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -315,18 +326,15 @@ export const constraintsExamples = [
 
 			// The rotating drum (structure only)
 			const drumId = nextId++;
-			drum = world.createBody(drumId, {
+			drum = world.createBody({
+				id: drumId,
 				x: cx,
 				y: cy,
 				mass: 100,
 				color: "rgba(255, 255, 255, 0.05)",
 				angularDamping: 0.5, // Add some damping to stabilize
 			});
-			drum.createFixture(drumId, {
-				shape: gearbox.shapes.CIRCLE,
-				radius: drumRadius,
-				maskBits: 0,
-			});
+			drum.createFixture({ id: drumId, shape: gearbox.shapes.CIRCLE, radius: drumRadius, maskBits: 0 });
 
 			world.createHingeJoint(nextId++, hub, drum, {
 				worldAnchor: { x: cx, y: cy },
@@ -353,7 +361,8 @@ export const constraintsExamples = [
 				const shape1X = pinX - Math.cos(angle) * 0.5;
 				const shape1Y = pinY - Math.sin(angle) * 0.5;
 				const shape1Id = nextId++;
-				const shape1 = world.createBody(shape1Id, {
+				const shape1 = world.createBody({
+					id: shape1Id,
 					x: shape1X,
 					y: shape1Y,
 					mass: 0.5,
@@ -378,7 +387,8 @@ export const constraintsExamples = [
 				const shape2X = shape1X - Math.cos(angle) * linkDist;
 				const shape2Y = shape1Y - Math.sin(angle) * linkDist;
 				const shape2Id = nextId++;
-				const shape2 = world.createBody(shape2Id, {
+				const shape2 = world.createBody({
+					id: shape2Id,
 					x: shape2X,
 					y: shape2Y,
 					mass: 0.5,
@@ -402,7 +412,8 @@ export const constraintsExamples = [
 				const shape3X = shape2X - Math.cos(angle) * linkDist;
 				const shape3Y = shape2Y - Math.sin(angle) * linkDist;
 				const shape3Id = nextId++;
-				const shape3 = world.createBody(shape3Id, {
+				const shape3 = world.createBody({
+					id: shape3Id,
 					x: shape3X,
 					y: shape3Y,
 					mass: 0.5,
@@ -479,7 +490,8 @@ export const constraintsExamples = [
 
 			// Hub (fixed center)
 			const hubId = nextId++;
-			const hub = world.createBody(hubId, {
+			const hub = world.createBody({
+				id: hubId,
 				x: cx,
 				y: cy,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -493,7 +505,8 @@ export const constraintsExamples = [
 
 			// Central rotating body (Pulley)
 			const rotatorId = nextId++;
-			rotator = world.createBody(rotatorId, {
+			rotator = world.createBody({
+				id: rotatorId,
 				x: cx,
 				y: cy,
 				rs: 2.5,
@@ -502,7 +515,8 @@ export const constraintsExamples = [
 				color: "#888888",
 				angularDamping: 0.1,
 			});
-			rotator.createFixture(rotatorId, {
+			rotator.createFixture({
+				id: rotatorId,
 				shape: gearbox.shapes.CIRCLE,
 				radius: innerRadius,
 				sFriction: 1.0,
@@ -521,7 +535,8 @@ export const constraintsExamples = [
 				const sy = cy + Math.sin(angle) * outerRadius;
 
 				const shapeId = nextId++;
-				const body = world.createBody(shapeId, {
+				const body = world.createBody({
+					id: shapeId,
 					x: sx,
 					y: sy,
 					mass: 0.1,
@@ -595,7 +610,8 @@ export const constraintsExamples = [
 
 			// Center point (Axel)
 			const centerId = nextId++;
-			const center = world.createBody(centerId, {
+			const center = world.createBody({
+				id: centerId,
 				x: cx,
 				y: cy,
 				mass: 2.0, // Heavier axel for more stability
@@ -618,12 +634,7 @@ export const constraintsExamples = [
 				const py = cy + Math.sin(angle) * radius;
 
 				const pId = nextId++;
-				const p = world.createBody(pId, {
-					x: px,
-					y: py,
-					mass: 0.5,
-					color: "#8888ff",
-				});
+				const p = world.createBody({ id: pId, x: px, y: py, mass: 0.5, color: "#8888ff" });
 				p.createFixture({
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.2,
@@ -660,12 +671,7 @@ export const constraintsExamples = [
 			// Ground - made wider to accommodate movement
 			const groundId = nextId++;
 			world
-				.createBody(groundId, {
-					x: 5,
-					y: 10,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-					color: "#aaaaaa",
-				})
+				.createBody({ id: groundId, x: 5, y: 10, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#aaaaaa" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 15,
@@ -677,7 +683,8 @@ export const constraintsExamples = [
 			// Barriers to keep the ball from rolling off - taller and thicker
 			const barrier1Id = nextId++;
 			world
-				.createBody(barrier1Id, {
+				.createBody({
+					id: barrier1Id,
 					x: -3.5,
 					y: 4.25,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -690,7 +697,8 @@ export const constraintsExamples = [
 				});
 			const barrier2Id = nextId++;
 			world
-				.createBody(barrier2Id, {
+				.createBody({
+					id: barrier2Id,
 					x: 13.5,
 					y: 4.25,
 					type: gearbox.bodyTypes.FIXED_OBJECT,

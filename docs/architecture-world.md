@@ -126,7 +126,7 @@ Objects are created with a unique ID and a specification object. You can attach 
 
 ```typescript
 // Atomic creation with multiple fixtures
-const obj = world.createBody(101, {
+const obj = world.createBody({ id: 101, 
     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
     x: 0,
     y: 0,

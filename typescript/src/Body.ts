@@ -41,18 +41,22 @@ import type { BodyOptions, FixtureOptions } from "./types.js";
 import { JS_OVERHEAD, estimateStringMemory, estimateArrayMemory } from "./MemoryEstimator.js";
 
 export class Body {
-	id: number;
+	_externalId: number | undefined;
+	internalId: number;
 	index: number;
 	world: World;
 	fixtures: Fixture[] = [];
+	joints: any[] = []; // Track joints for cleanup
 	color?: string;
 
 	private floats: RowView<Float32Array>;
 	private ints: RowView<Int32Array>;
 
-	constructor(index: number, world: World) {
+	constructor(index: number, world: World, internalId: number, externalId: number | undefined) {
 		this.index = index;
 		this.world = world;
+		this.internalId = internalId;
+		this._externalId = externalId;
 
 		this.floats = new RowView(
 			() => this.world.liveBodyFloatData,
@@ -65,17 +69,20 @@ export class Body {
 			() => this.index,
 		);
 
-		this.id = this.ints.get(BODY_ID_OFFSET);
+		// No longer setting internalId from view because it's passed in
+	}
+
+	get id() {
+		return this._externalId;
 	}
 
 	/** @internal Create a new body (handles WASM object creation and initial fixtures) */
-	static create(world: World, id: number, options: BodyOptions): Body {
-		const { fixtures, shape, ...rest } = options;
-		const index = world.world.createBody(id, rest);
+	static create(world: World, internalId: number, externalId: number | undefined, options: BodyOptions): Body {
+		const { fixtures, shape, id, ...rest } = options;
+		const index = world.world.createBody(internalId, rest);
 		world.refreshViews();
-		const body = new Body(index, world);
+		const body = new Body(index, world, internalId, externalId);
 		body.color = options.color;
-		world.bodiesById[id] = body;
 
 		if (fixtures) {
 			for (const fOpt of fixtures) {
@@ -83,21 +90,22 @@ export class Body {
 			}
 		}
 		if (shape !== undefined) {
-			Fixture.create(body, options as unknown as FixtureOptions);
+			const { fixtureId, ...fixtureRest } = rest as any;
+			Fixture.create(body, { ...fixtureRest, shape, id: fixtureId } as FixtureOptions);
 		}
 
 		return body;
 	}
 
 	private get cppBody() {
-		return this.world.world.getBody(this.id);
+		return this.world.world.getBody(this.internalId);
 	}
 
-	createFixture(options: FixtureOptions | FixtureOptions[], id?: number): Fixture | Fixture[] {
+	createFixture(options: FixtureOptions | FixtureOptions[]): Fixture | Fixture[] {
 		if (Array.isArray(options)) {
 			return options.map((opt) => Fixture.create(this, opt));
 		}
-		return Fixture.create(this, options, id);
+		return Fixture.create(this, options);
 	}
 
 	get type() {

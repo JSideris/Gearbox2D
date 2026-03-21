@@ -44,10 +44,10 @@ In addition to the [common joint properties](./joints-overview.md#common-propert
 ## Example: Suspension System
 
 ```javascript
-const chassis = world.createBody(1, { x: 10, y: 5 });
-const wheel = world.createBody(2, { x: 10, y: 6 });// Soft suspension
-chassis.createFixture(1, { shape: gearbox.shapes.BOX, width: 2, height: 1 });
-wheel.createFixture(2, { shape: gearbox.shapes.CIRCLE, radius: 0.5 });
+const chassis = world.createBody({ id: 1,  x: 10, y: 5 });
+const wheel = world.createBody({ id: 2,  x: 10, y: 6 });// Soft suspension
+chassis.createFixture({ id: 1,  shape: gearbox.shapes.BOX, width: 2, height: 1 });
+wheel.createFixture({ id: 2,  shape: gearbox.shapes.CIRCLE, radius: 0.5 });
 world.createSpringJoint(101, chassis, wheel, {
     anchorA: { x: 0, y: 1 },
     frequencyHz: 3.0,

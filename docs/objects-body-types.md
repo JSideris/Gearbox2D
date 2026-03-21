@@ -11,7 +11,7 @@ Dynamic bodies are fully simulated by the physics engine. They are affected by g
 
 ```typescript
 const bodyId = nextId++;
-const body = world.createBody(bodyId, {
+const body = world.createBody({ id: bodyId, 
     x: 5, y: 5,
     mass: 1.0,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT
@@ -30,7 +30,7 @@ Fixed objects have infinite mass and are immovable by the physics simulation. Th
 
 ```typescript
 const bodyId = nextId++;
-const body = world.createBody(bodyId, {
+const body = world.createBody({ id: bodyId, 
     x: 5, y: 9,
     type: gearbox.bodyTypes.FIXED_OBJECT
 });
@@ -48,7 +48,7 @@ Kinematic objects are a hybrid between dynamic and fixed objects. Like fixed obj
 
 ```typescript
 const bodyId = nextId++;
-const body = world.createBody(bodyId, {
+const body = world.createBody({ id: bodyId, 
     x: 2, y: 5,
     vx: 2.0, // Moves horizontally
     type: gearbox.bodyTypes.KINEMATIC_OBJECT
@@ -74,7 +74,7 @@ To create a sensor, set the `isSensor` property to `true` on the fixture options
 ### Example: Static Trigger Zone
 ```typescript
 const bodyId = nextId++;
-world.createBody(bodyId, {
+world.createBody({ id: bodyId, 
     x: 5, y: 5,
     type: gearbox.bodyTypes.FIXED_OBJECT,
 }).createFixture({
@@ -86,7 +86,7 @@ world.createBody(bodyId, {
 
 ### Example: Attached Vision Cone
 ```typescript
-const player = world.createBody(nextId++, {
+const player = world.createBody({ id: nextId++, 
     x: 5, y: 5,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT
 });

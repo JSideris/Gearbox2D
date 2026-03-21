@@ -29,8 +29,16 @@ export class World {
 	fixtureInts: BufferView<Int32Array>;
 
 	bodiesById: { [key: number]: Body } = {};
+	bodiesByInternalId: { [key: number]: Body } = {};
 	fixturesById: { [key: number]: Fixture } = {};
+	fixturesByInternalId: { [key: number]: Fixture } = {};
 	jointsById: { [key: number]: Joint } = {};
+	jointsByInternalId: { [key: number]: Joint } = {};
+
+	nextInternalBodyId: number = 1;
+	nextInternalFixtureId: number = 1;
+	nextInternalJointId: number = 1;
+	maxInternalIdThreshold: number = 0x7fffffff - 100000;
 
 	interpolationAlpha: number = 1.0;
 	stepCount: number = 0;
@@ -39,10 +47,21 @@ export class World {
 	/** @internal */
 	_wasmMemoryGetter: (() => number) | null = null;
 
-	onCollisionStart?: (idA: number, idB: number, fixtureIdA: number, fixtureIdB: number, impulse: number) => void;
-	onCollisionEnd?: (idA: number, idB: number, fixtureIdA: number, fixtureIdB: number) => void;
-	onSleep?: (id: number) => void;
-	onWake?: (id: number) => void;
+	onCollisionStart?: (
+		idA: number | undefined,
+		idB: number | undefined,
+		fixtureIdA: number | undefined,
+		fixtureIdB: number | undefined,
+		impulse: number,
+	) => void;
+	onCollisionEnd?: (
+		idA: number | undefined,
+		idB: number | undefined,
+		fixtureIdA: number | undefined,
+		fixtureIdB: number | undefined,
+	) => void;
+	onSleep?: (id: number | undefined) => void;
+	onWake?: (id: number | undefined) => void;
 
 	constructor(world: CppWorld) {
 		this.world = world;
@@ -64,61 +83,180 @@ export class World {
 	clear() {
 		this.world.clear();
 		this.bodiesById = {};
+		this.bodiesByInternalId = {};
 		this.fixturesById = {};
+		this.fixturesByInternalId = {};
 		this.jointsById = {};
+		this.jointsByInternalId = {};
+		this.nextInternalBodyId = 1;
+		this.nextInternalFixtureId = 1;
+		this.nextInternalJointId = 1;
 		this.refreshViews();
 	}
 
 	destroy() {
 		if (this.world) {
 			this.world.delete();
-			this.world = null;
+			(this as any).world = null;
 		}
 		this.bodiesById = {};
+		this.bodiesByInternalId = {};
 		this.fixturesById = {};
+		this.fixturesByInternalId = {};
 		this.jointsById = {};
+		this.jointsByInternalId = {};
 	}
 
-	createBody(id: number, options: BodyOptions): Body {
-		return Body.create(this, id, options);
+	setDefragThreshold(threshold: number) {
+		this.maxInternalIdThreshold = threshold;
 	}
 
-	createFixture(bodyId: number, options: FixtureOptions, fixtureId?: number): Fixture {
+	/** @internal */
+	getNextInternalBodyId(): number {
+		if (this.nextInternalBodyId >= this.maxInternalIdThreshold) {
+			this.defragmentInternalIds();
+		}
+		return this.nextInternalBodyId++;
+	}
+
+	/** @internal */
+	getNextInternalFixtureId(): number {
+		if (this.nextInternalFixtureId >= this.maxInternalIdThreshold) {
+			this.defragmentInternalIds();
+		}
+		return this.nextInternalFixtureId++;
+	}
+
+	/** @internal */
+	getNextInternalJointId(): number {
+		if (this.nextInternalJointId >= this.maxInternalIdThreshold) {
+			this.defragmentInternalIds();
+		}
+		return this.nextInternalJointId++;
+	}
+
+	defragmentInternalIds() {
+		const oldBodies = Object.values(this.bodiesByInternalId);
+		const oldFixtures = Object.values(this.fixturesByInternalId);
+		const oldJoints = Object.values(this.jointsByInternalId);
+
+		this.bodiesByInternalId = {};
+		this.fixturesByInternalId = {};
+		this.jointsByInternalId = {};
+
+		let nextBodyId = 1;
+		for (const body of oldBodies) {
+			const oldId = body.internalId;
+			const newId = nextBodyId++;
+			this.world.updateBodyId(oldId, newId);
+			body.internalId = newId;
+			this.bodiesByInternalId[newId] = body;
+		}
+
+		let nextFixtureId = 1;
+		const uniqueFixtures = new Set(oldFixtures);
+		for (const fixture of uniqueFixtures) {
+			for (const sub of fixture.subFixtures) {
+				const oldId = sub.id;
+				const newId = nextFixtureId++;
+				this.world.updateFixtureId(oldId, newId);
+				sub.id = newId;
+				this.fixturesByInternalId[newId] = fixture;
+			}
+		}
+
+		let nextJointId = 1;
+		for (const joint of oldJoints) {
+			const oldId = joint.id;
+			const newId = nextJointId++;
+			this.world.updateJointId(oldId, newId);
+			joint.id = newId;
+			this.jointsByInternalId[newId] = joint;
+		}
+
+		this.world.syncDefragmentedIds();
+
+		this.nextInternalBodyId = nextBodyId;
+		this.nextInternalFixtureId = nextFixtureId;
+		this.nextInternalJointId = nextJointId;
+	}
+
+	createBody(options: BodyOptions): Body {
+		const internalId = this.getNextInternalBodyId();
+		const externalId = options.id;
+		const body = Body.create(this, internalId, externalId, options);
+		this.bodiesByInternalId[internalId] = body;
+		if (externalId !== undefined) {
+			this.bodiesById[externalId] = body;
+		}
+		return body;
+	}
+
+	createFixture(bodyId: number, options: FixtureOptions): Fixture {
 		const body = this.bodiesById[bodyId];
 		if (!body) throw new Error(`Body with id ${bodyId} not found`);
-		return Fixture.create(body, options, fixtureId);
+		return Fixture.create(body, options);
+	}
+
+	removeBody(body: Body) {
+		for (const fixture of body.fixtures) {
+			if (fixture.id !== undefined) {
+				delete this.fixturesById[fixture.id];
+			}
+			for (const sub of fixture.subFixtures) {
+				delete this.fixturesByInternalId[sub.id];
+			}
+		}
+		// Clean up joints connected to this body
+		for (const joint of [...body.joints]) {
+			this.removeJointInternal(joint);
+		}
+		this.world.removeObject(body.internalId);
+		delete this.bodiesByInternalId[body.internalId];
+		if (body.id !== undefined) {
+			delete this.bodiesById[body.id];
+		}
+		this.refreshViews();
+		this.syncIndices();
 	}
 
 	removeObject(id: number) {
 		const body = this.bodiesById[id];
 		if (body) {
-			for (const fixture of body.fixtures) {
-				for (const sub of fixture.subFixtures) {
-					delete this.fixturesById[sub.id];
-				}
+			this.removeBody(body);
+		}
+	}
+
+	private removeJointInternal(joint: any) {
+		// Remove from world maps
+		delete this.jointsByInternalId[joint.id];
+		if (joint._externalId !== undefined) {
+			delete this.jointsById[joint._externalId];
+		}
+		// Remove from bodies' joints lists
+		const bodies = [joint.bodyA, joint.bodyB];
+		for (const b of bodies) {
+			if (b) {
+				const idx = b.joints.indexOf(joint);
+				if (idx !== -1) b.joints.splice(idx, 1);
 			}
 		}
-		this.world.removeObject(id);
-		this.refreshViews();
-		delete this.bodiesById[id];
-		// Re-sync indices after swap-with-last
-		this.syncIndices();
 	}
 
 	syncIndices() {
 		const bodyCount = this.world.getBodyCount();
 		for (let i = 0; i < bodyCount; i++) {
-			const id = this.bodyInts.get(i, BODY_ID_OFFSET);
-			if (this.bodiesById[id]) {
-				this.bodiesById[id].index = i;
+			const internalId = this.bodyInts.get(i, BODY_ID_OFFSET);
+			if (this.bodiesByInternalId[internalId]) {
+				this.bodiesByInternalId[internalId].index = i;
 			}
 		}
 		const fixtureCount = this.world.getFixtureCount();
 		for (let i = 0; i < fixtureCount; i++) {
-			const id = this.fixtureInts.get(i, FIXTURE_ID_OFFSET);
-			const fixture = this.fixturesById[id];
+			const internalId = this.fixtureInts.get(i, FIXTURE_ID_OFFSET);
+			const fixture = this.fixturesByInternalId[internalId];
 			if (fixture) {
-				fixture.updateSubIndex(id, i);
+				fixture.updateSubIndex(internalId, i);
 			}
 		}
 	}
@@ -134,13 +272,16 @@ export class World {
 	iterateBodies(callback: (body: Body) => void) {
 		const count = this.world.getBodyCount();
 		for (let i = 0; i < count; i++) {
-			const id = this.bodyInts.get(i, BODY_ID_OFFSET);
-			const body = this.bodiesById[id];
+			const internalId = this.bodyInts.get(i, BODY_ID_OFFSET);
+			const body = this.bodiesByInternalId[internalId];
 			if (body) callback(body);
 		}
 	}
 
-	createHingeJoint(id: number, bodyA: Body, bodyB: Body, options: JointOptions): HingeJoint {
+	createHingeJoint(id: number | undefined, bodyA: Body, bodyB: Body, options: JointOptions): HingeJoint {
+		const internalId = this.getNextInternalJointId();
+		const finalId = id ?? internalId;
+
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
 
@@ -161,13 +302,27 @@ export class World {
 			anchorB.y = bx * sinB + by * cosB;
 		}
 
-		this.world.createHingeJoint(id, bodyA.id, bodyB.id, anchorA.x, anchorA.y, anchorB.x, anchorB.y);
-		const joint = new HingeJoint(id, this, bodyA, bodyB, anchorA, anchorB);
-		this.jointsById[id] = joint;
+		this.world.createHingeJoint(
+			finalId,
+			bodyA.internalId,
+			bodyB.internalId,
+			anchorA.x,
+			anchorA.y,
+			anchorB.x,
+			anchorB.y,
+		);
+		const joint = new HingeJoint(finalId, this, bodyA, bodyB, anchorA, anchorB, id);
+		this.jointsByInternalId[finalId] = joint;
+		if (id !== undefined) {
+			this.jointsById[id] = joint;
+		}
 		return joint;
 	}
 
-	createDistanceJoint(id: number, bodyA: Body, bodyB: Body, options: JointOptions): DistanceJoint {
+	createDistanceJoint(id: number | undefined, bodyA: Body, bodyB: Body, options: JointOptions): DistanceJoint {
+		const internalId = this.getNextInternalJointId();
+		const finalId = id ?? internalId;
+
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
 
@@ -197,13 +352,28 @@ export class World {
 			length = Math.sqrt(dx * dx + dy * dy);
 		}
 
-		this.world.createDistanceJoint(id, bodyA.id, bodyB.id, anchorA.x, anchorA.y, anchorB.x, anchorB.y, length);
-		const joint = new DistanceJoint(id, this, bodyA, bodyB, anchorA, anchorB, length);
-		this.jointsById[id] = joint;
+		this.world.createDistanceJoint(
+			finalId,
+			bodyA.internalId,
+			bodyB.internalId,
+			anchorA.x,
+			anchorA.y,
+			anchorB.x,
+			anchorB.y,
+			length,
+		);
+		const joint = new DistanceJoint(finalId, this, bodyA, bodyB, anchorA, anchorB, length, id);
+		this.jointsByInternalId[finalId] = joint;
+		if (id !== undefined) {
+			this.jointsById[id] = joint;
+		}
 		return joint;
 	}
 
-	createSpringJoint(id: number, bodyA: Body, bodyB: Body, options: JointOptions): SpringJoint {
+	createSpringJoint(id: number | undefined, bodyA: Body, bodyB: Body, options: JointOptions): SpringJoint {
+		const internalId = this.getNextInternalJointId();
+		const finalId = id ?? internalId;
+
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
 		const frequencyHz = options.frequencyHz !== undefined ? options.frequencyHz : 5.0;
@@ -236,9 +406,9 @@ export class World {
 		}
 
 		this.world.createSpringJoint(
-			id,
-			bodyA.id,
-			bodyB.id,
+			finalId,
+			bodyA.internalId,
+			bodyB.internalId,
 			anchorA.x,
 			anchorA.y,
 			anchorB.x,
@@ -247,21 +417,44 @@ export class World {
 			frequencyHz,
 			dampingRatio,
 		);
-		const joint = new SpringJoint(id, this, bodyA, bodyB, anchorA, anchorB, length, frequencyHz, dampingRatio);
-		this.jointsById[id] = joint;
+		const joint = new SpringJoint(
+			finalId,
+			this,
+			bodyA,
+			bodyB,
+			anchorA,
+			anchorB,
+			length,
+			frequencyHz,
+			dampingRatio,
+			id,
+		);
+		this.jointsByInternalId[finalId] = joint;
+		if (id !== undefined) {
+			this.jointsById[id] = joint;
+		}
 		return joint;
 	}
 
-	createGearJoint(id: number, joint1: HingeJoint, joint2: HingeJoint, ratio: number): GearJoint {
-		this.world.createGearJoint(id, joint1.id, joint2.id, ratio);
-		const joint = new GearJoint(id, this, joint1, joint2, ratio);
-		this.jointsById[id] = joint;
+	createGearJoint(id: number | undefined, joint1: HingeJoint, joint2: HingeJoint, ratio: number): GearJoint {
+		const internalId = this.getNextInternalJointId();
+		const finalId = id ?? internalId;
+
+		this.world.createGearJoint(finalId, joint1.id, joint2.id, ratio);
+		const joint = new GearJoint(finalId, this, joint1, joint2, ratio, id);
+		this.jointsByInternalId[finalId] = joint;
+		if (id !== undefined) {
+			this.jointsById[id] = joint;
+		}
 		return joint;
 	}
 
 	removeJoint(id: number) {
-		this.world.removeJoint(id);
-		delete this.jointsById[id];
+		const joint = this.jointsById[id] || this.jointsByInternalId[id];
+		if (joint) {
+			this.world.removeJoint(joint.id);
+			this.removeJointInternal(joint);
+		}
 	}
 
 	getJointById(id: number): Joint | undefined {
@@ -306,7 +499,9 @@ export class World {
 
 		// Internal Maps (Registry overhead)
 		jsOverhead += estimateMapMemory(this.bodiesById);
+		jsOverhead += estimateMapMemory(this.bodiesByInternalId);
 		jsOverhead += estimateMapMemory(this.fixturesById);
+		jsOverhead += estimateMapMemory(this.fixturesByInternalId);
 		jsOverhead += estimateMapMemory(this.jointsById);
 
 		// BufferViews
@@ -335,11 +530,17 @@ export class World {
 	}
 
 	queryBodiesAtPoint(x: number, y: number, mask: number = 0xffffffff): number[] {
-		return this.convertWasmVectorToArray(this.world.queryBodiesAtPoint(x, y, mask));
+		const hits = this.convertWasmVectorToArray(this.world.queryBodiesAtPoint(x, y, mask));
+		return hits
+			.map((internalId) => this.bodiesByInternalId[internalId]?.id)
+			.filter((id) => id !== undefined) as number[];
 	}
 
 	queryFixturesAtPoint(x: number, y: number, mask: number = 0xffffffff): number[] {
-		return this.convertWasmVectorToArray(this.world.queryFixturesAtPoint(x, y, mask));
+		const hits = this.convertWasmVectorToArray(this.world.queryFixturesAtPoint(x, y, mask));
+		return hits
+			.map((internalId) => this.fixturesByInternalId[internalId]?.id)
+			.filter((id) => id !== undefined) as number[];
 	}
 
 	step() {
@@ -355,11 +556,23 @@ export class World {
 			const eventData = this.world.getEventData();
 			for (let i = 0; i < eventCount; i++) {
 				const type = eventData[i * 6];
-				const idA = eventData[i * 6 + 1];
-				const idB = eventData[i * 6 + 2];
-				const fIdA = eventData[i * 6 + 3];
-				const fIdB = eventData[i * 6 + 4];
+				const internalIdA = eventData[i * 6 + 1];
+				const internalIdB = eventData[i * 6 + 2];
+				const internalFIdA = eventData[i * 6 + 3];
+				const internalFIdB = eventData[i * 6 + 4];
 				const impulse = eventData[i * 6 + 5];
+
+				const bodyA = this.bodiesByInternalId[internalIdA];
+				const bodyB = this.bodiesByInternalId[internalIdB];
+				const fixtureA = this.fixturesByInternalId[internalFIdA];
+				const fixtureB = this.fixturesByInternalId[internalFIdB];
+
+				if (!bodyA || (internalIdB !== 0 && !bodyB)) continue;
+
+				const idA = bodyA.id;
+				const idB = bodyB?.id;
+				const fIdA = fixtureA?.id;
+				const fIdB = fixtureB?.id;
 
 				if (type === 0 && this.onCollisionStart) this.onCollisionStart(idA, idB, fIdA, fIdB, impulse);
 				else if (type === 1 && this.onCollisionEnd) this.onCollisionEnd(idA, idB, fIdA, fIdB);

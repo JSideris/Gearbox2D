@@ -434,13 +434,15 @@
 
 				// 1. Drive Wheel (Kinematic)
 				const wheelId = nextId++;
-				const wheel = world.createBody(wheelId, {
+				const wheel = world.createBody({
+					id: wheelId,
 					x: -7,
 					y: 0,
 					type: gearbox.bodyTypes.KINEMATIC_OBJECT,
 					color: white,
 				});
-				wheel.createFixture(wheelId, {
+				wheel.createFixture({
+					id: wheelId,
 					shape: gearbox.shapes.CIRCLE,
 					radius: 6.0,
 					categoryBits: CAT_GEAR,
@@ -450,28 +452,27 @@
 
 				// Hubs for Gear Joint (fixed points for hinges)
 				const wheelHubId = nextId++;
-				const wheelHub = world.createBody(wheelHubId, {
+				const wheelHub = world.createBody({
+					id: wheelHubId,
 					x: -7,
 					y: 0,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "transparent",
 				});
-				wheelHub.createFixture(wheelHubId, {
-					shape: gearbox.shapes.CIRCLE,
-					radius: 0.1,
-					maskBits: 0,
-				});
+				wheelHub.createFixture({ id: wheelHubId, shape: gearbox.shapes.CIRCLE, radius: 0.1, maskBits: 0 });
 
 				const smallWheelX = -7 - 1.414 * 1.5;
 				const smallWheelY = -1.414 * 1.5;
 				const smallWheelHubId = nextId++;
-				const smallWheelHub = world.createBody(smallWheelHubId, {
+				const smallWheelHub = world.createBody({
+					id: smallWheelHubId,
 					x: smallWheelX,
 					y: smallWheelY,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "transparent",
 				});
-				smallWheelHub.createFixture(smallWheelHubId, {
+				smallWheelHub.createFixture({
+					id: smallWheelHubId,
 					shape: gearbox.shapes.CIRCLE,
 					radius: 0.1,
 					maskBits: 0,
@@ -479,14 +480,16 @@
 
 				// Small Wheel
 				const smallWheelId = nextId++;
-				const smallWheel = world.createBody(smallWheelId, {
+				const smallWheel = world.createBody({
+					id: smallWheelId,
 					x: smallWheelX,
 					y: smallWheelY,
 					mass: 1.0,
 					color: white,
 					r: 0.8, // Non-zero initial rotation
 				});
-				smallWheel.createFixture(smallWheelId, {
+				smallWheel.createFixture({
+					id: smallWheelId,
 					shape: gearbox.shapes.CIRCLE,
 					radius: 2.8,
 					categoryBits: CAT_GEAR,
@@ -507,13 +510,9 @@
 
 				// 3. Piston
 				const pistonId = nextId++;
-				const piston = world.createBody(pistonId, {
-					x: 5.5,
-					y: 0,
-					mass: 2.0,
-					color: white,
-				});
-				piston.createFixture(pistonId, {
+				const piston = world.createBody({ id: pistonId, x: 5.5, y: 0, mass: 2.0, color: white });
+				piston.createFixture({
+					id: pistonId,
 					width: 2.5,
 					height: 1.8,
 					shape: gearbox.shapes.BOX,
@@ -523,13 +522,9 @@
 
 				// 4. Connecting Rod
 				const rodId = nextId++;
-				const rod = world.createBody(rodId, {
-					x: 0,
-					y: 0,
-					mass: 1.0,
-					color: white,
-				});
-				rod.createFixture(rodId, {
+				const rod = world.createBody({ id: rodId, x: 0, y: 0, mass: 1.0, color: white });
+				rod.createFixture({
+					id: rodId,
 					width: 10.0,
 					height: 0.4,
 					shape: gearbox.shapes.BOX,
@@ -562,11 +557,11 @@
 
 				const topWallId = nextId++;
 				world
-					.createBody(topWallId, { ...wallOptionsBody, x: 3, y: -1.35 })
+					.createBody({ id: topWallId, ...wallOptionsBody, x: 3, y: -1.35 })
 					.createFixture(topWallId, wallOptionsFixture); // Top wall
 				const bottomWallId = nextId++;
 				world
-					.createBody(bottomWallId, { ...wallOptionsBody, x: 3, y: 1.35 })
+					.createBody({ id: bottomWallId, ...wallOptionsBody, x: 3, y: 1.35 })
 					.createFixture(bottomWallId, wallOptionsFixture); // Bottom wall
 
 				let lastTime = performance.now();
@@ -615,17 +610,8 @@
 				// Floor
 				const floorId = nextId++;
 				world
-					.createBody(floorId, {
-						x: 0,
-						y: 5.5,
-						type: gearbox.bodyTypes.FIXED_OBJECT,
-						color: "#1e293b",
-					})
-					.createFixture(floorId, {
-						width: 20,
-						height: 1,
-						shape: gearbox.shapes.BOX,
-					});
+					.createBody({ id: floorId, x: 0, y: 5.5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#1e293b" })
+					.createFixture({ id: floorId, width: 20, height: 1, shape: gearbox.shapes.BOX });
 
 				// Collision categories
 				const gearCategory = 0x0002;
@@ -633,26 +619,19 @@
 
 				// 3. Central Rotating Gear
 				const gearHubId = nextId++;
-				const gearHub = world.createBody(gearHubId, {
+				const gearHub = world.createBody({
+					id: gearHubId,
 					x: 0,
 					y: 2.5,
 					type: gearbox.bodyTypes.FIXED_OBJECT,
 					color: "transparent",
 				});
-				gearHub.createFixture(gearHubId, {
-					shape: gearbox.shapes.CIRCLE,
-					radius: 0.1,
-					maskBits: 0,
-				});
+				gearHub.createFixture({ id: gearHubId, shape: gearbox.shapes.CIRCLE, radius: 0.1, maskBits: 0 });
 
 				const gearCross1Id = nextId++;
-				const gearCross1 = world.createBody(gearCross1Id, {
-					x: 0,
-					y: 2.5,
-					mass: 2.0,
-					color: "#a855f7",
-				});
-				gearCross1.createFixture(gearCross1Id, {
+				const gearCross1 = world.createBody({ id: gearCross1Id, x: 0, y: 2.5, mass: 2.0, color: "#a855f7" });
+				gearCross1.createFixture({
+					id: gearCross1Id,
 					width: 3.0,
 					height: 0.4,
 					shape: gearbox.shapes.BOX,
@@ -661,13 +640,9 @@
 				});
 
 				const gearCross2Id = nextId++;
-				const gearCross2 = world.createBody(gearCross2Id, {
-					x: 0,
-					y: 2.5,
-					mass: 2.0,
-					color: "#a855f7",
-				});
-				gearCross2.createFixture(gearCross2Id, {
+				const gearCross2 = world.createBody({ id: gearCross2Id, x: 0, y: 2.5, mass: 2.0, color: "#a855f7" });
+				gearCross2.createFixture({
+					id: gearCross2Id,
 					width: 0.4,
 					height: 3.0,
 					shape: gearbox.shapes.BOX,
@@ -700,13 +675,15 @@
 					for (let i = 0; i < 5; i++) {
 						const bodyId = nextId++;
 						world
-							.createBody(bodyId, {
+							.createBody({
+								id: bodyId,
 								x: pos.x + (Math.random() - 0.5) * 0.2,
 								y: pos.y + (Math.random() - 0.5) * 0.2,
 								mass: 0.5,
 								color: `hsl(${Math.random() * 360}, 70%, 60%)`,
 							})
-							.createFixture(bodyId, {
+							.createFixture({
+								id: bodyId,
 								shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
 								radius: 0.15,
 								width: 0.3,
@@ -724,13 +701,15 @@
 						const target = world.getBodyById(hits[0]);
 						if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
 							const bodyId = 999999;
-							mouseAnchor = world.createBody(bodyId, {
+							mouseAnchor = world.createBody({
+								id: bodyId,
 								x: pos.x,
 								y: pos.y,
 								type: gearbox.bodyTypes.FIXED_OBJECT,
 								color: "transparent",
 							});
-							mouseAnchor.createFixture(bodyId, {
+							mouseAnchor.createFixture({
+								id: bodyId,
 								shape: gearbox.shapes.CIRCLE,
 								radius: 0.05,
 								maskBits: 0,
@@ -861,14 +840,16 @@
 						if (frameCount % 40 === 0 && world.getBodyCount() < 40) {
 							const bodyId = nextId++;
 							world
-								.createBody(bodyId, {
+								.createBody({
+									id: bodyId,
 									x: (Math.random() - 0.5) * 3,
 									y: -2,
 									mass: 1.0,
 									color: `hsl(${Math.random() * 360}, 70%, 60%)`,
 									vx: (Math.random() - 0.5) * 1,
 								})
-								.createFixture(bodyId, {
+								.createFixture({
+									id: bodyId,
 									shape: Math.random() > 0.5 ? gearbox.shapes.CIRCLE : gearbox.shapes.BOX,
 									radius: 0.2,
 									width: 0.4,

@@ -1,4 +1,5 @@
 export interface BodyOptions {
+	id?: number;
 	type?: number;
 	x?: number;
 	y?: number;
@@ -36,6 +37,7 @@ export interface BodyOptions {
 }
 
 export interface FixtureOptions {
+	id?: number;
 	shape: number;
 	categoryBits?: number;
 	maskBits?: number;

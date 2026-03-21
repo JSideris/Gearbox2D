@@ -92,6 +92,10 @@ export interface CppWorld {
 	queryBodiesAtPoint(x: number, y: number, mask: number): WasmVector;
 	queryFixturesAtPoint(x: number, y: number, mask: number): WasmVector;
 	step(): void;
+	updateBodyId(oldId: number, newId: number): void;
+	updateFixtureId(oldId: number, newId: number): void;
+	updateJointId(oldId: number, newId: number): void;
+	syncDefragmentedIds(): void;
 	getEventCount(): number;
 	getEventData(): Float32Array;
 }

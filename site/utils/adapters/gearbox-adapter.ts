@@ -140,7 +140,8 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 		options: any = {},
 	): void {
 		const internalId = this.getInternalId(id);
-		const body = this.world.createBody(internalId, {
+		const body = this.world.createBody({
+			id: internalId,
 			x,
 			y,
 			type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
@@ -173,7 +174,8 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 		options: any = {},
 	): void {
 		const internalId = this.getInternalId(id);
-		const body = this.world.createBody(internalId, {
+		const body = this.world.createBody({
+			id: internalId,
 			x,
 			y,
 			type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
@@ -221,7 +223,8 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 
 	createPoint(id: number | string, x: number, y: number, isStatic: boolean, options: any = {}): void {
 		const internalId = this.getInternalId(id);
-		const body = this.world.createBody(internalId, {
+		const body = this.world.createBody({
+			id: internalId,
 			x,
 			y,
 			type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,

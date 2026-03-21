@@ -7,15 +7,23 @@ import { JS_OVERHEAD } from "./MemoryEstimator.js";
 abstract class JointBase {
 	abstract readonly type: number;
 	id: number;
+	_externalId: number | undefined;
 	world: World;
 	bodyA: Body;
 	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: Body, bodyB: Body) {
+	constructor(id: number, world: World, bodyA: Body, bodyB: Body, externalId: number | undefined) {
 		this.id = id;
+		this._externalId = externalId;
 		this.world = world;
 		this.bodyA = bodyA;
 		this.bodyB = bodyB;
+
+		// Add to bodies for automatic cleanup
+		bodyA.joints.push(this);
+		if (bodyA !== bodyB) {
+			bodyB.joints.push(this);
+		}
 	}
 
 	protected get cppJoint(): CppJoint | null {
@@ -62,8 +70,9 @@ export class HingeJoint extends JointBase {
 		bodyB: Body,
 		localAnchorA: { x: number; y: number },
 		localAnchorB: { x: number; y: number },
+		externalId?: number,
 	) {
-		super(id, world, bodyA, bodyB);
+		super(id, world, bodyA, bodyB, externalId);
 	}
 }
 
@@ -78,8 +87,9 @@ export class DistanceJoint extends JointBase {
 		localAnchorA: { x: number; y: number },
 		localAnchorB: { x: number; y: number },
 		length: number,
+		externalId?: number,
 	) {
-		super(id, world, bodyA, bodyB);
+		super(id, world, bodyA, bodyB, externalId);
 		this.length = length;
 	}
 
@@ -105,8 +115,9 @@ export class SpringJoint extends JointBase {
 		length: number,
 		frequencyHz: number,
 		dampingRatio: number,
+		externalId?: number,
 	) {
-		super(id, world, bodyA, bodyB);
+		super(id, world, bodyA, bodyB, externalId);
 		this.length = length;
 		this.frequencyHz = frequencyHz;
 		this.dampingRatio = dampingRatio;
@@ -140,16 +151,24 @@ export class SpringJoint extends JointBase {
 export class GearJoint {
 	readonly type = JOINT_TYPES.GEAR;
 	id: number;
+	_externalId: number | undefined;
 	world: World;
 	joint1: HingeJoint;
 	joint2: HingeJoint;
 
-	constructor(id: number, world: World, joint1: HingeJoint, joint2: HingeJoint, ratio: number) {
+	constructor(id: number, world: World, joint1: HingeJoint, joint2: HingeJoint, ratio: number, externalId?: number) {
 		this.id = id;
+		this._externalId = externalId;
 		this.world = world;
 		this.joint1 = joint1;
 		this.joint2 = joint2;
 		this.ratio = ratio;
+
+		// Add to all 4 bodies for automatic cleanup
+		const bodies = new Set([joint1.bodyA, joint1.bodyB, joint2.bodyA, joint2.bodyB]);
+		for (const b of bodies) {
+			b.joints.push(this);
+		}
 	}
 
 	protected get cppJoint(): CppJoint | null {

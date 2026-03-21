@@ -34,17 +34,14 @@ const onMouseDown = (e, world) => {
 		const targetId = hits[0];
 		const target = world.getBodyById(targetId);
 		if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
-			mouseAnchor = world.createBody(999999, {
+			mouseAnchor = world.createBody({
+				id: 999999,
 				x: pos.x,
 				y: pos.y,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "transparent",
 			});
-			mouseAnchor.createFixture(999999, {
-				shape: gearbox.shapes.CIRCLE,
-				radius: 0.05,
-				maskBits: 0,
-			});
+			mouseAnchor.createFixture({ id: 999999, shape: gearbox.shapes.CIRCLE, radius: 0.05, maskBits: 0 });
 			dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
 				worldAnchor: pos,
 				frequencyHz: 5.0,
@@ -107,13 +104,9 @@ export const motorcycleExample = new Example({
 
 		// Chassis
 		const chassisId = nextId++;
-		chassis = world.createBody(chassisId, {
-			x: cx,
-			y: cy,
-			mass: 10.0,
-			color: "#ff4444",
-		});
-		chassis.createFixture(chassisId, {
+		chassis = world.createBody({ id: chassisId, x: cx, y: cy, mass: 10.0, color: "#ff4444" });
+		chassis.createFixture({
+			id: chassisId,
 			shape: gearbox.shapes.BOX,
 			width: 1.2,
 			height: 0.4,
@@ -124,13 +117,9 @@ export const motorcycleExample = new Example({
 
 		// Engine (internal spinning mass to drive wheels)
 		const engineId = nextId++;
-		engine = world.createBody(engineId, {
-			x: cx,
-			y: cy - 0.15,
-			mass: 5.0,
-			color: "#444",
-		});
-		engine.createFixture(engineId, {
+		engine = world.createBody({ id: engineId, x: cx, y: cy - 0.15, mass: 5.0, color: "#444" });
+		engine.createFixture({
+			id: engineId,
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.25,
 			categoryBits: 0, // No collision
@@ -140,12 +129,7 @@ export const motorcycleExample = new Example({
 
 		// Rear Suspension Arm (Swingarm)
 		const rearArmId = nextId++;
-		rearArm = world.createBody(rearArmId, {
-			x: cx - 0.6,
-			y: cy + 0.2,
-			mass: 1.0,
-			color: "#666",
-		});
+		rearArm = world.createBody({ id: rearArmId, x: cx - 0.6, y: cy + 0.2, mass: 1.0, color: "#666" });
 		rearArm.createFixture({
 			shape: gearbox.shapes.BOX,
 			width: 0.6,
@@ -167,13 +151,15 @@ export const motorcycleExample = new Example({
 
 		// Rear Wheel
 		const rearWheelId = nextId++;
-		rearWheel = world.createBody(rearWheelId, {
+		rearWheel = world.createBody({
+			id: rearWheelId,
 			x: cx - 0.9,
 			y: cy + 0.2, // Aligned with arm anchor
 			mass: 2.0,
 			color: "#333",
 		});
-		rearWheel.createFixture(rearWheelId, {
+		rearWheel.createFixture({
+			id: rearWheelId,
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.4,
 			categoryBits: CAT_WHEEL,
@@ -192,13 +178,7 @@ export const motorcycleExample = new Example({
 
 		// Front Suspension Arm (Forks)
 		const frontArmId = nextId++;
-		frontArm = world.createBody(frontArmId, {
-			x: cx + 0.7,
-			y: cy + 0.2,
-			r: 0.3,
-			mass: 1.0,
-			color: "#666",
-		});
+		frontArm = world.createBody({ id: frontArmId, x: cx + 0.7, y: cy + 0.2, r: 0.3, mass: 1.0, color: "#666" });
 		frontArm.createFixture({
 			shape: gearbox.shapes.BOX,
 			width: 0.1,
@@ -220,13 +200,15 @@ export const motorcycleExample = new Example({
 
 		// Front Wheel
 		const frontWheelId = nextId++;
-		frontWheel = world.createBody(frontWheelId, {
+		frontWheel = world.createBody({
+			id: frontWheelId,
 			x: cx + 0.8,
 			y: cy + 0.5, // Aligned with fork anchor
 			mass: 2.0,
 			color: "#333",
 		});
-		frontWheel.createFixture(frontWheelId, {
+		frontWheel.createFixture({
+			id: frontWheelId,
 			shape: gearbox.shapes.CIRCLE,
 			radius: 0.4,
 			categoryBits: CAT_WHEEL,
@@ -242,7 +224,8 @@ export const motorcycleExample = new Example({
 
 		// --- 2. Initial Terrain ---
 		const startPlatformId = nextId++;
-		const startPlatform = world.createBody(startPlatformId, {
+		const startPlatform = world.createBody({
+			id: startPlatformId,
 			x: cx,
 			y: cy + 2.0,
 			type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -260,7 +243,8 @@ export const motorcycleExample = new Example({
 		// Back Hill (Steep incline to prevent backing up)
 		const backHillId = nextId++;
 		world
-			.createBody(backHillId, {
+			.createBody({
+				id: backHillId,
 				x: -7.72,
 				y: 0.01,
 				r: 1.2, // Very steep (now tilted correctly as \_)
@@ -406,7 +390,8 @@ export const motorcycleExample = new Example({
 			const nextY = targetY + (width / 2) * sin + (height / 2) * cos;
 
 			const boxId = nextId++;
-			const box = world.createBody(boxId, {
+			const box = world.createBody({
+				id: boxId,
 				x: nextX,
 				y: nextY,
 				r: angle,

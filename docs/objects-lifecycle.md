@@ -10,7 +10,7 @@ Bodies are instantiated using the `world.createBody()` method. You can create a 
 You can provide an array of fixtures during body creation.
 
 ```typescript
-const obj = world.createBody(id, {
+const obj = world.createBody({ id: id, 
     x: 10,
     y: 20,
     type: gearbox.bodyTypes.DYNAMIC_OBJECT,

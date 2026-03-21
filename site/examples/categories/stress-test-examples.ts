@@ -28,17 +28,14 @@ const onMouseDown = (e: MouseEvent, world: any) => {
 		const target = world.getBodyById(targetId);
 
 		if (target && target.type !== gearbox.bodyTypes.FIXED_OBJECT) {
-			mouseAnchor = world.createBody(999999, {
+			mouseAnchor = world.createBody({
+				id: 999999,
 				x: pos.x,
 				y: pos.y,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
 				color: "transparent",
 			});
-			mouseAnchor.createFixture(999999, {
-				shape: gearbox.shapes.CIRCLE,
-				radius: 0.05,
-				maskBits: 0,
-			});
+			mouseAnchor.createFixture({ id: 999999, shape: gearbox.shapes.CIRCLE, radius: 0.05, maskBits: 0 });
 
 			dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
 				worldAnchor: pos,
@@ -110,59 +107,36 @@ export const stressTestExamples = [
 			let length = 11;
 
 			// Walls
-			world
-				.createBody(id++, {
-					x: 5,
-					y: 0,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: length,
-					height: thickness,
-					restitution: 0.99,
-				});
-			world
-				.createBody(id++, {
-					x: 5,
-					y: 10,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: length,
-					height: thickness,
-					restitution: 0.99,
-				});
-			world
-				.createBody(id++, {
-					x: 0,
-					y: 5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: thickness,
-					height: length,
-					restitution: 0.99,
-				});
-			world
-				.createBody(id++, {
-					x: 10,
-					y: 5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: thickness,
-					height: length,
-					restitution: 0.99,
-				});
+			world.createBody({ id: id++, x: 5, y: 0, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: length,
+				height: thickness,
+				restitution: 0.99,
+			});
+			world.createBody({ id: id++, x: 5, y: 10, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: length,
+				height: thickness,
+				restitution: 0.99,
+			});
+			world.createBody({ id: id++, x: 0, y: 5, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: thickness,
+				height: length,
+				restitution: 0.99,
+			});
+			world.createBody({ id: id++, x: 10, y: 5, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: thickness,
+				height: length,
+				restitution: 0.99,
+			});
 
 			for (let i = 0; i < 2000; i++) {
 				const bodyId = id++;
 				world
-					.createBody(bodyId, {
+					.createBody({
+						id: bodyId,
 						x: Math.random() * 8 + 1,
 						y: Math.random() * 8 + 1,
 						vx: Math.random() * 1.0 - 0.5,
@@ -199,67 +173,44 @@ export const stressTestExamples = [
 			let length = 11;
 
 			// Walls
-			world
-				.createBody(id++, {
-					x: 5,
-					y: 0,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: length,
-					height: thickness,
-					restitution: 1.0,
-					sFriction: 0,
-					kFriction: 0,
-				});
-			world
-				.createBody(id++, {
-					x: 5,
-					y: 10,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: length,
-					height: thickness,
-					restitution: 1.0,
-					sFriction: 0,
-					kFriction: 0,
-				});
-			world
-				.createBody(id++, {
-					x: 0,
-					y: 5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: thickness,
-					height: length,
-					restitution: 1.0,
-					sFriction: 0,
-					kFriction: 0,
-				});
-			world
-				.createBody(id++, {
-					x: 10,
-					y: 5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-				})
-				.createFixture({
-					shape: gearbox.shapes.AABB,
-					width: thickness,
-					height: length,
-					restitution: 1.0,
-					sFriction: 0,
-					kFriction: 0,
-				});
+			world.createBody({ id: id++, x: 5, y: 0, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: length,
+				height: thickness,
+				restitution: 1.0,
+				sFriction: 0,
+				kFriction: 0,
+			});
+			world.createBody({ id: id++, x: 5, y: 10, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: length,
+				height: thickness,
+				restitution: 1.0,
+				sFriction: 0,
+				kFriction: 0,
+			});
+			world.createBody({ id: id++, x: 0, y: 5, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: thickness,
+				height: length,
+				restitution: 1.0,
+				sFriction: 0,
+				kFriction: 0,
+			});
+			world.createBody({ id: id++, x: 10, y: 5, type: gearbox.bodyTypes.FIXED_OBJECT }).createFixture({
+				shape: gearbox.shapes.AABB,
+				width: thickness,
+				height: length,
+				restitution: 1.0,
+				sFriction: 0,
+				kFriction: 0,
+			});
 
 			for (let i = 0; i < nFleas; i++) {
 				const bodyId = id++;
 				world
-					.createBody(bodyId, {
+					.createBody({
+						id: bodyId,
 						x: Math.random() * 8 + 1,
 						y: Math.random() * 8 + 1,
 						vx: Math.random() * 10.0 - 5.0,
@@ -292,12 +243,7 @@ export const stressTestExamples = [
 
 			// Ground
 			world
-				.createBody(nextId++, {
-					x: 5,
-					y: 9.5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-					color: "#444",
-				})
+				.createBody({ id: nextId++, x: 5, y: 9.5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 10,
@@ -306,12 +252,7 @@ export const stressTestExamples = [
 
 			for (let i = 0; i < 10; i++) {
 				world
-					.createBody(nextId++, {
-						x: 5,
-						y: 8.5 - i * 0.6,
-						mass: 1.0,
-						color: `hsl(${i * 36}, 70%, 60%)`,
-					})
+					.createBody({ id: nextId++, x: 5, y: 8.5 - i * 0.6, mass: 1.0, color: `hsl(${i * 36}, 70%, 60%)` })
 					.createFixture({
 						shape: gearbox.shapes.BOX,
 						width: 1,
@@ -334,12 +275,7 @@ export const stressTestExamples = [
 
 			// Ground
 			world
-				.createBody(nextId++, {
-					x: 5,
-					y: 9.5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-					color: "#444",
-				})
+				.createBody({ id: nextId++, x: 5, y: 9.5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 10,
@@ -357,7 +293,8 @@ export const stressTestExamples = [
 
 				for (let j = 0; j < numBoxes; j++) {
 					world
-						.createBody(nextId++, {
+						.createBody({
+							id: nextId++,
 							x: startX + j * boxWidth,
 							y: y,
 							mass: 1.0,
@@ -387,12 +324,7 @@ export const stressTestExamples = [
 
 			// Ground
 			world
-				.createBody(nextId++, {
-					x: 5,
-					y: 9.5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-					color: "#444",
-				})
+				.createBody({ id: nextId++, x: 5, y: 9.5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 10,
@@ -400,32 +332,18 @@ export const stressTestExamples = [
 				});
 
 			// Light box
-			world
-				.createBody(nextId++, {
-					x: 5,
-					y: 8.5,
-					mass: 0.1,
-					color: "#4ade80",
-				})
-				.createFixture({
-					shape: gearbox.shapes.BOX,
-					width: 1,
-					height: 1,
-				});
+			world.createBody({ id: nextId++, x: 5, y: 8.5, mass: 0.1, color: "#4ade80" }).createFixture({
+				shape: gearbox.shapes.BOX,
+				width: 1,
+				height: 1,
+			});
 
 			// Heavy box
-			world
-				.createBody(nextId++, {
-					x: 5,
-					y: 7.0,
-					mass: 100,
-					color: "#f87171",
-				})
-				.createFixture({
-					shape: gearbox.shapes.BOX,
-					width: 2,
-					height: 2,
-				});
+			world.createBody({ id: nextId++, x: 5, y: 7.0, mass: 100, color: "#f87171" }).createFixture({
+				shape: gearbox.shapes.BOX,
+				width: 2,
+				height: 2,
+			});
 		},
 	}),
 	new Example({
@@ -441,12 +359,7 @@ export const stressTestExamples = [
 
 			// Ground
 			world
-				.createBody(nextId++, {
-					x: 5,
-					y: 9.5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-					color: "#444",
-				})
+				.createBody({ id: nextId++, x: 5, y: 9.5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#444" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 10,
@@ -457,16 +370,16 @@ export const stressTestExamples = [
 				cy = 4;
 
 			// Head
-			const head = world.createBody(nextId++, { x: cx, y: cy - 1.5, mass: 1.0, color: "#fed7aa" });
+			const head = world.createBody({ id: nextId++, x: cx, y: cy - 1.5, mass: 1.0, color: "#fed7aa" });
 			head.createFixture({ shape: gearbox.shapes.CIRCLE, radius: 0.3 });
 
 			// Torso
-			const torso = world.createBody(nextId++, { x: cx, y: cy, mass: 2.0, color: "#93c5fd" });
+			const torso = world.createBody({ id: nextId++, x: cx, y: cy, mass: 2.0, color: "#93c5fd" });
 			torso.createFixture({ shape: gearbox.shapes.BOX, width: 0.6, height: 1.0 });
 
 			// Arms and Legs segments
 			const createLimb = (x: number, y: number, w: number, h: number, color: string) => {
-				const limb = world.createBody(nextId++, { x, y, mass: 0.5, color });
+				const limb = world.createBody({ id: nextId++, x, y, mass: 0.5, color });
 				limb.createFixture({ shape: gearbox.shapes.BOX, width: w, height: h });
 				return limb;
 			};
@@ -517,12 +430,7 @@ export const stressTestExamples = [
 
 			// Thin Paper
 			world
-				.createBody(nextId++, {
-					x: 8,
-					y: 5,
-					type: gearbox.bodyTypes.FIXED_OBJECT,
-					color: "#ccc",
-				})
+				.createBody({ id: nextId++, x: 8, y: 5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#ccc" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
 					width: 0.1,
@@ -530,7 +438,8 @@ export const stressTestExamples = [
 				});
 
 			// The Bullet
-			const bullet = world.createBody(nextId++, {
+			const bullet = world.createBody({
+				id: nextId++,
 				x: startX,
 				y: 5,
 				vx: bulletSpeed, // High velocity
@@ -574,7 +483,8 @@ export const stressTestExamples = [
 			const segW = 0.4,
 				segH = 0.15;
 
-			const anchor = world.createBody(nextId++, {
+			const anchor = world.createBody({
+				id: nextId++,
 				x: cx,
 				y: cy + (Math.random() - 0.5) * 0.1,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -587,7 +497,8 @@ export const stressTestExamples = [
 
 			let lastBody = anchor;
 			for (let i = 0; i < segments; i++) {
-				const body = world.createBody(nextId++, {
+				const body = world.createBody({
+					id: nextId++,
 					x: cx + randomness,
 					y: cy + (i + 1) * segW,
 					mass: 0.2,

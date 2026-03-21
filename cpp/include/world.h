@@ -137,6 +137,9 @@ private:
     std::unordered_map<std::pair<int, int>, WarmStartData, PairHash, PairEqual> warmStartImpulses;
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> disabledPairs;
 
+    std::unordered_map<int, int> tempBodyIdMap;
+    std::unordered_map<int, int> tempFixtureIdMap;
+
     void _clearContactTracking();
     void _maybePruneBodyContactCounts();
     void _maybePrunePairs();
@@ -176,6 +179,11 @@ public:
     int createGearJoint(int id, int joint1Id, int joint2Id, float ratio);
     void removeJoint(int id);
     Joint* getJoint(int id);
+
+    void updateBodyId(int oldId, int newId);
+    void updateFixtureId(int oldId, int newId);
+    void updateJointId(int oldId, int newId);
+    void syncDefragmentedIds();
 
     void setTimeStep(float dt);
     float getTimeStep() const { return timeStep; }

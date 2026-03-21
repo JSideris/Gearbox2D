@@ -36,17 +36,19 @@ import { JS_OVERHEAD, estimateArrayMemory } from "./MemoryEstimator.js";
 
 export class Fixture {
 	body: Body;
+	_externalId: number | undefined;
 	/** @internal Internal sub-fixtures for concave polygons */
 	subFixtures: { id: number; index: number }[] = [];
 
 	private floats: RowView<Float32Array>;
 	private ints: RowView<Int32Array>;
 
-	constructor(index: number, body: Body, id?: number) {
+	constructor(index: number, body: Body, internalId: number, externalId: number | undefined) {
 		this.body = body;
+		this._externalId = externalId;
 
 		// Initialize subFixtures with the initial index so that this.index (and thus RowView) works
-		this.subFixtures.push({ id: id ?? 0, index });
+		this.subFixtures.push({ id: internalId, index });
 
 		this.floats = new RowView(
 			() => this.body.world.liveFixtureFloatData,
@@ -58,14 +60,10 @@ export class Fixture {
 			FIXTURE_SIZE_I,
 			() => this.index,
 		);
-
-		if (id === undefined) {
-			this.subFixtures[0].id = this.ints.get(FIXTURE_ID_OFFSET);
-		}
 	}
 
 	/** @internal Create a new fixture (handles decomposition and WASM object creation) */
-	static create(body: Body, options: FixtureOptions, fixtureId?: number): Fixture {
+	static create(body: Body, options: FixtureOptions): Fixture {
 		const world = body.world;
 		const pieces = Fixture.getFixturePieces(options);
 		const isConcave = pieces.length > 1;
@@ -76,18 +74,22 @@ export class Fixture {
 			const pieceOptions = pieces[i];
 			// For concave polygons, we skip C++ mass recomputation until all pieces are added
 			const recomputeMass = !isConcave;
-			const idToUse = i === 0 ? fixtureId || 0 : 0;
+			const idToUse = world.getNextInternalFixtureId();
 
-			const fIndex = world.world.createFixture(body.id, idToUse, pieceOptions, recomputeMass);
+			const fIndex = world.world.createFixture(body.internalId, idToUse, pieceOptions, recomputeMass);
 			world.refreshViews();
-			const id = world.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
+			const internalId = world.fixtureInts.get(fIndex, FIXTURE_ID_OFFSET);
 
 			if (!firstProxy) {
-				firstProxy = new Fixture(fIndex, body, id);
+				const externalId = options.id;
+				firstProxy = new Fixture(fIndex, body, internalId, externalId);
+				if (externalId !== undefined) {
+					world.fixturesById[externalId] = firstProxy;
+				}
 			} else {
-				firstProxy.subFixtures.push({ id, index: fIndex });
+				firstProxy.subFixtures.push({ id: internalId, index: fIndex });
 			}
-			world.fixturesById[id] = firstProxy;
+			world.fixturesByInternalId[internalId] = firstProxy;
 		}
 
 		if (isConcave) {
@@ -110,8 +112,13 @@ export class Fixture {
 
 	/** The primary sub-fixture ID (used as the user-facing ID) */
 	get id() {
+		return this._externalId;
+	}
+
+	get internalId() {
 		return this.subFixtures[0].id;
 	}
+
 	/** The primary sub-fixture index in the data buffers */
 	get index() {
 		return this.subFixtures[0].index;

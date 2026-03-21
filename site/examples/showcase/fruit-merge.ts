@@ -78,7 +78,8 @@ export const fruitMergeExample = new Example({
 		// Bucket Bottom
 		const bucketBottomId = nextId++;
 		world
-			.createBody(bucketBottomId, {
+			.createBody({
+				id: bucketBottomId,
 				x: bx,
 				y: by + bh / 2 + thickness / 2,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -93,7 +94,8 @@ export const fruitMergeExample = new Example({
 		// Left Wall
 		const leftWallId = nextId++;
 		world
-			.createBody(leftWallId, {
+			.createBody({
+				id: leftWallId,
 				x: bx - bw / 2 - thickness / 2,
 				y: by,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -108,7 +110,8 @@ export const fruitMergeExample = new Example({
 		// Right Wall
 		const rightWallId = nextId++;
 		world
-			.createBody(rightWallId, {
+			.createBody({
+				id: rightWallId,
 				x: bx + bw / 2 + thickness / 2,
 				y: by,
 				type: gearbox.bodyTypes.FIXED_OBJECT,
@@ -125,12 +128,7 @@ export const fruitMergeExample = new Example({
 
 			const fruitDef = FRUIT_LEVELS[level];
 			const id = nextId++;
-			const fruit = world.createBody(id, {
-				x,
-				y,
-				mass: fruitDef.mass,
-				color: fruitDef.color,
-			});
+			const fruit = world.createBody({ id: id, x, y, mass: fruitDef.mass, color: fruitDef.color });
 			fruit.createFixture({
 				shape: gearbox.shapes.CIRCLE,
 				radius: fruitDef.radius,
