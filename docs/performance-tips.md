@@ -14,7 +14,16 @@ Creating and destroying worlds is an expensive operation that involves allocatin
 Accessing object properties (like `body.x`) is fast, but doing it thousands of times per frame in a tight loop still carries some JavaScript overhead.
 
 *   **Tip**: If you need to iterate over all bodies for custom logic or rendering, use the shared buffers directly (`world.liveBodyFloatData`).
+*   **SoA Advantage**: Because of the **Structure-of-Arrays (SoA)** layout, all `x` positions are stored contiguously, followed by all `y` positions, etc. This makes it extremely fast to upload specific properties to a GPU or process them in bulk.
 *   **Tip**: Use `world.iterateBodies(callback)` for a cleaner but slightly slower alternative to direct buffer indexing.
+
+## 3. SIMD-Friendly Scenes
+
+Gearbox2D uses **WASM SIMD** to accelerate global integration and kinematics passes.
+
+*   **Strategy**: To get the most out of SIMD, prefer many simple objects over a few extremely complex ones.
+*   **How it works**: The engine's global integrators process bodies in batches of 4. Contiguous, active bodies in the SoA buffers benefit the most from these vectorized operations.
+*   **Benefit**: Vectorized position and velocity integration can be up to 4x faster than traditional scalar loops.
 
 ## 3. Solver Iterations
 

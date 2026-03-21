@@ -6,6 +6,15 @@ Understanding the lifecycle of a `Body` is crucial for efficient simulation mana
 
 Bodies are instantiated using the `world.createBody()` method. You can create a body with an initial shape, or add fixtures later using `body.createFixture()`.
 
+### Engine Capacity Limits
+
+To achieve maximum performance via SoA and WASM SIMD, Gearbox2D uses a fixed-capacity memory model. Each `World` instance has the following limits:
+
+*   **Maximum Bodies**: 10,000
+*   **Maximum Fixtures**: 10,000
+
+Attempting to create more objects than these limits will result in an error. If your application requires more objects, consider using multiple `World` instances to partition your simulation.
+
 ### Atomic Creation
 You can provide an array of fixtures during body creation.
 
@@ -96,6 +105,6 @@ During removal, the engine:
 1. Removes all associated fixtures from the **BVH**.
 2. Destroys any **Joints** connected to the body.
 3. Clears contact tracking state.
-4. Reorganizes the **Live Data Buffers** using a swap-and-pop strategy for $O(1)$ removal.
+4. Reorganizes the **SoA (Structure-of-Arrays)** buffers using a **swap-and-pop strategy** for $O(1)$ removal. This ensures that live data remains contiguous for efficient SIMD processing.
 
-> **Warning**: After calling `removeObject()`, the JavaScript `Body` and `Fixture` wrappers for that object become invalid and should no longer be accessed.
+> **Warning**: After calling `removeObject()`, any JavaScript `Body` and `Fixture` wrappers pointing to the removed object or the one that was swapped into its place are **automatically updated** by the engine. However, you should avoid storing stale references to objects you've explicitly removed.

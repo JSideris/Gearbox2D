@@ -7,8 +7,69 @@ Gearbox2D supports both Multithreaded (MT) and Single-threaded (ST) modes using 
 1.  **Conditional Compilation**: We use the `GEARBOX_MT` preprocessor macro to distinguish between MT and ST builds.
 2.  **DRY Codebase**: Use abstractions to keep the core physics logic identical across both modes.
 3.  **Thread Safety**: All shared resources must be protected when `GEARBOX_MT` is defined.
+4.  **Data-Parallelism (SIMD)**: Prefer Structure-of-Arrays (SoA) over Array-of-Structures (AoS) for global data processing to enable WASM SIMD optimizations.
 
-## C++ Implementation Details
+## Data-Parallelism (SIMD)
+
+Gearbox2D uses **WASM SIMD128** to accelerate global physics passes (e.g., position and velocity integration). This requires a specific data layout and access pattern.
+
+### Structure-of-Arrays (SoA)
+
+Unlike traditional physics engines that store data in `Body` objects (Array-of-Structures), Gearbox2D stores performance-critical data in flat, contiguous vectors within the `World` class:
+*   `liveBodyFloatData` / `liveBodyIntData`
+*   `liveFixtureFloatData` / `liveFixtureIntData`
+
+This layout allows the CPU to load multiple values into a single SIMD register (128-bit, holding 4 floats or 4 integers) and process them in parallel.
+
+### Indexing and Macros
+
+To access data in the SoA layout, you must use the indexing macros defined in `cpp/include/constants.h`:
+*   `GET_BODY_FDATA_INDEX(index, offset)`
+*   `GET_BODY_IDATA_INDEX(index, offset)`
+*   `GET_FIXTURE_FDATA_INDEX(index, offset)`
+*   `GET_FIXTURE_IDATA_INDEX(index, offset)`
+
+The formula used is `(offset * MAX_CAPACITY + index)`. This ensures that data for the same attribute (e.g., `X` position) is stored contiguously for all bodies, enabling efficient SIMD loads.
+
+### Fixed Capacity
+
+Because the SoA indexing depends on a fixed stride, the engine uses pre-defined capacities:
+*   `MAX_BODIES`: 10,000
+*   `MAX_FIXTURES`: 10,000
+
+These must match exactly between C++ (`constants.h`) and TypeScript (`constants.ts`).
+
+### Centralized SIMD Helpers (`simd-math.h`)
+
+All SIMD operations should use the macros defined in `cpp/include/simd-math.h`. This header provides:
+1.  **WASM Intrinsics**: Wrappers like `v128_add_f32`, `v128_load_f32`, and `v128_select`.
+2.  **Native Fallbacks**: No-op or scalar implementations that allow the code to compile and run on native (non-WASM) environments for testing.
+
+### SIMD Implementation Pattern
+
+When implementing a vectorized loop, always follow the "4-way processing + tail handling" pattern:
+
+```cpp
+int vectorizedCount = (count / 4) * 4;
+
+for (int i = 0; i < vectorizedCount; i += 4) {
+    // 1. Load 4 values at once
+    v128_t vx = v128_load_f32(&liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
+    
+    // 2. Perform SIMD math
+    v128_t res = v128_add_f32(vx, some_other_v128);
+    
+    // 3. Store results back
+    v128_store_f32(&liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)], res);
+}
+
+// 4. Handle remaining elements (tail) sequentially
+for (int i = vectorizedCount; i < count; ++i) {
+    // Scalar logic...
+}
+```
+
+## C++ Implementation Details (Multithreading)
 
 ### The `GEARBOX_MT` Macro
 
@@ -79,6 +140,10 @@ If you are an AI assistant tasked with parallelizing a new part of the codebase 
 5.  **Pre-initialize shared state**: If multiple threads need to read from a shared structure, initialize it fully on the main thread before starting parallel tasks.
 6.  **Minimize lock contention**: Keep critical sections (protected by mutexes) as small as possible to avoid bottlenecking the parallel execution.
 7.  **No JS proxying**: Ensure parallel code is pure C++ and does not call back into JS via `emscripten::val` to avoid deadlocks.
+8.  **Maintain SoA Parity**: When adding new physical properties, add them to the SoA layout in `constants.h` and `constants.ts`.
+9.  **Prefer SIMD for Global Passes**: Use SIMD for operations that affect all bodies (gravity, damping, integration). Use ThreadPool for operations that are naturally partitioned (islands).
+10. **Build Flags**: Ensure `-msimd128` is present in the `Makefile` for WASM builds.
+11. **No JS proxying in SIMD**: Just like with worker threads, ensure SIMD loops are pure C++ and do not call back into JS to avoid performance degradation.
 
 ## Build System
 

@@ -19,20 +19,18 @@ Because WASM cannot see JS references and JS cannot automatically free WASM memo
 The "WASM Bottleneck" in most web engines is the cost of copying data (like positions and rotations) between the WASM memory and JS objects every frame. Gearbox2D solves this with **Shared Data Buffers** and zero-copy abstractions.
 
 ### How it works:
-1.  The C++ core maintains a contiguous array of body data.
-2.  The TypeScript `World` object creates a `Float32Array` view (`liveBodyFloatData`) directly over that same memory address.
-3.  When the C++ engine updates a position, it is **instantly available** to TypeScript.
+1.  The C++ core maintains data in a **Structure-of-Arrays (SoA)** layout. Instead of an array of objects, each property (like `x`, `y`, or `vx`) has its own contiguous array within a large shared buffer.
+2.  The TypeScript `World` object creates `TypedArray` views (like `liveBodyFloatData`) directly over these memory addresses.
+3.  This layout is designed for **WASM SIMD** (Single Instruction, Multiple Data), allowing the engine to process 4 objects simultaneously in a single CPU instruction.
+4.  When the C++ engine updates a position, it is **instantly available** to TypeScript with zero copying.
 
 ### Property Accessors
-To provide a clean API while maintaining performance, Gearbox2D uses internal **RowViews**. Each `Body` and `Fixture` instance is a lightweight wrapper that points to a specific index in the shared buffer.
+To provide a clean API while maintaining performance, Gearbox2D uses internal **RowViews**. Each `Body` and `Fixture` instance is a lightweight wrapper that points to its specific index in the shared SoA buffers.
 
 ```typescript
-// Under the hood, body.x is a property getter using a RowView
-// No manual offset math is required by the user.
+// Under the hood, body.x is a property getter using a RowView.
+// It calculates the memory offset as (property_offset * MAX_BODIES + body_index).
 const x = body.x; 
-
-// Internally, this translates to:
-// return this.floats.get(BODY_X_OFFSET);
 ```
 
 ## Memory Access Abstractions
@@ -40,19 +38,29 @@ const x = body.x;
 To prevent bugs from manual offset calculations, Gearbox2D provides two primary abstractions for shared memory access:
 
 ### 1. BufferView
-A `BufferView` manages a full typed array (e.g., all body float data) with a fixed stride. It is used primarily by the `World` for global operations like syncing indices.
+A `BufferView` manages a full typed array with a **fixed stride**. In the SoA architecture, the stride is always `MAX_BODIES` (10,000) for body data and `MAX_FIXTURES` (10,000) for fixture data.
 
 ```typescript
-const x = world.bodyFloats.get(index, BODY_X_OFFSET);
+// Accessing the 'x' position of the 5th body manually:
+const x = world.bodyFloats.get(5, BODY_X_OFFSET);
 ```
 
 ### 2. RowView
-A `RowView` is bound to a specific object and its index. It provides a localized view of the object's memory. Both `Body` and `Fixture` use internal `RowViews` to implement their property getters and setters.
+A `RowView` is bound to a specific object and its index. It provides a localized view of the object's properties across the SoA arrays.
 
 ```typescript
 // RowViews support get, set, and add operations
 this.floats.add(BODY_NFX_OFFSET, forceX);
 ```
+
+## Fixed Capacity & Engine Limits
+
+To maximize SIMD performance and minimize heap fragmentation, Gearbox2D uses a **fixed-capacity** memory model.
+
+*   **MAX_BODIES**: 10,000 per world.
+*   **MAX_FIXTURES**: 10,000 per world.
+
+These limits are pre-allocated upon world creation. If your simulation requires more objects, you may need to distribute them across multiple `World` instances.
 
 ## Direct Buffer Access
 

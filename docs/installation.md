@@ -54,7 +54,34 @@ For simple projects, prototyping, or environments without a build step, use the 
 
 ---
 
-## 3. WebAssembly & Local Servers
+## 3. WebAssembly & Multi-Threading
+
+Gearbox2D is compiled with **Multi-Threading** support (using SharedArrayBuffer) and **SIMD** instructions to achieve maximum performance. This requires specific browser security headers to be set on your web server.
+
+### Required Security Headers
+For the multi-threaded WASM build to function correctly, your server **must** send the following HTTP headers:
+
+*   `Cross-Origin-Opener-Policy: same-origin`
+*   `Cross-Origin-Embedder-Policy: require-corp`
+
+These headers enable **SharedArrayBuffer**, which allows the physics engine to run its solvers across multiple CPU cores. Without these headers, the engine will fall back to a single-threaded mode, significantly reducing performance for large simulations.
+
+### Local Development
+Most modern development servers (like Vite, Webpack Dev Server, or Browsersync) provide a simple way to enable these headers.
+
+**Vite Example (`vite.config.js`):**
+```javascript
+export default {
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+};
+```
+
+## 4. WebAssembly & Local Servers
 
 **Standalone/CDN Users:** 
 If you are using the `dist/standalone/gearbox.js` file, you can likely run your project by simply opening an `.html` file from your file explorer, because the WASM is inlined.

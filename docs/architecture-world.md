@@ -60,7 +60,8 @@ When moving between levels or scenes, you have two options for managing world me
 If you are simply restarting a level or moving to a new scene with similar requirements, use `world.clear()`.
 
 *   **Action**: `world.clear()`
-*   **Result**: Removes all bodies, fixtures, and joints but **keeps the World object and its allocated memory pool alive**.
+*   **Result**: Removes all bodies, fixtures, and joints from the simulation.
+*   **Behavior**: Instead of freeing memory, it **zero-fills the existing pre-allocated data buffers**, keeping the `World` object and its memory pool ready for immediate reuse.
 *   **Best for**: Fast scene transitions and preventing heap fragmentation.
 
 #### Option B: Explicit Destruction
@@ -236,14 +237,19 @@ world.onCollisionEnd = (idA, idB, impulse) => {
 
 A key architectural feature of Gearbox2D is the use of shared memory buffers for performance.
 
-When a `World` is created, it exposes `liveFloatData` and `liveIntData`. These are `TypedArrays` (Float32Array and Int32Array) that map directly to the underlying C++ data structures in WASM memory.
+When a `World` is created, it exposes four primary `TypedArrays` that map directly to the underlying C++ data structures in WASM memory:
 
-Instead of calling expensive getter/setter functions for every object's position every frame, the engine updates these buffers directly. The TypeScript `Body` wrappers use these buffers to provide high-performance access to object state.
+*   `world.liveBodyFloatData`: Position, velocity, and damping.
+*   `world.liveBodyIntData`: IDs, types, and flags.
+*   `world.liveFixtureFloatData`: Shape dimensions and physical properties.
+*   `world.liveFixtureIntData`: Shape IDs and hierarchy mapping.
+
+Instead of calling expensive getter/setter functions for every object's position every frame, the engine updates these buffers directly in a **Structure-of-Arrays (SoA)** layout. The TypeScript `Body` wrappers use these buffers to provide high-performance access to object state.
 
 ```typescript
 // Accessing live data directly (via Body)
-const x = obj.x; // Reads from liveFloatData
-obj.x = 10;      // Writes to liveFloatData
+const x = obj.x; // Reads from liveBodyFloatData at (BODY_X_OFFSET * MAX_BODIES + obj.index)
+obj.x = 10;      // Writes to liveBodyFloatData
 ```
 
 ## Multiple World Support

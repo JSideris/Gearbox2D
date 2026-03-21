@@ -30,6 +30,18 @@ body.createFixture({
 });
 ```
 
+### ELLIPSE
+`gearbox.shapes.ELLIPSE`
+An elliptical shape defined by `radiusX` and `radiusY`. Ellipses are useful for representing non-uniform circular bodies. Like the `BOX` shape, an ellipse **rotates with the body**.
+
+```typescript
+body.createFixture({
+    shape: gearbox.shapes.ELLIPSE,
+    radiusX: 0.8,
+    radiusY: 0.4
+});
+```
+
 ### AABB
 `gearbox.shapes.AABB`
 An Axis-Aligned Bounding Box. It is defined by a `width` and `height`. Unlike other shapes, an AABB **does not rotate** even if the parent body rotates. It always remains aligned with the world axes.
