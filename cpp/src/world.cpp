@@ -6,8 +6,10 @@
 #include "distance-joint.h"
 #include "spring-joint.h"
 #include "gear-joint.h"
+#include "simd-math.h"
 #include <algorithm>
 #include <type_traits>
+#include <cmath>
 
 World::World() : collisionSolver(*this) {
     timeStep = 1.0f / 60.0f;
@@ -16,14 +18,13 @@ World::World() : collisionSolver(*this) {
     positionIterations = 10;
     velocitySubSteps = 1;
     speculativeMargin = 0.01f;
-    int maxSize = 10000;
-    liveBodyFloatData.reserve(maxSize * BODY_FDATA_EPO);
-    liveBodyIntData.reserve(maxSize * BODY_IDATA_EPO);
-    liveFixtureFloatData.reserve(maxSize * FIXTURE_FDATA_EPO);
-    liveFixtureIntData.reserve(maxSize * FIXTURE_IDATA_EPO);
+    liveBodyFloatData.resize(MAX_BODIES * BODY_FDATA_EPO, 0.0f);
+    liveBodyIntData.resize(MAX_BODIES * BODY_IDATA_EPO, 0);
+    liveFixtureFloatData.resize(MAX_FIXTURES * FIXTURE_FDATA_EPO, 0.0f);
+    liveFixtureIntData.resize(MAX_FIXTURES * FIXTURE_IDATA_EPO, 0);
     contactConstraints.reserve(1000);
-    solverBodies.reserve(maxSize);
-    solverBodyActive.reserve(maxSize);
+    solverBodies.resize(MAX_BODIES);
+    solverBodyActive.resize(MAX_BODIES, 0);
     nextFixtureId = 1;
 #ifdef GEARBOX_MT
     // Initialize the thread pool with 4 threads matching PTHREAD_POOL_SIZE
@@ -39,8 +40,9 @@ World::~World() {
 }
 
 int World::createBody(int id, emscripten_val options) {
-    auto* body = new Body(*this, id, options);
-    body->worldIndex = bodiesList.size();
+    int bIdx = bodiesList.size();
+    auto* body = new Body(*this, id, bIdx, options);
+    body->worldIndex = bIdx;
     bodiesMap[id] = body;
     if (id >= (int)_idToBody.size()) _idToBody.resize(id + 1, nullptr);
     _idToBody[id] = body;
@@ -70,8 +72,9 @@ int World::createFixture(int bodyId, int fixtureId, emscripten_val options, bool
     Body* body = it->second;
 
     int fId = (fixtureId > 0) ? fixtureId : nextFixtureId++;
-    auto* fixture = new Fixture(*this, fId, body, options);
-    fixture->worldIndex = fixturesList.size();
+    int fIdx = (int)fixturesList.size();
+    auto* fixture = new Fixture(*this, fId, fIdx, body, options);
+    fixture->worldIndex = fIdx;
     fixturesMap[fId] = fixture;
     if (fId >= (int)_idToFixture.size()) _idToFixture.resize(fId + 1, nullptr);
     _idToFixture[fId] = fixture;
@@ -109,26 +112,26 @@ int World::removeObject(int id) {
         }
         
         int fIdx = fixture->worldIndex;
-        if (fIdx != -1 && fIdx < fixturesList.size()) {
-            // Swap this fixture with the last one in the list
-            std::iter_swap(fixturesList.begin() + fIdx, fixturesList.end() - 1);
-            
-            for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) {
-                std::iter_swap(liveFixtureIntData.begin() + fIdx * FIXTURE_IDATA_EPO + i,
-                               liveFixtureIntData.begin() + (fixturesList.size() - 1) * FIXTURE_IDATA_EPO + i);
+        if (fIdx != -1 && fIdx < (int)fixturesList.size()) {
+            int lastIdx = (int)fixturesList.size() - 1;
+            if (fIdx != lastIdx) {
+                // Swap pointers in list
+                std::swap(fixturesList[fIdx], fixturesList[lastIdx]);
+                
+                // Swap data in SoA arrays
+                for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) {
+                    liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, i)] = liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(lastIdx, i)];
+                }
+                for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) {
+                    liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, i)] = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(lastIdx, i)];
+                }
+                
+                // Update the index of the fixture that was moved from the end to fIdx
+                fixturesList[fIdx]->worldIndex = fIdx;
             }
-            for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) {
-                std::iter_swap(liveFixtureFloatData.begin() + fIdx * FIXTURE_FDATA_EPO + i,
-                               liveFixtureFloatData.begin() + (fixturesList.size() - 1) * FIXTURE_FDATA_EPO + i);
-            }
             
-            // Update the index of the fixture that was moved from the end to fIdx
-            fixturesList[fIdx]->worldIndex = fIdx;
-            
-            // Remove the last element (which is the fixture we want to delete)
             fixturesList.pop_back();
-            for (int i = 0; i < FIXTURE_IDATA_EPO; ++i) liveFixtureIntData.pop_back();
-            for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) liveFixtureFloatData.pop_back();
+            // In SoA, we don't pop_back from data vectors as they are fixed size.
         }
         fixturesMap.erase(fixture->id);
         if (fixture->id < (int)_idToFixture.size()) _idToFixture[fixture->id] = nullptr;
@@ -161,19 +164,19 @@ int World::removeObject(int id) {
     body->fixtures.clear(); // Important: prevent dangling pointers
 
     // Remove body
-    if (bIdx != -1 && bIdx < bodiesList.size()) {
-        bool isLast = (bIdx == bodiesList.size() - 1);
+    if (bIdx != -1 && bIdx < (int)bodiesList.size()) {
+        int lastIdx = (int)bodiesList.size() - 1;
         
-        if (!isLast) {
-            // Swap this body with the last one in the list
-            std::iter_swap(bodiesList.begin() + bIdx, bodiesList.end() - 1);
+        if (bIdx != lastIdx) {
+            // Swap pointers in list
+            std::swap(bodiesList[bIdx], bodiesList[lastIdx]);
+            
+            // Swap data in SoA arrays
             for (int i = 0; i < BODY_IDATA_EPO; ++i) {
-                std::iter_swap(liveBodyIntData.begin() + bIdx * BODY_IDATA_EPO + i,
-                               liveBodyIntData.begin() + (bodiesList.size() - 1) * BODY_IDATA_EPO + i);
+                liveBodyIntData[GET_BODY_IDATA_INDEX(bIdx, i)] = liveBodyIntData[GET_BODY_IDATA_INDEX(lastIdx, i)];
             }
             for (int i = 0; i < BODY_FDATA_EPO; ++i) {
-                std::iter_swap(liveBodyFloatData.begin() + bIdx * BODY_FDATA_EPO + i,
-                               liveBodyFloatData.begin() + (bodiesList.size() - 1) * BODY_FDATA_EPO + i);
+                liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, i)] = liveBodyFloatData[GET_BODY_FDATA_INDEX(lastIdx, i)];
             }
             
             // Update the index of the body that was moved from the end to bIdx
@@ -181,14 +184,13 @@ int World::removeObject(int id) {
             
             // Update all fixtures of the moved body to point to the new body index
             for (auto* f : bodiesList[bIdx]->fixtures) {
-                liveFixtureIntData[f->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX] = bIdx;
+                liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f->worldIndex, FIXTURE_IDATA_BODY_INDEX)] = bIdx;
             }
         }
 
-        // Remove the last element (which is the body we want to delete)
+        // Just pop from the pointer list
         bodiesList.pop_back();
-        for (int i = 0; i < BODY_IDATA_EPO; ++i) liveBodyIntData.pop_back();
-        for (int i = 0; i < BODY_FDATA_EPO; ++i) liveBodyFloatData.pop_back();
+        // In SoA, we don't pop_back from data vectors
     }
     
     bodiesMap.erase(itBody);
@@ -220,26 +222,23 @@ void World::step() {
 
     // Clear collision flags on all bodies and fixtures
     for (int i = 0; i < (int)bodiesList.size(); ++i) {
-        liveBodyIntData[i * BODY_IDATA_EPO + BODY_IDATA_FLAGS] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
+        liveBodyIntData[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
         
         // Reset forces and accumulated impulses from the previous frame
-        // This ensures they are available for the debug renderer between steps
-        int fIdx = i * BODY_FDATA_EPO;
-        liveBodyFloatData[fIdx + BODY_FDATA_FX] = 0;
-        liveBodyFloatData[fIdx + BODY_FDATA_FY] = 0;
-        liveBodyFloatData[fIdx + BODY_FDATA_IX] = 0;
-        liveBodyFloatData[fIdx + BODY_FDATA_IY] = 0;
-        liveBodyFloatData[fIdx + BODY_FDATA_IA] = 0;
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FX)] = 0;
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FY)] = 0;
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IX)] = 0;
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IY)] = 0;
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IA)] = 0;
     }
     for (int i = 0; i < (int)fixturesList.size(); ++i) {
-        liveFixtureIntData[i * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
+        liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_FLAGS)] &= ~(HAS_AABB_COLLISION | HAS_PHYSICAL_COLLISION);
     }
 
-    for (auto* body : bodiesList) {
-        int idx = body->worldIndex * BODY_FDATA_EPO;
-        liveBodyFloatData[idx + BODY_FDATA_PREV_X] = liveBodyFloatData[idx + BODY_FDATA_X];
-        liveBodyFloatData[idx + BODY_FDATA_PREV_Y] = liveBodyFloatData[idx + BODY_FDATA_Y];
-        liveBodyFloatData[idx + BODY_FDATA_PREV_R] = liveBodyFloatData[idx + BODY_FDATA_R];
+    for (int i = 0; i < (int)bodiesList.size(); ++i) {
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_PREV_X)] = liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)];
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_PREV_Y)] = liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_Y)];
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_PREV_R)] = liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_R)];
     }
 
     eventData.clear();
@@ -258,136 +257,349 @@ void World::step() {
 }
 
 void World::_doIntegrateVelocitiesSubStep(float dt) {
+    // 1. Scalar Pass: Wake up logic and discrete impulses
+    // This pass is branchy, so we keep it scalar.
     for (auto* body : bodiesList) {
-        int idx = body->worldIndex * BODY_FDATA_EPO;
+        int bIdx = body->worldIndex;
         if (body->isSleeping && body->type != ObjectType::FIXED_OBJECT) {
-            if (liveBodyFloatData[idx + BODY_FDATA_NIX] != 0 || liveBodyFloatData[idx + BODY_FDATA_NIY] != 0 || 
-                liveBodyFloatData[idx + BODY_FDATA_NIA] != 0 || liveBodyFloatData[idx + BODY_FDATA_NFX] != 0 || 
-                liveBodyFloatData[idx + BODY_FDATA_NFY] != 0) {
+            if (liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIX)] != 0 || 
+                liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIY)] != 0 || 
+                liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIA)] != 0 || 
+                liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NFX)] != 0 || 
+                liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NFY)] != 0) {
                 body->wakeUp();
             }
         }
+        
         if (body->isSleeping) continue;
 
-        float im = liveBodyFloatData[idx + BODY_FDATA_IM];
-        float invI = liveBodyFloatData[idx + BODY_FDATA_INV_INERTIA];
+        float im = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_IM)];
+        float invI = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_INV_INERTIA)];
         
-        // 1. Apply discrete impulses (NIX, NIY, NIA)
-        float nix = liveBodyFloatData[idx + BODY_FDATA_NIX];
-        float niy = liveBodyFloatData[idx + BODY_FDATA_NIY];
+        // Apply discrete impulses (NIX, NIY, NIA)
+        float nix = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIX)];
+        float niy = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIY)];
         if (nix != 0 || niy != 0) {
-            liveBodyFloatData[idx + BODY_FDATA_IX] += nix;
-            liveBodyFloatData[idx + BODY_FDATA_IY] += niy;
-            liveBodyFloatData[idx + BODY_FDATA_VX] += nix * im;
-            liveBodyFloatData[idx + BODY_FDATA_VY] += niy * im;
-            liveBodyFloatData[idx + BODY_FDATA_NIX] = 0;
-            liveBodyFloatData[idx + BODY_FDATA_NIY] = 0;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_IX)] += nix;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_IY)] += niy;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VX)] += nix * im;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VY)] += niy * im;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIX)] = 0;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIY)] = 0;
         }
         
-        float nia = liveBodyFloatData[idx + BODY_FDATA_NIA];
+        float nia = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIA)];
         if (nia != 0) {
-            liveBodyFloatData[idx + BODY_FDATA_IA] += nia;
-            liveBodyFloatData[idx + BODY_FDATA_RS] += nia * invI;
-            liveBodyFloatData[idx + BODY_FDATA_NIA] = 0;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_IA)] += nia;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_RS)] += nia * invI;
+            liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NIA)] = 0;
         }
+    }
 
-        // 2. Compute gravity force
-        float m = liveBodyFloatData[idx + BODY_FDATA_M];
-        float gScale = liveBodyFloatData[idx + BODY_FDATA_G_SCALE];
+    // 2. Vectorized Pass: Dense math (forces, gravity, damping, velocity integration)
+    _doIntegrateVelocitiesSIMD(dt);
+}
+
+void World::_doIntegrateVelocitiesSIMD(float dt) {
+#ifdef __EMSCRIPTEN__
+    int bodyCount = (int)bodiesList.size();
+    if (bodyCount == 0) return;
+
+    int vectorizedCount = (bodyCount / 4) * 4;
+
+    v128_t dt_v = v128_splat_f32(dt);
+    v128_t gravX_v = v128_splat_f32(gravity.x);
+    v128_t gravY_v = v128_splat_f32(gravity.y);
+    v128_t maxVelSq_v = v128_splat_f32(MAX_VELOCITY * MAX_VELOCITY);
+    v128_t zero_v = v128_splat_f32(0.0f);
+    v128_t one_v = v128_splat_f32(1.0f);
+
+    float* fdata = liveBodyFloatData.data();
+    int* idata = liveBodyIntData.data();
+
+    for (int i = 0; i < vectorizedCount; i += 4) {
+        // Load isSleeping mask
+        v128_t flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
+        v128_t isSleepingMask = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
+        
+        // Load attributes
+        v128_t im = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IM)]);
+        v128_t m = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_M)]);
+        v128_t gScale = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_G_SCALE)]);
+        v128_t fx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FX)]);
+        v128_t fy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FY)]);
+        v128_t nfx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFX)]);
+        v128_t nfy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFY)]);
+        v128_t damping = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_DAMPING)]);
+        v128_t vx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
+        v128_t vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
+
+        // 1. Compute gravity force
+        v128_t gravFX = v128_mul_f32(v128_mul_f32(gravX_v, m), gScale);
+        v128_t gravFY = v128_mul_f32(v128_mul_f32(gravY_v, m), gScale);
+
+        // 2. Apply external forces (NFX, NFY)
+        v128_t totalFX = v128_add_f32(fx, nfx);
+        v128_t totalFY = v128_add_f32(fy, nfy);
+        
+        // Clear NFX, NFY
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFX)], zero_v);
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFY)], zero_v);
+
+        // 3. Calculate forceVelocity for KRB (only if im > 0 and NOT sleeping)
+        v128_t im_gt_zero = v128_gt_f32(im, zero_v);
+        v128_t validMask = wasm_v128_andnot(im_gt_zero, isSleepingMask);
+        
+        v128_t forceVX = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
+        v128_t forceVY = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
+        
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FORCE_VX)], v128_select(validMask, forceVX, zero_v));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FORCE_VY)], v128_select(validMask, forceVY, zero_v));
+
+        // 4. Apply damping
+        totalFX = v128_sub_f32(totalFX, v128_mul_f32(vx, damping));
+        totalFY = v128_sub_f32(totalFY, v128_mul_f32(vy, damping));
+
+        // 5. Integrate total velocity
+        v128_t dvx = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
+        v128_t dvy = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
+        
+        v128_t nextVX = v128_add_f32(vx, dvx);
+        v128_t nextVY = v128_add_f32(vy, dvy);
+
+        // 6. Cap velocity
+        v128_t speedSq = v128_add_f32(v128_mul_f32(nextVX, nextVX), v128_mul_f32(nextVY, nextVY));
+        v128_t speedLimitMask = v128_gt_f32(speedSq, maxVelSq_v);
+        
+        // if (speedSq > maxVelSq) v *= maxVel / sqrt(speedSq)
+        v128_t speed = wasm_f32x4_sqrt(speedSq);
+        v128_t invSpeed = v128_div_f32(v128_splat_f32(MAX_VELOCITY), speed);
+        
+        nextVX = v128_select(speedLimitMask, v128_mul_f32(nextVX, invSpeed), nextVX);
+        nextVY = v128_select(speedLimitMask, v128_mul_f32(nextVY, invSpeed), nextVY);
+
+        // Store back (only if NOT sleeping)
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)], v128_select(isSleepingMask, vx, nextVX));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)], v128_select(isSleepingMask, vy, nextVY));
+    }
+
+    // Tail handling
+    for (int i = vectorizedCount; i < bodyCount; ++i) {
+#else
+    int bodyCount = (int)bodiesList.size();
+    for (int i = 0; i < bodyCount; ++i) {
+#endif
+        if (bodiesList[i]->isSleeping) continue;
+
+        int bIdx = i;
+        float* fdata = liveBodyFloatData.data();
+        float im = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_IM)];
+        float m = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_M)];
+        float gScale = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_G_SCALE)];
+        
         float gravFX = gravity.x * m * gScale;
         float gravFY = gravity.y * m * gScale;
 
-        // 3. Apply external forces (NFX, NFY)
-        float totalFX = liveBodyFloatData[idx + BODY_FDATA_FX] + liveBodyFloatData[idx + BODY_FDATA_NFX];
-        float totalFY = liveBodyFloatData[idx + BODY_FDATA_FY] + liveBodyFloatData[idx + BODY_FDATA_NFY];
-        liveBodyFloatData[idx + BODY_FDATA_NFX] = 0;
-        liveBodyFloatData[idx + BODY_FDATA_NFY] = 0;
+        float totalFX = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_FX)] + fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NFX)];
+        float totalFY = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_FY)] + fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NFY)];
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NFX)] = 0;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_NFY)] = 0;
 
-        // 4. Calculate forceVelocity for KRB (conservative forces only)
         if (im > 0) {
-            liveBodyFloatData[idx + BODY_FDATA_FORCE_VX] = (totalFX + gravFX) * im * dt;
-            liveBodyFloatData[idx + BODY_FDATA_FORCE_VY] = (totalFY + gravFY) * im * dt;
+            fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_FORCE_VX)] = (totalFX + gravFX) * im * dt;
+            fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_FORCE_VY)] = (totalFY + gravFY) * im * dt;
         } else {
-            liveBodyFloatData[idx + BODY_FDATA_FORCE_VX] = 0;
-            liveBodyFloatData[idx + BODY_FDATA_FORCE_VY] = 0;
+            fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_FORCE_VX)] = 0;
+            fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_FORCE_VY)] = 0;
         }
 
-        // 5. Apply damping (non-conservative)
-        float linearDamping = liveBodyFloatData[idx + BODY_FDATA_DAMPING];
-        float vx = liveBodyFloatData[idx + BODY_FDATA_VX];
-        float vy = liveBodyFloatData[idx + BODY_FDATA_VY];
+        float linearDamping = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_DAMPING)];
+        float vx = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VX)];
+        float vy = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VY)];
         totalFX -= vx * linearDamping;
         totalFY -= vy * linearDamping;
 
-        // 6. Integrate total velocity
         if (im > 0) {
-            liveBodyFloatData[idx + BODY_FDATA_VX] += (totalFX + gravFX) * im * dt;
-            liveBodyFloatData[idx + BODY_FDATA_VY] += (totalFY + gravFY) * im * dt;
+            vx += (totalFX + gravFX) * im * dt;
+            vy += (totalFY + gravFY) * im * dt;
         }
 
-        // 7. Cap velocity
-        float nextVX = liveBodyFloatData[idx + BODY_FDATA_VX];
-        float nextVY = liveBodyFloatData[idx + BODY_FDATA_VY];
-        float speedSq = nextVX * nextVX + nextVY * nextVY;
+        float speedSq = vx * vx + vy * vy;
         if (speedSq > MAX_VELOCITY * MAX_VELOCITY) {
             float invSpeed = MAX_VELOCITY / std::sqrt(speedSq);
-            liveBodyFloatData[idx + BODY_FDATA_VX] *= invSpeed;
-            liveBodyFloatData[idx + BODY_FDATA_VY] *= invSpeed;
+            vx *= invSpeed;
+            vy *= invSpeed;
         }
+        
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VX)] = vx;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VY)] = vy;
     }
 }
 
-void World::_doIntegratePositions(Island& island, float dt) {
-    for (Body* body : island.bodies) {
-        if (body->type == ObjectType::FIXED_OBJECT) continue;
+void World::_doIntegratePositionsSIMD(float dt) {
+#ifdef __EMSCRIPTEN__
+    int bodyCount = (int)bodiesList.size();
+    if (bodyCount == 0) return;
+
+    int vectorizedCount = (bodyCount / 4) * 4;
+
+    v128_t dt_v = v128_splat_f32(dt);
+    v128_t zero_v = v128_splat_f32(0.0f);
+    v128_t one_v = v128_splat_f32(1.0f);
+    v128_t wake_threshold_v = v128_splat_f32(WAKE_MOVEMENT_THRESHOLD);
+    v128_t sleep_vel_sq_v = v128_splat_f32(SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD);
+    v128_t sleep_ang_vel_v = v128_splat_f32(SLEEP_ANGULAR_VELOCITY_THRESHOLD);
+
+    float* fdata = liveBodyFloatData.data();
+    int* idata = liveBodyIntData.data();
+
+    for (int i = 0; i < vectorizedCount; i += 4) {
+        // Load data for 4 bodies
+        v128_t type = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_TYPE)]);
+        v128_t flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
         
-        int idx = body->worldIndex * BODY_FDATA_EPO;
-        float vx = liveBodyFloatData[idx + BODY_FDATA_VX];
-        float vy = liveBodyFloatData[idx + BODY_FDATA_VY];
-        float rs = liveBodyFloatData[idx + BODY_FDATA_RS];
+        v128_t isFixed = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
+        v128_t isDynamic = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::DYNAMIC_OBJECT));
+        v128_t isSleeping = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
+        
+        v128_t skipMask = wasm_v128_or(isFixed, isSleeping);
+
+        v128_t x = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)]);
+        v128_t y = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_Y)]);
+        v128_t r = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_R)]);
+        v128_t vx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
+        v128_t vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
+        v128_t rs = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_RS)]);
+        v128_t damping_a = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ANGULAR_DAMPING)]);
+        
+        v128_t lastX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_X)]);
+        v128_t lastY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_Y)]);
+        v128_t lastR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_R)]);
+        
+        v128_t accX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_X)]);
+        v128_t accY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_Y)]);
+        v128_t accR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_R)]);
+        v128_t sleepTimer = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_SLEEP_TIMER)]);
+
+        // 1. Angular Damping (only dynamic)
+        v128_t dampFactor = v128_sub_f32(one_v, v128_mul_f32(damping_a, dt_v));
+        rs = v128_select(isDynamic, v128_mul_f32(rs, dampFactor), rs);
+
+        // 2. Integrate
+        v128_t nextX = v128_add_f32(x, v128_mul_f32(vx, dt_v));
+        v128_t nextY = v128_add_f32(y, v128_mul_f32(vy, dt_v));
+        v128_t nextR = v128_add_f32(r, v128_mul_f32(rs, dt_v));
+
+        // 3. NaN check (simplified SIMD version: just check vx, vy, rs)
+        v128_t finiteMask = wasm_v128_and(wasm_v128_and(wasm_f32x4_eq(vx, vx), wasm_f32x4_eq(vy, vy)), wasm_f32x4_eq(rs, rs));
+        
+        nextX = v128_select(finiteMask, nextX, lastX);
+        nextY = v128_select(finiteMask, nextY, lastY);
+        nextR = v128_select(finiteMask, nextR, lastR);
+        vx = v128_select(finiteMask, vx, zero_v);
+        vy = v128_select(finiteMask, vy, zero_v);
+        rs = v128_select(finiteMask, rs, zero_v);
+
+        // 4. Movement track
+        v128_t dx = v128_sub_f32(nextX, lastX);
+        v128_t dy = v128_sub_f32(nextY, lastY);
+        v128_t dr = v128_sub_f32(nextR, lastR);
+        
+        accX = v128_add_f32(accX, dx);
+        accY = v128_add_f32(accY, dy);
+        accR = v128_add_f32(accR, dr);
+        
+        v128_t absAccX = wasm_f32x4_abs(accX);
+        v128_t absAccY = wasm_f32x4_abs(accY);
+        v128_t absAccR = wasm_f32x4_abs(accR);
+        
+        v128_t moved = wasm_v128_or(wasm_v128_or(wasm_f32x4_ne(dx, zero_v), wasm_f32x4_ne(dy, zero_v)), wasm_f32x4_ne(dr, zero_v));
+        v128_t significantMove = wasm_v128_or(wasm_v128_or(v128_gt_f32(absAccX, wake_threshold_v), v128_gt_f32(absAccY, wake_threshold_v)), v128_gt_f32(absAccR, wake_threshold_v));
+        
+        v128_t velSq = v128_add_f32(v128_mul_f32(vx, vx), v128_mul_f32(vy, vy));
+        v128_t aboveSleepVel = wasm_v128_or(v128_gt_f32(velSq, sleep_vel_sq_v), v128_gt_f32(wasm_f32x4_abs(rs), sleep_ang_vel_v));
+        
+        v128_t resetTimerMask = wasm_v128_and(wasm_v128_and(moved, significantMove), aboveSleepVel);
+        
+        sleepTimer = v128_select(resetTimerMask, zero_v, v128_add_f32(sleepTimer, dt_v));
+        accX = v128_select(resetTimerMask, zero_v, accX);
+        accY = v128_select(resetTimerMask, zero_v, accY);
+        accR = v128_select(resetTimerMask, zero_v, accR);
+
+        // Store back (only if NOT skipMask)
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)], v128_select(skipMask, x, nextX));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_Y)], v128_select(skipMask, y, nextY));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_R)], v128_select(skipMask, r, nextR));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)], v128_select(skipMask, vx, vx));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)], v128_select(skipMask, vy, vy));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_RS)], v128_select(skipMask, rs, rs));
+        
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_X)], v128_select(skipMask, lastX, nextX));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_Y)], v128_select(skipMask, lastY, nextY));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_R)], v128_select(skipMask, lastR, nextR));
+        
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_X)], v128_select(skipMask, accX, accX));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_Y)], v128_select(skipMask, accY, accY));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_R)], v128_select(skipMask, accR, accR));
+        wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_SLEEP_TIMER)], v128_select(skipMask, sleepTimer, sleepTimer));
+    }
+
+    // Tail handling
+    for (int i = vectorizedCount; i < bodyCount; ++i) {
+#else
+    int bodyCount = (int)bodiesList.size();
+    for (int i = 0; i < bodyCount; ++i) {
+#endif
+        Body* body = bodiesList[i];
+        if (body->type == ObjectType::FIXED_OBJECT || body->isSleeping) continue;
+        
+        int bIdx = i;
+        float* fdata = liveBodyFloatData.data();
+        float vx = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VX)];
+        float vy = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VY)];
+        float rs = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_RS)];
         
         if (body->type == ObjectType::DYNAMIC_OBJECT) {
-            float angularDamping = liveBodyFloatData[idx + BODY_FDATA_ANGULAR_DAMPING];
+            float angularDamping = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ANGULAR_DAMPING)];
             rs *= (1.0f - angularDamping * dt);
         }
         
-        float x = liveBodyFloatData[idx + BODY_FDATA_X];
-        float y = liveBodyFloatData[idx + BODY_FDATA_Y];
-        float r = liveBodyFloatData[idx + BODY_FDATA_R];
+        float x = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)];
+        float y = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)];
+        float r = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)];
         
         float nextX = x + vx * dt;
         float nextY = y + vy * dt;
         float nextR = r + rs * dt;
         
-        // Safety check
         if (!std::isfinite(nextX) || !std::isfinite(nextY) || !std::isfinite(nextR) || 
             !std::isfinite(vx) || !std::isfinite(vy) || !std::isfinite(rs)) {
-            nextX = liveBodyFloatData[idx + BODY_FDATA_LAST_X];
-            nextY = liveBodyFloatData[idx + BODY_FDATA_LAST_Y];
-            nextR = liveBodyFloatData[idx + BODY_FDATA_LAST_R];
+            nextX = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_X)];
+            nextY = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_Y)];
+            nextR = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_R)];
             vx = 0; vy = 0; rs = 0;
         }
         
-        liveBodyFloatData[idx + BODY_FDATA_X] = nextX;
-        liveBodyFloatData[idx + BODY_FDATA_Y] = nextY;
-        liveBodyFloatData[idx + BODY_FDATA_R] = nextR;
-        liveBodyFloatData[idx + BODY_FDATA_VX] = vx;
-        liveBodyFloatData[idx + BODY_FDATA_VY] = vy;
-        liveBodyFloatData[idx + BODY_FDATA_RS] = rs;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = nextX;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = nextY;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = nextR;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VX)] = vx;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_VY)] = vy;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_RS)] = rs;
         
-        float dx = nextX - liveBodyFloatData[idx + BODY_FDATA_LAST_X];
-        float dy = nextY - liveBodyFloatData[idx + BODY_FDATA_LAST_Y];
-        float dr = nextR - liveBodyFloatData[idx + BODY_FDATA_LAST_R];
+        float dx = nextX - fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_X)];
+        float dy = nextY - fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_Y)];
+        float dr = nextR - fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_R)];
         
-        liveBodyFloatData[idx + BODY_FDATA_LAST_X] = nextX;
-        liveBodyFloatData[idx + BODY_FDATA_LAST_Y] = nextY;
-        liveBodyFloatData[idx + BODY_FDATA_LAST_R] = nextR;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_X)] = nextX;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_Y)] = nextY;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_R)] = nextR;
         
-        float accX = liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_X] + dx;
-        float accY = liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_Y] + dy;
-        float accR = liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_R] + dr;
+        float accX = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ERR_ACC_X)] + dx;
+        float accY = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ERR_ACC_Y)] + dy;
+        float accR = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ERR_ACC_R)] + dr;
         
-        float timer = liveBodyFloatData[idx + BODY_FDATA_SLEEP_TIMER];
+        float timer = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_SLEEP_TIMER)];
         bool moved = dx != 0 || dy != 0 || dr != 0;
         
         if (moved && (std::abs(accX) > WAKE_MOVEMENT_THRESHOLD || std::abs(accY) > WAKE_MOVEMENT_THRESHOLD || std::abs(accR) > WAKE_MOVEMENT_THRESHOLD)) {
@@ -400,10 +612,10 @@ void World::_doIntegratePositions(Island& island, float dt) {
             timer += dt;
         }
         
-        liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_X] = accX;
-        liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_Y] = accY;
-        liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_R] = accR;
-        liveBodyFloatData[idx + BODY_FDATA_SLEEP_TIMER] = timer;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ERR_ACC_X)] = accX;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ERR_ACC_Y)] = accY;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_ERR_ACC_R)] = accR;
+        fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_SLEEP_TIMER)] = timer;
     }
 }
 
@@ -419,10 +631,10 @@ void World::_doNarrowPhase(float dt) {
         Fixture* f1 = static_cast<Fixture*>(pair.first);
         Fixture* f2 = static_cast<Fixture*>(pair.second);
 
-        liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-        liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-        liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
-        liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_AABB_COLLISION;
+        liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f1->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_AABB_COLLISION;
+        liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f2->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_AABB_COLLISION;
+        liveBodyIntData[GET_BODY_IDATA_INDEX(f1->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_AABB_COLLISION;
+        liveBodyIntData[GET_BODY_IDATA_INDEX(f2->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_AABB_COLLISION;
     }
 
 #ifdef GEARBOX_MT
@@ -469,10 +681,10 @@ void World::_doNarrowPhase(float dt) {
                 Fixture* f1 = getFixture(pair.first);
                 Fixture* f2 = getFixture(pair.second);
                 if (f1 && f2) {
-                    liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-                    liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-                    liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-                    liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+                    liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f1->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+                    liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f2->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+                    liveBodyIntData[GET_BODY_IDATA_INDEX(f1->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+                    liveBodyIntData[GET_BODY_IDATA_INDEX(f2->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
                 }
             }
         }
@@ -488,10 +700,10 @@ void World::_doNarrowPhase(float dt) {
         if (collisionSolver.solve(f1->worldIndex, f2->worldIndex, dt)) {
             currentPairs.insert({f1->id, f2->id});
 
-            liveFixtureIntData[f1->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-            liveFixtureIntData[f2->worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-            liveBodyIntData[f1->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
-            liveBodyIntData[f2->body->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] |= HAS_PHYSICAL_COLLISION;
+            liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f1->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+            liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f2->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+            liveBodyIntData[GET_BODY_IDATA_INDEX(f1->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+            liveBodyIntData[GET_BODY_IDATA_INDEX(f2->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
         }
     }
 #endif
@@ -678,10 +890,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 2.1 Pre-initialize solver data for all bodies to avoid race conditions 
     // when multiple islands share a static body.
-    if (solverBodies.size() < (size_t)bodyCount) {
-        solverBodies.resize(bodyCount);
-        solverBodyActive.resize(bodyCount, 0);
-    }
     for (int i = 0; i < bodyCount; ++i) {
         solverBodies[i] = bodiesList[i]->getSolverData();
         solverBodyActive[i] = 1; // Mark as initialized
@@ -758,20 +966,41 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 3. Process the islands
     if (!islands.empty()) {
+        // --- Velocity Pass ---
         if (islands.size() == 1) {
-            // Optimization for single island case
-            _solveIsland(islands[0], dt, substepIndex);
+            _solveIslandVelocity(islands[0], dt, substepIndex);
         } else {
 #ifdef GEARBOX_MT
             for (auto& isl : islands) {
                 threadPool->enqueue([this, &isl, dt, substepIndex]() {
-                    this->_solveIsland(isl, dt, substepIndex);
+                    this->_solveIslandVelocity(isl, dt, substepIndex);
                 });
             }
             threadPool->wait();
 #else
             for (auto& isl : islands) {
-                _solveIsland(isl, dt, substepIndex);
+                _solveIslandVelocity(isl, dt, substepIndex);
+            }
+#endif
+        }
+
+        // --- Global Position Integration (SIMD) ---
+        _doIntegratePositionsSIMD(dt);
+
+        // --- Position Correction Pass ---
+        if (islands.size() == 1) {
+            _solveIslandPosition(islands[0], dt, substepIndex);
+        } else {
+#ifdef GEARBOX_MT
+            for (auto& isl : islands) {
+                threadPool->enqueue([this, &isl, dt, substepIndex]() {
+                    this->_solveIslandPosition(isl, dt, substepIndex);
+                });
+            }
+            threadPool->wait();
+#else
+            for (auto& isl : islands) {
+                _solveIslandPosition(isl, dt, substepIndex);
             }
 #endif
         }
@@ -833,7 +1062,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
 }
 
-void World::_solveIsland(Island& island, float dt, int substepIndex) {
+void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
         return a->id.key < b->id.key;
@@ -890,14 +1119,15 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
         for (Joint* j : island.joints) j->solveFast();
     }
     
-    // Sync velocities back and integrate positions
+    // Sync velocities back
     for (Body* b : island.bodies) {
         if (b->type != ObjectType::FIXED_OBJECT) {
             b->setSolverData(solverBodies[b->worldIndex]);
         }
     }
-    _doIntegratePositions(island, dt);
-    
+}
+
+void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
     // Position Iterations
     for (int p = 0; p < positionIterations; ++p) {
         for (ContactConstraint* c : island.contacts) c->solvePosition();
@@ -938,10 +1168,11 @@ void World::clear() {
     for (auto* body : bodiesList) delete body;
     bodiesList.clear();
     bodiesMap.clear();
-    liveBodyFloatData.clear();
-    liveBodyIntData.clear();
-    liveFixtureFloatData.clear();
-    liveFixtureIntData.clear();
+    // Do NOT clear the SoA data vectors; their size should remain fixed at MAX_BODIES/MAX_FIXTURES
+    std::fill(liveBodyFloatData.begin(), liveBodyFloatData.end(), 0.0f);
+    std::fill(liveBodyIntData.begin(), liveBodyIntData.end(), 0);
+    std::fill(liveFixtureFloatData.begin(), liveFixtureFloatData.end(), 0.0f);
+    std::fill(liveFixtureIntData.begin(), liveFixtureIntData.end(), 0);
     eventData.clear();
     nextFixtureId = 1;
 }
@@ -1519,15 +1750,15 @@ void ContactConstraint::solvePosition() {
     float impulse = correction / kNormal;
     Vec2 P = normal_curr * impulse;
     if (imA > 0) {
-        int idx = a->worldIndex * BODY_FDATA_EPO;
-        a->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - P.x * imA;
-        a->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pA.y - P.y * imA;
-        a->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaA - rA_curr.cross(P) * iIA;
+        int bIdx = a->worldIndex;
+        a->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = pA.x - P.x * imA;
+        a->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = pA.y - P.y * imA;
+        a->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = thetaA - rA_curr.cross(P) * iIA;
     }
     if (imB > 0) {
-        int idx = b->worldIndex * BODY_FDATA_EPO;
-        b->world.liveBodyFloatData[idx + BODY_FDATA_X] = pB.x + P.x * imB;
-        b->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pB.y + P.y * imB;
-        b->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaB + rB_curr.cross(P) * iIB;
+        int bIdx = b->worldIndex;
+        b->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = pB.x + P.x * imB;
+        b->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = pB.y + P.y * imB;
+        b->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = thetaB + rB_curr.cross(P) * iIB;
     }
 }

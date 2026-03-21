@@ -101,6 +101,32 @@ export class ProtocolRenderer {
 					this.ctx.closePath();
 				}
 				break;
+			case ShapeType.ELLIPSE:
+				this.ctx.translate(fx, fy);
+				this.ctx.rotate(fr);
+				this.ctx.ellipse(
+					0,
+					0,
+					(fixture.width || 0.1) * ANIMSCALE,
+					(fixture.height || 0.1) * ANIMSCALE,
+					0,
+					0,
+					2 * Math.PI,
+				);
+				break;
+			case ShapeType.CAPSULE:
+				const cr = (fixture.radius || 0.1) * ANIMSCALE;
+				const ch = (fixture.height || 0.1) * ANIMSCALE;
+				const halfL = Math.max(0, ch / 2 - cr);
+				this.ctx.translate(fx, fy);
+				this.ctx.rotate(fr);
+
+				this.ctx.arc(0, -halfL, cr, Math.PI, 0);
+				this.ctx.lineTo(cr, halfL);
+				this.ctx.arc(0, halfL, cr, 0, Math.PI);
+				this.ctx.lineTo(-cr, -halfL);
+				this.ctx.closePath();
+				break;
 		}
 		this.ctx.stroke();
 		this.ctx.restore();

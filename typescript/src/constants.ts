@@ -1,3 +1,7 @@
+// --- Global Capacities for SoA ---
+export const MAX_BODIES = 10000;
+export const MAX_FIXTURES = 10000;
+
 // --- Body Data Layout ---
 // IMPORTANT: These constants define the shared memory layout between C++ and TypeScript.
 // Any changes here MUST be mirrored in cpp/include/constants.h or the simulation will corrupt memory.

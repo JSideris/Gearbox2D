@@ -24,7 +24,7 @@ OUTPUT_JS_MT = $(BUILD_DIR)/gearbox-module-mt.js
 OUTPUT_JS_ST = $(BUILD_DIR)/gearbox-module-st.js
 
 # C++ compiler flags
-COMMON_FLAGS = -O3 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker'
+COMMON_FLAGS = -O3 -msimd128 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker'
 MT_FLAGS = -pthread -s PTHREAD_POOL_SIZE=4 -s ALLOW_MEMORY_GROWTH=1 -DGEARBOX_MT
 ST_FLAGS = 
 

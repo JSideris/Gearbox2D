@@ -170,7 +170,8 @@ private:
     void _maybePrunePairs();
 
     void _buildAndProcessIslands(float dt, int substepIndex);
-    void _solveIsland(Island& island, float dt, int substepIndex);
+    void _solveIslandVelocity(Island& island, float dt, int substepIndex);
+    void _solveIslandPosition(Island& island, float dt, int substepIndex);
 
 public:
     Bvh bvh;
@@ -240,8 +241,9 @@ public:
     void step();
     void _doIntegrateVelocities();
     void _doIntegrateVelocitiesSubStep(float dt);
-    void _doIntegratePositions(Island& island, float dt);
     void _doBroadPhase();
+    void _doIntegrateVelocitiesSIMD(float dt);
+    void _doIntegratePositionsSIMD(float dt);
     void _doNarrowPhase(float dt);
     void _doContactManagement();
     void _doResolution(float dt, int substepIndex);

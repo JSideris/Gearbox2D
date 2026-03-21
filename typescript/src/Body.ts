@@ -1,6 +1,4 @@
 import {
-	BODY_SIZE_I,
-	BODY_SIZE_F,
 	BODY_ID_OFFSET,
 	BODY_TYPE_OFFSET,
 	BODY_FLAGS_OFFSET,
@@ -33,6 +31,7 @@ import {
 	BODY_TYPES,
 	WANTS_EVENTS,
 	IS_SLEEPING,
+	MAX_BODIES,
 } from "./constants.js";
 import { RowView } from "./BufferAccessor.js";
 import type { World, Joint } from "./world.js";
@@ -60,12 +59,12 @@ export class Body {
 
 		this.floats = new RowView(
 			() => this.world.liveBodyFloatData,
-			BODY_SIZE_F,
+			MAX_BODIES,
 			() => this.index,
 		);
 		this.ints = new RowView(
 			() => this.world.liveBodyIntData,
-			BODY_SIZE_I,
+			MAX_BODIES,
 			() => this.index,
 		);
 

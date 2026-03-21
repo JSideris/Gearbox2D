@@ -14,13 +14,13 @@ struct Polygon {
 };
 
 static Polygon getPolygon(const World& world, int fIdx) {
-    int bIdx = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
-    float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
-    float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
-    float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-    float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
-    float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+    int bIdx = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_BODY_INDEX)];
+    float bx = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)];
+    float by = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)];
+    float br = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)];
+    float lx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_X)];
+    float ly = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_Y)];
+    float lr = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_R)];
     
     float cosR = cos(br), sinR = sin(br);
     Vec2 fixturePos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
@@ -29,19 +29,18 @@ static Polygon getPolygon(const World& world, int fIdx) {
 
     Polygon poly;
     poly.fixtureIndex = fIdx;
-    int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+    int shape = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_SHAPE)];
 
     if (shape == (int)ObjectShape::POLYGON) {
-        int vCount = (int)world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
-        int startIdx = fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
+        int vCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_COUNT)];
         for (int i = 0; i < vCount; ++i) {
-            float vx = world.liveFixtureFloatData[startIdx + i * 2];
-            float vy = world.liveFixtureFloatData[startIdx + i * 2 + 1];
+            float vx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_START + i * 2)];
+            float vy = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)];
             poly.vertices.push_back(Vec2(fixturePos.x + (vx * cosF - vy * sinF), fixturePos.y + (vx * sinF + vy * cosF)));
         }
     } else if (shape == (int)ObjectShape::BOX || shape == (int)ObjectShape::AABB) {
-        float w = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
-        float h = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+        float w = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_W)];
+        float h = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_H)];
         float hw = w / 2.0f;
         float hh = h / 2.0f;
         float realCos = (shape == (int)ObjectShape::AABB) ? 1.0f : cosF;
@@ -52,8 +51,8 @@ static Polygon getPolygon(const World& world, int fIdx) {
         poly.vertices.push_back(Vec2(fixturePos.x + ( hw * realCos -  hh * realSin), fixturePos.y + ( hw * realSin +  hh * realCos)));
         poly.vertices.push_back(Vec2(fixturePos.x + (-hw * realCos -  hh * realSin), fixturePos.y + (-hw * realSin +  hh * realCos)));
     } else if (shape == (int)ObjectShape::CAPSULE) {
-        float r = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
-        float h = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+        float r = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_RADIUS)];
+        float h = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_H)];
         float hw = r;
         float hh = h / 2.0f;
         // Approximate capsule as a box for SAT
@@ -165,14 +164,14 @@ bool CollisionSolver::_solvePolygonPolygon() {
             float penetration = -d;
             
             // Get velocities for relative velocity calculation
-            int bAIdx = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-            int bBIdx = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-            Vec2 pA(world.liveBodyFloatData[bAIdx * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bAIdx * BODY_FDATA_EPO + BODY_FDATA_Y]);
-            Vec2 pB(world.liveBodyFloatData[bBIdx * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bBIdx * BODY_FDATA_EPO + BODY_FDATA_Y]);
-            Vec2 vA(world.liveBodyFloatData[bAIdx * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bAIdx * BODY_FDATA_EPO + BODY_FDATA_VY]);
-            Vec2 vB(world.liveBodyFloatData[bBIdx * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bBIdx * BODY_FDATA_EPO + BODY_FDATA_VY]);
-            float wA = world.liveBodyFloatData[bAIdx * BODY_FDATA_EPO + BODY_FDATA_RS];
-            float wB = world.liveBodyFloatData[bBIdx * BODY_FDATA_EPO + BODY_FDATA_RS];
+            int bAIdx = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+            int bBIdx = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
+            Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bAIdx, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bAIdx, BODY_FDATA_Y)]);
+            Vec2 pB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bBIdx, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bBIdx, BODY_FDATA_Y)]);
+            Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bAIdx, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bAIdx, BODY_FDATA_VY)]);
+            Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bBIdx, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bBIdx, BODY_FDATA_VY)]);
+            float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bAIdx, BODY_FDATA_RS)];
+            float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bBIdx, BODY_FDATA_RS)];
 
             Vec2 rA = clippedVertices[i] - pA, rB = clippedVertices[i] - pB;
             Vec2 vRel = (vB + Vec2(-rB.y * wB, rB.x * wB)) - (vA + Vec2(-rA.y * wA, rA.x * wA));
@@ -197,12 +196,12 @@ bool CollisionSolver::_solvePolygonPolygon() {
 
 bool CollisionSolver::_solvePolygonPoint() {
     Polygon polyA = getPolygon(world, _indexA);
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    float bxB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
-    float byB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
-    float brB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
-    float lxB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-    float lyB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
+    float bxB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_X)];
+    float byB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_Y)];
+    float brB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_R)];
+    float lxB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_X)];
+    float lyB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_Y)];
     
     float cosRB = cos(brB), sinRB = sin(brB);
     Vec2 pB(bxB + (lxB * cosRB - lyB * sinRB), byB + (lxB * sinRB + lyB * cosRB));
@@ -223,11 +222,11 @@ bool CollisionSolver::_solvePolygonPoint() {
     }
 
     float penetration = -minDepth;
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    Vec2 pA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y]);
-    Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-    Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-    float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+    int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+    Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_Y)]);
+    Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+    Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+    float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
     
     Vec2 rA = pB - pA;
     Vec2 vRel = vB - (vA + Vec2(-rA.y * wA, rA.x * wA));
@@ -245,16 +244,16 @@ bool CollisionSolver::_solvePolygonPoint() {
 
 bool CollisionSolver::_solvePolygonCircle() {
     Polygon polyA = getPolygon(world, _indexA);
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    float bxB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
-    float byB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
-    float brB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
-    float lxB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-    float lyB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
+    float bxB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_X)];
+    float byB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_Y)];
+    float brB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_R)];
+    float lxB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_X)];
+    float lyB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_Y)];
     
     float cosRB = cos(brB), sinRB = sin(brB);
     Vec2 pB(bxB + (lxB * cosRB - lyB * sinRB), byB + (lxB * sinRB + lyB * cosRB));
-    float rB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
+    float rB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_RADIUS)];
 
     float maxSeparation = -FLT_MAX;
     int bestFace = -1;
@@ -274,12 +273,12 @@ bool CollisionSolver::_solvePolygonCircle() {
         float penetration = rB - maxSeparation;
         Vec2 contactPoint = pB - normal * rB;
         
-        int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-        Vec2 pA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y]);
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
-        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+        int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+        Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_Y)]);
+        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
+        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
         
         Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
         Vec2 vRel = (vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB)) - (vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA));
@@ -308,12 +307,12 @@ bool CollisionSolver::_solvePolygonCircle() {
         float penetration = rB - dist;
         Vec2 contactPoint = v1;
         
-        int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-        Vec2 pA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y]);
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
-        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+        int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+        Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_Y)]);
+        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
+        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
         
         Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
         Vec2 vRel = (vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB)) - (vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA));
@@ -333,12 +332,12 @@ bool CollisionSolver::_solvePolygonCircle() {
         float penetration = rB - dist;
         Vec2 contactPoint = v2;
         
-        int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-        Vec2 pA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y]);
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
-        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+        int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+        Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_Y)]);
+        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
+        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
         
         Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
         Vec2 vRel = (vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB)) - (vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA));
@@ -355,12 +354,12 @@ bool CollisionSolver::_solvePolygonCircle() {
         Vec2 normal = polyA.normals[bestFace];
         Vec2 contactPoint = pB - normal * rB;
         
-        int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-        Vec2 pA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_X], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_Y]);
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
-        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+        int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+        Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_Y)]);
+        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
+        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
         
         Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
         Vec2 vRel = (vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB)) - (vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA));
@@ -386,21 +385,21 @@ bool CollisionSolver::_solvePolygonAabb() {
 bool CollisionSolver::_solvePolygonCapsule() {
     // Treat capsule as a segment with radius
     Polygon polyA = getPolygon(world, _indexA);
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    float bxB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_X];
-    float byB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_Y];
-    float brB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_R];
-    float lxB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-    float lyB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
-    float lrB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
+    float bxB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_X)];
+    float byB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_Y)];
+    float brB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_R)];
+    float lxB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_X)];
+    float lyB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_Y)];
+    float lrB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_LOCAL_R)];
     
     float cosRB = cos(brB), sinRB = sin(brB);
     Vec2 fixturePosB(bxB + (lxB * cosRB - lyB * sinRB), byB + (lxB * sinRB + lyB * cosRB));
     float fixtureRotB = brB + lrB;
     float cosFB = cos(fixtureRotB), sinFB = sin(fixtureRotB);
     
-    float rB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
-    float hB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+    float rB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_RADIUS)];
+    float hB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_H)];
     float halfLB = std::max(0.0f, hB * 0.5f - rB);
     
     Vec2 p1B(fixturePosB.x - (-halfLB) * sinFB, fixturePosB.y + (-halfLB) * cosFB);

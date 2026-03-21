@@ -37,7 +37,7 @@ TEST(StaticBodySleepTest, StaticBodyStaysAsleepOnCollision) {
     bool collided = false;
     for (int i = 0; i < 20; ++i) {
         world.step();
-        if (world.liveBodyIntData[staticBody->worldIndex * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & HAS_PHYSICAL_COLLISION) {
+        if (world.liveBodyIntData[GET_BODY_IDATA_INDEX(staticBody->worldIndex, BODY_IDATA_FLAGS)] & HAS_PHYSICAL_COLLISION) {
             collided = true;
             break;
         }

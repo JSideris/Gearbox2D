@@ -4,6 +4,8 @@ export enum ShapeType {
 	AABB = "aabb",
 	POINT = "point",
 	POLYGON = "polygon",
+	ELLIPSE = "ellipse",
+	CAPSULE = "capsule",
 }
 
 export interface DebugFixture {

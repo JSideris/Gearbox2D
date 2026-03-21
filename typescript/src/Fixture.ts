@@ -1,6 +1,6 @@
 import {
-	FIXTURE_SIZE_I,
-	FIXTURE_SIZE_F,
+	HAS_AABB_COLLISION,
+	HAS_PHYSICAL_COLLISION,
 	FIXTURE_ID_OFFSET,
 	FIXTURE_BODY_INDEX_OFFSET,
 	FIXTURE_SHAPE_OFFSET,
@@ -26,6 +26,7 @@ import {
 	FIXTURE_VERTEX_START_OFFSET,
 	FIXTURE_FLAGS,
 	SHAPES,
+	MAX_FIXTURES,
 } from "./constants.js";
 import { RowView } from "./BufferAccessor.js";
 import type { Body } from "./Body.js";
@@ -47,17 +48,20 @@ export class Fixture {
 		this.body = body;
 		this._externalId = externalId;
 
+		// Add to body's fixtures list
+		this.body.fixtures.push(this);
+
 		// Initialize subFixtures with the initial index so that this.index (and thus RowView) works
 		this.subFixtures.push({ id: internalId, index });
 
 		this.floats = new RowView(
 			() => this.body.world.liveFixtureFloatData,
-			FIXTURE_SIZE_F,
+			MAX_FIXTURES,
 			() => this.index,
 		);
 		this.ints = new RowView(
 			() => this.body.world.liveFixtureIntData,
-			FIXTURE_SIZE_I,
+			MAX_FIXTURES,
 			() => this.index,
 		);
 	}
@@ -158,6 +162,12 @@ export class Fixture {
 	}
 	get flags() {
 		return this.ints.get(FIXTURE_FLAGS_OFFSET);
+	}
+	get hasPhysicalCollision() {
+		return (this.flags & HAS_PHYSICAL_COLLISION) !== 0;
+	}
+	get hasAabbCollision() {
+		return (this.flags & HAS_AABB_COLLISION) !== 0;
 	}
 
 	get isSensor() {

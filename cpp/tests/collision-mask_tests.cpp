@@ -31,8 +31,8 @@ TEST(CollisionMaskTest, NoCollisionBetweenDifferentMasks) {
     world.step();
     
     // They should NOT have physical collision even though they overlap
-    int flag1 = world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
-    int flag2 = world.liveBodyIntData[1 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
+    int flag1 = world.liveBodyIntData[GET_BODY_IDATA_INDEX(0, BODY_IDATA_FLAGS)];
+    int flag2 = world.liveBodyIntData[GET_BODY_IDATA_INDEX(1, BODY_IDATA_FLAGS)];
     
     EXPECT_FALSE(flag1 & HAS_PHYSICAL_COLLISION);
     EXPECT_FALSE(flag2 & HAS_PHYSICAL_COLLISION);
@@ -54,8 +54,8 @@ TEST(CollisionMaskTest, CollisionBetweenCompatibleMasks) {
     
     world.step();
     
-    int flag1 = world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
-    int flag2 = world.liveBodyIntData[1 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
+    int flag1 = world.liveBodyIntData[GET_BODY_IDATA_INDEX(0, BODY_IDATA_FLAGS)];
+    int flag2 = world.liveBodyIntData[GET_BODY_IDATA_INDEX(1, BODY_IDATA_FLAGS)];
     
     EXPECT_TRUE(flag1 & HAS_PHYSICAL_COLLISION);
     EXPECT_TRUE(flag2 & HAS_PHYSICAL_COLLISION);
@@ -70,18 +70,18 @@ TEST(CollisionMaskTest, RuntimeUpdateMasks) {
     world.createBody(2, createMaskOptions(0.5f, 0.0f, 0x1, 0x1));
     
     world.step();
-    EXPECT_TRUE(world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & HAS_PHYSICAL_COLLISION);
+    EXPECT_TRUE(world.liveBodyIntData[GET_BODY_IDATA_INDEX(0, BODY_IDATA_FLAGS)] & HAS_PHYSICAL_COLLISION);
     
     // Now make them incompatible
     world.getBody(1)->setMaskBits(0x2); // Object 1 now only collides with 2
     
     world.step();
-    EXPECT_FALSE(world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & HAS_PHYSICAL_COLLISION);
+    EXPECT_FALSE(world.liveBodyIntData[GET_BODY_IDATA_INDEX(0, BODY_IDATA_FLAGS)] & HAS_PHYSICAL_COLLISION);
     
     // Now make them compatible again
     world.getBody(2)->setCategoryBits(0x2); // Object 2 is now category 2
     
     world.step();
-    EXPECT_TRUE(world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS] & HAS_PHYSICAL_COLLISION);
+    EXPECT_TRUE(world.liveBodyIntData[GET_BODY_IDATA_INDEX(0, BODY_IDATA_FLAGS)] & HAS_PHYSICAL_COLLISION);
 }
 

@@ -37,7 +37,7 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("getX", &Body::getX)
         .function("getY", &Body::getY)
         .function("getRotation", &Body::getRotation)
-        .function("recomputeMassProperties", &Body::recomputeMassProperties);
+        .function("recomputeMassProperties", &Body::recomputeInverseInertia);
 
     emscripten::class_<Fixture>("Fixture")
         .function("setCategoryBits", &Fixture::setCategoryBits)

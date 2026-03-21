@@ -52,6 +52,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 				localX: f.localX,
 				localY: f.localY,
 				localR: f.localR,
+				points: f.shape === 6 ? f.vertices : undefined, // POLYGON is 6
 			}));
 
 			bodies.push({
@@ -60,7 +61,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 				y: body.y,
 				r: body.r,
 				color: body.color,
-				isSleeping: (body.flags & 0x04) !== 0, // IS_SLEEPING (0x04 in constants.ts)
+				isSleeping: body.isSleeping,
 				fixtures,
 			});
 		});
@@ -94,6 +95,12 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 				return ShapeType.AABB;
 			case 3:
 				return ShapeType.BOX;
+			case 4:
+				return ShapeType.ELLIPSE;
+			case 5:
+				return ShapeType.CAPSULE;
+			case 6:
+				return ShapeType.POLYGON;
 			default:
 				return ShapeType.BOX;
 		}

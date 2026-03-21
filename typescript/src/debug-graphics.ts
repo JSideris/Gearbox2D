@@ -8,9 +8,6 @@ import {
 	GearJoint,
 	Joint,
 	SHAPES,
-	IS_SLEEPING,
-	HAS_PHYSICAL_COLLISION,
-	HAS_AABB_COLLISION,
 	JOINT_TYPES,
 } from "./gearbox.js";
 
@@ -143,9 +140,9 @@ export class DebugGraphics {
 	private drawFixtureAabb(fixture: Fixture) {
 		if (!this.ctx) return;
 
-		const isSleeping = (fixture.body.flags & IS_SLEEPING) !== 0;
-		const hasPhysical = (fixture.flags & HAS_PHYSICAL_COLLISION) !== 0;
-		const hasAabb = (fixture.flags & HAS_AABB_COLLISION) !== 0;
+		const isSleeping = fixture.body.isSleeping;
+		const hasPhysical = fixture.hasPhysicalCollision;
+		const hasAabb = fixture.hasAabbCollision;
 
 		let x0 = fixture.ax1 * ANIMSCALE;
 		let y0 = fixture.ay1 * ANIMSCALE;
@@ -195,7 +192,7 @@ export class DebugGraphics {
 
 		this.ctx.save();
 
-		const isSleeping = (body.flags & IS_SLEEPING) !== 0;
+		const isSleeping = body.isSleeping;
 		if (isSleeping) {
 			this.ctx.globalAlpha = 0.5;
 			this.ctx.setLineDash([2, 2]);

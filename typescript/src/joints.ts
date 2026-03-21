@@ -18,6 +18,12 @@ abstract class JointBase {
 		this.world = world;
 		this.bodyA = bodyA;
 		this.bodyB = bodyB;
+
+		// Add to bodies' joints lists
+		this.bodyA.joints.push(this as any);
+		if (this.bodyA !== this.bodyB) {
+			this.bodyB.joints.push(this as any);
+		}
 	}
 
 	get id() {

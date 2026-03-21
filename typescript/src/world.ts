@@ -1,11 +1,4 @@
-import {
-	BODY_SIZE_F,
-	BODY_SIZE_I,
-	FIXTURE_SIZE_F,
-	FIXTURE_SIZE_I,
-	BODY_ID_OFFSET,
-	FIXTURE_ID_OFFSET,
-} from "./constants.js";
+import { BODY_ID_OFFSET, FIXTURE_ID_OFFSET, MAX_BODIES, MAX_FIXTURES } from "./constants.js";
 import { BufferView } from "./BufferAccessor.js";
 import { Body } from "./Body.js";
 import { Fixture } from "./Fixture.js";
@@ -74,10 +67,10 @@ export class World {
 		this.liveFixtureFloatData = this.world.getLiveFixtureFloatData();
 		this.liveFixtureIntData = this.world.getLiveFixtureIntData();
 
-		this.bodyFloats = new BufferView(this.liveBodyFloatData, BODY_SIZE_F);
-		this.bodyInts = new BufferView(this.liveBodyIntData, BODY_SIZE_I);
-		this.fixtureFloats = new BufferView(this.liveFixtureFloatData, FIXTURE_SIZE_F);
-		this.fixtureInts = new BufferView(this.liveFixtureIntData, FIXTURE_SIZE_I);
+		this.bodyFloats = new BufferView(this.liveBodyFloatData, MAX_BODIES);
+		this.bodyInts = new BufferView(this.liveBodyIntData, MAX_BODIES);
+		this.fixtureFloats = new BufferView(this.liveFixtureFloatData, MAX_FIXTURES);
+		this.fixtureInts = new BufferView(this.liveFixtureIntData, MAX_FIXTURES);
 	}
 
 	clear() {
@@ -273,7 +266,9 @@ export class World {
 		for (let i = 0; i < count; i++) {
 			const internalId = this.bodyInts.get(i, BODY_ID_OFFSET);
 			const body = this.bodiesByInternalId[internalId];
-			if (body) callback(body);
+			if (body) {
+				callback(body);
+			}
 		}
 	}
 

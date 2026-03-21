@@ -8,21 +8,21 @@
 using namespace std;
 
 bool CollisionSolver::_solveBoxBox() {
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
 
     auto getFixtureWorldPos = [&](int fIdx, int bIdx) {
-        float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
-        float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
-        float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
-        float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-        float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
-        float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        float bx = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)];
+        float by = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)];
+        float br = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)];
+        float lx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_X)];
+        float ly = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_Y)];
+        float lr = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_R)];
         
         float cosR = cos(br), sinR = sin(br);
         Vec2 worldPos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
         
-        int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+        int shape = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_SHAPE)];
         float worldRot = (shape == (int)ObjectShape::AABB) ? 0.0f : (br + lr);
         
         return make_pair(worldPos, worldRot);
@@ -30,10 +30,10 @@ bool CollisionSolver::_solveBoxBox() {
 
     auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
     auto [pB, rotB] = getFixtureWorldPos(_indexB, bIdxB);
-    float wA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
-    float hA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
-    float wB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
-    float hB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+    float wA = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexA, FIXTURE_FDATA_W)];
+    float hA = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexA, FIXTURE_FDATA_H)];
+    float wB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_W)];
+    float hB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_H)];
 
     Vec2 axesA[2] = { Vec2(cos(rotA), sin(rotA)), Vec2(-sin(rotA), cos(rotA)) };
     Vec2 axesB[2] = { Vec2(cos(rotB), sin(rotB)), Vec2(-sin(rotB), cos(rotB)) };
@@ -135,10 +135,10 @@ bool CollisionSolver::_solveBoxBox() {
             Vec2 contactPoint = clippedVertices[i]; // Deepest points are on the incident box
             float penetration = -d;
 
-            Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-            Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-            float rsA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
-            float rsB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+            Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+            Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+            float rsA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
+            float rsB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
             
             Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
             Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * rsA, rA_vec.x * rsA);
@@ -171,21 +171,21 @@ bool CollisionSolver::_solveBoxBox() {
 }
 
 bool CollisionSolver::_solveBoxPoint() {
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
 
     auto getFixtureWorldPos = [&](int fIdx, int bIdx) {
-        float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
-        float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
-        float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
-        float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-        float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
-        float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        float bx = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)];
+        float by = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)];
+        float br = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)];
+        float lx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_X)];
+        float ly = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_Y)];
+        float lr = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_R)];
         
         float cosR = cos(br), sinR = sin(br);
         Vec2 worldPos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
         
-        int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+        int shape = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_SHAPE)];
         float worldRot = (shape == (int)ObjectShape::AABB) ? 0.0f : (br + lr);
         
         return make_pair(worldPos, worldRot);
@@ -194,8 +194,8 @@ bool CollisionSolver::_solveBoxPoint() {
     auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
     auto [pB, rotB] = getFixtureWorldPos(_indexB, bIdxB); // B is the point
     
-    float wA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
-    float hA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+    float wA = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexA, FIXTURE_FDATA_W)];
+    float hA = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexA, FIXTURE_FDATA_H)];
 
     // Transform Point to Box local space
     Vec2 relPos = pB - pA;
@@ -226,9 +226,9 @@ bool CollisionSolver::_solveBoxPoint() {
         float cosW = cos(rotA), sinW = sin(rotA);
         Vec2 normal(normalLocal.x * cosW - normalLocal.y * sinW, normalLocal.x * sinW + normalLocal.y * cosW);
         
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        float wA_rot = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
+        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+        float wA_rot = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
         
         Vec2 rA_vec = pB - pA;
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA_rot, rA_vec.x * wA_rot);
@@ -252,23 +252,23 @@ bool CollisionSolver::_solveBoxPoint() {
     return false;
 }
 bool CollisionSolver::_solveCircleBox() {
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
 
-    float rA = world.liveFixtureFloatData[_indexA * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS];
+    float rA = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexA, FIXTURE_FDATA_RADIUS)];
     
     auto getFixtureWorldPos = [&](int fIdx, int bIdx) {
-        float bx = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_X];
-        float by = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_Y];
-        float br = world.liveBodyFloatData[bIdx * BODY_FDATA_EPO + BODY_FDATA_R];
-        float lx = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X];
-        float ly = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y];
-        float lr = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R];
+        float bx = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)];
+        float by = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)];
+        float br = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)];
+        float lx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_X)];
+        float ly = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_Y)];
+        float lr = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_R)];
         
         float cosR = cos(br), sinR = sin(br);
         Vec2 worldPos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
         
-        int shape = world.liveFixtureIntData[fIdx * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+        int shape = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_SHAPE)];
         float worldRot = (shape == (int)ObjectShape::AABB) ? 0.0f : (br + lr);
         
         return make_pair(worldPos, worldRot);
@@ -277,8 +277,8 @@ bool CollisionSolver::_solveCircleBox() {
     auto [pA, rotA] = getFixtureWorldPos(_indexA, bIdxA);
     auto [pB, rotB] = getFixtureWorldPos(_indexB, bIdxB);
     
-    float wB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
-    float hB = world.liveFixtureFloatData[_indexB * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+    float wB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_W)];
+    float hB = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(_indexB, FIXTURE_FDATA_H)];
 
     // Transform Circle center to Box local space
     Vec2 relPos = pA - pB;
@@ -346,10 +346,10 @@ bool CollisionSolver::_solveCircleBox() {
         Vec2 contactPoint(closestPointLocal.x * cosW - closestPointLocal.y * sinW + pB.x, 
                           closestPointLocal.x * sinW + closestPointLocal.y * cosW + pB.y);
 
-        Vec2 vA(world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        Vec2 vB(world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX], world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY]);
-        float wA = world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_RS];
-        float wB = world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_RS];
+        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
+        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
+        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
+        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
         
         Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
         Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);

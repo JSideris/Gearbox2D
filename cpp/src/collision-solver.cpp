@@ -21,15 +21,15 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
     _indexB = indexB;
     _dt = dt;
 
-    int shapeA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
-    int shapeB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_SHAPE];
+    int shapeA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_SHAPE)];
+    int shapeB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_SHAPE)];
 
-    int bIdxA = world.liveFixtureIntData[_indexA * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
-    int bIdxB = world.liveFixtureIntData[_indexB * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX];
+    int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
+    int bIdxB = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexB, FIXTURE_IDATA_BODY_INDEX)];
 
     _relativeVelocity = Vec2(
-        world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VX] - world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VX],
-        world.liveBodyFloatData[bIdxB * BODY_FDATA_EPO + BODY_FDATA_VY] - world.liveBodyFloatData[bIdxA * BODY_FDATA_EPO + BODY_FDATA_VY]
+        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)] - world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)],
+        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)] - world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]
     );
 
     float globalSpecMargin = world.getSpeculativeMargin();
@@ -38,8 +38,8 @@ bool CollisionSolver::solve(int indexA, int indexB, float dt) {
     // Only enable speculative contacts for objects moving fast relative to their size.
     // This fixes stability issues in stacks (Pyramids) and Newton's Cradle.
     auto getMinThickness = [&](int fIdx, int shape) {
-        float w = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W];
-        float h = world.liveFixtureFloatData[fIdx * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H];
+        float w = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_W)];
+        float h = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_H)];
         if (shape == (int)ObjectShape::CIRCLE || shape == (int)ObjectShape::POINT || shape == (int)ObjectShape::CAPSULE) return w * 2.0f;
         return std::min(w, h);
     };

@@ -66,7 +66,7 @@ TEST(ConcavePolygonTest, StarCollisions) {
         starBody->createFixture(fixtureOptions);
     }
 
-    starBody->recomputeMassProperties();
+    starBody->recomputeInverseInertia();
     starBody->setPosition(Vec2(0.0f, 0.0f));
 
     // 2. Place small circles around the tips of the star

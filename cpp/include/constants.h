@@ -1,5 +1,9 @@
 #pragma once
 
+// --- Global Capacities for SoA ---
+#define MAX_BODIES 10000
+#define MAX_FIXTURES 10000
+
 // --- Body Data Layout ---
 // IMPORTANT: These constants define the shared memory layout between C++ and TypeScript.
 // Any changes here MUST be mirrored in typescript/src/constants.ts or the simulation will corrupt memory.
@@ -45,6 +49,9 @@
 #define BODY_FDATA_LAST_Y 32
 #define BODY_FDATA_LAST_R 33
 
+#define GET_BODY_IDATA_INDEX(idx, offset) ((offset) * MAX_BODIES + (idx))
+#define GET_BODY_FDATA_INDEX(idx, offset) ((offset) * MAX_BODIES + (idx))
+
 // --- Solver Constants ---
 #define BAUMGARTE_FACTOR 0.2f
 #define PENETRATION_SLOP 0.008f
@@ -78,6 +85,9 @@
 #define FIXTURE_FDATA_DENSITY 13
 #define FIXTURE_FDATA_VERTEX_COUNT 14
 #define FIXTURE_FDATA_VERTEX_START 16
+
+#define GET_FIXTURE_IDATA_INDEX(idx, offset) ((offset) * MAX_FIXTURES + (idx))
+#define GET_FIXTURE_FDATA_INDEX(idx, offset) ((offset) * MAX_FIXTURES + (idx))
 
 #define MAX_POLYGON_VERTICES 8
 

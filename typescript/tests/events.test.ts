@@ -9,30 +9,35 @@ import {
 	WANTS_EVENTS,
 	FIXTURE_FLAGS,
 	SHAPES,
+	MAX_BODIES,
+	MAX_FIXTURES,
 } from "../src/constants";
 
 // Mock the C++ world object
 const createMockCppWorld = () => {
-	const liveBodyIntData = new Int32Array(100);
-	const liveBodyFloatData = new Float32Array(100);
-	const liveFixtureIntData = new Int32Array(100);
-	const liveFixtureFloatData = new Float32Array(100);
+	const liveBodyIntData = new Int32Array(BODY_SIZE_I * MAX_BODIES);
+	const liveBodyFloatData = new Float32Array(34 * MAX_BODIES);
+	const liveFixtureIntData = new Int32Array(FIXTURE_SIZE_I * MAX_FIXTURES);
+	const liveFixtureFloatData = new Float32Array(32 * MAX_FIXTURES);
 	const eventData = new Float32Array(100);
 
 	return {
 		createBody: jest.fn((id, options) => {
 			// Minimal mock implementation
-			liveBodyIntData[0 * BODY_SIZE_I + 0] = id; // ID
+			// SoA index: offset * MAX_CAPACITY + index
+			const index = 0;
+			liveBodyIntData[0 * MAX_BODIES + index] = id; // ID_OFFSET is 0
 			if (options.wantsEvents) {
-				liveBodyIntData[0 * BODY_SIZE_I + BODY_FLAGS_OFFSET] |= WANTS_EVENTS;
+				liveBodyIntData[BODY_FLAGS_OFFSET * MAX_BODIES + index] |= WANTS_EVENTS;
 			}
-			return 0; // index
+			return index;
 		}),
 		createFixture: jest.fn((bodyId, fixtureId, options) => {
 			const fIndex = 0;
-			liveFixtureIntData[fIndex * FIXTURE_SIZE_I + 0] = fixtureId || 999;
+			// SoA index: offset * MAX_CAPACITY + index
+			liveFixtureIntData[0 * MAX_FIXTURES + fIndex] = fixtureId || 999; // ID_OFFSET is 0
 			if (options.wantsEvents) {
-				liveFixtureIntData[fIndex * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET] |= FIXTURE_FLAGS.WANTS_EVENTS;
+				liveFixtureIntData[FIXTURE_FLAGS_OFFSET * MAX_FIXTURES + fIndex] |= FIXTURE_FLAGS.WANTS_EVENTS;
 			}
 			return fIndex;
 		}),
@@ -60,7 +65,7 @@ describe("TypeScript Event Opt-in Support", () => {
 		it("should correctly initialize wantsEvents from options in createBody", () => {
 			const body = world.createBody({ id: 1, wantsEvents: true });
 			expect(body.wantsEvents).toBe(true);
-			const flags = world.liveBodyIntData[body.index * BODY_SIZE_I + BODY_FLAGS_OFFSET];
+			const flags = world.liveBodyIntData[BODY_FLAGS_OFFSET * MAX_BODIES + body.index];
 			expect(flags & WANTS_EVENTS).toBe(WANTS_EVENTS);
 		});
 
@@ -70,12 +75,12 @@ describe("TypeScript Event Opt-in Support", () => {
 
 			body.wantsEvents = true;
 			expect(body.wantsEvents).toBe(true);
-			let flags = world.liveBodyIntData[body.index * BODY_SIZE_I + BODY_FLAGS_OFFSET];
+			let flags = world.liveBodyIntData[BODY_FLAGS_OFFSET * MAX_BODIES + body.index];
 			expect(flags & WANTS_EVENTS).toBe(WANTS_EVENTS);
 
 			body.wantsEvents = false;
 			expect(body.wantsEvents).toBe(false);
-			flags = world.liveBodyIntData[body.index * BODY_SIZE_I + BODY_FLAGS_OFFSET];
+			flags = world.liveBodyIntData[BODY_FLAGS_OFFSET * MAX_BODIES + body.index];
 			expect(flags & WANTS_EVENTS).toBe(0);
 		});
 	});
@@ -86,7 +91,7 @@ describe("TypeScript Event Opt-in Support", () => {
 			const fixture = world.createFixture(body.id, { shape: SHAPES.CIRCLE, radius: 1, wantsEvents: true });
 
 			expect(fixture.wantsEvents).toBe(true);
-			const flags = world.liveFixtureIntData[fixture.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET];
+			const flags = world.liveFixtureIntData[FIXTURE_FLAGS_OFFSET * MAX_FIXTURES + fixture.index];
 			expect(flags & FIXTURE_FLAGS.WANTS_EVENTS).toBe(FIXTURE_FLAGS.WANTS_EVENTS);
 		});
 
@@ -98,12 +103,12 @@ describe("TypeScript Event Opt-in Support", () => {
 
 			fixture.wantsEvents = true;
 			expect(fixture.wantsEvents).toBe(true);
-			let flags = world.liveFixtureIntData[fixture.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET];
+			let flags = world.liveFixtureIntData[FIXTURE_FLAGS_OFFSET * MAX_FIXTURES + fixture.index];
 			expect(flags & FIXTURE_FLAGS.WANTS_EVENTS).toBe(FIXTURE_FLAGS.WANTS_EVENTS);
 
 			fixture.wantsEvents = false;
 			expect(fixture.wantsEvents).toBe(false);
-			flags = world.liveFixtureIntData[fixture.index * FIXTURE_SIZE_I + FIXTURE_FLAGS_OFFSET];
+			flags = world.liveFixtureIntData[FIXTURE_FLAGS_OFFSET * MAX_FIXTURES + fixture.index];
 			expect(flags & FIXTURE_FLAGS.WANTS_EVENTS).toBe(0);
 		});
 	});

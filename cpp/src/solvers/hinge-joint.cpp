@@ -141,15 +141,15 @@ void HingeJoint::solvePosition() {
     }
 
     if (imA > 0.0f) {
-        int idx = bodyA->worldIndex * BODY_FDATA_EPO;
-        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - impulse_local.x * imA;
-        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pA.y - impulse_local.y * imA;
-        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaA - rA_curr.cross(impulse_local) * iIA;
+        int bIdx = bodyA->worldIndex;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = pA.x - impulse_local.x * imA;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = pA.y - impulse_local.y * imA;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = thetaA - rA_curr.cross(impulse_local) * iIA;
     }
     if (imB > 0.0f) {
-        int idx = bodyB->worldIndex * BODY_FDATA_EPO;
-        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_X] = pB.x + impulse_local.x * imB;
-        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pB.y + impulse_local.y * imB;
-        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaB + rB_curr.cross(impulse_local) * iIB;
+        int bIdx = bodyB->worldIndex;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = pB.x + impulse_local.x * imB;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = pB.y + impulse_local.y * imB;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = thetaB + rB_curr.cross(impulse_local) * iIB;
     }
 }

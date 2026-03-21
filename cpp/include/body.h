@@ -48,7 +48,7 @@ public:
     Vec2 getForceVelocity() const;
     void setForceVelocity(const Vec2& v);
 
-    Body(World& world, int id, emscripten_val options);
+    Body(World& world, int id, int worldIndex, emscripten_val options);
     ~Body();
 
     float getX() const;
@@ -109,7 +109,7 @@ public:
     void removeContact(Body* other);
     int getContactCount() const { return (int)contacts.size(); }
     void updateInverseInertia();
-    void recomputeMassProperties();
+    void recomputeInverseInertia();
 
     // Internal fast access
     SolverData getSolverData() const;

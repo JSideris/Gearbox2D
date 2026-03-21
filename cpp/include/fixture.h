@@ -28,7 +28,7 @@ public:
     Aabb aabb;
     BvhNode* bvhNode = nullptr;
 
-    Fixture(World& world, int id, Body* body, emscripten_val options);
+    Fixture(World& world, int id, int worldIndex, Body* body, emscripten_val options);
     ~Fixture();
 
     void updateAabb(int mode);

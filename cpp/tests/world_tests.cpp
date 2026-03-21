@@ -58,8 +58,8 @@ TEST(WorldTest, CollisionFlagsUpdate) {
     
     // Check collision flags in liveBodyIntData
     // BODY_IDATA_FLAGS is index 3 in the epoch
-    int flag1 = world.liveBodyIntData[0 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
-    int flag2 = world.liveBodyIntData[1 * BODY_IDATA_EPO + BODY_IDATA_FLAGS];
+    int flag1 = world.liveBodyIntData[GET_BODY_IDATA_INDEX(0, BODY_IDATA_FLAGS)];
+    int flag2 = world.liveBodyIntData[GET_BODY_IDATA_INDEX(1, BODY_IDATA_FLAGS)];
     
     EXPECT_TRUE(flag1 & HAS_PHYSICAL_COLLISION);
     EXPECT_TRUE(flag2 & HAS_PHYSICAL_COLLISION);
@@ -107,9 +107,9 @@ TEST(WorldTest, ObjectRemovalIndexConsistency) {
     EXPECT_EQ(world.getBodyCount(), 2);
     EXPECT_EQ(world.getFixtureCount(), 3);
 
-    EXPECT_EQ(world.liveFixtureIntData[0 * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX], 0);
-    EXPECT_EQ(world.liveFixtureIntData[1 * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX], 1);
-    EXPECT_EQ(world.liveFixtureIntData[2 * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX], 1);
+    EXPECT_EQ(world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(0, FIXTURE_IDATA_BODY_INDEX)], 0);
+    EXPECT_EQ(world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(1, FIXTURE_IDATA_BODY_INDEX)], 1);
+    EXPECT_EQ(world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(2, FIXTURE_IDATA_BODY_INDEX)], 1);
 
     // Remove body A (ID 1, index 0). Body B (index 1) should be swapped to index 0.
     world.removeObject(bIdA);
@@ -120,8 +120,8 @@ TEST(WorldTest, ObjectRemovalIndexConsistency) {
     
     // IMPORTANT: Fixtures for Body B should now point to body index 0
     // After removal of A, the remaining fixtures should be at index 0 and 1 (from old B)
-    EXPECT_EQ(world.liveFixtureIntData[0 * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX], 0);
-    EXPECT_EQ(world.liveFixtureIntData[1 * FIXTURE_IDATA_EPO + FIXTURE_IDATA_BODY_INDEX], 0);
+    EXPECT_EQ(world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(0, FIXTURE_IDATA_BODY_INDEX)], 0);
+    EXPECT_EQ(world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(1, FIXTURE_IDATA_BODY_INDEX)], 0);
 }
 
 TEST(WorldTest, RemoveLastObject) {

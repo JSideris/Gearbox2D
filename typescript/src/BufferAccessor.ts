@@ -9,7 +9,7 @@ export class BufferView<T extends Float32Array | Int32Array> {
 	) {}
 
 	protected getIndexOffset(index: number, offset: number): number {
-		return index * this.stride + offset;
+		return offset * this.stride + index;
 	}
 
 	get(index: number, offset: number): number {
@@ -37,7 +37,7 @@ export class RowView<T extends Float32Array | Int32Array> {
 	) {}
 
 	private getIndexOffset(offset: number): number {
-		return this.getIndex() * this.stride + offset;
+		return offset * this.stride + this.getIndex();
 	}
 
 	get(offset: number): number {

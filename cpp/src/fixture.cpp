@@ -5,19 +5,19 @@
 #include <cmath>
 #include <algorithm>
 
-Fixture::Fixture(World& world, int id, Body* body, emscripten_val options)
-    : world(world), id(id), body(body),
+Fixture::Fixture(World& world, int id, int worldIndex, Body* body, emscripten_val options)
+    : world(world), id(id), body(body), worldIndex(worldIndex),
       shape(!options["shape"].isUndefined() ? static_cast<ObjectShape>(options["shape"].as<int>()) : ObjectShape::CIRCLE)
 {
-    world.liveFixtureIntData.push_back(id);
-    world.liveFixtureIntData.push_back(body->worldIndex);
-    world.liveFixtureIntData.push_back((int)shape);
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_ID)] = id;
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_BODY_INDEX)] = body->worldIndex;
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_SHAPE)] = (int)shape;
     
     uint32_t categoryBits = !options["categoryBits"].isUndefined() ? (uint32_t)options["categoryBits"].as<int>() : 0xFFFFFFFF; // Default to all bits
     uint32_t maskBits = !options["maskBits"].isUndefined() ? (uint32_t)options["maskBits"].as<int>() : 0xFFFFFFFF; // Default to all bits
     
-    world.liveFixtureIntData.push_back(categoryBits);
-    world.liveFixtureIntData.push_back(maskBits);
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_CATEGORY_BITS)] = categoryBits;
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_MASK_BITS)] = maskBits;
     uint32_t flags = 0;
     if (!options["isSensor"].isUndefined() && options["isSensor"].as<bool>()) {
         flags |= FIXTURE_FLAG_IS_SENSOR;
@@ -25,26 +25,26 @@ Fixture::Fixture(World& world, int id, Body* body, emscripten_val options)
     if (!options["wantsEvents"].isUndefined() && options["wantsEvents"].as<bool>()) {
         flags |= FIXTURE_FLAG_WANTS_EVENTS;
     }
-    world.liveFixtureIntData.push_back(flags); // Flags
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] = flags;
 
-    world.liveFixtureFloatData.push_back(!options["localX"].isUndefined() ? options["localX"].as<float>() : 0.0f);
-    world.liveFixtureFloatData.push_back(!options["localY"].isUndefined() ? options["localY"].as<float>() : 0.0f);
-    world.liveFixtureFloatData.push_back(!options["localR"].isUndefined() ? options["localR"].as<float>() : 0.0f);
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_LOCAL_X)] = !options["localX"].isUndefined() ? options["localX"].as<float>() : 0.0f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_LOCAL_Y)] = !options["localY"].isUndefined() ? options["localY"].as<float>() : 0.0f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_LOCAL_R)] = !options["localR"].isUndefined() ? options["localR"].as<float>() : 0.0f;
     
     float valW = !options["radius"].isUndefined() ? options["radius"].as<float>() : (!options["width"].isUndefined() ? options["width"].as<float>() : 0.0f);
     float valH = !options["height"].isUndefined() ? options["height"].as<float>() : 0.0f;
     
-    world.liveFixtureFloatData.push_back(valW);
-    world.liveFixtureFloatData.push_back(valH);
-    world.liveFixtureFloatData.push_back(!options["restitution"].isUndefined() ? options["restitution"].as<float>() : 0.2f);
-    world.liveFixtureFloatData.push_back(!options["sFriction"].isUndefined() ? options["sFriction"].as<float>() : 0.2f);
-    world.liveFixtureFloatData.push_back(!options["kFriction"].isUndefined() ? options["kFriction"].as<float>() : 0.2f);
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_W)] = valW;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_H)] = valH;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_RESTITUTION)] = !options["restitution"].isUndefined() ? options["restitution"].as<float>() : 0.2f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_S_FRICTION)] = !options["sFriction"].isUndefined() ? options["sFriction"].as<float>() : 0.2f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_K_FRICTION)] = !options["kFriction"].isUndefined() ? options["kFriction"].as<float>() : 0.2f;
     
     // AABB placeholders
-    world.liveFixtureFloatData.push_back(0.0f);
-    world.liveFixtureFloatData.push_back(0.0f);
-    world.liveFixtureFloatData.push_back(0.0f);
-    world.liveFixtureFloatData.push_back(0.0f);
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AX1)] = 0.0f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AY1)] = 0.0f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AX2)] = 0.0f;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AY2)] = 0.0f;
 
     // Max extent for AABB padding
     float maxExtent = 0.0f;
@@ -57,10 +57,10 @@ Fixture::Fixture(World& world, int id, Body* body, emscripten_val options)
     } else if (shape == ObjectShape::CAPSULE) {
         maxExtent = valH * 0.5f; 
     }
-    world.liveFixtureFloatData.push_back(maxExtent); // Index 12
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_MAX_EXTENT)] = maxExtent;
 
     float density = !options["density"].isUndefined() ? options["density"].as<float>() : 1.0f;
-    world.liveFixtureFloatData.push_back(density); // Index 13 (FIXTURE_FDATA_DENSITY)
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_DENSITY)] = density;
 
     // Polygon vertex data
     if (shape == ObjectShape::POLYGON && !options["vertices"].isUndefined()) {
@@ -85,34 +85,23 @@ Fixture::Fixture(World& world, int id, Body* body, emscripten_val options)
             std::reverse(polyVertices.begin(), polyVertices.end());
         }
 
-        world.liveFixtureFloatData.push_back((float)count); // Index 14: FIXTURE_FDATA_VERTEX_COUNT
-        world.liveFixtureFloatData.push_back(0.0f);         // Index 15: Padding
+        world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)] = (float)count;
         
         float maxPolyExtentSq = 0.0f;
         for (int i = 0; i < MAX_POLYGON_VERTICES; ++i) {
             if (i < count) {
                 float vx = polyVertices[i].x;
                 float vy = polyVertices[i].y;
-                world.liveFixtureFloatData.push_back(vx);
-                world.liveFixtureFloatData.push_back(vy);
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)] = vx;
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)] = vy;
                 maxPolyExtentSq = std::max(maxPolyExtentSq, vx * vx + vy * vy);
             } else {
-                world.liveFixtureFloatData.push_back(0.0f);
-                world.liveFixtureFloatData.push_back(0.0f);
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)] = 0.0f;
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)] = 0.0f;
             }
         }
         maxExtent = std::sqrt(maxPolyExtentSq);
-        // Overwrite maxExtent at index 12 if it was polygon
-        // We just pushed 2 + 2 * MAX_POLYGON_VERTICES = 18 elements.
-        // Index 12 is 18 - (14 - 12) = 18 - 2 = 16 elements back? No.
-        // Let's just use the absolute index in the vector for now since we know we just pushed them.
-        size_t lastIdx = world.liveFixtureFloatData.size() - 1; // index 31
-        world.liveFixtureFloatData[lastIdx - (FIXTURE_FDATA_EPO - 1 - FIXTURE_FDATA_MAX_EXTENT)] = maxExtent;
-    } else {
-        // Ensure we push exactly FIXTURE_FDATA_EPO (32) elements
-        for (int i = 14; i < FIXTURE_FDATA_EPO; ++i) {
-            world.liveFixtureFloatData.push_back(0.0f);
-        }
+        world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_MAX_EXTENT)] = maxExtent;
     }
 }
 
@@ -122,18 +111,18 @@ Fixture::~Fixture() {
     }
 }
 
-float Fixture::getLocalX() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_X]; }
-float Fixture::getLocalY() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_Y]; }
-float Fixture::getLocalR() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_LOCAL_R]; }
-float Fixture::getWidth() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_W]; }
-float Fixture::getHeight() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_H]; }
-float Fixture::getRadius() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RADIUS]; }
-float Fixture::getRestitution() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_RESTITUTION]; }
-float Fixture::getStaticFriction() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_S_FRICTION]; }
-float Fixture::getKineticFriction() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_K_FRICTION]; }
+float Fixture::getLocalX() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_LOCAL_X)]; }
+float Fixture::getLocalY() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_LOCAL_Y)]; }
+float Fixture::getLocalR() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_LOCAL_R)]; }
+float Fixture::getWidth() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_W)]; }
+float Fixture::getHeight() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_H)]; }
+float Fixture::getRadius() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_RADIUS)]; }
+float Fixture::getRestitution() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_RESTITUTION)]; }
+float Fixture::getStaticFriction() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_S_FRICTION)]; }
+float Fixture::getKineticFriction() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_K_FRICTION)]; }
 
-uint32_t Fixture::getCategoryBits() const { return world.liveFixtureIntData[worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_CATEGORY_BITS]; }
-uint32_t Fixture::getMaskBits() const { return world.liveFixtureIntData[worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_MASK_BITS]; }
+uint32_t Fixture::getCategoryBits() const { return world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_CATEGORY_BITS)]; }
+uint32_t Fixture::getMaskBits() const { return world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_MASK_BITS)]; }
 
 uint32_t Fixture::getSystemCategory() const {
     if (shape == ObjectShape::POINT) return CATEGORY_POINT;
@@ -143,7 +132,7 @@ uint32_t Fixture::getSystemCategory() const {
 }
 
 void Fixture::setSensor(bool isSensor) {
-    int idx = worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS;
+    int idx = GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS);
     if (isSensor) {
         world.liveFixtureIntData[idx] |= FIXTURE_FLAG_IS_SENSOR;
     } else {
@@ -158,17 +147,17 @@ void Fixture::setSensor(bool isSensor) {
 }
 
 bool Fixture::isSensor() const {
-    return (world.liveFixtureIntData[worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] & FIXTURE_FLAG_IS_SENSOR) != 0;
+    return (world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] & FIXTURE_FLAG_IS_SENSOR) != 0;
 }
 
 bool Fixture::wantsEvents() const {
-    return (world.liveFixtureIntData[worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_FLAGS] & FIXTURE_FLAG_WANTS_EVENTS) != 0;
+    return (world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] & FIXTURE_FLAG_WANTS_EVENTS) != 0;
 }
 
-float Fixture::getDensity() const { return world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_DENSITY]; }
+float Fixture::getDensity() const { return world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_DENSITY)]; }
 
 void Fixture::setCategoryBits(uint32_t bits) {
-    world.liveFixtureIntData[worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_CATEGORY_BITS] = bits;
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_CATEGORY_BITS)] = bits;
     if (bvhNode) {
         CollisionProperties props = bvhNode->properties;
         props.userCategory = bits;
@@ -177,7 +166,7 @@ void Fixture::setCategoryBits(uint32_t bits) {
 }
 
 void Fixture::setMaskBits(uint32_t bits) {
-    world.liveFixtureIntData[worldIndex * FIXTURE_IDATA_EPO + FIXTURE_IDATA_MASK_BITS] = bits;
+    world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_MASK_BITS)] = bits;
     if (bvhNode) {
         CollisionProperties props = bvhNode->properties;
         props.userMask = bits;
@@ -186,7 +175,7 @@ void Fixture::setMaskBits(uint32_t bits) {
 }
 
 void Fixture::setDensity(float density) {
-    world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_DENSITY] = density;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_DENSITY)] = density;
     body->updateInverseInertia();
 }
 
@@ -216,15 +205,16 @@ MassData Fixture::getMassData() const {
         data.inertia = (1.0f / 12.0f) * mRect * (4.0f * r * r + l * l) + 
                        (0.5f * mCircle * r * r + mCircle * (l * l * 0.25f));
     } else if (shape == ObjectShape::POLYGON) {
-        int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
+        int vCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)];
         float area = 0.0f;
         Vec2 centroid(0.0f, 0.0f);
         float inertia = 0.0f;
         
-        int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
         for (int i = 0; i < vCount; ++i) {
-            Vec2 p1(world.liveFixtureFloatData[startIdx + i * 2], world.liveFixtureFloatData[startIdx + i * 2 + 1]);
-            Vec2 p2(world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2], world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2 + 1]);
+            Vec2 p1(world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)], 
+                    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)]);
+            Vec2 p2(world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + ((i + 1) % vCount) * 2)], 
+                    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + ((i + 1) % vCount) * 2 + 1)]);
             
             float cross = p1.cross(p2);
             area += 0.5f * cross;
@@ -237,8 +227,10 @@ MassData Fixture::getMassData() const {
             
             // Inertia of polygon: sum (p1 x p2) * (p1^2 + p1.p2 + p2^2) / 12
             for (int i = 0; i < vCount; ++i) {
-                Vec2 p1 = Vec2(world.liveFixtureFloatData[startIdx + i * 2], world.liveFixtureFloatData[startIdx + i * 2 + 1]) - centroid;
-                Vec2 p2 = Vec2(world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2], world.liveFixtureFloatData[startIdx + ((i + 1) % vCount) * 2 + 1]) - centroid;
+                Vec2 p1 = Vec2(world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)], 
+                               world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)]) - centroid;
+                Vec2 p2 = Vec2(world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + ((i + 1) % vCount) * 2)], 
+                               world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + ((i + 1) % vCount) * 2 + 1)]) - centroid;
                 float cross = p1.cross(p2);
                 inertia += cross * (p1.dot(p1) + p1.dot(p2) + p2.dot(p2));
             }
@@ -280,11 +272,10 @@ void Fixture::updateAabb(int mode) {
 void Fixture::updateAabb(float cosR, float sinR, int mode) {
     aabb = computeAabb(cosR, sinR, mode);
     
-    int idx = worldIndex * FIXTURE_FDATA_EPO;
-    world.liveFixtureFloatData[idx + FIXTURE_FDATA_AX1] = aabb.min.x;
-    world.liveFixtureFloatData[idx + FIXTURE_FDATA_AY1] = aabb.min.y;
-    world.liveFixtureFloatData[idx + FIXTURE_FDATA_AX2] = aabb.max.x;
-    world.liveFixtureFloatData[idx + FIXTURE_FDATA_AY2] = aabb.max.y;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AX1)] = aabb.min.x;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AY1)] = aabb.min.y;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AX2)] = aabb.max.x;
+    world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_AY2)] = aabb.max.y;
 }
 
 Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
@@ -363,15 +354,14 @@ Aabb Fixture::computeAabb(float cosR, float sinR, int mode) const {
             break;
         }
         case ObjectShape::POLYGON: {
-            int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
-            int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
+            int vCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)];
             
             newX1 = 1e10f; newY1 = 1e10f;
             newX2 = -1e10f; newY2 = -1e10f;
             
             for (int i = 0; i < vCount; ++i) {
-                float vx = world.liveFixtureFloatData[startIdx + i * 2];
-                float vy = world.liveFixtureFloatData[startIdx + i * 2 + 1];
+                float vx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)];
+                float vy = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)];
                 float worldVX = wx + (vx * cosTotal - vy * sinTotal);
                 float worldVY = wy + (vx * sinTotal + vy * cosTotal);
                 
@@ -435,14 +425,13 @@ bool Fixture::testPoint(float x, float y) const {
         case ObjectShape::AABB:   
             return CollisionSolver::testPointAabb(p, center, getWidth(), getHeight());
         case ObjectShape::POLYGON: {
-            int vCount = (int)world.liveFixtureFloatData[worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_COUNT];
-            int startIdx = worldIndex * FIXTURE_FDATA_EPO + FIXTURE_FDATA_VERTEX_START;
+            int vCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)];
             std::vector<Vec2> worldVertices;
             float cosTotal = cos(rotation);
             float sinTotal = sin(rotation);
             for (int i = 0; i < vCount; ++i) {
-                float vx = world.liveFixtureFloatData[startIdx + i * 2];
-                float vy = world.liveFixtureFloatData[startIdx + i * 2 + 1];
+                float vx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)];
+                float vy = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)];
                 worldVertices.push_back(Vec2(center.x + (vx * cosTotal - vy * sinTotal), center.y + (vx * sinTotal + vy * cosTotal)));
             }
             return CollisionSolver::testPointPolygon(p, worldVertices);

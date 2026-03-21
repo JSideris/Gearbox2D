@@ -155,15 +155,15 @@ void DistanceJoint::solvePosition() {
     Vec2 P = normal_curr * impulse_local;
 
     if (imA > 0.0f) {
-        int idx = bodyA->worldIndex * BODY_FDATA_EPO;
-        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_X] = pA.x - P.x * imA;
-        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pA.y - P.y * imA;
-        bodyA->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaA - rA_curr.cross(P) * iIA;
+        int bIdx = bodyA->worldIndex;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = pA.x - P.x * imA;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = pA.y - P.y * imA;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = thetaA - rA_curr.cross(P) * iIA;
     }
     if (imB > 0.0f) {
-        int idx = bodyB->worldIndex * BODY_FDATA_EPO;
-        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_X] = pB.x + P.x * imB;
-        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_Y] = pB.y + P.y * imB;
-        bodyB->world.liveBodyFloatData[idx + BODY_FDATA_R] = thetaB + rB_curr.cross(P) * iIB;
+        int bIdx = bodyB->worldIndex;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = pB.x + P.x * imB;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = pB.y + P.y * imB;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] = thetaB + rB_curr.cross(P) * iIB;
     }
 }
