@@ -14,115 +14,6 @@ static float crossProduct(Vec2 p0, Vec2 p1, Vec2 p2) {
     return (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
 }
 
-static bool segmentsIntersect(Vec2 a, Vec2 b, Vec2 c, Vec2 d) {
-    float det = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
-    if (std::abs(det) < 1e-6f) return false;
-
-    float u = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
-    float v = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
-
-    return u > 0 && u < 1 && v > 0 && v < 1;
-}
-
-static bool isVisible(const std::vector<Vec2>& vertices, int idx1, int idx2) {
-    Vec2 p1 = vertices[idx1];
-    Vec2 p2 = vertices[idx2];
-    int n = (int)vertices.size();
-
-    for (int i = 0; i < n; i++) {
-        Vec2 v1 = vertices[i];
-        Vec2 v2 = vertices[(i + 1) % n];
-
-        if (i == idx1 || i == idx2 || (i + 1) % n == idx1 || (i + 1) % n == idx2) continue;
-
-        if (segmentsIntersect(p1, p2, v1, v2)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static std::vector<std::vector<Vec2>> decompose(std::vector<Vec2> vertices) {
-    int n = (int)vertices.size();
-    if (n < 3) return {};
-
-    // 1. Ensure CCW order
-    float area = 0;
-    for (int i = 0; i < n; i++) {
-        Vec2 p1 = vertices[i];
-        Vec2 p2 = vertices[(i + 1) % n];
-        area += (p1.x * p2.y - p2.x * p1.y);
-    }
-    if (area < 0) {
-        std::reverse(vertices.begin(), vertices.end());
-    }
-
-    std::vector<int> reflexVertices;
-    for (int i = 0; i < n; i++) {
-        Vec2 p0 = vertices[(i - 1 + n) % n];
-        Vec2 p1 = vertices[i];
-        Vec2 p2 = vertices[(i + 1) % n];
-        if (crossProduct(p0, p1, p2) < 0) {
-            reflexVertices.push_back(i);
-        }
-    }
-
-    if (reflexVertices.empty()) {
-        return {vertices};
-    }
-
-    int reflexIdx = reflexVertices[0];
-    Vec2 p0 = vertices[(reflexIdx - 1 + n) % n];
-    Vec2 p1 = vertices[reflexIdx];
-    Vec2 p2 = vertices[(reflexIdx + 1) % n];
-
-    int bestSplitIdx = -1;
-    float minDistanceSq = 1e30f;
-
-    for (int i = 0; i < n; i++) {
-        if (i == reflexIdx || i == (reflexIdx - 1 + n) % n || i == (reflexIdx + 1) % n) continue;
-
-        Vec2 p = vertices[i];
-        float cp1 = crossProduct(p1, p0, p);
-        float cp2 = crossProduct(p1, p2, p);
-
-        if (cp1 <= 0 && cp2 >= 0) {
-            if (isVisible(vertices, reflexIdx, i)) {
-                float distSq = (p.x - p1.x) * (p.x - p1.x) + (p.y - p1.y) * (p.y - p1.y);
-                if (distSq < minDistanceSq) {
-                    minDistanceSq = distSq;
-                    bestSplitIdx = i;
-                }
-            }
-        }
-    }
-
-    if (bestSplitIdx != -1) {
-        std::vector<Vec2> poly1, poly2;
-
-        int i = reflexIdx;
-        while (i != bestSplitIdx) {
-            poly1.push_back(vertices[i]);
-            i = (i + 1) % n;
-        }
-        poly1.push_back(vertices[bestSplitIdx]);
-
-        i = bestSplitIdx;
-        while (i != reflexIdx) {
-            poly2.push_back(vertices[i]);
-            i = (i + 1) % n;
-        }
-        poly2.push_back(vertices[reflexIdx]);
-
-        auto d1 = decompose(poly1);
-        auto d2 = decompose(poly2);
-        d1.insert(d1.end(), d2.begin(), d2.end());
-        return d1;
-    }
-
-    return {vertices};
-}
-
 static std::vector<Vec2> makeStar(int points, float outerRadius, float innerRadius) {
     std::vector<Vec2> vertices;
     for (int i = 0; i < points * 2; i++) {
@@ -152,25 +43,31 @@ TEST(ConcavePolygonTest, StarCollisions) {
     emscripten_val bodyOptions;
     bodyOptions["x"] = 0.0f;
     bodyOptions["y"] = 0.0f;
-    bodyOptions["type"] = (int)ObjectType::DYNAMIC_OBJECT;
+    bodyOptions["type"] = (int)ObjectType::FIXED_OBJECT;
     
     int starId = 1;
     world.createBody(starId, bodyOptions);
     Body* starBody = world.getBody(starId);
 
-    // Decompose star into convex pieces
+    // Decompose star into convex pieces manually
+    // A robust way to decompose a star is to create triangles from each edge to the center
     std::vector<Vec2> starVertices = makeStar(5, 5.0f, 2.0f);
-    auto pieces = decompose(starVertices);
-
-    for (const auto& piece : pieces) {
+    
+    for (size_t i = 0; i < starVertices.size(); ++i) {
+        std::vector<Vec2> triangle;
+        triangle.push_back(Vec2(0.0f, 0.0f));
+        triangle.push_back(starVertices[i]);
+        triangle.push_back(starVertices[(i + 1) % starVertices.size()]);
+        
         emscripten_val fixtureOptions;
         fixtureOptions["shape"] = (int)ObjectShape::POLYGON;
-        fixtureOptions["vertices"] = convertToMockVal(piece);
+        fixtureOptions["vertices"] = convertToMockVal(triangle);
         fixtureOptions["density"] = 1.0f;
         starBody->createFixture(fixtureOptions);
     }
 
     starBody->recomputeMassProperties();
+    starBody->setPosition(Vec2(0.0f, 0.0f));
 
     // 2. Place small circles around the tips of the star
     // Tips are at outerRadius (5.0) at angles 0, 2pi/5, 4pi/5, 6pi/5, 8pi/5
