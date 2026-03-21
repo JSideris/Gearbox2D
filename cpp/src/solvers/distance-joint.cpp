@@ -47,7 +47,7 @@ void DistanceJoint::preSolve(float dt) {
     
     // Kinematic Restitution Balancing (KRB) for Distance Joint
     // Component A: Force Velocity Compensation
-    float forceVn = (bodyB->forceVelocity - bodyA->forceVelocity).dot(normal);
+    float forceVn = (bodyB->getForceVelocity() - bodyA->getForceVelocity()).dot(normal);
     
     // Component B: Kinematic Energy Balancing (The "Joint Tax")
     // We adjust the bias velocity to account for work done by external forces over the correction displacement.

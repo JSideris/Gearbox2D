@@ -35,6 +35,8 @@ int World::createBody(int id, emscripten_val options) {
     auto* body = new Body(*this, id, options);
     body->worldIndex = bodiesList.size();
     bodiesMap[id] = body;
+    if (id >= (int)_idToBody.size()) _idToBody.resize(id + 1, nullptr);
+    _idToBody[id] = body;
     bodiesList.push_back(body);
 
     // Support atomic creation of multiple fixtures
@@ -64,6 +66,8 @@ int World::createFixture(int bodyId, int fixtureId, emscripten_val options, bool
     auto* fixture = new Fixture(*this, fId, body, options);
     fixture->worldIndex = fixturesList.size();
     fixturesMap[fId] = fixture;
+    if (fId >= (int)_idToFixture.size()) _idToFixture.resize(fId + 1, nullptr);
+    _idToFixture[fId] = fixture;
     fixturesList.push_back(fixture);
     
     body->addFixture(fixture, recomputeMass);
@@ -120,6 +124,7 @@ int World::removeObject(int id) {
             for (int i = 0; i < FIXTURE_FDATA_EPO; ++i) liveFixtureFloatData.pop_back();
         }
         fixturesMap.erase(fixture->id);
+        if (fixture->id < (int)_idToFixture.size()) _idToFixture[fixture->id] = nullptr;
         delete fixture;
     }
 
@@ -180,6 +185,7 @@ int World::removeObject(int id) {
     }
     
     bodiesMap.erase(itBody);
+    if (id < (int)_idToBody.size()) _idToBody[id] = nullptr;
     delete body;
     return bIdx;
 }
@@ -246,8 +252,8 @@ void World::step() {
 
 void World::_doIntegrateVelocitiesSubStep(float dt) {
     for (auto* body : bodiesList) {
+        int idx = body->worldIndex * BODY_FDATA_EPO;
         if (body->isSleeping && body->type != ObjectType::FIXED_OBJECT) {
-            int idx = body->worldIndex * BODY_FDATA_EPO;
             if (liveBodyFloatData[idx + BODY_FDATA_NIX] != 0 || liveBodyFloatData[idx + BODY_FDATA_NIY] != 0 || 
                 liveBodyFloatData[idx + BODY_FDATA_NIA] != 0 || liveBodyFloatData[idx + BODY_FDATA_NFX] != 0 || 
                 liveBodyFloatData[idx + BODY_FDATA_NFY] != 0) {
@@ -256,21 +262,141 @@ void World::_doIntegrateVelocitiesSubStep(float dt) {
         }
         if (body->isSleeping) continue;
 
-        float m = body->getMass();
-        float gScale = body->getGravityScale();
+        float im = liveBodyFloatData[idx + BODY_FDATA_IM];
+        float invI = liveBodyFloatData[idx + BODY_FDATA_INV_INERTIA];
+        
+        // 1. Apply discrete impulses (NIX, NIY, NIA)
+        float nix = liveBodyFloatData[idx + BODY_FDATA_NIX];
+        float niy = liveBodyFloatData[idx + BODY_FDATA_NIY];
+        if (nix != 0 || niy != 0) {
+            liveBodyFloatData[idx + BODY_FDATA_IX] += nix;
+            liveBodyFloatData[idx + BODY_FDATA_IY] += niy;
+            liveBodyFloatData[idx + BODY_FDATA_VX] += nix * im;
+            liveBodyFloatData[idx + BODY_FDATA_VY] += niy * im;
+            liveBodyFloatData[idx + BODY_FDATA_NIX] = 0;
+            liveBodyFloatData[idx + BODY_FDATA_NIY] = 0;
+        }
+        
+        float nia = liveBodyFloatData[idx + BODY_FDATA_NIA];
+        if (nia != 0) {
+            liveBodyFloatData[idx + BODY_FDATA_IA] += nia;
+            liveBodyFloatData[idx + BODY_FDATA_RS] += nia * invI;
+            liveBodyFloatData[idx + BODY_FDATA_NIA] = 0;
+        }
+
+        // 2. Compute gravity force
+        float m = liveBodyFloatData[idx + BODY_FDATA_M];
+        float gScale = liveBodyFloatData[idx + BODY_FDATA_G_SCALE];
+        float gravFX = gravity.x * m * gScale;
+        float gravFY = gravity.y * m * gScale;
+
+        // 3. Apply external forces (NFX, NFY)
+        float totalFX = liveBodyFloatData[idx + BODY_FDATA_FX] + liveBodyFloatData[idx + BODY_FDATA_NFX];
+        float totalFY = liveBodyFloatData[idx + BODY_FDATA_FY] + liveBodyFloatData[idx + BODY_FDATA_NFY];
+        liveBodyFloatData[idx + BODY_FDATA_NFX] = 0;
+        liveBodyFloatData[idx + BODY_FDATA_NFY] = 0;
+
+        // 4. Calculate forceVelocity for KRB (conservative forces only)
+        if (im > 0) {
+            liveBodyFloatData[idx + BODY_FDATA_FORCE_VX] = (totalFX + gravFX) * im * dt;
+            liveBodyFloatData[idx + BODY_FDATA_FORCE_VY] = (totalFY + gravFY) * im * dt;
+        } else {
+            liveBodyFloatData[idx + BODY_FDATA_FORCE_VX] = 0;
+            liveBodyFloatData[idx + BODY_FDATA_FORCE_VY] = 0;
+        }
+
+        // 5. Apply damping (non-conservative)
+        float linearDamping = liveBodyFloatData[idx + BODY_FDATA_DAMPING];
+        float vx = liveBodyFloatData[idx + BODY_FDATA_VX];
+        float vy = liveBodyFloatData[idx + BODY_FDATA_VY];
+        totalFX -= vx * linearDamping;
+        totalFY -= vy * linearDamping;
+
+        // 6. Integrate total velocity
+        if (im > 0) {
+            liveBodyFloatData[idx + BODY_FDATA_VX] += (totalFX + gravFX) * im * dt;
+            liveBodyFloatData[idx + BODY_FDATA_VY] += (totalFY + gravFY) * im * dt;
+        }
+
+        // 7. Cap velocity
+        float nextVX = liveBodyFloatData[idx + BODY_FDATA_VX];
+        float nextVY = liveBodyFloatData[idx + BODY_FDATA_VY];
+        float speedSq = nextVX * nextVX + nextVY * nextVY;
+        if (speedSq > MAX_VELOCITY * MAX_VELOCITY) {
+            float invSpeed = MAX_VELOCITY / std::sqrt(speedSq);
+            liveBodyFloatData[idx + BODY_FDATA_VX] *= invSpeed;
+            liveBodyFloatData[idx + BODY_FDATA_VY] *= invSpeed;
+        }
+    }
+}
+
+void World::_doIntegratePositions(Island& island, float dt) {
+    for (Body* body : island.bodies) {
+        if (body->type == ObjectType::FIXED_OBJECT) continue;
+        
         int idx = body->worldIndex * BODY_FDATA_EPO;
+        float vx = liveBodyFloatData[idx + BODY_FDATA_VX];
+        float vy = liveBodyFloatData[idx + BODY_FDATA_VY];
+        float rs = liveBodyFloatData[idx + BODY_FDATA_RS];
         
-        // Temporarily add gravity for this substep integration
-        float originalFX = liveBodyFloatData[idx + BODY_FDATA_FX];
-        float originalFY = liveBodyFloatData[idx + BODY_FDATA_FY];
-        liveBodyFloatData[idx + BODY_FDATA_FX] += gravity.x * m * gScale;
-        liveBodyFloatData[idx + BODY_FDATA_FY] += gravity.y * m * gScale;
+        if (body->type == ObjectType::DYNAMIC_OBJECT) {
+            float angularDamping = liveBodyFloatData[idx + BODY_FDATA_ANGULAR_DAMPING];
+            rs *= (1.0f - angularDamping * dt);
+        }
         
-        body->integrateVelocities(dt);
+        float x = liveBodyFloatData[idx + BODY_FDATA_X];
+        float y = liveBodyFloatData[idx + BODY_FDATA_Y];
+        float r = liveBodyFloatData[idx + BODY_FDATA_R];
         
-        // Restore original forces for subsequent substeps or debug rendering
-        liveBodyFloatData[idx + BODY_FDATA_FX] = originalFX;
-        liveBodyFloatData[idx + BODY_FDATA_FY] = originalFY;
+        float nextX = x + vx * dt;
+        float nextY = y + vy * dt;
+        float nextR = r + rs * dt;
+        
+        // Safety check
+        if (!std::isfinite(nextX) || !std::isfinite(nextY) || !std::isfinite(nextR) || 
+            !std::isfinite(vx) || !std::isfinite(vy) || !std::isfinite(rs)) {
+            nextX = liveBodyFloatData[idx + BODY_FDATA_LAST_X];
+            nextY = liveBodyFloatData[idx + BODY_FDATA_LAST_Y];
+            nextR = liveBodyFloatData[idx + BODY_FDATA_LAST_R];
+            vx = 0; vy = 0; rs = 0;
+        }
+        
+        liveBodyFloatData[idx + BODY_FDATA_X] = nextX;
+        liveBodyFloatData[idx + BODY_FDATA_Y] = nextY;
+        liveBodyFloatData[idx + BODY_FDATA_R] = nextR;
+        liveBodyFloatData[idx + BODY_FDATA_VX] = vx;
+        liveBodyFloatData[idx + BODY_FDATA_VY] = vy;
+        liveBodyFloatData[idx + BODY_FDATA_RS] = rs;
+        
+        float dx = nextX - liveBodyFloatData[idx + BODY_FDATA_LAST_X];
+        float dy = nextY - liveBodyFloatData[idx + BODY_FDATA_LAST_Y];
+        float dr = nextR - liveBodyFloatData[idx + BODY_FDATA_LAST_R];
+        
+        liveBodyFloatData[idx + BODY_FDATA_LAST_X] = nextX;
+        liveBodyFloatData[idx + BODY_FDATA_LAST_Y] = nextY;
+        liveBodyFloatData[idx + BODY_FDATA_LAST_R] = nextR;
+        
+        float accX = liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_X] + dx;
+        float accY = liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_Y] + dy;
+        float accR = liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_R] + dr;
+        
+        float timer = liveBodyFloatData[idx + BODY_FDATA_SLEEP_TIMER];
+        bool moved = dx != 0 || dy != 0 || dr != 0;
+        
+        if (moved && (std::abs(accX) > WAKE_MOVEMENT_THRESHOLD || std::abs(accY) > WAKE_MOVEMENT_THRESHOLD || std::abs(accR) > WAKE_MOVEMENT_THRESHOLD)) {
+            if (vx * vx + vy * vy > SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD || std::abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
+                timer = 0; accX = 0; accY = 0; accR = 0;
+            } else {
+                timer += dt;
+            }
+        } else {
+            timer += dt;
+        }
+        
+        liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_X] = accX;
+        liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_Y] = accY;
+        liveBodyFloatData[idx + BODY_FDATA_ERR_ACC_R] = accR;
+        liveBodyFloatData[idx + BODY_FDATA_SLEEP_TIMER] = timer;
     }
 }
 
@@ -284,7 +410,8 @@ void World::_doNarrowPhase(float dt) {
         Fixture* f1 = static_cast<Fixture*>(pair.first);
         Fixture* f2 = static_cast<Fixture*>(pair.second);
         
-        if (disabledPairs.count({f1->body->id, f2->body->id})) continue;
+        const auto& d1 = f1->body->_disabledBodyIds;
+        if (!d1.empty() && std::find(d1.begin(), d1.end(), f2->body->id) != d1.end()) continue;
 
         bool colliding = collisionSolver.solve(f1->worldIndex, f2->worldIndex, dt);
         
@@ -689,9 +816,9 @@ void World::_solveIsland(Island& island, float dt, int substepIndex) {
     for (Body* b : island.bodies) {
         if (b->type != ObjectType::FIXED_OBJECT) {
             b->setSolverData(solverBodies[b->worldIndex]);
-            b->integratePositions(dt);
         }
     }
+    _doIntegratePositions(island, dt);
     
     // Position Iterations
     for (int p = 0; p < positionIterations; ++p) {
@@ -729,6 +856,8 @@ void World::clear() {
     bodyContactCounts.clear();
     resolvedImpulses.clear();
     warmStartImpulses.clear();
+    _idToBody.clear();
+    _idToFixture.clear();
     bvh.clear();
     for (auto* fixture : fixturesList) delete fixture;
     fixturesList.clear();
@@ -744,15 +873,21 @@ void World::clear() {
     nextFixtureId = 1;
 }
 
-Body* World::getBody(int id) const { auto it = bodiesMap.find(id); return it != bodiesMap.end() ? it->second : nullptr; }
+Body* World::getBody(int id) const { 
+    if (id >= 0 && id < (int)_idToBody.size()) return _idToBody[id]; 
+    return nullptr; 
+}
 Body* World::getBodyAtIndex(int index) const { return (index >= 0 && index < (int)bodiesList.size()) ? bodiesList[index] : nullptr; }
-Fixture* World::getFixture(int id) const { auto it = fixturesMap.find(id); return it != fixturesMap.end() ? it->second : nullptr; }
+Fixture* World::getFixture(int id) const { 
+    if (id >= 0 && id < (int)_idToFixture.size()) return _idToFixture[id]; 
+    return nullptr; 
+}
 int World::getBodyCount() const { return bodiesList.size(); }
 int World::getFixtureCount() const { return fixturesList.size(); }
 
 int World::findFixtureIndex(int id) {
-    auto it = fixturesMap.find(id);
-    return it != fixturesMap.end() ? it->second->worldIndex : -1;
+    Fixture* f = getFixture(id);
+    return f ? f->worldIndex : -1;
 }
 
 void World::setTimeStep(float dt) {
@@ -822,6 +957,8 @@ int World::createHingeJoint(int id, int bodyAId, int bodyBId, float anchorAX, fl
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
     disabledPairs.insert({bodyAId, bodyBId});
+    itA->second->disableCollisionWith(bodyBId);
+    itB->second->disableCollisionWith(bodyAId);
     auto joint = std::make_unique<HingeJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY));
     itA->second->joints.push_back(joint.get());
     itB->second->joints.push_back(joint.get());
@@ -833,6 +970,8 @@ int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX,
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
     disabledPairs.insert({bodyAId, bodyBId});
+    itA->second->disableCollisionWith(bodyBId);
+    itB->second->disableCollisionWith(bodyAId);
     auto joint = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
     itA->second->joints.push_back(joint.get());
     itB->second->joints.push_back(joint.get());
@@ -844,6 +983,8 @@ int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, f
     auto itA = bodiesMap.find(bodyAId); auto itB = bodiesMap.find(bodyBId);
     if (itA == bodiesMap.end() || itB == bodiesMap.end()) return -1;
     disabledPairs.insert({bodyAId, bodyBId});
+    itA->second->disableCollisionWith(bodyBId);
+    itB->second->disableCollisionWith(bodyAId);
     auto joint = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
     itA->second->joints.push_back(joint.get());
     itB->second->joints.push_back(joint.get());
@@ -885,12 +1026,29 @@ void World::removeJoint(int id) {
     auto it = jointsMap.find(id);
     if (it != jointsMap.end()) {
         Joint* j = it->second.get();
+        Body* bA = j->bodyA;
+        Body* bB = j->bodyB;
+
         auto removeJointFromBody = [j](Body* b) {
             auto& v = b->joints;
             v.erase(std::remove(v.begin(), v.end(), j), v.end());
         };
-        removeJointFromBody(j->bodyA);
-        removeJointFromBody(j->bodyB);
+        removeJointFromBody(bA);
+        removeJointFromBody(bB);
+        
+        // Only enable collision if there are no more joints between these bodies
+        bool jointsRemaining = false;
+        for (Joint* other : bA->joints) {
+            if (other->isConnectedTo(bB)) {
+                jointsRemaining = true;
+                break;
+            }
+        }
+        if (!jointsRemaining) {
+            bA->enableCollisionWith(bB->id);
+            bB->enableCollisionWith(bA->id);
+            disabledPairs.erase({bA->id, bB->id});
+        }
         
         GearJoint* gear = dynamic_cast<GearJoint*>(j);
         if (gear) {
@@ -911,8 +1069,11 @@ void World::updateBodyId(int oldId, int newId) {
     if (it != bodiesMap.end()) {
         Body* b = it->second;
         bodiesMap.erase(it);
+        if (oldId < (int)_idToBody.size()) _idToBody[oldId] = nullptr;
         b->id = newId;
         bodiesMap[newId] = b;
+        if (newId >= (int)_idToBody.size()) _idToBody.resize(newId + 1, nullptr);
+        _idToBody[newId] = b;
         tempBodyIdMap[oldId] = newId;
     }
 }
@@ -923,8 +1084,11 @@ void World::updateFixtureId(int oldId, int newId) {
     if (it != fixturesMap.end()) {
         Fixture* f = it->second;
         fixturesMap.erase(it);
+        if (oldId < (int)_idToFixture.size()) _idToFixture[oldId] = nullptr;
         f->id = newId;
         fixturesMap[newId] = f;
+        if (newId >= (int)_idToFixture.size()) _idToFixture.resize(newId + 1, nullptr);
+        _idToFixture[newId] = f;
         tempFixtureIdMap[oldId] = newId;
     }
 }
@@ -956,6 +1120,19 @@ void World::syncDefragmentedIds() {
                 nextSet.insert({id1, id2});
             }
             disabledPairs = std::move(nextSet);
+        }
+
+        // Rebuild per-body _disabledBodyIds from the new disabledPairs
+        for (auto* body : bodiesList) {
+            body->_disabledBodyIds.clear();
+        }
+        for (const auto& pair : disabledPairs) {
+            Body* bA = getBody(pair.first);
+            Body* bB = getBody(pair.second);
+            if (bA && bB) {
+                bA->disableCollisionWith(bB->id);
+                bB->disableCollisionWith(bA->id);
+            }
         }
 
         // Update bodyContactCounts
@@ -1063,7 +1240,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     // We track the velocity increment from external forces during integration and compute the true impact velocity.
     // This eliminates energy gain from gravity/forces being integrated before the solver.
     // Reference: studies/kinematic_restitution_balancing/KRB_Whitepaper.md (Section 2.1)
-    float forceVn = (b->forceVelocity - a->forceVelocity).dot(normal);
+    float forceVn = (b->getForceVelocity() - a->getForceVelocity()).dot(normal);
     float relativeVn = vn - forceVn;
 
     float vBounce = -restitution * relativeVn;

@@ -13,12 +13,10 @@ class Joint;
 
 class Body {
 private:
-    float lastX = 0.0f;
-    float lastY = 0.0f;
-    float lastR = 0.0f;
     std::vector<Body*> contacts;
 
 public:
+    std::vector<int> _disabledBodyIds;
     std::vector<Joint*> joints;
     int id;
     World& world;
@@ -40,7 +38,15 @@ public:
     float getSleepErrAccumulatorR() const;
     void setSleepErrAccumulatorR(float r);
     
-    Vec2 forceVelocity = Vec2(0.0f, 0.0f);
+    float getLastX() const;
+    void setLastX(float x);
+    float getLastY() const;
+    void setLastY(float y);
+    float getLastR() const;
+    void setLastR(float r);
+
+    Vec2 getForceVelocity() const;
+    void setForceVelocity(const Vec2& v);
 
     Body(World& world, int id, emscripten_val options);
     ~Body();
@@ -94,8 +100,8 @@ public:
     void applyImpulse(float x, float y, float cx, float cy);
     void applyAngularImpulse(float torque);
 
-    void integrateVelocities(float dt);
-    bool integratePositions(float dt);
+    void integrateVelocities(float dt) {}
+    bool integratePositions(float dt) { return false; }
     void sleep();
     void wakeUp();
     void forceWakeUp();
@@ -111,6 +117,9 @@ public:
 
     void addFixture(Fixture* fixture, bool recomputeMass = true);
     int createFixture(emscripten_val options);
+
+    void disableCollisionWith(int otherId);
+    void enableCollisionWith(int otherId);
 };
 
 #endif

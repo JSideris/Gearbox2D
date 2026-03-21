@@ -189,6 +189,7 @@ export class World {
 		if (externalId !== undefined) {
 			this.bodiesById[externalId] = body;
 		}
+
 		return body;
 	}
 

@@ -1,11 +1,13 @@
 // --- Body Data Layout ---
+// IMPORTANT: These constants define the shared memory layout between C++ and TypeScript.
+// Any changes here MUST be mirrored in cpp/include/constants.h or the simulation will corrupt memory.
 export const BODY_SIZE_I = 4;
 export const BODY_ID_OFFSET = 0;
 export const BODY_TYPE_OFFSET = 1;
 export const BODY_FLAGS_OFFSET = 2;
 export const BODY_FIXTURE_COUNT_OFFSET = 3;
 
-export const BODY_SIZE_F = 29;
+export const BODY_SIZE_F = 34; // MUST match BODY_FDATA_EPO in cpp/include/constants.h
 export const BODY_X_OFFSET = 0;
 export const BODY_Y_OFFSET = 1;
 export const BODY_R_OFFSET = 2;
@@ -35,6 +37,11 @@ export const BODY_SLEEP_TIMER_OFFSET = 25;
 export const BODY_ERR_ACC_X_OFFSET = 26;
 export const BODY_ERR_ACC_Y_OFFSET = 27;
 export const BODY_ERR_ACC_R_OFFSET = 28;
+export const BODY_FORCE_VX_OFFSET = 29;
+export const BODY_FORCE_VY_OFFSET = 30;
+export const BODY_LAST_X_OFFSET = 31;
+export const BODY_LAST_Y_OFFSET = 32;
+export const BODY_LAST_R_OFFSET = 33;
 
 // --- Fixture Data Layout ---
 export const FIXTURE_SIZE_I = 6;

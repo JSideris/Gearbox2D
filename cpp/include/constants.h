@@ -1,13 +1,15 @@
 #pragma once
 
 // --- Body Data Layout ---
+// IMPORTANT: These constants define the shared memory layout between C++ and TypeScript.
+// Any changes here MUST be mirrored in typescript/src/constants.ts or the simulation will corrupt memory.
 #define BODY_IDATA_EPO 4
 #define BODY_IDATA_ID 0
 #define BODY_IDATA_TYPE 1
 #define BODY_IDATA_FLAGS 2
 #define BODY_IDATA_FIXTURE_COUNT 3
 
-#define BODY_FDATA_EPO 29
+#define BODY_FDATA_EPO 34
 #define BODY_FDATA_X 0
 #define BODY_FDATA_Y 1
 #define BODY_FDATA_R 2
@@ -37,6 +39,11 @@
 #define BODY_FDATA_ERR_ACC_X 26
 #define BODY_FDATA_ERR_ACC_Y 27
 #define BODY_FDATA_ERR_ACC_R 28
+#define BODY_FDATA_FORCE_VX 29
+#define BODY_FDATA_FORCE_VY 30
+#define BODY_FDATA_LAST_X 31
+#define BODY_FDATA_LAST_Y 32
+#define BODY_FDATA_LAST_R 33
 
 // --- Solver Constants ---
 #define BAUMGARTE_FACTOR 0.2f
@@ -80,6 +87,12 @@
 #define IS_SLEEPING 0x4
 #define HAS_FIXED_MASS 0x8
 #define WANTS_EVENTS 0x10
+
+#define WAKE_MOVEMENT_THRESHOLD 0.001f
+#define SLEEP_VELOCITY_THRESHOLD 0.005f
+#define SLEEP_ANGULAR_VELOCITY_THRESHOLD 0.005f
+
+#define MAX_VELOCITY 1000.0f
 
 enum class ObjectType {
     DYNAMIC_OBJECT,

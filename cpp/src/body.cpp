@@ -4,10 +4,6 @@
 #include <cmath>
 #include <algorithm>
 
-#define WAKE_MOVEMENT_THRESHOLD 0.001f
-#define SLEEP_VELOCITY_THRESHOLD 0.005f
-#define SLEEP_ANGULAR_VELOCITY_THRESHOLD 0.005f
-
 Body::Body(World& world, int id, emscripten_val options)
     : world(world), id(id)
 {
@@ -60,7 +56,7 @@ Body::Body(World& world, int id, emscripten_val options)
     world.liveBodyFloatData.push_back(!options["linearDamping"].isUndefined() ? options["linearDamping"].as<float>() : 0.05f);
     world.liveBodyFloatData.push_back(!options["angularDamping"].isUndefined() ? options["angularDamping"].as<float>() : 0.05f);
     
-    for (int i = 0; i < 10; ++i) world.liveBodyFloatData.push_back(0.0f); // FX, FY, IX, IY, IA, NFX, NFY, NIX, NIY, NIA
+    for (int i = 0; i < 10; ++i) world.liveBodyFloatData.push_back(0.0f); // FX...NIA
     world.liveBodyFloatData.push_back(0.0f); // InvInertia
     world.liveBodyFloatData.push_back(initX); // PrevX
     world.liveBodyFloatData.push_back(initY); // PrevY
@@ -69,10 +65,11 @@ Body::Body(World& world, int id, emscripten_val options)
     world.liveBodyFloatData.push_back(0.0f); // ErrAccX
     world.liveBodyFloatData.push_back(0.0f); // ErrAccY
     world.liveBodyFloatData.push_back(0.0f); // ErrAccR
-    
-    lastX = initX;
-    lastY = initY;
-    lastR = initR;
+    world.liveBodyFloatData.push_back(0.0f); // ForceVX
+    world.liveBodyFloatData.push_back(0.0f); // ForceVY
+    world.liveBodyFloatData.push_back(initX); // LastX
+    world.liveBodyFloatData.push_back(initY); // LastY
+    world.liveBodyFloatData.push_back(initR); // LastR
 }
 
 float Body::getSleepTimer() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_SLEEP_TIMER]; }
@@ -84,6 +81,23 @@ void Body::setSleepErrAccumulatorY(float y) { world.liveBodyFloatData[worldIndex
 float Body::getSleepErrAccumulatorR() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_R]; }
 void Body::setSleepErrAccumulatorR(float r) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_ERR_ACC_R] = r; }
 
+float Body::getLastX() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_LAST_X]; }
+void Body::setLastX(float x) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_LAST_X] = x; }
+float Body::getLastY() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_LAST_Y]; }
+void Body::setLastY(float y) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_LAST_Y] = y; }
+float Body::getLastR() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_LAST_R]; }
+void Body::setLastR(float r) { world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_LAST_R] = r; }
+
+Vec2 Body::getForceVelocity() const {
+    int idx = worldIndex * BODY_FDATA_EPO;
+    return Vec2(world.liveBodyFloatData[idx + BODY_FDATA_FORCE_VX], world.liveBodyFloatData[idx + BODY_FDATA_FORCE_VY]);
+}
+void Body::setForceVelocity(const Vec2& v) {
+    int idx = worldIndex * BODY_FDATA_EPO;
+    world.liveBodyFloatData[idx + BODY_FDATA_FORCE_VX] = v.x;
+    world.liveBodyFloatData[idx + BODY_FDATA_FORCE_VY] = v.y;
+}
+
 Body::~Body() {
     for (auto* contact : contacts) {
         auto it = std::remove(contact->contacts.begin(), contact->contacts.end(), this);
@@ -94,7 +108,7 @@ Body::~Body() {
 float Body::getX() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_X]; }
 void Body::setX(float x) { 
     world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_X] = x; 
-    lastX = x; 
+    setLastX(x); 
     setSleepErrAccumulatorX(0); 
     recomputeAabb(0); 
     wakeUp(); 
@@ -102,7 +116,7 @@ void Body::setX(float x) {
 float Body::getY() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y]; }
 void Body::setY(float y) { 
     world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_Y] = y; 
-    lastY = y; 
+    setLastY(y); 
     setSleepErrAccumulatorY(0); 
     recomputeAabb(0); 
     wakeUp(); 
@@ -110,7 +124,7 @@ void Body::setY(float y) {
 float Body::getRotation() const { return world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_R]; }
 void Body::setRotation(float r) { 
     world.liveBodyFloatData[worldIndex * BODY_FDATA_EPO + BODY_FDATA_R] = r; 
-    lastR = r; 
+    setLastR(r); 
     setSleepErrAccumulatorR(0); 
     recomputeAabb(0); 
     wakeUp(); 
@@ -168,8 +182,8 @@ void Body::setPosition(Vec2 p) {
     int idx = worldIndex * BODY_FDATA_EPO;
     world.liveBodyFloatData[idx + BODY_FDATA_X] = p.x;
     world.liveBodyFloatData[idx + BODY_FDATA_Y] = p.y;
-    lastX = p.x;
-    lastY = p.y;
+    setLastX(p.x);
+    setLastY(p.y);
     setSleepErrAccumulatorX(0);
     setSleepErrAccumulatorY(0);
     recomputeAabb(0);
@@ -217,87 +231,6 @@ void Body::applyAngularImpulse(float torque) {
         world.liveBodyFloatData[idx + BODY_FDATA_RS] += torque * invI;
         wakeUp();
     }
-}
-
-void Body::integrateVelocities(float dt) {
-    int idx = worldIndex * BODY_FDATA_EPO;
-    float im = getInverseMass();
-    applyImpulse(world.liveBodyFloatData[idx + BODY_FDATA_NIX], world.liveBodyFloatData[idx + BODY_FDATA_NIY], 0, 0);
-    world.liveBodyFloatData[idx + BODY_FDATA_NIX] = 0;
-    world.liveBodyFloatData[idx + BODY_FDATA_NIY] = 0;
-    applyAngularImpulse(world.liveBodyFloatData[idx + BODY_FDATA_NIA]);
-    world.liveBodyFloatData[idx + BODY_FDATA_NIA] = 0;
-    Vec2 vel(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]);
-    applyForce(world.liveBodyFloatData[idx + BODY_FDATA_NFX], world.liveBodyFloatData[idx + BODY_FDATA_NFY]);
-    world.liveBodyFloatData[idx + BODY_FDATA_NFX] = 0;
-    world.liveBodyFloatData[idx + BODY_FDATA_NFY] = 0;
-    // 1. Calculate forceVelocity using ONLY conservative forces
-    Vec2 consAcc(0, 0);
-    if (im > 0) {
-        consAcc.x = world.liveBodyFloatData[idx + BODY_FDATA_FX] * im;
-        consAcc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
-    }
-    forceVelocity = consAcc * dt; 
-    
-    // 2. NOW apply the non-conservative damping
-    applyForce(vel * -getDamping());
-    
-    // 3. Compute total acceleration for actual velocity integration
-    Vec2 totalAcc(0, 0);
-    if (im > 0) {
-        totalAcc.x = world.liveBodyFloatData[idx + BODY_FDATA_FX] * im;
-        totalAcc.y = world.liveBodyFloatData[idx + BODY_FDATA_FY] * im;
-    }
-    vel = vel + totalAcc * dt;
-    const float maxVel = 1000.0f;
-    float speedSq = vel.magnitudeSquared();
-    if (speedSq > maxVel * maxVel) vel = vel * (maxVel / std::sqrt(speedSq));
-    world.liveBodyFloatData[idx + BODY_FDATA_VX] = vel.x;
-    world.liveBodyFloatData[idx + BODY_FDATA_VY] = vel.y;
-}
-
-bool Body::integratePositions(float dt) {
-    int idx = worldIndex * BODY_FDATA_EPO;
-    Vec2 vel(world.liveBodyFloatData[idx + BODY_FDATA_VX], world.liveBodyFloatData[idx + BODY_FDATA_VY]);
-    float rs = world.liveBodyFloatData[idx + BODY_FDATA_RS];
-    if (type == ObjectType::DYNAMIC_OBJECT) rs *= (1.0f - getRotationalDamping() * dt);
-    Vec2 pos = getPosition() + vel * dt;
-    float currentR = world.liveBodyFloatData[idx + BODY_FDATA_R];
-    if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(currentR) || !std::isfinite(vel.x) || !std::isfinite(vel.y) || !std::isfinite(rs)) {
-        pos = Vec2(lastX, lastY); currentR = lastR; vel = Vec2(0, 0); rs = 0;
-        world.liveBodyFloatData[idx + BODY_FDATA_R] = currentR;
-    }
-    world.liveBodyFloatData[idx + BODY_FDATA_X] = pos.x;
-    world.liveBodyFloatData[idx + BODY_FDATA_Y] = pos.y;
-    world.liveBodyFloatData[idx + BODY_FDATA_VX] = vel.x;
-    world.liveBodyFloatData[idx + BODY_FDATA_VY] = vel.y;
-    world.liveBodyFloatData[idx + BODY_FDATA_RS] = rs;
-    world.liveBodyFloatData[idx + BODY_FDATA_R] = currentR + rs * dt;
-    float dx = pos.x - lastX; float dy = pos.y - lastY; float dr = world.liveBodyFloatData[idx + BODY_FDATA_R] - lastR;
-    float accX = getSleepErrAccumulatorX() + dx;
-    float accY = getSleepErrAccumulatorY() + dy;
-    float accR = getSleepErrAccumulatorR() + dr;
-    float timer = getSleepTimer();
-    lastX = pos.x; lastY = pos.y; lastR = world.liveBodyFloatData[idx + BODY_FDATA_R];
-    bool moved = dx != 0 || dy != 0 || dr != 0;
-    if (moved && (std::abs(accX) > WAKE_MOVEMENT_THRESHOLD || std::abs(accY) > WAKE_MOVEMENT_THRESHOLD || std::abs(accR) > WAKE_MOVEMENT_THRESHOLD)) {
-        if (vel.magnitudeSquared() > SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD || std::abs(rs) > SLEEP_ANGULAR_VELOCITY_THRESHOLD) {
-            timer = 0; accX = 0; accY = 0; accR = 0;
-        } else {
-            // Significant movement but low velocity - likely position solver correction.
-            // Still increment sleep timer so the body can eventually rest.
-            timer += dt;
-        }
-    } else {
-        timer += dt;
-    }
-    
-    setSleepErrAccumulatorX(accX);
-    setSleepErrAccumulatorY(accY);
-    setSleepErrAccumulatorR(accR);
-    setSleepTimer(timer);
-    
-    return moved;
 }
 
 void Body::sleep() {
@@ -381,7 +314,8 @@ void Body::recomputeMassProperties() {
             int idx = worldIndex * BODY_FDATA_EPO;
             world.liveBodyFloatData[idx + BODY_FDATA_X] += worldCenterShift.x;
             world.liveBodyFloatData[idx + BODY_FDATA_Y] += worldCenterShift.y;
-            lastX += worldCenterShift.x; lastY += worldCenterShift.y;
+            setLastX(getLastX() + worldCenterShift.x);
+            setLastY(getLastY() + worldCenterShift.y);
             for (auto* f : fixtures) {
                 int fIdx = f->worldIndex * FIXTURE_FDATA_EPO;
                 world.liveFixtureFloatData[fIdx + FIXTURE_FDATA_LOCAL_X] -= center.x;
@@ -432,3 +366,16 @@ void Body::setSolverData(const SolverData& data) {
 }
 
 int Body::createFixture(emscripten_val options) { return world.createFixture(id, 0, options); }
+
+void Body::disableCollisionWith(int otherId) {
+    if (std::find(_disabledBodyIds.begin(), _disabledBodyIds.end(), otherId) == _disabledBodyIds.end()) {
+        _disabledBodyIds.push_back(otherId);
+    }
+}
+
+void Body::enableCollisionWith(int otherId) {
+    auto it = std::find(_disabledBodyIds.begin(), _disabledBodyIds.end(), otherId);
+    if (it != _disabledBodyIds.end()) {
+        _disabledBodyIds.erase(it);
+    }
+}

@@ -87,8 +87,10 @@ class World {
 private:
     std::unordered_map<int, Body*> bodiesMap;
     std::vector<Body*> bodiesList;
+    std::vector<Body*> _idToBody;
     std::unordered_map<int, Fixture*> fixturesMap;
     std::vector<Fixture*> fixturesList;
+    std::vector<Fixture*> _idToFixture;
     
     std::unordered_map<int, std::unique_ptr<Joint>> jointsMap;
     CollisionSolver collisionSolver;
@@ -215,7 +217,7 @@ public:
     void step();
     void _doIntegrateVelocities();
     void _doIntegrateVelocitiesSubStep(float dt);
-    void _doIntegratePositions();
+    void _doIntegratePositions(Island& island, float dt);
     void _doBroadPhase();
     void _doNarrowPhase(float dt);
     void _doContactManagement();

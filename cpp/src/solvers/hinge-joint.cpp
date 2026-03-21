@@ -35,7 +35,7 @@ void HingeJoint::preSolve(float dt) {
     // Kinematic Restitution Balancing (KRB) for Hinge Joint
     // We apply the "Joint Tax" to the Baumgarte bias component-wise.
     Vec2 vB = C * (BAUMGARTE_FACTOR / dt);
-    Vec2 forceVelDiff = bodyB->forceVelocity - bodyA->forceVelocity;
+    Vec2 forceVelDiff = bodyB->getForceVelocity() - bodyA->getForceVelocity();
     Vec2 accExt = forceVelDiff / dt;
     
     // Cumulative correction over position iterations: 1 - (1 - beta)^n
