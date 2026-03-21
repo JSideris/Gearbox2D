@@ -9,7 +9,8 @@ For general information on how joints work in Gearbox2D, see the [Joints Overvie
 To create a spring joint, use the `world.createSpringJoint` method.
 
 ```javascript
-const joint = world.createSpringJoint(id, bodyA, bodyB, {
+const joint = world.createSpringJoint(bodyA, bodyB, {
+    id: 101, // Optional
     worldAnchorA: { x: 5, y: 2 },
     worldAnchorB: { x: 5, y: 5 },
     frequencyHz: 2.0,
@@ -21,6 +22,7 @@ const joint = world.createSpringJoint(id, bodyA, bodyB, {
 
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
+| `id` | `number` | - | (Optional) A unique ID for tracking and lookup. |
 | `frequencyHz` | `number` | `5.0` | Stiffness (Hertz). `0` makes it rigid. |
 | `dampingRatio` | `number` | `0.7` | Oscillation decay (`0` to `1+`). |
 | `length` | `number` | *auto* | Rest length of the spring. |
@@ -48,7 +50,8 @@ const chassis = world.createBody({ id: 1,  x: 10, y: 5 });
 const wheel = world.createBody({ id: 2,  x: 10, y: 6 });// Soft suspension
 chassis.createFixture({ id: 1,  shape: gearbox.shapes.BOX, width: 2, height: 1 });
 wheel.createFixture({ id: 2,  shape: gearbox.shapes.CIRCLE, radius: 0.5 });
-world.createSpringJoint(101, chassis, wheel, {
+world.createSpringJoint(chassis, wheel, {
+    id: 101,
     anchorA: { x: 0, y: 1 },
     frequencyHz: 3.0,
     dampingRatio: 0.5

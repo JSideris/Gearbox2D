@@ -71,7 +71,8 @@ export const newtonsCradleExample = new Example({
 			});
 
 			// Connect with distance joint
-			world.createDistanceJoint(3000 + i, anchor, ball, {
+			world.createDistanceJoint(anchor, ball, {
+				id: 3000 + i,
 				length: length,
 				anchorA: { x: 0, y: 0 },
 				anchorB: { x: 0, y: 0 },

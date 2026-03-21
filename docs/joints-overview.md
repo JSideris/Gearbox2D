@@ -8,14 +8,17 @@ All joints in the engine share several fundamental concepts and API patterns.
 
 ### Creation and Removal
 
-Joints are created through the `World` instance and require a unique ID. 
+Joints are created through the `World` instance. You can optionally provide a unique ID within the `options` object. 
 
 ```javascript
 // Creation pattern
-const joint = world.createHingeJoint(id, bodyA, bodyB, options);
+const joint = world.createHingeJoint(bodyA, bodyB, {
+    id: 101, // Optional
+    worldAnchor: { x: 5, y: 5 }
+});
 
-// Removal pattern
-world.removeJoint(id);
+// Removal pattern (only if an ID was provided)
+world.removeJoint(101);
 ```
 
 ### The Anchor System
@@ -31,7 +34,7 @@ Every joint object provides access to the following:
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `id` | `number` | The unique ID provided at creation. |
+| `id` | `number` | (Optional) The unique ID provided at creation. |
 | `bodyA` | `Body` | The first body connected by the joint. |
 | `bodyB` | `Body` | The second body connected by the joint. |
 | `reactionForce` | `Vec2` | The force (in Newtons) being applied by the joint to maintain the constraint. |

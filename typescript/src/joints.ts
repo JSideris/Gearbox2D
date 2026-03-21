@@ -6,28 +6,33 @@ import { JS_OVERHEAD } from "./MemoryEstimator.js";
 
 abstract class JointBase {
 	abstract readonly type: number;
-	id: number;
+	internalId: number;
 	_externalId: number | undefined;
 	world: World;
 	bodyA: Body;
 	bodyB: Body;
 
-	constructor(id: number, world: World, bodyA: Body, bodyB: Body, externalId: number | undefined) {
-		this.id = id;
+	constructor(internalId: number, world: World, bodyA: Body, bodyB: Body, externalId: number | undefined) {
+		this.internalId = internalId;
 		this._externalId = externalId;
 		this.world = world;
 		this.bodyA = bodyA;
 		this.bodyB = bodyB;
+	}
 
-		// Add to bodies for automatic cleanup
-		bodyA.joints.push(this);
-		if (bodyA !== bodyB) {
-			bodyB.joints.push(this);
+	get id() {
+		return this._externalId;
+	}
+
+	getConnectedBodies(): Body[] {
+		if (this.bodyA === this.bodyB) {
+			return [this.bodyA];
 		}
+		return [this.bodyA, this.bodyB];
 	}
 
 	protected get cppJoint(): CppJoint | null {
-		return this.world.world.getJoint(this.id);
+		return this.world.world.getJoint(this.internalId);
 	}
 
 	get reactionForce() {
@@ -64,7 +69,7 @@ export class HingeJoint extends JointBase {
 	readonly type = JOINT_TYPES.HINGE;
 
 	constructor(
-		id: number,
+		internalId: number,
 		world: World,
 		bodyA: Body,
 		bodyB: Body,
@@ -72,7 +77,10 @@ export class HingeJoint extends JointBase {
 		localAnchorB: { x: number; y: number },
 		externalId?: number,
 	) {
-		super(id, world, bodyA, bodyB, externalId);
+		super(internalId, world, bodyA, bodyB, externalId);
+		for (const b of this.getConnectedBodies()) {
+			b.joints.push(this);
+		}
 	}
 }
 
@@ -80,7 +88,7 @@ export class DistanceJoint extends JointBase {
 	readonly type = JOINT_TYPES.DISTANCE;
 
 	constructor(
-		id: number,
+		internalId: number,
 		world: World,
 		bodyA: Body,
 		bodyB: Body,
@@ -89,8 +97,11 @@ export class DistanceJoint extends JointBase {
 		length: number,
 		externalId?: number,
 	) {
-		super(id, world, bodyA, bodyB, externalId);
+		super(internalId, world, bodyA, bodyB, externalId);
 		this.length = length;
+		for (const b of this.getConnectedBodies()) {
+			b.joints.push(this);
+		}
 	}
 
 	get length() {
@@ -106,7 +117,7 @@ export class SpringJoint extends JointBase {
 	readonly type = JOINT_TYPES.SPRING;
 
 	constructor(
-		id: number,
+		internalId: number,
 		world: World,
 		bodyA: Body,
 		bodyB: Body,
@@ -117,10 +128,13 @@ export class SpringJoint extends JointBase {
 		dampingRatio: number,
 		externalId?: number,
 	) {
-		super(id, world, bodyA, bodyB, externalId);
+		super(internalId, world, bodyA, bodyB, externalId);
 		this.length = length;
 		this.frequencyHz = frequencyHz;
 		this.dampingRatio = dampingRatio;
+		for (const b of this.getConnectedBodies()) {
+			b.joints.push(this);
+		}
 	}
 
 	get length() {
@@ -148,31 +162,30 @@ export class SpringJoint extends JointBase {
 	}
 }
 
-export class GearJoint {
+export class GearJoint extends JointBase {
 	readonly type = JOINT_TYPES.GEAR;
-	id: number;
-	_externalId: number | undefined;
-	world: World;
 	joint1: HingeJoint;
 	joint2: HingeJoint;
 
-	constructor(id: number, world: World, joint1: HingeJoint, joint2: HingeJoint, ratio: number, externalId?: number) {
-		this.id = id;
-		this._externalId = externalId;
-		this.world = world;
+	constructor(
+		internalId: number,
+		world: World,
+		joint1: HingeJoint,
+		joint2: HingeJoint,
+		ratio: number,
+		externalId?: number,
+	) {
+		super(internalId, world, joint1.bodyB, joint2.bodyB, externalId);
 		this.joint1 = joint1;
 		this.joint2 = joint2;
 		this.ratio = ratio;
-
-		// Add to all 4 bodies for automatic cleanup
-		const bodies = new Set([joint1.bodyA, joint1.bodyB, joint2.bodyA, joint2.bodyB]);
-		for (const b of bodies) {
+		for (const b of this.getConnectedBodies()) {
 			b.joints.push(this);
 		}
 	}
 
-	protected get cppJoint(): CppJoint | null {
-		return this.world.world.getJoint(this.id);
+	getConnectedBodies(): Body[] {
+		return [...new Set([this.joint1.bodyA, this.joint1.bodyB, this.joint2.bodyA, this.joint2.bodyB])];
 	}
 
 	get reactionForce() {

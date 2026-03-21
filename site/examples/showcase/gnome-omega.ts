@@ -88,7 +88,8 @@ export const gnomeOmegaExample = new Example({
 			restitution: 0,
 		});
 
-		world.createHingeJoint(nextId++, hubAnchor, engineHub, {
+		world.createHingeJoint(hubAnchor, engineHub, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 		});
 
@@ -138,8 +139,8 @@ export const gnomeOmegaExample = new Example({
 				// which significantly improves stability.
 				const wAnchor1 = wall.localToWorld({ x: 0, y: -wallHeight / 2 });
 				const wAnchor2 = wall.localToWorld({ x: 0, y: wallHeight / 2 });
-				world.createHingeJoint(nextId++, engineHub, wall, { worldAnchor: wAnchor1 });
-				world.createDistanceJoint(nextId++, engineHub, wall, { worldAnchor: wAnchor2 });
+				world.createHingeJoint(engineHub, wall, { id: nextId++, worldAnchor: wAnchor1 });
+				world.createDistanceJoint(engineHub, wall, { id: nextId++, worldAnchor: wAnchor2 });
 			};
 
 			createWall(-1);
@@ -191,13 +192,15 @@ export const gnomeOmegaExample = new Example({
 			});
 
 			// Hinge: Rod to Crank Pin
-			world.createHingeJoint(nextId++, rod, crankPin, {
+			world.createHingeJoint(rod, crankPin, {
+				id: nextId++,
 				anchorA: { x: 0, y: -rodLength / 2 },
 				anchorB: { x: 0, y: 0 },
 			});
 
 			// Hinge: Rod to Piston
-			world.createHingeJoint(nextId++, rod, piston, {
+			world.createHingeJoint(rod, piston, {
+				id: nextId++,
 				anchorA: { x: 0, y: rodLength / 2 },
 				anchorB: { x: 0, y: 0 },
 			});

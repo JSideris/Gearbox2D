@@ -35,7 +35,7 @@ import {
 	IS_SLEEPING,
 } from "./constants.js";
 import { RowView } from "./BufferAccessor.js";
-import type { World } from "./world.js";
+import type { World, Joint } from "./world.js";
 import { Fixture } from "./Fixture.js";
 import type { BodyOptions, FixtureOptions } from "./types.js";
 import { JS_OVERHEAD, estimateStringMemory, estimateArrayMemory } from "./MemoryEstimator.js";
@@ -46,7 +46,7 @@ export class Body {
 	index: number;
 	world: World;
 	fixtures: Fixture[] = [];
-	joints: any[] = []; // Track joints for cleanup
+	joints: Joint[] = []; // Track joints for cleanup
 	color?: string;
 
 	private floats: RowView<Float32Array>;

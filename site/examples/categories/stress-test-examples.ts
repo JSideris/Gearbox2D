@@ -37,7 +37,8 @@ const onMouseDown = (e: MouseEvent, world: any) => {
 			});
 			mouseAnchor.createFixture({ id: 999999, shape: gearbox.shapes.CIRCLE, radius: 0.05, maskBits: 0 });
 
-			dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
+			dragJoint = world.createSpringJoint(mouseAnchor, target, {
+				id: 999998,
 				worldAnchor: pos,
 				frequencyHz: 3.0,
 				dampingRatio: 1.0,
@@ -395,19 +396,19 @@ export const stressTestExamples = [
 			const rLowerLeg = createLimb(cx + 0.2, cy + 1.5, 0.2, 0.6, "#fed7aa");
 
 			// Joint them up
-			world.createHingeJoint(nextId++, head, torso, { worldAnchor: { x: cx, y: cy - 1.0 } });
+			world.createHingeJoint(head, torso, { id: nextId++, worldAnchor: { x: cx, y: cy - 1.0 } });
 
-			world.createHingeJoint(nextId++, torso, lUpperArm, { worldAnchor: { x: cx - 0.3, y: cy - 0.3 } });
-			world.createHingeJoint(nextId++, lUpperArm, lLowerArm, { worldAnchor: { x: cx - 0.85, y: cy - 0.3 } });
+			world.createHingeJoint(torso, lUpperArm, { id: nextId++, worldAnchor: { x: cx - 0.3, y: cy - 0.3 } });
+			world.createHingeJoint(lUpperArm, lLowerArm, { id: nextId++, worldAnchor: { x: cx - 0.85, y: cy - 0.3 } });
 
-			world.createHingeJoint(nextId++, torso, rUpperArm, { worldAnchor: { x: cx + 0.3, y: cy - 0.3 } });
-			world.createHingeJoint(nextId++, rUpperArm, rLowerArm, { worldAnchor: { x: cx + 0.85, y: cy - 0.3 } });
+			world.createHingeJoint(torso, rUpperArm, { id: nextId++, worldAnchor: { x: cx + 0.3, y: cy - 0.3 } });
+			world.createHingeJoint(rUpperArm, rLowerArm, { id: nextId++, worldAnchor: { x: cx + 0.85, y: cy - 0.3 } });
 
-			world.createHingeJoint(nextId++, torso, lUpperLeg, { worldAnchor: { x: cx - 0.2, y: cy + 0.5 } });
-			world.createHingeJoint(nextId++, lUpperLeg, lLowerLeg, { worldAnchor: { x: cx - 0.2, y: cy + 1.15 } });
+			world.createHingeJoint(torso, lUpperLeg, { id: nextId++, worldAnchor: { x: cx - 0.2, y: cy + 0.5 } });
+			world.createHingeJoint(lUpperLeg, lLowerLeg, { id: nextId++, worldAnchor: { x: cx - 0.2, y: cy + 1.15 } });
 
-			world.createHingeJoint(nextId++, torso, rUpperLeg, { worldAnchor: { x: cx + 0.2, y: cy + 0.5 } });
-			world.createHingeJoint(nextId++, rUpperLeg, rLowerLeg, { worldAnchor: { x: cx + 0.2, y: cy + 1.15 } });
+			world.createHingeJoint(torso, rUpperLeg, { id: nextId++, worldAnchor: { x: cx + 0.2, y: cy + 0.5 } });
+			world.createHingeJoint(rUpperLeg, rLowerLeg, { id: nextId++, worldAnchor: { x: cx + 0.2, y: cy + 1.15 } });
 
 			setupMouseListeners(world);
 		},
@@ -506,7 +507,8 @@ export const stressTestExamples = [
 				});
 				body.createFixture({ shape: gearbox.shapes.BOX, width: segW, height: segH });
 
-				world.createDistanceJoint(nextId++, lastBody, body, {
+				world.createDistanceJoint(lastBody, body, {
+					id: nextId++,
 					worldAnchor: { x: cx, y: cy + i * segW + segW / 2 },
 				});
 				lastBody = body;

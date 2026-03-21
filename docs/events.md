@@ -59,9 +59,13 @@ You can set global handlers on the `World` instance to listen for events from al
 *   `onCollisionStart(idA, idB, fIdA, fIdB, impulse)`: Fired when two fixtures begin colliding.
 *   `onCollisionEnd(idA, idB, fIdA, fIdB)`: Fired when two fixtures stop colliding.
 
+> **Note on IDs**: If a body or fixture was created without an ID, the corresponding `id` or `fId` parameter will be `undefined`.
+
 ```typescript
 world.onCollisionStart = (idA, idB, fIdA, fIdB, impulse) => {
-  console.log(`Body ${idA} (Fixture ${fIdA}) and Body ${idB} (Fixture ${fIdB}) started colliding.`);
+  if (idA !== undefined && idB !== undefined) {
+    console.log(`Body ${idA} (Fixture ${fIdA}) and Body ${idB} (Fixture ${fIdB}) started colliding.`);
+  }
 };
 ```
 
@@ -69,6 +73,8 @@ world.onCollisionStart = (idA, idB, fIdA, fIdB, impulse) => {
 
 *   `onSleep(id)`: Fired when an object enters the sleeping state.
 *   `onWake(id)`: Fired when an object wakes up from the sleeping state.
+
+> **Note on IDs**: The `id` parameter will be `undefined` if the body was created without an ID.
 
 ```typescript
 world.onSleep = (id) => {

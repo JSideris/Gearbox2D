@@ -9,7 +9,8 @@ For general information on how joints work in Gearbox2D, see the [Joints Overvie
 To create a distance joint, use the `world.createDistanceJoint` method.
 
 ```javascript
-const joint = world.createDistanceJoint(id, bodyA, bodyB, {
+const joint = world.createDistanceJoint(bodyA, bodyB, {
+    id: 101, // Optional
     worldAnchorA: { x: 2, y: 5 },
     worldAnchorB: { x: 8, y: 5 }
 });
@@ -19,6 +20,7 @@ const joint = world.createDistanceJoint(id, bodyA, bodyB, {
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
+| `id` | `number` | (Optional) A unique ID for tracking and lookup. |
 | `worldAnchorA` | `Vec2` | World coordinate for anchor on `bodyA`. |
 | `worldAnchorB` | `Vec2` | World coordinate for anchor on `bodyB`. |
 | `anchorA` | `Vec2` | Local anchor relative to `bodyA`. |
@@ -42,7 +44,8 @@ const ball1 = world.createBody({ id: 1,  x: 5, y: 5 });
 const ball2 = world.createBody({ id: 2,  x: 10, y: 5 });// Connect with a 5m rigid rod
 ball1.createFixture({ id: 1,  shape: gearbox.shapes.CIRCLE, radius: 0.5 });
 ball2.createFixture({ id: 2,  shape: gearbox.shapes.CIRCLE, radius: 0.5 });
-world.createDistanceJoint(101, ball1, ball2, {
+world.createDistanceJoint(ball1, ball2, {
+    id: 101,
     length: 5
 });
 ```

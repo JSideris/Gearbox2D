@@ -9,7 +9,8 @@ For general information on how joints work in Gearbox2D, see the [Joints Overvie
 To create a hinge joint, use the `world.createHingeJoint` method. 
 
 ```javascript
-const joint = world.createHingeJoint(id, bodyA, bodyB, {
+const joint = world.createHingeJoint(bodyA, bodyB, {
+    id: 101, // Optional
     worldAnchor: { x: 5, y: 5 }
 });
 ```
@@ -18,6 +19,7 @@ const joint = world.createHingeJoint(id, bodyA, bodyB, {
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
+| `id` | `number` | (Optional) A unique ID for tracking and lookup. |
 | `worldAnchor` | `Vec2` | The point in world coordinates where the two bodies are joined. |
 | `anchorA` | `Vec2` | Local anchor relative to `bodyA` (used if `worldAnchor` is not provided). |
 | `anchorB` | `Vec2` | Local anchor relative to `bodyB` (used if `worldAnchor` is not provided). |
@@ -49,7 +51,8 @@ const weight = world.createBody({ id: 2,
     x: 15, y: 2,
 });
 weight.createFixture({ id: 2,  shape: gearbox.shapes.BOX, width: 1, height: 1 });// 3. Connect them with a hinge at the anchor's position
-world.createHingeJoint(101, anchor, weight, {
+world.createHingeJoint(anchor, weight, {
+    id: 101,
     worldAnchor: { x: 10, y: 2 }
 });
 ```

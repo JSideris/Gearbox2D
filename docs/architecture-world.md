@@ -116,17 +116,35 @@ world.setHasFriction(true);
 world.setHasPenetrationResolution(true);
 ```
 
+## ID Management
+
+In Gearbox2D, every body, fixture, and joint can be assigned a unique **ID** at creation time. These IDs are primarily for your own tracking and convenience.
+
+### IDs are Optional
+Providing an ID is completely optional. The physics engine operates perfectly fine without user-provided IDs, as it manages its own internal identifiers for simulation purposes.
+
+You should provide an ID if:
+- You need to look up an object later using methods like `world.getBodyById(id)` or `world.getJointById(id)`.
+- You want to identify specific objects in global event handlers (like `onCollisionStart`).
+- You need to remove specific objects by ID via `world.removeObject(id)` or `world.removeJoint(id)`.
+
+If you do not provide an ID:
+- Registry lookup methods will return `undefined`.
+- Event handlers will receive `undefined` for the ID parameters of that object.
+- You must maintain your own direct reference to the object returned by the creation method if you need to manipulate or remove it later.
+
 ## Object and Joint Management
 
-The `World` manages all entities through unique IDs. This allows for efficient lookups across the JavaScript and WebAssembly boundary.
+The `World` provides a registry for managing entities. This allows for efficient lookups across the JavaScript and WebAssembly boundary.
 
 ### Bodys
 
-Objects are created with a unique ID and a specification object. You can attach fixtures (shapes) atomically during creation or add them later.
+Objects are created with an optional unique ID and a specification object. You can attach fixtures (shapes) atomically during creation or add them later.
 
 ```typescript
 // Atomic creation with multiple fixtures
-const obj = world.createBody({ id: 101, 
+const obj = world.createBody({ 
+    id: 101, // Optional user-provided ID
     type: gearbox.bodyTypes.DYNAMIC_OBJECT,
     x: 0,
     y: 0,
@@ -138,31 +156,33 @@ const obj = world.createBody({ id: 101,
 
 // Adding a fixture at runtime
 obj.createFixture({
+    id: 201, // Optional
     shape: gearbox.shapes.BOX,
     width: 2,
     height: 1
 });
 
-// Remove an object by ID
+// Remove an object by ID (only if an ID was provided)
 world.removeObject(101);
 ```
 
 ### Joints
 
-Joints are created through factory methods on the `World` instance. They connect two `Body` instances.
+Joints are created through factory methods on the `World` instance. They connect two `Body` instances. All joint creation methods take an optional `id` within the `options` object.
 
-- **Hinge Joint**: `createHingeJoint(id, bodyA, bodyB, options)`
-- **Distance Joint**: `createDistanceJoint(id, bodyA, bodyB, options)`
-- **Spring Joint**: `createSpringJoint(id, bodyA, bodyB, options)`
-- **Gear Joint**: `createGearJoint(id, joint1, joint2, ratio)`
+- **Hinge Joint**: `createHingeJoint(bodyA, bodyB, options)`
+- **Distance Joint**: `createDistanceJoint(bodyA, bodyB, options)`
+- **Spring Joint**: `createSpringJoint(bodyA, bodyB, options)`
+- **Gear Joint**: `createGearJoint(joint1, joint2, options)`
 
 ```typescript
-const hinge = world.createHingeJoint(201, boxA, boxB, {
+const hinge = world.createHingeJoint(boxA, boxB, {
+    id: 301, // Optional
     worldAnchor: { x: 5, y: 5 }
 });
 
 // Remove a joint by ID
-world.removeJoint(201);
+world.removeJoint(301);
 ```
 
 ## Interaction and Queries
@@ -178,8 +198,11 @@ Use `queryBodiesAtPoint` to find which physical bodies exist at a given point. T
 // Find all unique bodies at (x, y) matching a collision mask
 const bodyHits = world.queryBodiesAtPoint(5.5, 10.2, 0xFFFF);
 bodyHits.forEach(id => {
+    // Note: getBodyById returns undefined if the body has no ID
     const body = world.getBodyById(id);
-    console.log(`Hit body: ${id}`);
+    if (body) {
+        console.log(`Hit body: ${id}`);
+    }
 });
 ```
 

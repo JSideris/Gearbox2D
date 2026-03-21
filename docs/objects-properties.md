@@ -88,3 +88,13 @@ const starFixture = star.createFixture({
 starFixture.restitution = 0.8;
 starFixture.staticFriction = 0.5;
 ```
+
+## Common Options
+
+When creating a **Body**, **Fixture**, or **Joint**, you can pass an optional `id` property within the configuration object.
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `number` | (Optional) A unique ID for tracking, lookups, and identifying objects in event handlers. |
+
+For more information on how IDs are managed, see [ID Management in the World Object](architecture-world.md#id-management).

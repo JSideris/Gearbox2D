@@ -38,7 +38,8 @@ const onMouseDown = (e: MouseEvent, world: any) => {
 			mouseAnchor.createFixture({ id: 999999, shape: gearbox.shapes.CIRCLE, radius: 0.05, maskBits: 0 });
 
 			// Create a spring joint to drag the object
-			dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
+			dragJoint = world.createSpringJoint(mouseAnchor, target, {
+				id: 999998,
 				worldAnchor: pos,
 				frequencyHz: 3.0,
 				dampingRatio: 1.0,
@@ -335,16 +336,19 @@ export const generalExamples = [
 					});
 
 				if (jType === "hinge") {
-					world.createHingeJoint(nextId++, b1, b2, {
+					world.createHingeJoint(b1, b2, {
+						id: nextId++,
 						worldAnchor: { x: (b1.x + b2.x) / 2, y: (b1.y + b2.y) / 2 },
 					});
 				} else if (jType === "distance") {
-					world.createDistanceJoint(nextId++, b1, b2, {
+					world.createDistanceJoint(b1, b2, {
+						id: nextId++,
 						anchorA: { x: 0, y: 0 },
 						anchorB: { x: 0, y: 0 },
 					});
 				} else {
-					world.createSpringJoint(nextId++, b1, b2, {
+					world.createSpringJoint(b1, b2, {
+						id: nextId++,
 						anchorA: { x: 0, y: 0 },
 						anchorB: { x: 0, y: 0 },
 						frequencyHz: 2.0 + Math.random() * 4.0,

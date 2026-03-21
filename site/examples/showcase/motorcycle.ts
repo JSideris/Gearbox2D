@@ -42,7 +42,8 @@ const onMouseDown = (e, world) => {
 				color: "transparent",
 			});
 			mouseAnchor.createFixture({ id: 999999, shape: gearbox.shapes.CIRCLE, radius: 0.05, maskBits: 0 });
-			dragJoint = world.createSpringJoint(999998, mouseAnchor, target, {
+			dragJoint = world.createSpringJoint(mouseAnchor, target, {
+				id: 999998,
 				worldAnchor: pos,
 				frequencyHz: 5.0,
 				dampingRatio: 1.0,
@@ -125,7 +126,10 @@ export const motorcycleExample = new Example({
 			categoryBits: 0, // No collision
 			maskBits: 0,
 		});
-		const engineHinge = world.createHingeJoint(nextId++, chassis, engine, { worldAnchor: { x: cx, y: cy - 0.15 } });
+		const engineHinge = world.createHingeJoint(chassis, engine, {
+			id: nextId++,
+			worldAnchor: { x: cx, y: cy - 0.15 },
+		});
 
 		// Rear Suspension Arm (Swingarm)
 		const rearArmId = nextId++;
@@ -138,11 +142,13 @@ export const motorcycleExample = new Example({
 			maskBits: CAT_TERRAIN,
 		});
 		rearArm.angularDamping = 1.0;
-		const rearArmHinge = world.createHingeJoint(nextId++, chassis, rearArm, {
+		const rearArmHinge = world.createHingeJoint(chassis, rearArm, {
+			id: nextId++,
 			anchorA: { x: -0.4, y: 0.1 },
 			anchorB: { x: 0.3, y: 0 },
 		});
-		world.createSpringJoint(nextId++, chassis, rearArm, {
+		world.createSpringJoint(chassis, rearArm, {
+			id: nextId++,
 			anchorA: { x: -0.7, y: -0.2 },
 			anchorB: { x: -0.3, y: 0 },
 			frequencyHz: 25.0,
@@ -168,13 +174,14 @@ export const motorcycleExample = new Example({
 		rearWheel.fixtures[0].kineticFriction = 2.5;
 		rearWheel.fixtures[0].staticFriction = 3.0;
 		rearWheel.angularDamping = 0.5;
-		const rearWheelHinge = world.createHingeJoint(nextId++, rearArm, rearWheel, {
+		const rearWheelHinge = world.createHingeJoint(rearArm, rearWheel, {
+			id: nextId++,
 			anchorA: { x: -0.3, y: 0 },
 			anchorB: { x: 0, y: 0 },
 		});
 
 		// Drive Chain (Engine to Rear Wheel)
-		world.createGearJoint(nextId++, engineHinge, rearWheelHinge, 2.0);
+		world.createGearJoint(engineHinge, rearWheelHinge, { id: nextId++, ratio: 2.0 });
 
 		// Front Suspension Arm (Forks)
 		const frontArmId = nextId++;
@@ -187,11 +194,13 @@ export const motorcycleExample = new Example({
 			maskBits: CAT_TERRAIN,
 		});
 		frontArm.angularDamping = 1.0;
-		const frontArmHinge = world.createHingeJoint(nextId++, chassis, frontArm, {
+		const frontArmHinge = world.createHingeJoint(chassis, frontArm, {
+			id: nextId++,
 			anchorA: { x: 0.5, y: 0 },
 			anchorB: { x: 0, y: -0.3 },
 		});
-		world.createSpringJoint(nextId++, chassis, frontArm, {
+		world.createSpringJoint(chassis, frontArm, {
+			id: nextId++,
 			anchorA: { x: 0.2, y: 0.2 },
 			anchorB: { x: 0, y: 0.3 },
 			frequencyHz: 20.0,
@@ -217,7 +226,8 @@ export const motorcycleExample = new Example({
 		frontWheel.fixtures[0].kineticFriction = 2.0;
 		frontWheel.fixtures[0].staticFriction = 2.5;
 		frontWheel.angularDamping = 0.5;
-		const frontWheelHinge = world.createHingeJoint(nextId++, frontArm, frontWheel, {
+		const frontWheelHinge = world.createHingeJoint(frontArm, frontWheel, {
+			id: nextId++,
 			anchorA: { x: 0, y: 0.4 },
 			anchorB: { x: 0, y: 0 },
 		});

@@ -50,7 +50,8 @@ export const constraintsExamples = [
 				height: 0.5,
 			});
 
-			world.createHingeJoint(nextId++, anchor, pendulum, {
+			world.createHingeJoint(anchor, pendulum, {
+				id: nextId++,
 				worldAnchor: { x: 5, y: 3 },
 			});
 
@@ -106,7 +107,8 @@ export const constraintsExamples = [
 				radius: 0.6,
 			});
 
-			breakableJoint = world.createHingeJoint(nextId++, anchor, massObject, {
+			breakableJoint = world.createHingeJoint(anchor, massObject, {
+				id: nextId++,
 				worldAnchor: { x: 5, y: 1 },
 			});
 
@@ -164,14 +166,16 @@ export const constraintsExamples = [
 					maskBits: ~0x0004, // Don't collide with other bridge segments
 				});
 
-				const dj = world.createDistanceJoint(nextId++, prevBody, segmentBody, {
+				const dj = world.createDistanceJoint(prevBody, segmentBody, {
+					id: nextId++,
 					worldAnchor: { x: startX + i * segmentWidth, y: bridgeY },
 				});
 				bridgeJoints.push(dj);
 				prevBody = segmentBody;
 			}
 
-			const lastDj = world.createDistanceJoint(nextId++, prevBody, bridgeAnchorRight, {
+			const lastDj = world.createDistanceJoint(prevBody, bridgeAnchorRight, {
+				id: nextId++,
 				worldAnchor: { x: endX, y: bridgeY },
 			});
 			bridgeJoints.push(lastDj);
@@ -269,7 +273,8 @@ export const constraintsExamples = [
 					radius: size,
 				});
 
-				const hinge = world.createHingeJoint(nextId++, staticBody, gear, {
+				const hinge = world.createHingeJoint(staticBody, gear, {
+					id: nextId++,
 					worldAnchor: { x: startX + i * spacing, y: y },
 				});
 
@@ -279,7 +284,7 @@ export const constraintsExamples = [
 					// Ratio is based on the sizes: size_prev / size_curr
 					const prevSize = (i - 1) % 2 === 0 ? 1.0 : 0.5;
 					const ratio = prevSize / size;
-					world.createGearJoint(nextId++, prevHinge, hinge, ratio);
+					world.createGearJoint(prevHinge, hinge, { id: nextId++, ratio: ratio });
 				}
 				prevHinge = hinge;
 			}
@@ -336,7 +341,8 @@ export const constraintsExamples = [
 			});
 			drum.createFixture({ id: drumId, shape: gearbox.shapes.CIRCLE, radius: drumRadius, maskBits: 0 });
 
-			world.createHingeJoint(nextId++, hub, drum, {
+			world.createHingeJoint(hub, drum, {
+				id: nextId++,
 				worldAnchor: { x: cx, y: cy },
 			});
 
@@ -377,7 +383,8 @@ export const constraintsExamples = [
 
 				// Joint 1: Drum to Shape 1
 				const localAnchorOnDrum = drum.worldToLocal({ x: pinX, y: pinY });
-				world.createDistanceJoint(nextId++, drum, shape1, {
+				world.createDistanceJoint(drum, shape1, {
+					id: nextId++,
 					anchorA: localAnchorOnDrum,
 					anchorB: getRandomAnchor(),
 					length: linkDist,
@@ -402,7 +409,8 @@ export const constraintsExamples = [
 				});
 
 				// Joint 2: Shape 1 to Shape 2
-				world.createDistanceJoint(nextId++, shape1, shape2, {
+				world.createDistanceJoint(shape1, shape2, {
+					id: nextId++,
 					anchorA: getRandomAnchor(),
 					anchorB: getRandomAnchor(),
 					length: linkDist,
@@ -427,7 +435,8 @@ export const constraintsExamples = [
 				});
 
 				// Joint 3: Shape 2 to Shape 3
-				world.createDistanceJoint(nextId++, shape2, shape3, {
+				world.createDistanceJoint(shape2, shape3, {
+					id: nextId++,
 					anchorA: getRandomAnchor(),
 					anchorB: getRandomAnchor(),
 					length: linkDist,
@@ -523,7 +532,8 @@ export const constraintsExamples = [
 				kFriction: 1.0,
 			});
 
-			world.createHingeJoint(nextId++, hub, rotator, {
+			world.createHingeJoint(hub, rotator, {
+				id: nextId++,
 				worldAnchor: { x: cx, y: cy },
 			});
 
@@ -569,7 +579,8 @@ export const constraintsExamples = [
 				const dy = shapeB.y - shapeA.y;
 				const dist = Math.sqrt(dx * dx + dy * dy);
 
-				world.createSpringJoint(nextId++, shapeA, shapeB, {
+				world.createSpringJoint(shapeA, shapeB, {
+					id: nextId++,
 					length: dist * 1.1, // 10% slack
 					frequencyHz: 5.0, // Very stretchy
 					dampingRatio: 0.2, // Bouncy
@@ -644,7 +655,8 @@ export const constraintsExamples = [
 				points.push(p);
 
 				// Connect to center - Offset to the edge of the axel
-				world.createSpringJoint(nextId++, center, p, {
+				world.createSpringJoint(center, p, {
+					id: nextId++,
 					anchorA: { x: Math.cos(angle) * axelRadius, y: Math.sin(angle) * axelRadius },
 					length: radius - axelRadius,
 					frequencyHz: 4.0,
@@ -653,7 +665,8 @@ export const constraintsExamples = [
 
 				// Connect to neighbors
 				if (i > 0) {
-					world.createSpringJoint(nextId++, points[i - 1], p, {
+					world.createSpringJoint(points[i - 1], p, {
+						id: nextId++,
 						length: 2 * radius * Math.sin(Math.PI / segments),
 						frequencyHz: 4.0,
 						dampingRatio: 0.5,
@@ -662,7 +675,8 @@ export const constraintsExamples = [
 			}
 
 			// Close the ring
-			world.createSpringJoint(nextId++, points[segments - 1], points[0], {
+			world.createSpringJoint(points[segments - 1], points[0], {
+				id: nextId++,
 				length: 2 * radius * Math.sin(Math.PI / segments),
 				frequencyHz: 4.0,
 				dampingRatio: 0.5,

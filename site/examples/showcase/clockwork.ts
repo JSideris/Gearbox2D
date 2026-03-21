@@ -216,7 +216,8 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		pendulum.angularDamping = 0.01;
-		world.createHingeJoint(nextId++, pendCenter, pendulum, {
+		world.createHingeJoint(pendCenter, pendulum, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: pendPivotY },
 			anchorB: { x: 0, y: -pendulumLength },
 		});
@@ -238,7 +239,8 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		fastGear.rs = (Math.PI * 2) / 8.0;
-		const fastHinge = world.createHingeJoint(nextId++, escCenter, fastGear, {
+		const fastHinge = world.createHingeJoint(escCenter, fastGear, {
+			id: nextId++,
 			worldAnchor: { x: cx + p.escXOffset, y: escapementY },
 		});
 
@@ -256,7 +258,8 @@ export const clockworkExample = new Example({
 			);
 		};
 
-		const conRodJoint = world.createSpringJoint(nextId++, fastGear, pendulum, {
+		const conRodJoint = world.createSpringJoint(fastGear, pendulum, {
+			id: nextId++,
 			anchorA: crankPinLocal,
 			anchorB: pendPinLocal,
 			length: getIdealLen(),
@@ -346,11 +349,12 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		inter1Gear.angularDamping = 0.02;
-		const inter1Hinge = world.createHingeJoint(nextId++, inter1Center, inter1Gear, {
+		const inter1Hinge = world.createHingeJoint(inter1Center, inter1Gear, {
+			id: nextId++,
 			worldAnchor: { x: inter1X, y: inter1Y },
 		});
 		// First stage: Escapement to Inter1 (1:4 ratio)
-		world.createGearJoint(nextId++, fastHinge, inter1Hinge, 0.25);
+		world.createGearJoint(fastHinge, inter1Hinge, { id: nextId++, ratio: 0.25 });
 
 		const secHandAngle = (seconds / 60) * Math.PI * 2;
 		const secondGearObjId = nextId++;
@@ -370,12 +374,13 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		secondGearObj.angularDamping = 0.02;
-		const secondHinge = world.createHingeJoint(nextId++, center, secondGearObj, {
+		const secondHinge = world.createHingeJoint(center, secondGearObj, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 		});
 		// Second stage: Inter1 to Second (total ratio 0.15)
 		// 0.25 * ratio2 = 0.15 => ratio2 = 0.15 / 0.25 = 0.6
-		world.createGearJoint(nextId++, inter1Hinge, secondHinge, totalRatio / 0.25);
+		world.createGearJoint(inter1Hinge, secondHinge, { id: nextId++, ratio: totalRatio / 0.25 });
 
 		// --- 5. CLOCK HANDS ---
 		const minHandAngle = (minutes / 60) * Math.PI * 2;
@@ -425,12 +430,14 @@ export const clockworkExample = new Example({
 			height: secLen,
 			categoryBits: CAT_HAND,
 			maskBits: 0,
+			restitution: 0,
 		});
-		const secondHandHinge = world.createHingeJoint(nextId++, center, secondHand, {
+		const secondHandHinge = world.createHingeJoint(center, secondHand, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 			anchorB: { x: 0, y: secLen / 2 - 0.2 },
 		});
-		world.createGearJoint(nextId++, secondHinge, secondHandHinge, -1.0);
+		world.createGearJoint(secondHinge, secondHandHinge, { id: nextId++, ratio: -1.0 });
 
 		const inter2X = cx - 1.5;
 		const inter2Y = cy - 1.5;
@@ -466,10 +473,11 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		inter2Gear.angularDamping = 0.01;
-		const inter2Hinge = world.createHingeJoint(nextId++, inter2Center, inter2Gear, {
+		const inter2Hinge = world.createHingeJoint(inter2Center, inter2Gear, {
+			id: nextId++,
 			worldAnchor: { x: inter2X, y: inter2Y },
 		});
-		world.createGearJoint(nextId++, secondHinge, inter2Hinge, 1 / 10);
+		world.createGearJoint(secondHinge, inter2Hinge, { id: nextId++, ratio: 1 / 10 });
 
 		const minuteGearId = nextId++;
 		const minuteGear = world.createBody({
@@ -488,10 +496,11 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		minuteGear.angularDamping = 0.01;
-		const minuteHinge = world.createHingeJoint(nextId++, center, minuteGear, {
+		const minuteHinge = world.createHingeJoint(center, minuteGear, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 		});
-		world.createGearJoint(nextId++, inter2Hinge, minuteHinge, 1 / 6);
+		world.createGearJoint(inter2Hinge, minuteHinge, { id: nextId++, ratio: 1 / 6 });
 
 		const minuteHandId = nextId++;
 		minuteHand = world.createBody({
@@ -510,11 +519,12 @@ export const clockworkExample = new Example({
 			categoryBits: CAT_HAND,
 			maskBits: 0,
 		});
-		const minuteHandHinge = world.createHingeJoint(nextId++, center, minuteHand, {
+		const minuteHandHinge = world.createHingeJoint(center, minuteHand, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 			anchorB: { x: 0, y: minLen / 2 - 0.3 },
 		});
-		world.createGearJoint(nextId++, minuteHinge, minuteHandHinge, -1.0);
+		world.createGearJoint(minuteHinge, minuteHandHinge, { id: nextId++, ratio: -1.0 });
 
 		const inter3X = cx + 2.0;
 		const inter3Y = cy - 1.0;
@@ -550,10 +560,11 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		inter3Gear.angularDamping = 0.01;
-		const inter3Hinge = world.createHingeJoint(nextId++, inter3Center, inter3Gear, {
+		const inter3Hinge = world.createHingeJoint(inter3Center, inter3Gear, {
+			id: nextId++,
 			worldAnchor: { x: inter3X, y: inter3Y },
 		});
-		world.createGearJoint(nextId++, minuteHinge, inter3Hinge, 1 / 3);
+		world.createGearJoint(minuteHinge, inter3Hinge, { id: nextId++, ratio: 1 / 3 });
 
 		const hourGearId = nextId++;
 		const hourGear = world.createBody({
@@ -572,10 +583,11 @@ export const clockworkExample = new Example({
 			maskBits: 0,
 		});
 		hourGear.angularDamping = 0.01;
-		const hourHinge = world.createHingeJoint(nextId++, center, hourGear, {
+		const hourHinge = world.createHingeJoint(center, hourGear, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 		});
-		world.createGearJoint(nextId++, inter3Hinge, hourHinge, 1 / 4);
+		world.createGearJoint(inter3Hinge, hourHinge, { id: nextId++, ratio: 1 / 4 });
 
 		const hourHandId = nextId++;
 		hourHand = world.createBody({
@@ -594,11 +606,12 @@ export const clockworkExample = new Example({
 			categoryBits: CAT_HAND,
 			maskBits: 0,
 		});
-		const hourHandHinge = world.createHingeJoint(nextId++, center, hourHand, {
+		const hourHandHinge = world.createHingeJoint(center, hourHand, {
+			id: nextId++,
 			worldAnchor: { x: cx, y: cy },
 			anchorB: { x: 0, y: hourLen / 2 - 0.4 },
 		});
-		world.createGearJoint(nextId++, hourHinge, hourHandHinge, -1.0);
+		world.createGearJoint(hourHinge, hourHandHinge, { id: nextId++, ratio: -1.0 });
 	},
 	onTick: (world, dt) => {
 		const s = (world as any).scoreState;

@@ -167,10 +167,10 @@ export class World {
 
 		let nextJointId = 1;
 		for (const joint of oldJoints) {
-			const oldId = joint.id;
+			const oldId = joint.internalId;
 			const newId = nextJointId++;
 			this.world.updateJointId(oldId, newId);
-			joint.id = newId;
+			joint.internalId = newId;
 			this.jointsByInternalId[newId] = joint;
 		}
 
@@ -227,19 +227,17 @@ export class World {
 		}
 	}
 
-	private removeJointInternal(joint: any) {
+	private removeJointInternal(joint: Joint) {
 		// Remove from world maps
-		delete this.jointsByInternalId[joint.id];
+		delete this.jointsByInternalId[joint.internalId];
 		if (joint._externalId !== undefined) {
 			delete this.jointsById[joint._externalId];
 		}
 		// Remove from bodies' joints lists
-		const bodies = [joint.bodyA, joint.bodyB];
+		const bodies = joint.getConnectedBodies();
 		for (const b of bodies) {
-			if (b) {
-				const idx = b.joints.indexOf(joint);
-				if (idx !== -1) b.joints.splice(idx, 1);
-			}
+			const idx = b.joints.indexOf(joint);
+			if (idx !== -1) b.joints.splice(idx, 1);
 		}
 	}
 
@@ -278,9 +276,9 @@ export class World {
 		}
 	}
 
-	createHingeJoint(id: number | undefined, bodyA: Body, bodyB: Body, options: JointOptions): HingeJoint {
+	createHingeJoint(bodyA: Body, bodyB: Body, options: JointOptions): HingeJoint {
 		const internalId = this.getNextInternalJointId();
-		const finalId = id ?? internalId;
+		const externalId = options.id;
 
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
@@ -303,7 +301,7 @@ export class World {
 		}
 
 		this.world.createHingeJoint(
-			finalId,
+			internalId,
 			bodyA.internalId,
 			bodyB.internalId,
 			anchorA.x,
@@ -311,17 +309,17 @@ export class World {
 			anchorB.x,
 			anchorB.y,
 		);
-		const joint = new HingeJoint(finalId, this, bodyA, bodyB, anchorA, anchorB, id);
-		this.jointsByInternalId[finalId] = joint;
-		if (id !== undefined) {
-			this.jointsById[id] = joint;
+		const joint = new HingeJoint(internalId, this, bodyA, bodyB, anchorA, anchorB, externalId);
+		this.jointsByInternalId[internalId] = joint;
+		if (externalId !== undefined) {
+			this.jointsById[externalId] = joint;
 		}
 		return joint;
 	}
 
-	createDistanceJoint(id: number | undefined, bodyA: Body, bodyB: Body, options: JointOptions): DistanceJoint {
+	createDistanceJoint(bodyA: Body, bodyB: Body, options: JointOptions): DistanceJoint {
 		const internalId = this.getNextInternalJointId();
-		const finalId = id ?? internalId;
+		const externalId = options.id;
 
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
@@ -353,7 +351,7 @@ export class World {
 		}
 
 		this.world.createDistanceJoint(
-			finalId,
+			internalId,
 			bodyA.internalId,
 			bodyB.internalId,
 			anchorA.x,
@@ -362,17 +360,17 @@ export class World {
 			anchorB.y,
 			length,
 		);
-		const joint = new DistanceJoint(finalId, this, bodyA, bodyB, anchorA, anchorB, length, id);
-		this.jointsByInternalId[finalId] = joint;
-		if (id !== undefined) {
-			this.jointsById[id] = joint;
+		const joint = new DistanceJoint(internalId, this, bodyA, bodyB, anchorA, anchorB, length, externalId);
+		this.jointsByInternalId[internalId] = joint;
+		if (externalId !== undefined) {
+			this.jointsById[externalId] = joint;
 		}
 		return joint;
 	}
 
-	createSpringJoint(id: number | undefined, bodyA: Body, bodyB: Body, options: JointOptions): SpringJoint {
+	createSpringJoint(bodyA: Body, bodyB: Body, options: JointOptions): SpringJoint {
 		const internalId = this.getNextInternalJointId();
-		const finalId = id ?? internalId;
+		const externalId = options.id;
 
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
@@ -406,7 +404,7 @@ export class World {
 		}
 
 		this.world.createSpringJoint(
-			finalId,
+			internalId,
 			bodyA.internalId,
 			bodyB.internalId,
 			anchorA.x,
@@ -418,7 +416,7 @@ export class World {
 			dampingRatio,
 		);
 		const joint = new SpringJoint(
-			finalId,
+			internalId,
 			this,
 			bodyA,
 			bodyB,
@@ -427,24 +425,25 @@ export class World {
 			length,
 			frequencyHz,
 			dampingRatio,
-			id,
+			externalId,
 		);
-		this.jointsByInternalId[finalId] = joint;
-		if (id !== undefined) {
-			this.jointsById[id] = joint;
+		this.jointsByInternalId[internalId] = joint;
+		if (externalId !== undefined) {
+			this.jointsById[externalId] = joint;
 		}
 		return joint;
 	}
 
-	createGearJoint(id: number | undefined, joint1: HingeJoint, joint2: HingeJoint, ratio: number): GearJoint {
+	createGearJoint(joint1: HingeJoint, joint2: HingeJoint, options: JointOptions): GearJoint {
 		const internalId = this.getNextInternalJointId();
-		const finalId = id ?? internalId;
+		const externalId = options.id;
+		const ratio = options.ratio !== undefined ? options.ratio : 1.0;
 
-		this.world.createGearJoint(finalId, joint1.id, joint2.id, ratio);
-		const joint = new GearJoint(finalId, this, joint1, joint2, ratio, id);
-		this.jointsByInternalId[finalId] = joint;
-		if (id !== undefined) {
-			this.jointsById[id] = joint;
+		this.world.createGearJoint(internalId, joint1.internalId, joint2.internalId, ratio);
+		const joint = new GearJoint(internalId, this, joint1, joint2, ratio, externalId);
+		this.jointsByInternalId[internalId] = joint;
+		if (externalId !== undefined) {
+			this.jointsById[externalId] = joint;
 		}
 		return joint;
 	}
@@ -452,7 +451,7 @@ export class World {
 	removeJoint(id: number) {
 		const joint = this.jointsById[id] || this.jointsByInternalId[id];
 		if (joint) {
-			this.world.removeJoint(joint.id);
+			this.world.removeJoint(joint.internalId);
 			this.removeJointInternal(joint);
 		}
 	}
@@ -503,6 +502,7 @@ export class World {
 		jsOverhead += estimateMapMemory(this.fixturesById);
 		jsOverhead += estimateMapMemory(this.fixturesByInternalId);
 		jsOverhead += estimateMapMemory(this.jointsById);
+		jsOverhead += estimateMapMemory(this.jointsByInternalId);
 
 		// BufferViews
 		jsOverhead += JS_OVERHEAD.BUFFER_VIEW * 4;
@@ -521,9 +521,16 @@ export class World {
 			jsOverhead += fixture.getMemoryUsage();
 		}
 
-		// Joints
+		// Joints (avoiding double-counting multi-ID joints)
+		const uniqueJoints = new Set<Joint>();
 		for (const id in this.jointsById) {
-			jsOverhead += this.jointsById[id].getMemoryUsage();
+			uniqueJoints.add(this.jointsById[id]);
+		}
+		for (const id in this.jointsByInternalId) {
+			uniqueJoints.add(this.jointsByInternalId[id]);
+		}
+		for (const joint of uniqueJoints) {
+			jsOverhead += joint.getMemoryUsage();
 		}
 
 		return wasmHeap + jsOverhead;

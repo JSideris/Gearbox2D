@@ -208,7 +208,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 		const bodyA = this.bodies.get(this.getInternalId(bodyAId));
 		const bodyB = this.bodies.get(this.getInternalId(bodyBId));
 		if (bodyA && bodyB) {
-			this.world.createDistanceJoint(internalId, bodyA, bodyB, options);
+			this.world.createDistanceJoint(bodyA, bodyB, { ...options, id: internalId });
 		}
 	}
 
@@ -217,7 +217,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 		const bodyA = this.bodies.get(this.getInternalId(bodyAId));
 		const bodyB = this.bodies.get(this.getInternalId(bodyBId));
 		if (bodyA && bodyB) {
-			this.world.createHingeJoint(internalId, bodyA, bodyB, options);
+			this.world.createHingeJoint(bodyA, bodyB, { ...options, id: internalId });
 		}
 	}
 

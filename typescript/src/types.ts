@@ -57,10 +57,12 @@ export interface FixtureOptions {
 }
 
 export interface JointOptions {
+	id?: number;
 	anchorA?: { x: number; y: number };
 	anchorB?: { x: number; y: number };
 	worldAnchor?: { x: number; y: number };
 	length?: number;
 	frequencyHz?: number;
 	dampingRatio?: number;
+	ratio?: number;
 }

@@ -9,10 +9,13 @@ For general information on how joints work in Gearbox2D, see the [Joints Overvie
 A gear joint requires two existing hinge joints.
 
 ```javascript
-const hinge1 = world.createHingeJoint(1, bodyA, bodyB, { ... });
-const hinge2 = world.createHingeJoint(2, bodyC, bodyD, { ... });
+const hinge1 = world.createHingeJoint(bodyA, bodyB, { id: 1, ... });
+const hinge2 = world.createHingeJoint(bodyC, bodyD, { id: 2, ... });
 
-const gear = world.createGearJoint(101, hinge1, hinge2, 2.0);
+const gear = world.createGearJoint(hinge1, hinge2, {
+    id: 101, // Optional
+    ratio: 2.0
+});
 ```
 
 ### Parameters
@@ -21,7 +24,14 @@ const gear = world.createGearJoint(101, hinge1, hinge2, 2.0);
 | :--- | :--- | :--- |
 | `joint1` | `HingeJoint` | The first hinge joint to link. |
 | `joint2` | `HingeJoint` | The second hinge joint to link. |
-| `ratio` | `number` | The gear ratio. |
+| `options` | `JointOptions`| Configuration object. |
+
+### Options
+
+| Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `number` | - | (Optional) A unique ID for tracking and lookup. |
+| `ratio` | `number` | `1.0` | The gear ratio. |
 
 ## Mechanics
 
@@ -45,11 +55,22 @@ In addition to the [common joint properties](./joints-overview.md#common-propert
 // Large gear
 const gear1 = world.createBody({ id: 1,  x: 5, y: 5 });
 gear1.createFixture({ id: 1,  shape: gearbox.shapes.CIRCLE, radius: 1.0 });
-const hinge1 = world.createHingeJoint(10, staticBody, gear1, { worldAnchor: { x: 5, y: 5 } });
+const hinge1 = world.createHingeJoint(staticBody, gear1, { 
+    id: 10,
+    worldAnchor: { x: 5, y: 5 } 
+});
 
 // Small gear
 const gear2 = world.createBody({ id: 2,  x: 7, y: 5 });
 gear2.createFixture({ id: 2,  shape: gearbox.shapes.CIRCLE, radius: 0.5 });
-const hinge2 = world.createHingeJoint(11, staticBody, gear2, { worldAnchor: { x: 7, y: 5 } });// Link them with a 2:1 ratio
-world.createGearJoint(101, hinge1, hinge2, 2.0);
+const hinge2 = world.createHingeJoint(staticBody, gear2, { 
+    id: 11,
+    worldAnchor: { x: 7, y: 5 } 
+});
+
+// Link them with a 2:1 ratio
+world.createGearJoint(hinge1, hinge2, {
+    id: 101,
+    ratio: 2.0
+});
 ```

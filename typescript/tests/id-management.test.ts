@@ -100,7 +100,7 @@ describe("ID Management and Defragmentation", () => {
 	it("should handle joints and fixtures during defragmentation", () => {
 		const body = world.createBody({ id: 1 });
 		const fixture = world.createFixture(body.id!, { shape: SHAPES.CIRCLE, radius: 1 });
-		const joint = world.createHingeJoint(undefined, body, body, {});
+		const joint = world.createHingeJoint(body, body, {});
 
 		world.setDefragThreshold(2);
 		// Trigger defrag by creating another body
