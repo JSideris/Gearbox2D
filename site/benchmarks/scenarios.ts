@@ -319,7 +319,7 @@ export const HeavyOnLightStackScenario: Scenario = {
 		adapter.setGravity(0, 9.81);
 
 		// Ground
-		adapter.createBox("ground", 0, 5, 100, 1, true, { color: "#333" });
+		adapter.createBox("ground", 0, 5, 100, 1, true, { color: "#333", sFriction: 0.9, kFriction: .5 });
 
 		const count = 10;
 		const boxWidth = 1.0;
@@ -330,6 +330,8 @@ export const HeavyOnLightStackScenario: Scenario = {
 			adapter.createBox(`box-${y}`, 0, 4 - y * boxHeight, boxWidth, boxHeight, false, {
 				mass: 1.0,
 				color: `hsl(${y * 36}, 70%, 50%)`,
+				sFriction: 0.5,
+				kFriction: 0.9,
 			});
 		}
 
@@ -337,6 +339,8 @@ export const HeavyOnLightStackScenario: Scenario = {
 		adapter.createBox(`box-${count - 1}`, 0, 4 - (count - 1) * boxHeight, boxWidth, boxHeight, false, {
 			mass: 100.0, // 100x heavier
 			color: "#ff0000",
+			sFriction: 1.0,
+			kFriction: 1.0,
 		});
 	},
 	getMetric(adapter, state) {
