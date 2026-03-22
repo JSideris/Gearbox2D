@@ -28,6 +28,8 @@
 class Body;
 class Fixture;
 class Joint;
+class DistanceJoint;
+class SpringJoint;
 
 struct PairHash {
     size_t operator()(const std::pair<int, int>& p) const {
@@ -127,6 +129,8 @@ private:
     std::vector<Fixture*> _idToFixture;
     
     std::unordered_map<int, std::unique_ptr<Joint>> jointsMap;
+    std::vector<DistanceJoint*> distanceJoints;
+    std::vector<SpringJoint*> springJoints;
     CollisionSolver collisionSolver;
 
     float timeStep = 1.0f / 60.0f;

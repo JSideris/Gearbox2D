@@ -978,8 +978,33 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
     
     // 2. Pre-solve all joints globally so they can modify body velocities for warm-starting
+    
+    // 2.1 Vectorized DistanceJoints
+    int djCount = distanceJoints.size();
+    int djVectorizedCount = (djCount / 4) * 4;
+    for (int i = 0; i < djVectorizedCount; i += 4) {
+        DistanceJoint::preSolveSIMD(&distanceJoints[i], dt);
+    }
+    for (int i = djVectorizedCount; i < djCount; ++i) {
+        distanceJoints[i]->preSolve(dt);
+    }
+
+    // 2.2 Vectorized SpringJoints
+    int sjCount = springJoints.size();
+    int sjVectorizedCount = (sjCount / 4) * 4;
+    for (int i = 0; i < sjVectorizedCount; i += 4) {
+        SpringJoint::preSolveSIMD(&springJoints[i], dt);
+    }
+    for (int i = sjVectorizedCount; i < sjCount; ++i) {
+        springJoints[i]->preSolve(dt);
+    }
+
+    // 2.3 Other joints (Hinge, Gear, etc.)
     for (auto& pair : jointsMap) {
-        pair.second->preSolve(dt);
+        Joint* j = pair.second.get();
+        // Skip if already processed
+        if (dynamic_cast<DistanceJoint*>(j) || dynamic_cast<SpringJoint*>(j)) continue;
+        j->preSolve(dt);
     }
     
     // Map bodies to their contact constraints for fast DFS
@@ -1257,6 +1282,8 @@ void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
 
 void World::clear() {
     jointsMap.clear();
+    distanceJoints.clear();
+    springJoints.clear();
     disabledPairs.clear();
     currentPairs.clear();
     prevPairs.clear();
@@ -1384,6 +1411,7 @@ int World::createDistanceJoint(int id, int bodyAId, int bodyBId, float anchorAX,
     itA->second->disableCollisionWith(bodyBId);
     itB->second->disableCollisionWith(bodyAId);
     auto joint = std::make_unique<DistanceJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length);
+    distanceJoints.push_back(joint.get());
     itA->second->joints.push_back(joint.get());
     itB->second->joints.push_back(joint.get());
     jointsMap[id] = std::move(joint);
@@ -1397,6 +1425,7 @@ int World::createSpringJoint(int id, int bodyAId, int bodyBId, float anchorAX, f
     itA->second->disableCollisionWith(bodyBId);
     itB->second->disableCollisionWith(bodyAId);
     auto joint = std::make_unique<SpringJoint>(id, itA->second, itB->second, Vec2(anchorAX, anchorAY), Vec2(anchorBX, anchorBY), length, frequencyHz, dampingRatio);
+    springJoints.push_back(joint.get());
     itA->second->joints.push_back(joint.get());
     itB->second->joints.push_back(joint.get());
     jointsMap[id] = std::move(joint);
@@ -1446,6 +1475,12 @@ void World::removeJoint(int id) {
         };
         removeJointFromBody(bA);
         removeJointFromBody(bB);
+
+        if (DistanceJoint* dj = dynamic_cast<DistanceJoint*>(j)) {
+            distanceJoints.erase(std::remove(distanceJoints.begin(), distanceJoints.end(), dj), distanceJoints.end());
+        } else if (SpringJoint* sj = dynamic_cast<SpringJoint*>(j)) {
+            springJoints.erase(std::remove(springJoints.begin(), springJoints.end(), sj), springJoints.end());
+        }
         
         // Only enable collision if there are no more joints between these bodies
         bool jointsRemaining = false;

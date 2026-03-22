@@ -38,7 +38,22 @@
 #define v128_any_true(v) wasm_v128_any_true(v)
 #define v128_bitmask(v) wasm_i32x4_bitmask(v)
 #define v128_abs_f32(v) wasm_f32x4_abs(v)
+#define v128_min_f32(a, b) wasm_f32x4_pmin(a, b)
+#define v128_max_f32(a, b) wasm_f32x4_pmax(a, b)
+#define v128_sqrt_f32(a) wasm_f32x4_sqrt(a)
 #define v128_make_f32(f1, f2, f3, f4) wasm_f32x4_make(f1, f2, f3, f4)
+
+// Trignometry (Scalar fallback as WASM SIMD has no native sin/cos)
+inline v128_t wasm_f32x4_sin(v128_t v) {
+    float f[4];
+    wasm_v128_store(f, v);
+    return wasm_f32x4_make(std::sin(f[0]), std::sin(f[1]), std::sin(f[2]), std::sin(f[3]));
+}
+inline v128_t wasm_f32x4_cos(v128_t v) {
+    float f[4];
+    wasm_v128_store(f, v);
+    return wasm_f32x4_make(std::cos(f[0]), std::cos(f[1]), std::cos(f[2]), std::cos(f[3]));
+}
 
 // Higher-level Vector Math (4-way)
 #define v128_dot_f32(ax, ay, bx, by) v128_add_f32(v128_mul_f32(ax, bx), v128_mul_f32(ay, by))
@@ -112,6 +127,16 @@ inline v128_t v128_abs_fallback(v128_t a) {
     for (int i = 0; i < 4; ++i) v.f[i] = std::abs(a.f[i]);
     return v;
 }
+inline v128_t v128_min_fallback(v128_t a, v128_t b) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) v.f[i] = std::min(a.f[i], b.f[i]);
+    return v;
+}
+inline v128_t v128_max_fallback(v128_t a, v128_t b) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) v.f[i] = std::max(a.f[i], b.f[i]);
+    return v;
+}
 inline v128_t v128_make_fallback(float f1, float f2, float f3, float f4) {
     v128_t v;
     v.f[0] = f1; v.f[1] = f2; v.f[2] = f3; v.f[3] = f4;
@@ -125,7 +150,14 @@ inline v128_t v128_make_fallback(float f1, float f2, float f3, float f4) {
 #define v128_sub_f32(a, b) v128_sub_fallback(a, b)
 #define v128_mul_f32(a, b) v128_mul_fallback(a, b)
 #define v128_div_f32(a, b) v128_div_fallback(a, b)
+#define v128_sqrt_f32(a) v128_sqrt_fallback(a)
+#define v128_min_f32(a, b) v128_min_fallback(a, b)
+#define v128_max_f32(a, b) v128_max_fallback(a, b)
 #define wasm_f32x4_sqrt(a) v128_sqrt_fallback(a)
+#define wasm_f32x4_min(a, b) v128_min_fallback(a, b)
+#define wasm_f32x4_max(a, b) v128_max_fallback(a, b)
+#define wasm_f32x4_sin(a) v128_make_fallback(std::sin(a.f[0]), std::sin(a.f[1]), std::sin(a.f[2]), std::sin(a.f[3]))
+#define wasm_f32x4_cos(a) v128_make_fallback(std::cos(a.f[0]), std::cos(a.f[1]), std::cos(a.f[2]), std::cos(a.f[3]))
 
 #define v128_eq_f32(a, b) v128_make_fallback((a.f[0] == b.f[0]) ? -1.0f : 0.0f, (a.f[1] == b.f[1]) ? -1.0f : 0.0f, (a.f[2] == b.f[2]) ? -1.0f : 0.0f, (a.f[3] == b.f[3]) ? -1.0f : 0.0f) 
 #define v128_ne_f32(a, b) v128_make_fallback((a.f[0] != b.f[0]) ? -1.0f : 0.0f, (a.f[1] != b.f[1]) ? -1.0f : 0.0f, (a.f[2] != b.f[2]) ? -1.0f : 0.0f, (a.f[3] != b.f[3]) ? -1.0f : 0.0f)
