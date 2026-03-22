@@ -47,24 +47,12 @@ void DistanceJoint::preSolve(float dt) {
     hasLastNormal = true;
 
     float C = dMag - length;
-    float vB = BAUMGARTE_FACTOR * C / dt;
     
     // Kinematic Restitution Balancing (KRB) for Distance Joint
     // Component A: Force Velocity Compensation
     float forceVn = (bodyB->getForceVelocity() - bodyA->getForceVelocity()).dot(normal);
     
-    // Component B: Kinematic Energy Balancing (The "Joint Tax")
-    // We adjust the bias velocity to account for work done by external forces over the correction displacement.
-    float accVn = forceVn / dt;
-
-    // Cumulative correction over position iterations: 1 - (1 - beta)^n
-    int n = bodyA->world.getPositionIterations();
-    float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
-    float workTerm = 2.0f * accVn * (C * cumulativeCorrectionFactor);
-    
-    float vB_balanced_sq = vB * vB - workTerm;
-    
-    bias = (C > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vB_balanced_sq));
+    bias = (BAUMGARTE_FACTOR * C / dt) - forceVn;
 
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
@@ -78,7 +66,6 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     v128_t dt_v = v128_splat_f32(dt);
     v128_t zero_v = v128_splat_f32(0.0f);
     v128_t one_v = v128_splat_f32(1.0f);
-    v128_t neg_one_v = v128_splat_f32(-1.0f);
     v128_t threshold_v = v128_splat_f32(1e-4f);
     v128_t baumgarte_v = v128_splat_f32(BAUMGARTE_FACTOR);
 
@@ -128,7 +115,7 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     v128_t dy = v128_sub_f32(v128_add_f32(pBy, rBy), v128_add_f32(pAy, rAy));
     v128_t dMag = v128_mag_f32(dx, dy);
 
-    v128_t hasLastNormal = v128_make_f32(joints[0]->hasLastNormal ? -1.0f : 0.0f, joints[1]->hasLastNormal ? -1.0f : 0.0f, joints[2]->hasLastNormal ? -1.0f : 0.0f, joints[3]->hasLastNormal ? -1.0f : 0.0f);
+    v128_t hasLastNormal = v128_make_mask_f32(joints[0]->hasLastNormal, joints[1]->hasLastNormal, joints[2]->hasLastNormal, joints[3]->hasLastNormal);
     v128_t lastNormalX = v128_make_f32(joints[0]->lastNormal.x, joints[1]->lastNormal.x, joints[2]->lastNormal.x, joints[3]->lastNormal.x);
     v128_t lastNormalY = v128_make_f32(joints[0]->lastNormal.y, joints[1]->lastNormal.y, joints[2]->lastNormal.y, joints[3]->lastNormal.y);
 
@@ -173,16 +160,8 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     v128_t forceVY_B = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
 
     v128_t forceVn = v128_dot_f32(v128_sub_f32(forceVX_B, forceVX_A), v128_sub_f32(forceVY_B, forceVY_A), normalX, normalY);
-    v128_t accVn = v128_div_f32(forceVn, dt_v);
 
-    int n = world.getPositionIterations();
-    float beta = BAUMGARTE_FACTOR;
-    float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - beta, (float)n);
-    v128_t cumCorr_v = v128_splat_f32(cumulativeCorrectionFactor);
-    v128_t workTerm = v128_mul_f32(v128_mul_f32(v128_splat_f32(2.0f), accVn), v128_mul_f32(C, cumCorr_v));
-    
-    v128_t vB_balanced_sq = v128_sub_f32(v128_mul_f32(vB, vB), workTerm);
-    v128_t bias = v128_mul_f32(v128_select(v128_gt_f32(C, zero_v), one_v, neg_one_v), wasm_f32x4_sqrt(wasm_f32x4_max(zero_v, vB_balanced_sq)));
+    v128_t bias = v128_sub_f32(vB, forceVn);
 
     // Store back results
     float resNormalX[4], resNormalY[4], resImpulse[4], resMass[4], resBias[4], resRAx[4], resRAy[4], resRBx[4], resRBy[4];

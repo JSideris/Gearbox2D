@@ -43,6 +43,11 @@
 #define v128_sqrt_f32(a) wasm_f32x4_sqrt(a)
 #define v128_make_f32(f1, f2, f3, f4) wasm_f32x4_make(f1, f2, f3, f4)
 
+inline v128_t wasm_v128_make_mask(bool m0, bool m1, bool m2, bool m3) {
+    return wasm_i32x4_make(m0 ? -1 : 0, m1 ? -1 : 0, m2 ? -1 : 0, m3 ? -1 : 0);
+}
+#define v128_make_mask_f32(m0, m1, m2, m3) wasm_v128_make_mask(m0, m1, m2, m3)
+
 // Trignometry (Scalar fallback as WASM SIMD has no native sin/cos)
 inline v128_t wasm_f32x4_sin(v128_t v) {
     float f[4];
@@ -69,8 +74,15 @@ inline v128_t wasm_f32x4_cos(v128_t v) {
 // Fallback/No-op for non-WASM builds
 #include <cmath>
 #include <algorithm>
+#include <cstring>
 
 typedef struct { float f[4]; } v128_t;
+inline v128_t v128_make_mask_fallback(bool m0, bool m1, bool m2, bool m3) {
+    v128_t v;
+    uint32_t masks[4] = { m0 ? 0xFFFFFFFF : 0, m1 ? 0xFFFFFFFF : 0, m2 ? 0xFFFFFFFF : 0, m3 ? 0xFFFFFFFF : 0 };
+    std::memcpy(v.f, masks, sizeof(masks));
+    return v;
+}
 inline v128_t v128_load_fallback(const float* ptr) {
     v128_t v;
     for (int i = 0; i < 4; ++i) v.f[i] = ptr[i];
@@ -159,12 +171,14 @@ inline v128_t v128_make_fallback(float f1, float f2, float f3, float f4) {
 #define wasm_f32x4_sin(a) v128_make_fallback(std::sin(a.f[0]), std::sin(a.f[1]), std::sin(a.f[2]), std::sin(a.f[3]))
 #define wasm_f32x4_cos(a) v128_make_fallback(std::cos(a.f[0]), std::cos(a.f[1]), std::cos(a.f[2]), std::cos(a.f[3]))
 
-#define v128_eq_f32(a, b) v128_make_fallback((a.f[0] == b.f[0]) ? -1.0f : 0.0f, (a.f[1] == b.f[1]) ? -1.0f : 0.0f, (a.f[2] == b.f[2]) ? -1.0f : 0.0f, (a.f[3] == b.f[3]) ? -1.0f : 0.0f) 
-#define v128_ne_f32(a, b) v128_make_fallback((a.f[0] != b.f[0]) ? -1.0f : 0.0f, (a.f[1] != b.f[1]) ? -1.0f : 0.0f, (a.f[2] != b.f[2]) ? -1.0f : 0.0f, (a.f[3] != b.f[3]) ? -1.0f : 0.0f)
-#define v128_lt_f32(a, b) v128_make_fallback((a.f[0] < b.f[0]) ? -1.0f : 0.0f, (a.f[1] < b.f[1]) ? -1.0f : 0.0f, (a.f[2] < b.f[2]) ? -1.0f : 0.0f, (a.f[3] < b.f[3]) ? -1.0f : 0.0f)
-#define v128_le_f32(a, b) v128_make_fallback((a.f[0] <= b.f[0]) ? -1.0f : 0.0f, (a.f[1] <= b.f[1]) ? -1.0f : 0.0f, (a.f[2] <= b.f[2]) ? -1.0f : 0.0f, (a.f[3] <= b.f[3]) ? -1.0f : 0.0f)
-#define v128_gt_f32(a, b) v128_make_fallback((a.f[0] > b.f[0]) ? -1.0f : 0.0f, (a.f[1] > b.f[1]) ? -1.0f : 0.0f, (a.f[2] > b.f[2]) ? -1.0f : 0.0f, (a.f[3] > b.f[3]) ? -1.0f : 0.0f)
-#define v128_ge_f32(a, b) v128_make_fallback((a.f[0] >= b.f[0]) ? -1.0f : 0.0f, (a.f[1] >= b.f[1]) ? -1.0f : 0.0f, (a.f[2] >= b.f[2]) ? -1.0f : 0.0f, (a.f[3] >= b.f[3]) ? -1.0f : 0.0f)
+#define v128_make_mask_f32(m0, m1, m2, m3) v128_make_mask_fallback(m0, m1, m2, m3)
+
+#define v128_eq_f32(a, b) v128_make_mask_fallback((a.f[0] == b.f[0]), (a.f[1] == b.f[1]), (a.f[2] == b.f[2]), (a.f[3] == b.f[3]))
+#define v128_ne_f32(a, b) v128_make_mask_fallback((a.f[0] != b.f[0]), (a.f[1] != b.f[1]), (a.f[2] != b.f[2]), (a.f[3] != b.f[3]))
+#define v128_lt_f32(a, b) v128_make_mask_fallback((a.f[0] < b.f[0]),  (a.f[1] < b.f[1]),  (a.f[2] < b.f[2]),  (a.f[3] < b.f[3]))
+#define v128_le_f32(a, b) v128_make_mask_fallback((a.f[0] <= b.f[0]), (a.f[1] <= b.f[1]), (a.f[2] <= b.f[2]), (a.f[3] <= b.f[3]))
+#define v128_gt_f32(a, b) v128_make_mask_fallback((a.f[0] > b.f[0]),  (a.f[1] > b.f[1]),  (a.f[2] > b.f[2]),  (a.f[3] > b.f[3]))
+#define v128_ge_f32(a, b) v128_make_mask_fallback((a.f[0] >= b.f[0]), (a.f[1] >= b.f[1]), (a.f[2] >= b.f[2]), (a.f[3] >= b.f[3]))
 inline v128_t v128_and_fallback(v128_t a, v128_t b) {
     v128_t v;
     for (int i = 0; i < 4; ++i) {

@@ -107,7 +107,7 @@ void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
     v128_t dy = v128_sub_f32(v128_add_f32(pBy, rBy), v128_add_f32(pAy, rAy));
     v128_t dMag = v128_mag_f32(dx, dy);
 
-    v128_t hasLastNormal = v128_make_f32(joints[0]->hasLastNormal ? -1.0f : 0.0f, joints[1]->hasLastNormal ? -1.0f : 0.0f, joints[2]->hasLastNormal ? -1.0f : 0.0f, joints[3]->hasLastNormal ? -1.0f : 0.0f);
+    v128_t hasLastNormal = v128_make_mask_f32(joints[0]->hasLastNormal, joints[1]->hasLastNormal, joints[2]->hasLastNormal, joints[3]->hasLastNormal);
     v128_t lastNormalX = v128_make_f32(joints[0]->lastNormal.x, joints[1]->lastNormal.x, joints[2]->lastNormal.x, joints[3]->lastNormal.x);
     v128_t lastNormalY = v128_make_f32(joints[0]->lastNormal.y, joints[1]->lastNormal.y, joints[2]->lastNormal.y, joints[3]->lastNormal.y);
 

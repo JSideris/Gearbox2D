@@ -1070,7 +1070,7 @@ export const generalExamples = [
 			world.clear();
 			world.setGravity(0, 10);
 			gearbox.debug.showForceVectors = false;
-            gearbox.debug.showAabbs = false;
+			gearbox.debug.showAabbs = false;
 			nextId = 1;
 
 			// 1. Fixed Objects: The Foundation

@@ -33,22 +33,11 @@ void HingeJoint::preSolve(float dt) {
     Vec2 C = (posB + rB) - (posA + rA);
     
     // Kinematic Restitution Balancing (KRB) for Hinge Joint
-    // We apply the "Joint Tax" to the Baumgarte bias component-wise.
+    // Component A: Force Velocity Compensation
     Vec2 vB = C * (BAUMGARTE_FACTOR / dt);
     Vec2 forceVelDiff = bodyB->getForceVelocity() - bodyA->getForceVelocity();
-    Vec2 accExt = forceVelDiff / dt;
     
-    // Cumulative correction over position iterations: 1 - (1 - beta)^n
-    int n = bodyA->world.getPositionIterations();
-    float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
-    float totalDisplacementX = C.x * cumulativeCorrectionFactor;
-    float totalDisplacementY = C.y * cumulativeCorrectionFactor;
-
-    float vBx_balanced_sq = vB.x * vB.x - 2.0f * accExt.x * totalDisplacementX;
-    float vBy_balanced_sq = vB.y * vB.y - 2.0f * accExt.y * totalDisplacementY;
-    
-    bias.x = (C.x > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vBx_balanced_sq));
-    bias.y = (C.y > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vBy_balanced_sq));
+    bias = vB - forceVelDiff;
     
     bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
