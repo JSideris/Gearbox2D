@@ -66,7 +66,7 @@ This document outlines a phased approach to improving the performance of the Gea
 ## Phase 4: Advanced Algorithmic Optimizations
 *Focus: Refining complex systems for maximum efficiency.*
 
-### 4.1. SIMD BVH Traversal
+### 4.1. SIMD BVH Traversal [DONE]
 - **Goal:** Accelerate broad-phase collision detection.
 - **Action:** Implement 4-way or 8-way BVH traversal, testing a bounding box against multiple child nodes simultaneously using SIMD.
 
