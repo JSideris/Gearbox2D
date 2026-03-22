@@ -2,6 +2,7 @@
 #define BVH_H
 
 #include "aabb.h"
+#include "simd-math.h"
 #include <vector>
 #include <memory>
 #include <algorithm>
@@ -172,6 +173,16 @@ public:
     BvhNode* parent;
     bool isLeaf;
     int height;
+    int childCount;
+
+    // SoA data for SIMD loading of child bounds
+    // We allocate 8 to maintain 16-byte alignment and safely allow a 5th temporary child during splits
+    alignas(16) float childMinX[8];
+    alignas(16) float childMinY[8];
+    alignas(16) float childMaxX[8];
+    alignas(16) float childMaxY[8];
+
+    BvhNode* children[8];
 
 	// For leaf nodes
 	CollisionProperties properties;  // Leaf collision properties
@@ -182,28 +193,27 @@ public:
     // For leaf nodes
     void* data;
     
-    // For internal nodes
-    BvhNode* left;
-    BvhNode* right;
-    
     // Constructor for leaf node
 	BvhNode(const Aabb& aabb, void* userData, const CollisionProperties& props)
-    : bounds(aabb), parent(nullptr), isLeaf(true), height(0),
-      data(userData), properties(props), left(nullptr), right(nullptr) {
+    : bounds(aabb), parent(nullptr), isLeaf(true), height(0), childCount(0),
+      data(userData), properties(props) {
+        for (int i = 0; i < 8; ++i) {
+            children[i] = nullptr;
+            childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
+            childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
+        }
 		// For leaves, aggregated properties come directly from leaf properties
 		aggregated = AggregatedProperties::fromLeaf(properties);
 	}
     
     // Constructor for internal node
-    BvhNode(BvhNode* leftChild, BvhNode* rightChild)
-		: parent(nullptr), isLeaf(false), height(0), data(nullptr),
-		left(leftChild), right(rightChild) {
-        
-        if (left) left->parent = this;
-        if (right) right->parent = this;
-        
-        updateBounds();
-        updateAggregatedProperties();
+    BvhNode()
+		: parent(nullptr), isLeaf(false), height(0), childCount(0), data(nullptr) {
+        for (int i = 0; i < 8; ++i) {
+            children[i] = nullptr;
+            childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
+            childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
+        }
         updateHeight();
     }
     
@@ -215,20 +225,34 @@ public:
         if (isLeaf) {
             height = 0;
         } else {
-            height = 1 + std::max(left ? left->height : 0, right ? right->height : 0);
+            int maxH = 0;
+            for (int i = 0; i < childCount; ++i) {
+                if (children[i]) maxH = std::max(maxH, children[i]->height);
+            }
+            height = 1 + maxH;
         }
     }
 
     void updateBounds() {
         if (isLeaf) return;
         
-        if (left && right) {
-            bounds = left->bounds;
-            bounds.mergeWith(right->bounds);
-        } else if (left) {
-            bounds = left->bounds;
-        } else if (right) {
-            bounds = right->bounds;
+        bounds = Aabb();
+        for (int i = 0; i < childCount; ++i) {
+            if (children[i]) {
+                bounds.mergeWith(children[i]->bounds);
+                childMinX[i] = children[i]->bounds.min.x;
+                childMinY[i] = children[i]->bounds.min.y;
+                childMaxX[i] = children[i]->bounds.max.x;
+                childMaxY[i] = children[i]->bounds.max.y;
+            } else {
+                childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
+                childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
+            }
+        }
+        // Fill remaining slots with "empty" bounds that won't overlap anything
+        for (int i = childCount; i < 8; ++i) {
+            childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
+            childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
         }
     }
     
@@ -239,8 +263,9 @@ public:
 		}
 		
 		aggregated = AggregatedProperties();
-		if (left) aggregated.mergeWith(left->aggregated);
-		if (right) aggregated.mergeWith(right->aggregated);
+		for (int i = 0; i < childCount; ++i) {
+            if (children[i]) aggregated.mergeWith(children[i]->aggregated);
+        }
 	}
     
     // Update bounds and properties for all ancestors
@@ -274,10 +299,32 @@ public:
 		updateProperties(properties);
 	}
     
-    // Get the sibling of this node
-    BvhNode* getSibling() const {
-        if (!parent) return nullptr;
-        return (parent->left == this) ? parent->right : parent->left;
+    void addChild(BvhNode* child) {
+        if (childCount >= 8) return; // Safely allow temporarily exceeding 4 children before splitting
+        children[childCount] = child;
+        child->parent = this;
+        childCount++;
+        updateBounds();
+        updateAggregatedProperties();
+        updateHeight();
+    }
+
+    void removeChild(BvhNode* child) {
+        for (int i = 0; i < childCount; ++i) {
+            if (children[i] == child) {
+                // Shift children left
+                for (int j = i; j < childCount - 1; ++j) {
+                    children[j] = children[j + 1];
+                }
+                children[childCount - 1] = nullptr;
+                childCount--;
+                child->parent = nullptr;
+                updateBounds();
+                updateAggregatedProperties();
+                updateHeight();
+                return;
+            }
+        }
     }
 };
 
@@ -301,18 +348,11 @@ private:
     BvhNode* root;
     uint32_t tieBreaker = 0;
     
-    // Surface Area Heuristic for insertion cost calculation
-    float computeInsertionCost(BvhNode* node, const Aabb& newBounds, const CollisionProperties& newProps) const {
-        if (!node) return std::numeric_limits<float>::max();
-        
-        Aabb combinedBounds = node->bounds;
-        combinedBounds.mergeWith(newBounds);
-        
-        float areaIncrease = combinedBounds.getSurfaceArea();
+    // Calculate logical biasing multiplier for SAH
+    float computeBiasingMultiplier(BvhNode* node, const CollisionProperties& newProps) const {
+        if (!node) return 1.0f;
         
         // --- Logical Biasing Multipliers ---
-        // Instead of additive costs, we use multipliers to scale the spatial cost (SAH).
-        // This ensures biasing is scale-invariant and consistent for all object sizes.
         float multiplier = 1.0f;
 
         // Mask Biasing: Logical separation of user-defined categories
@@ -357,7 +397,7 @@ private:
             multiplier += vDiff * config.velocityWeight;
         }
 
-        return areaIncrease * multiplier;
+        return multiplier;
     }
     
     // Find the best place to insert a new leaf
@@ -367,30 +407,61 @@ private:
         BvhNode* current = root;
         
         while (!current->isLeaf) {
-            float leftCost = std::numeric_limits<float>::max();
-            float rightCost = std::numeric_limits<float>::max();
-            
-            if (current->left) {
-                leftCost = computeInsertionCost(current->left, newBounds, newProps);
+            // SIMD-accelerated cost calculation for 4 children
+            v128_t q_minX = v128_splat_f32(newBounds.min.x);
+            v128_t q_minY = v128_splat_f32(newBounds.min.y);
+            v128_t q_maxX = v128_splat_f32(newBounds.max.x);
+            v128_t q_maxY = v128_splat_f32(newBounds.max.y);
+
+            v128_t c_minX = v128_load_f32(current->childMinX);
+            v128_t c_minY = v128_load_f32(current->childMinY);
+            v128_t c_maxX = v128_load_f32(current->childMaxX);
+            v128_t c_maxY = v128_load_f32(current->childMaxY);
+
+            // Old Area: 2 * ((c.max.x - c.min.x) + (c.max.y - c.min.y))
+            v128_t oldWidth = v128_sub_f32(c_maxX, c_minX);
+            v128_t oldHeight = v128_sub_f32(c_maxY, c_minY);
+            v128_t oldArea = v128_mul_f32(v128_splat_f32(2.0f), v128_add_f32(oldWidth, oldHeight));
+
+            // Combined bounds: min = min(c.min, q.min), max = max(c.max, q.max)
+            v128_t combinedMinX = v128_min_f32(c_minX, q_minX);
+            v128_t combinedMinY = v128_min_f32(c_minY, q_minY);
+            v128_t combinedMaxX = v128_max_f32(c_maxX, q_maxX);
+            v128_t combinedMaxY = v128_max_f32(c_maxY, q_maxY);
+
+            // New Surface area
+            v128_t newWidth = v128_sub_f32(combinedMaxX, combinedMinX);
+            v128_t newHeight = v128_sub_f32(combinedMaxY, combinedMinY);
+            v128_t newArea = v128_mul_f32(v128_splat_f32(2.0f), v128_add_f32(newWidth, newHeight));
+
+            // Area Increase = newArea - oldArea
+            v128_t areaIncrease = v128_sub_f32(newArea, oldArea);
+
+            // Cost = areaIncrease + tiny fraction of newArea to differentiate identical increases
+            v128_t baseCost = v128_add_f32(areaIncrease, v128_mul_f32(newArea, v128_splat_f32(0.01f)));
+
+            float costs[4];
+            v128_store_f32(costs, baseCost);
+
+            // Apply multipliers sequentially
+            for (int i = 0; i < current->childCount; ++i) {
+                float multiplier = computeBiasingMultiplier(current->children[i], newProps);
+                costs[i] *= multiplier;
             }
-            if (current->right) {
-                rightCost = computeInsertionCost(current->right, newBounds, newProps);
-            }
-            
-            // Choose the child with lower insertion cost
-            if (leftCost < rightCost) {
-                current = current->left;
-            } else if (rightCost < leftCost) {
-                current = current->right;
-            } else {
-                // Costs are equal, use tie-breaker to prevent biased unbalancing
-                tieBreaker++;
-                if (tieBreaker % 2 == 0) {
-                    current = current->left;
-                } else {
-                    current = current->right;
+
+            int bestIndex = 0;
+            float minCost = costs[0];
+            for (int i = 1; i < current->childCount; ++i) {
+                if (costs[i] < minCost) {
+                    minCost = costs[i];
+                    bestIndex = i;
+                } else if (costs[i] == minCost) {
+                    tieBreaker++;
+                    if (tieBreaker % 2 == 0) bestIndex = i;
                 }
             }
+            
+            current = current->children[bestIndex];
         }
         
         return current;
@@ -401,124 +472,90 @@ private:
         if (!node) return;
         
         if (!node->isLeaf) {
-            destroyNode(node->left);
-            destroyNode(node->right);
+            for (int i = 0; i < node->childCount; ++i) {
+                destroyNode(node->children[i]);
+            }
         }
         
         delete node;
     }
     
-    // Replace a node with its child in the tree structure
-    void replaceNode(BvhNode* oldNode, BvhNode* newNode) {
-        if (oldNode->parent) {
-            if (oldNode->parent->left == oldNode) {
-                oldNode->parent->left = newNode;
-            } else {
-                oldNode->parent->right = newNode;
-            }
-            
-            if (newNode) {
-                newNode->parent = oldNode->parent;
-            }
+    // Split a node that has more than 4 children
+    void splitNode(BvhNode* node) {
+        if (node->childCount <= 4) return;
+
+        // Find the axis to split along based on children's centers
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::lowest();
+        float minY = std::numeric_limits<float>::max();
+        float maxY = std::numeric_limits<float>::lowest();
+
+        for (int i = 0; i < node->childCount; ++i) {
+            Vec2 center = node->children[i]->bounds.getCenter();
+            minX = std::min(minX, center.x);
+            maxX = std::max(maxX, center.x);
+            minY = std::min(minY, center.y);
+            maxY = std::max(maxY, center.y);
+        }
+
+        bool splitX = (maxX - minX) > (maxY - minY);
+        
+        // Sort children along the chosen axis
+        std::sort(node->children, node->children + node->childCount, [splitX](BvhNode* a, BvhNode* b) {
+            Vec2 ca = a->bounds.getCenter();
+            Vec2 cb = b->bounds.getCenter();
+            return splitX ? ca.x < cb.x : ca.y < cb.y;
+        });
+
+        // Split into two nodes
+        int splitIndex = node->childCount / 2;
+        int originalCount = node->childCount;
+        
+        BvhNode* newNode = new BvhNode();
+        newNode->parent = node->parent;
+        
+        // Move second half of children to newNode
+        node->childCount = splitIndex;
+        newNode->childCount = originalCount - splitIndex;
+        
+        for (int i = 0; i < newNode->childCount; ++i) {
+            newNode->children[i] = node->children[splitIndex + i];
+            newNode->children[i]->parent = newNode;
+            node->children[splitIndex + i] = nullptr;
+        }
+
+        node->updateBounds();
+        node->updateAggregatedProperties();
+        node->updateHeight();
+        
+        newNode->updateBounds();
+        newNode->updateAggregatedProperties();
+        newNode->updateHeight();
+
+        if (!node->parent) {
+            // node was root, create a new root
+            BvhNode* newRoot = new BvhNode();
+            newRoot->addChild(node);
+            newRoot->addChild(newNode);
+            root = newRoot;
         } else {
-            root = newNode;
-            if (newNode) {
-                newNode->parent = nullptr;
+            // add newNode to parent
+            node->parent->addChild(newNode);
+            if (node->parent->childCount > 4) {
+                splitNode(node->parent);
+            } else {
+                updateAncestors(node->parent->parent);
             }
         }
     }
     
-    // Rotate a node to maintain AVL balance (height-based)
-    // Returns the new root of this subtree
-    BvhNode* balance(BvhNode* iA) {
-        if (!iA || iA->isLeaf || iA->height < 2) return iA;
-        
-        BvhNode* iB = iA->left;
-        BvhNode* iC = iA->right;
-        
-        int balanceFactor = (iC ? iC->height : 0) - (iB ? iB->height : 0);
-        
-        // Rotate C up (Right heavy)
-        if (balanceFactor > 1) {
-            BvhNode* iF = iC->left;
-            BvhNode* iG = iC->right;
-            
-            // Swap A and C
-            iC->left = iA;
-            iC->parent = iA->parent;
-            iA->parent = iC;
-            
-            if (iC->parent) {
-                if (iC->parent->left == iA) iC->parent->left = iC;
-                else iC->parent->right = iC;
-            } else {
-                root = iC;
-            }
-            
-            // Re-assign iC's children
-            if ((iF ? iF->height : 0) > (iG ? iG->height : 0)) {
-                iC->right = iF;
-                iA->right = iG;
-                if (iG) iG->parent = iA;
-                if (iF) iF->parent = iC;
-            } else {
-                iC->right = iG;
-                iA->right = iF;
-                if (iF) iF->parent = iA;
-                if (iG) iG->parent = iC;
-            }
-            
-            iA->updateBounds(); iA->updateAggregatedProperties(); iA->updateHeight();
-            iC->updateBounds(); iC->updateAggregatedProperties(); iC->updateHeight();
-            return iC;
-        }
-        
-        // Rotate B up (Left heavy)
-        if (balanceFactor < -1) {
-            BvhNode* iD = iB->left;
-            BvhNode* iE = iB->right;
-            
-            // Swap A and B
-            iB->right = iA;
-            iB->parent = iA->parent;
-            iA->parent = iB;
-            
-            if (iB->parent) {
-                if (iB->parent->left == iA) iB->parent->left = iB;
-                else iB->parent->right = iB;
-            } else {
-                root = iB;
-            }
-            
-            // Re-assign iB's children
-            if ((iD ? iD->height : 0) > (iE ? iE->height : 0)) {
-                iB->left = iD;
-                iA->left = iE;
-                if (iE) iE->parent = iA;
-                if (iD) iD->parent = iB;
-            } else {
-                iB->left = iE;
-                iA->left = iD;
-                if (iD) iD->parent = iA;
-                if (iE) iE->parent = iB;
-            }
-            
-            iA->updateBounds(); iA->updateAggregatedProperties(); iA->updateHeight();
-            iB->updateBounds(); iB->updateAggregatedProperties(); iB->updateHeight();
-            return iB;
-        }
-        
-        return iA;
-    }
-    
-    // Update bounds and properties up the tree, balancing as we go
+    // Update bounds and properties up the tree
     void updateAncestors(BvhNode* node) {
         BvhNode* current = node;
         while (current) {
             current->updateBounds();
             current->updateAggregatedProperties();
             current->updateHeight();
-            current = balance(current);
             current = current->parent;
         }
     }
@@ -530,8 +567,31 @@ private:
         if (node->isLeaf) {
             results.push_back(node);
         } else {
-            queryRecursive(node->left, queryBounds, results);
-            queryRecursive(node->right, queryBounds, results);
+            // SIMD 4-way check
+            v128_t q_minX = v128_splat_f32(queryBounds.min.x);
+            v128_t q_minY = v128_splat_f32(queryBounds.min.y);
+            v128_t q_maxX = v128_splat_f32(queryBounds.max.x);
+            v128_t q_maxY = v128_splat_f32(queryBounds.max.y);
+
+            v128_t c_minX = v128_load_f32(node->childMinX);
+            v128_t c_minY = v128_load_f32(node->childMinY);
+            v128_t c_maxX = v128_load_f32(node->childMaxX);
+            v128_t c_maxY = v128_load_f32(node->childMaxY);
+
+            // Overlap check: (q.min.x <= c.max.x && q.max.x >= c.min.x) && (q.min.y <= c.max.y && q.max.y >= c.min.y)
+            v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
+            v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
+            v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
+            v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+
+            v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+            int mask = v128_bitmask(overlap);
+
+            for (int i = 0; i < node->childCount; ++i) {
+                if (mask & (1 << i)) {
+                    queryRecursive(node->children[i], queryBounds, results);
+                }
+            }
         }
     }
     
@@ -560,19 +620,108 @@ private:
         
         // Recurse on children
         if (nodeA->isLeaf) {
-            // nodeA is leaf, nodeB is internal
-            detectCollisionsRecursive(nodeA, nodeB->left);
-            detectCollisionsRecursive(nodeA, nodeB->right);
+            // nodeA is leaf, nodeB is internal. Test nodeA against children of nodeB using SIMD
+            v128_t q_minX = v128_splat_f32(nodeA->bounds.min.x);
+            v128_t q_minY = v128_splat_f32(nodeA->bounds.min.y);
+            v128_t q_maxX = v128_splat_f32(nodeA->bounds.max.x);
+            v128_t q_maxY = v128_splat_f32(nodeA->bounds.max.y);
+
+            v128_t c_minX = v128_load_f32(nodeB->childMinX);
+            v128_t c_minY = v128_load_f32(nodeB->childMinY);
+            v128_t c_maxX = v128_load_f32(nodeB->childMaxX);
+            v128_t c_maxY = v128_load_f32(nodeB->childMaxY);
+
+            v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
+            v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
+            v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
+            v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+
+            v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+            int mask = v128_bitmask(overlap);
+
+            for (int i = 0; i < nodeB->childCount; ++i) {
+                if (mask & (1 << i)) {
+                    detectCollisionsRecursive(nodeA, nodeB->children[i]);
+                }
+            }
         } else if (nodeB->isLeaf) {
-            // nodeB is leaf, nodeA is internal
-            detectCollisionsRecursive(nodeA->left, nodeB);
-            detectCollisionsRecursive(nodeA->right, nodeB);
+            // nodeB is leaf, nodeA is internal. Test nodeB against children of nodeA using SIMD
+            v128_t q_minX = v128_splat_f32(nodeB->bounds.min.x);
+            v128_t q_minY = v128_splat_f32(nodeB->bounds.min.y);
+            v128_t q_maxX = v128_splat_f32(nodeB->bounds.max.x);
+            v128_t q_maxY = v128_splat_f32(nodeB->bounds.max.y);
+
+            v128_t c_minX = v128_load_f32(nodeA->childMinX);
+            v128_t c_minY = v128_load_f32(nodeA->childMinY);
+            v128_t c_maxX = v128_load_f32(nodeA->childMaxX);
+            v128_t c_maxY = v128_load_f32(nodeA->childMaxY);
+
+            v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
+            v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
+            v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
+            v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+
+            v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+            int mask = v128_bitmask(overlap);
+
+            for (int i = 0; i < nodeA->childCount; ++i) {
+                if (mask & (1 << i)) {
+                    detectCollisionsRecursive(nodeA->children[i], nodeB);
+                }
+            }
         } else {
-            // Both are internal nodes
-            detectCollisionsRecursive(nodeA->left, nodeB->left);
-            detectCollisionsRecursive(nodeA->left, nodeB->right);
-            detectCollisionsRecursive(nodeA->right, nodeB->left);
-            detectCollisionsRecursive(nodeA->right, nodeB->right);
+            // Both are internal nodes. Descend the LARGER node to prevent combinatorial explosion.
+            if (nodeA->bounds.getSurfaceArea() > nodeB->bounds.getSurfaceArea()) {
+                // nodeA is larger. Splat nodeB's bounds and test against nodeA's children
+                v128_t q_minX = v128_splat_f32(nodeB->bounds.min.x);
+                v128_t q_minY = v128_splat_f32(nodeB->bounds.min.y);
+                v128_t q_maxX = v128_splat_f32(nodeB->bounds.max.x);
+                v128_t q_maxY = v128_splat_f32(nodeB->bounds.max.y);
+
+                v128_t c_minX = v128_load_f32(nodeA->childMinX);
+                v128_t c_minY = v128_load_f32(nodeA->childMinY);
+                v128_t c_maxX = v128_load_f32(nodeA->childMaxX);
+                v128_t c_maxY = v128_load_f32(nodeA->childMaxY);
+
+                v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
+                v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
+                v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
+                v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+
+                v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+                int mask = v128_bitmask(overlap);
+
+                for (int i = 0; i < nodeA->childCount; ++i) {
+                    if (mask & (1 << i)) {
+                        detectCollisionsRecursive(nodeA->children[i], nodeB);
+                    }
+                }
+            } else {
+                // nodeB is larger. Splat nodeA's bounds and test against nodeB's children
+                v128_t q_minX = v128_splat_f32(nodeA->bounds.min.x);
+                v128_t q_minY = v128_splat_f32(nodeA->bounds.min.y);
+                v128_t q_maxX = v128_splat_f32(nodeA->bounds.max.x);
+                v128_t q_maxY = v128_splat_f32(nodeA->bounds.max.y);
+
+                v128_t c_minX = v128_load_f32(nodeB->childMinX);
+                v128_t c_minY = v128_load_f32(nodeB->childMinY);
+                v128_t c_maxX = v128_load_f32(nodeB->childMaxX);
+                v128_t c_maxY = v128_load_f32(nodeB->childMaxY);
+
+                v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
+                v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
+                v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
+                v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+
+                v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+                int mask = v128_bitmask(overlap);
+
+                for (int i = 0; i < nodeB->childCount; ++i) {
+                    if (mask & (1 << i)) {
+                        detectCollisionsRecursive(nodeA, nodeB->children[i]);
+                    }
+                }
+            }
         }
     }
     
@@ -582,14 +731,17 @@ private:
         
         if (node->isLeaf) return; // Leaf nodes can't have self-collisions
         
-        // Check left subtree against right subtree
-        if (node->left && node->right) {
-            detectCollisionsRecursive(node->left, node->right);
+        // Check children against each other
+        for (int i = 0; i < node->childCount; ++i) {
+            for (int j = i + 1; j < node->childCount; ++j) {
+                detectCollisionsRecursive(node->children[i], node->children[j]);
+            }
         }
         
-        // Recursively check self-collisions within each subtree
-        detectSelfCollisionsRecursive(node->left);
-        detectSelfCollisionsRecursive(node->right);
+        // Recursively check self-collisions within each child subtree
+        for (int i = 0; i < node->childCount; ++i) {
+            detectSelfCollisionsRecursive(node->children[i]);
+        }
     }
     
 public:
@@ -608,26 +760,29 @@ public:
             return newLeaf;
         }
         
-        // Find the best place to insert
+        // Find the best internal node to host the new leaf
         BvhNode* bestNode = findBestInsertionPoint(bounds, props);
         
-        // Create a new internal node to be the parent of bestNode and newLeaf
-        BvhNode* oldParent = bestNode->parent;
-        BvhNode* newParent = new BvhNode(bestNode, newLeaf);
-        newParent->parent = oldParent;
-        
-        if (oldParent) {
-            if (oldParent->left == bestNode) {
-                oldParent->left = newParent;
-            } else {
-                oldParent->right = newParent;
-            }
-        } else {
-            root = newParent;
+        if (bestNode == root && bestNode->isLeaf) {
+            // Root is a leaf, create new internal root
+            BvhNode* newRoot = new BvhNode();
+            newRoot->addChild(bestNode);
+            newRoot->addChild(newLeaf);
+            root = newRoot;
+            return newLeaf;
         }
-        
-        // Update ancestors
-        updateAncestors(newParent);
+
+        // Add to parent of bestNode
+        BvhNode* parent = bestNode->parent;
+        parent->children[parent->childCount++] = newLeaf;
+        newLeaf->parent = parent;
+
+        // Check if parent needs split
+        if (parent->childCount > 4) {
+            splitNode(parent);
+        } else {
+            updateAncestors(parent);
+        }
         
         return newLeaf;
     }
@@ -642,31 +797,36 @@ public:
             return;
         }
         
-        BvhNode* parent = leaf->parent;
-        BvhNode* sibling = leaf->getSibling();
-        BvhNode* grandparent = parent->parent;
-        
-        // Replace parent with sibling
-        if (grandparent) {
-            if (grandparent->left == parent) {
-                grandparent->left = sibling;
-            } else {
-                grandparent->right = sibling;
-            }
-            sibling->parent = grandparent;
-        } else {
-            root = sibling;
-            sibling->parent = nullptr;
-        }
-        
-        // Update ancestors starting from sibling's parent (the original grandparent)
-        if (grandparent) {
-            updateAncestors(sibling);
-        }
-        
-        // Clean up
+        BvhNode* current = leaf->parent;
+        current->removeChild(leaf);
         delete leaf;
-        delete parent;
+
+        // Remove empty ancestor nodes up the tree
+        while (current && current->childCount == 0) {
+            BvhNode* parent = current->parent;
+            if (parent) {
+                parent->removeChild(current);
+            } else {
+                root = nullptr;
+            }
+            delete current;
+            current = parent;
+        }
+
+        // Update bounds for remaining ancestors
+        if (current) {
+            updateAncestors(current);
+        }
+
+        // Collapse root if it only has 1 child and is not a leaf
+        while (root && !root->isLeaf && root->childCount == 1) {
+            BvhNode* loneChild = root->children[0];
+            BvhNode* oldRoot = root;
+            root = loneChild;
+            root->parent = nullptr;
+            oldRoot->childCount = 0;
+            delete oldRoot;
+        }
     }
     
     // Update a leaf's AABB and propagate changes with re-insertion

@@ -165,11 +165,61 @@ inline v128_t v128_make_fallback(float f1, float f2, float f3, float f4) {
 #define v128_le_f32(a, b) v128_make_fallback((a.f[0] <= b.f[0]) ? -1.0f : 0.0f, (a.f[1] <= b.f[1]) ? -1.0f : 0.0f, (a.f[2] <= b.f[2]) ? -1.0f : 0.0f, (a.f[3] <= b.f[3]) ? -1.0f : 0.0f)
 #define v128_gt_f32(a, b) v128_make_fallback((a.f[0] > b.f[0]) ? -1.0f : 0.0f, (a.f[1] > b.f[1]) ? -1.0f : 0.0f, (a.f[2] > b.f[2]) ? -1.0f : 0.0f, (a.f[3] > b.f[3]) ? -1.0f : 0.0f)
 #define v128_ge_f32(a, b) v128_make_fallback((a.f[0] >= b.f[0]) ? -1.0f : 0.0f, (a.f[1] >= b.f[1]) ? -1.0f : 0.0f, (a.f[2] >= b.f[2]) ? -1.0f : 0.0f, (a.f[3] >= b.f[3]) ? -1.0f : 0.0f)
-#define v128_and(a, b) v128_make_fallback((float)((*(uint32_t*)&a.f[0]) & (*(uint32_t*)&b.f[0])), (float)((*(uint32_t*)&a.f[1]) & (*(uint32_t*)&b.f[1])), (float)((*(uint32_t*)&a.f[2]) & (*(uint32_t*)&b.f[2])), (float)((*(uint32_t*)&a.f[3]) & (*(uint32_t*)&b.f[3])))
-#define v128_or(a, b) v128_make_fallback((float)((*(uint32_t*)&a.f[0]) | (*(uint32_t*)&b.f[0])), (float)((*(uint32_t*)&a.f[1]) | (*(uint32_t*)&b.f[1])), (float)((*(uint32_t*)&a.f[2]) | (*(uint32_t*)&b.f[2])), (float)((*(uint32_t*)&a.f[3]) | (*(uint32_t*)&b.f[3])))
-#define v128_xor(a, b) v128_make_fallback((float)((*(uint32_t*)&a.f[0]) ^ (*(uint32_t*)&b.f[0])), (float)((*(uint32_t*)&a.f[1]) ^ (*(uint32_t*)&b.f[1])), (float)((*(uint32_t*)&a.f[2]) ^ (*(uint32_t*)&b.f[2])), (float)((*(uint32_t*)&a.f[3]) ^ (*(uint32_t*)&b.f[3])))
-#define v128_not(a) v128_make_fallback((float)(~(*(uint32_t*)&a.f[0])), (float)(~(*(uint32_t*)&a.f[1])), (float)(~(*(uint32_t*)&a.f[2])), (float)(~(*(uint32_t*)&a.f[3])))
-#define v128_andnot(a, b) v128_make_fallback((float)((*(uint32_t*)&a.f[0]) & ~(*(uint32_t*)&b.f[0])), (float)((*(uint32_t*)&a.f[1]) & ~(*(uint32_t*)&b.f[1])), (float)((*(uint32_t*)&a.f[2]) & ~(*(uint32_t*)&b.f[2])), (float)((*(uint32_t*)&a.f[3]) & ~(*(uint32_t*)&b.f[3])))
+inline v128_t v128_and_fallback(v128_t a, v128_t b) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) {
+        uint32_t ia = *(uint32_t*)&a.f[i];
+        uint32_t ib = *(uint32_t*)&b.f[i];
+        uint32_t res = ia & ib;
+        v.f[i] = *(float*)&res;
+    }
+    return v;
+}
+inline v128_t v128_or_fallback(v128_t a, v128_t b) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) {
+        uint32_t ia = *(uint32_t*)&a.f[i];
+        uint32_t ib = *(uint32_t*)&b.f[i];
+        uint32_t res = ia | ib;
+        v.f[i] = *(float*)&res;
+    }
+    return v;
+}
+inline v128_t v128_xor_fallback(v128_t a, v128_t b) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) {
+        uint32_t ia = *(uint32_t*)&a.f[i];
+        uint32_t ib = *(uint32_t*)&b.f[i];
+        uint32_t res = ia ^ ib;
+        v.f[i] = *(float*)&res;
+    }
+    return v;
+}
+inline v128_t v128_not_fallback(v128_t a) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) {
+        uint32_t ia = *(uint32_t*)&a.f[i];
+        uint32_t res = ~ia;
+        v.f[i] = *(float*)&res;
+    }
+    return v;
+}
+inline v128_t v128_andnot_fallback(v128_t a, v128_t b) {
+    v128_t v;
+    for (int i = 0; i < 4; ++i) {
+        uint32_t ia = *(uint32_t*)&a.f[i];
+        uint32_t ib = *(uint32_t*)&b.f[i];
+        uint32_t res = ia & ~ib;
+        v.f[i] = *(float*)&res;
+    }
+    return v;
+}
+
+#define v128_and(a, b) v128_and_fallback(a, b)
+#define v128_or(a, b) v128_or_fallback(a, b)
+#define v128_xor(a, b) v128_xor_fallback(a, b)
+#define v128_not(a) v128_not_fallback(a)
+#define v128_andnot(a, b) v128_andnot_fallback(a, b)
 
 #define v128_any_true(v) v128_any_true_fallback(v)
 #define v128_bitmask(v) v128_bitmask_fallback(v)

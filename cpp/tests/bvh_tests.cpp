@@ -12,7 +12,11 @@ Aabb createAabb(float minX, float minY, float maxX, float maxY) {
 int countLeaves(BvhNode* node) {
     if (!node) return 0;
     if (node->isLeaf) return 1;
-    return countLeaves(node->left) + countLeaves(node->right);
+    int count = 0;
+    for (int i = 0; i < node->childCount; ++i) {
+        count += countLeaves(node->children[i]);
+    }
+    return count;
 }
 
 // ========== BASIC TESTS ==========
@@ -53,9 +57,9 @@ TEST(BvhTest, InsertMultipleNodes) {
     EXPECT_NE(bvh.getRoot(), node2);
     
     // In the new BVH, internal nodes have children. 
-    // They might be left/right in any order depending on insertion heuristic.
-    EXPECT_TRUE((bvh.getRoot()->left == node1 && bvh.getRoot()->right == node2) ||
-                (bvh.getRoot()->left == node2 && bvh.getRoot()->right == node1));
+    // They might be in any order depending on insertion heuristic.
+    EXPECT_TRUE((bvh.getRoot()->children[0] == node1 && bvh.getRoot()->children[1] == node2) ||
+                (bvh.getRoot()->children[0] == node2 && bvh.getRoot()->children[1] == node1));
 }
 
 // Test Bvh node removal
@@ -220,9 +224,10 @@ TEST(BvhTest, InsertOneAABB_RootSetAndLeafNode) {
     EXPECT_TRUE(bvh.getRoot()->isLeaf);
     EXPECT_EQ(bvh.getRoot()->data, userData);
     
-    // Verify that left and right are null
-    EXPECT_EQ(bvh.getRoot()->left, nullptr);
-    EXPECT_EQ(bvh.getRoot()->right, nullptr);
+    // Verify that children are null
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_EQ(bvh.getRoot()->children[i], nullptr);
+    }
 }
 
 // Insert two AABBs should set the root and create two leaf nodes.
@@ -243,14 +248,15 @@ TEST(BvhTest, InsertTwoAABBs_RootHasTwoLeafNodes) {
     ASSERT_NE(bvh.getRoot(), nullptr);
     EXPECT_FALSE(bvh.getRoot()->isLeaf);
     
-    // Verify that left and right are set and are both leaf nodes
-    ASSERT_NE(bvh.getRoot()->left, nullptr);
-    ASSERT_NE(bvh.getRoot()->right, nullptr);
-    EXPECT_TRUE(bvh.getRoot()->left->isLeaf);
-    EXPECT_TRUE(bvh.getRoot()->right->isLeaf);
+    // Verify that children are set and are both leaf nodes
+    ASSERT_EQ(bvh.getRoot()->childCount, 2);
+    ASSERT_NE(bvh.getRoot()->children[0], nullptr);
+    ASSERT_NE(bvh.getRoot()->children[1], nullptr);
+    EXPECT_TRUE(bvh.getRoot()->children[0]->isLeaf);
+    EXPECT_TRUE(bvh.getRoot()->children[1]->isLeaf);
     
     // Verify data
-    std::set<void*> foundData = {bvh.getRoot()->left->data, bvh.getRoot()->right->data};
+    std::set<void*> foundData = {bvh.getRoot()->children[0]->data, bvh.getRoot()->children[1]->data};
     EXPECT_EQ(foundData.size(), 2);
     EXPECT_TRUE(foundData.count(userData1));
     EXPECT_TRUE(foundData.count(userData2));
