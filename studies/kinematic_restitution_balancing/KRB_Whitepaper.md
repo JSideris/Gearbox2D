@@ -38,15 +38,15 @@ This correction applies whenever Symplectic Euler integration is used, independe
 ### 2.2 Component B: Kinematic Energy Balancing
 We adjust the launch velocity to account for work done by external forces over the correction displacement $\Delta h$:
 
-We conceptually rewind the object to the surface to find the true surface velocity, and then apply the lossy restitution bounce. This correction should be isolated to the **normal component** of the velocity to preserve tangential momentum (sliding/friction).
+We conceptually rewind the object to the surface to find the true surface velocity, and then apply the lossy restitution bounce:
 
-$$v_{surf} = \sqrt{\max(0, v_{impact}^2 - 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
+$$v_{surf} = \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
 
 Yielding a final velocity of:
 
-$$v_{final} = e \cdot v_{surf} = e \sqrt{\max(0, v_{impact}^2 - 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
+$$v_{final} = e \cdot v_{surf} = e \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
 
-The equation is symmetric: ground collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} < 0$) boost the launch velocity to account for work needed to reach the surface against gravity, while ceiling collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} > 0$) tax it to account for "free" energy gained from moving with gravity.
+The equation is symmetric: ground collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} < 0$) tax the launch velocity to pay for increased PE, while ceiling collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} > 0$) boost it to account for work done against external forces.
 
 ### 2.3 Effective Displacement Prediction
 In solvers where position correction is decoupled from velocity (e.g., Sequential Impulse followed by Position Iterations), the energy audit must account for the temporal separation between the velocity and position phases. Specifically, the kinematic bounce velocity $v_{launch}$ partially resolves the penetration $d$ during the subsequent integration step before the position solver operates:
@@ -59,16 +59,7 @@ $$\Delta h = \min(d_{eff}, \Delta h_{max}) \cdot \Gamma$$
 
 Where $\Gamma$ is the cumulative correction factor ($1 - (1 - \beta)^n$) for $n$ iterations with Baumgarte factor $\beta$.
 
-### 2.4 Application to Joints (Joint Energy Balancing)
-KRB also applies to kinematic constraints like Distance Joints. When a joint is stretched or compressed, the solver applies a bias velocity to restore the target length. If external forces (like gravity) are acting on the bodies, the position correction performed by the solver adds or removes potential energy.
-
-To maintain energy conservation, the joint's bias velocity $v_B$ must be balanced:
-
-$$v_{B, balanced} = \text{sgn}(C) \sqrt{\max(0, v_B^2 - 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h_{joint})}$$
-
-Where $C$ is the distance error and $\Delta h_{joint}$ is the projected displacement. Crucially, the displacement used for the energy audit **must be clamped** to the solver's maximum position correction (e.g., `MAX_POSITION_CORRECTION`) to prevent numerical instability in high-stress scenarios.
-
-### 2.5 Application to Speculative Contacts (Anti-Tunneling)
+### 2.4 Application to Speculative Contacts (Anti-Tunneling)
 Speculative contacts are created *before* overlap occurs to prevent high-speed objects from tunneling. In these cases, the penetration $d$ is negative ($d < 0$), representing a gap.
 
 Because the objects are not yet touching, **Component B (Kinematic Energy Balancing) is not required** ($\Delta h = 0$), as there is no position correction work to balance. However, **Component A (Force Velocity Compensation) remains critical**. Without it, speculative contacts would "see" gravity-induced velocity as part of the impact speed, causing objects to bounce off "thin air" before they even reach the surface.
@@ -91,7 +82,7 @@ v_impact = v_relative - (v_force_B - v_force_A)
 v_bounce = -e * v_impact
 d_eff = max(0, (depth - slop) - v_bounce * dt)
 h_expected = min(d_eff, MAX_POSITION_CORRECTION) * cumulative_factor
-v_surf = sqrt(max(0, (v_impact)² - 2 * dot(a_ext, n) * h_expected))
+v_surf = sqrt(max(0, (v_impact)² + 2 * dot(a_ext, n) * h_expected))
 v_final = e * v_surf
 ```
 

@@ -155,19 +155,48 @@ int CollisionSolver::_solveCircleCircleSIMD(int indexA, const int indicesB[4], f
     int collisionCount = 0;
     int bitmask = v128_bitmask(finalMask);
     
-    // Extract SIMD results to float arrays for final scalar processing per collision
-    float fPen[4], fNX[4], fNY[4], fPBX[4], fPBY[4];
-    v128_store_f32(fPen, penetrationDepth_v);
-    v128_store_f32(fNX, normalX_v);
-    v128_store_f32(fNY, normalY_v);
-    v128_store_f32(fPBX, pBX_v);
-    v128_store_f32(fPBY, pBY_v);
-
+    // Extract SIMD results using lanes directly to avoid alignment issues on stack
     for (int i = 0; i < 4; ++i) {
         if (bitmask & (1 << i)) {
-            float pen = fPen[i];
-            Vec2 normal(fNX[i], fNY[i]);
-            Vec2 pB_curr(fPBX[i], fPBY[i]);
+            float pen, nx, ny, pbx, pby, rb;
+            switch(i) {
+                case 0:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 0);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 0);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 0);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 0);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 0);
+                    rb = wasm_f32x4_extract_lane(rB_v, 0);
+                    break;
+                case 1:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 1);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 1);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 1);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 1);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 1);
+                    rb = wasm_f32x4_extract_lane(rB_v, 1);
+                    break;
+                case 2:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 2);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 2);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 2);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 2);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 2);
+                    rb = wasm_f32x4_extract_lane(rB_v, 2);
+                    break;
+                case 3:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 3);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 3);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 3);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 3);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 3);
+                    rb = wasm_f32x4_extract_lane(rB_v, 3);
+                    break;
+                default: pen = nx = ny = pbx = pby = rb = 0.0f; break;
+            }
+            
+            Vec2 normal(nx, ny);
+            Vec2 pB_curr(pbx, pby);
             Vec2 contactPoint = pA + normal * (rA - std::max(0.0f, pen) * 0.5f);
             
             Vec2 rA_vec = contactPoint - pA;
@@ -322,18 +351,44 @@ int CollisionSolver::_solveCirclePointSIMD(int indexA, const int indicesB[4], fl
     int collisionCount = 0;
     int bitmask = v128_bitmask(finalMask);
     
-    float fPen[4], fNX[4], fNY[4], fPBX[4], fPBY[4];
-    v128_store_f32(fPen, penetrationDepth_v);
-    v128_store_f32(fNX, normalX_v);
-    v128_store_f32(fNY, normalY_v);
-    v128_store_f32(fPBX, pBX_v);
-    v128_store_f32(fPBY, pBY_v);
-
+    // Extract SIMD results using lanes directly to avoid alignment issues on stack
     for (int i = 0; i < 4; ++i) {
         if (bitmask & (1 << i)) {
-            float pen = fPen[i];
-            Vec2 normal(fNX[i], fNY[i]);
-            Vec2 pB_curr(fPBX[i], fPBY[i]);
+            float pen, nx, ny, pbx, pby;
+            switch(i) {
+                case 0:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 0);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 0);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 0);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 0);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 0);
+                    break;
+                case 1:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 1);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 1);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 1);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 1);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 1);
+                    break;
+                case 2:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 2);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 2);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 2);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 2);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 2);
+                    break;
+                case 3:
+                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 3);
+                    nx = wasm_f32x4_extract_lane(normalX_v, 3);
+                    ny = wasm_f32x4_extract_lane(normalY_v, 3);
+                    pbx = wasm_f32x4_extract_lane(pBX_v, 3);
+                    pby = wasm_f32x4_extract_lane(pBY_v, 3);
+                    break;
+                default: pen = nx = ny = pbx = pby = 0.0f; break;
+            }
+            
+            Vec2 normal(nx, ny);
+            Vec2 pB_curr(pbx, pby);
             
             Vec2 rA_vec = pB_curr - pA;
             Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);

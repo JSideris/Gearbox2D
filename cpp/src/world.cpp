@@ -658,12 +658,12 @@ void World::_doNarrowPhase(float dt) {
         int batchSize = (pairCount + numThreads - 1) / numThreads;
 
         for (int i = 0; i < numThreads; ++i) {
+            mtSolvers[i]->solver.clear();
+            mtSolvers[i]->collisionPairs.clear();
+
             int start = i * batchSize;
             int end = std::min(start + batchSize, pairCount);
             if (start >= end) continue;
-
-            mtSolvers[i]->solver.clear();
-            mtSolvers[i]->collisionPairs.clear();
 
             threadPool->enqueue([this, i, start, end, dt]() {
                 auto& solver = mtSolvers[i]->solver;
@@ -1675,6 +1675,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float iIA = a->getInverseInertia(), iIB = b->getInverseInertia();
     float rnA = rA.x * normal.y - rA.y * normal.x;
     float rnB = rB.x * normal.y - rB.y * normal.x;
+
     float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;
     normalMass = (kNormal > 0.00001f) ? 1.0f / kNormal : 0.0f;
     Vec2 tangentialVelocityA(-rA.y * a->getAngularVelocity(), rA.x * a->getAngularVelocity());
@@ -1725,7 +1726,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         float workTerm = 2.0f * accVn * expectedDisplacement;
         float vImpactSq = relativeVn * relativeVn;
         
-        float vSurfSq = vImpactSq - workTerm;
+        float vSurfSq = vImpactSq + workTerm;
         float vFinal = restitution * std::sqrt(std::max(0.0f, vSurfSq));
 
         if (depth < 0.0f) {
@@ -1784,9 +1785,10 @@ void ContactConstraint::solveFast() {
     
     Vec2 impulse = normal * dLambda;
     if (sA.im > 0) {
+        float torqueA = rA.cross(impulse);
         sA.v.x -= impulse.x * sA.im;
         sA.v.y -= impulse.y * sA.im;
-        sA.w -= rA.cross(impulse) * sA.iI;
+        sA.w -= torqueA * sA.iI;
     }
     if (sB.im > 0) {
         sB.v.x += impulse.x * sB.im;
