@@ -70,7 +70,7 @@ This document outlines a phased approach to improving the performance of the Gea
 - **Goal:** Accelerate broad-phase collision detection.
 - **Action:** Implement 4-way or 8-way BVH traversal, testing a bounding box against multiple child nodes simultaneously using SIMD.
 
-### 4.2. SIMD Constraint Solver (Advanced)
+### 4.2. SIMD Constraint Solver (Advanced) [DONE]
 - **Goal:** Vectorize the iterative impulse solver.
 - **Action:** Group contact constraints into batches of 4 or 8 that do not share bodies and solve them using SIMD instructions.
 - **Benefit:** Theoretical 4-8x speedup for the most computationally intensive part of the engine.

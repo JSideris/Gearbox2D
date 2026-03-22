@@ -2,8 +2,10 @@
 SRC_DIR = cpp/src
 INCLUDE_DIR = cpp/include
 TEST_DIR = cpp/tests
+BENCH_DIR = cpp/benchmarks
 BUILD_DIR = dist/wasm
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
+BENCH_SRC = $(wildcard $(BENCH_DIR)/*.cpp)
 GTEST_DIR ?= /usr/src/googletest/googletest
 GTEST_LIB_DIR ?= .
 GTEST_LIBS = -lgtest -lgtest_main
@@ -15,6 +17,7 @@ CXX = g++  # Native C++ compiler for tests
 # Project name
 TARGET = gearbox-module
 TEST_TARGET = runTests
+BENCH_TARGET = runBenchmarks
 
 # Source files
 SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
@@ -29,6 +32,7 @@ MT_FLAGS = -pthread -s PTHREAD_POOL_SIZE=4 -s ALLOW_MEMORY_GROWTH=1 -DGEARBOX_MT
 ST_FLAGS = 
 
 GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -pthread -DGEARBOX_MT
+BENCH_FLAGS = -I$(INCLUDE_DIR) -pthread -DGEARBOX_MT -O3
 
 # Default target to build the project
 all: wasm
@@ -51,8 +55,15 @@ $(TEST_TARGET): $(SRC) $(TEST_SRC)
 	$(CXX) $(GTEST_FLAGS) -o $(TEST_TARGET) $(SRC) $(TEST_SRC) -I$(INCLUDE_DIR) -L$(GTEST_LIB_DIR) -pthread $(GTEST_LIBS)
 	./$(TEST_TARGET)
 
+# Benchmark build
+benchmark: $(BENCH_TARGET)
+
+$(BENCH_TARGET): $(SRC) $(BENCH_SRC)
+	$(CXX) $(BENCH_FLAGS) -o $(BENCH_TARGET) $(SRC) $(BENCH_SRC) -I$(INCLUDE_DIR)
+	./$(BENCH_TARGET)
+
 # Clean up build files
 clean:
-	rm -rf $(BUILD_DIR) $(TEST_TARGET)
+	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(BENCH_TARGET)
 
-.PHONY: all clean wasm test
+.PHONY: all clean wasm test benchmark

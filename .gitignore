@@ -3,6 +3,7 @@ dist/
 lib/build/
 *.wasm
 *.wasm.map
+runBenchmarks
 
 # C++ build artifacts
 *.o

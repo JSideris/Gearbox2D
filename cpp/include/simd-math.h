@@ -42,6 +42,12 @@
 #define v128_max_f32(a, b) wasm_f32x4_pmax(a, b)
 #define v128_sqrt_f32(a) wasm_f32x4_sqrt(a)
 #define v128_make_f32(f1, f2, f3, f4) wasm_f32x4_make(f1, f2, f3, f4)
+#define v128_extract_lane_f32(v, lane) wasm_f32x4_extract_lane(v, lane)
+
+// Integer SIMD
+#define wasm_i32x4_splat(i) wasm_i32x4_splat(i)
+#define wasm_i32x4_eq(a, b) wasm_i32x4_eq(a, b)
+#define wasm_i32x4_ne(a, b) wasm_i32x4_ne(a, b)
 
 inline v128_t wasm_v128_make_mask(bool m0, bool m1, bool m2, bool m3) {
     return wasm_i32x4_make(m0 ? -1 : 0, m1 ? -1 : 0, m2 ? -1 : 0, m3 ? -1 : 0);
@@ -239,6 +245,22 @@ inline v128_t v128_andnot_fallback(v128_t a, v128_t b) {
 #define v128_bitmask(v) v128_bitmask_fallback(v)
 #define v128_abs_f32(v) v128_abs_fallback(v)
 #define v128_make_f32(f1, f2, f3, f4) v128_make_fallback(f1, f2, f3, f4)
+#define v128_extract_lane_f32(v, lane) v.f[lane]
+
+// wasm_ prefix fallbacks for native builds
+#define wasm_v128_load(ptr) v128_load_fallback(ptr)
+#define wasm_v128_store(ptr, v) v128_store_fallback(ptr, v)
+#define wasm_v128_and(a, b) v128_and_fallback(a, b)
+#define wasm_v128_or(a, b) v128_or_fallback(a, b)
+#define wasm_v128_xor(a, b) v128_xor_fallback(a, b)
+#define wasm_v128_andnot(a, b) v128_andnot_fallback(a, b)
+#define wasm_f32x4_extract_lane(v, lane) v.f[lane]
+#define wasm_i32x4_splat(i) v128_splat_fallback((float)i)
+#define wasm_i32x4_eq(a, b) v128_eq_f32(a, b)
+#define wasm_i32x4_ne(a, b) v128_ne_f32(a, b)
+#define wasm_f32x4_abs(a) v128_abs_fallback(a)
+#define wasm_f32x4_eq(a, b) v128_eq_f32(a, b)
+#define wasm_f32x4_ne(a, b) v128_ne_f32(a, b)
 
 inline v128_t v128_select_fallback(v128_t mask, v128_t a, v128_t b) {
     v128_t v;
