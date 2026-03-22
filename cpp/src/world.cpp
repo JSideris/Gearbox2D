@@ -1725,7 +1725,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         float workTerm = 2.0f * accVn * expectedDisplacement;
         float vImpactSq = relativeVn * relativeVn;
         
-        float vSurfSq = vImpactSq + workTerm;
+        float vSurfSq = vImpactSq - workTerm;
         float vFinal = restitution * std::sqrt(std::max(0.0f, vSurfSq));
 
         if (depth < 0.0f) {

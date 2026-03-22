@@ -57,9 +57,10 @@ void DistanceJoint::preSolve(float dt) {
     // Cumulative correction over position iterations: 1 - (1 - beta)^n
     int n = bodyA->world.getPositionIterations();
     float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
-    float workTerm = 2.0f * accVn * (C * cumulativeCorrectionFactor);
+    float C_clamped = std::min(std::abs(C), MAX_POSITION_CORRECTION);
+    float workTerm = 2.0f * accVn * (C_clamped * (C > 0 ? 1.0f : -1.0f) * cumulativeCorrectionFactor);
     
-    float vB_balanced_sq = vB * vB - workTerm;
+    float vB_balanced_sq = vB * vB + workTerm;
     
     bias = (C > 0 ? 1.0f : -1.0f) * std::sqrt(std::max(0.0f, vB_balanced_sq));
 
@@ -176,10 +177,13 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     float beta = BAUMGARTE_FACTOR;
     float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - beta, (float)n);
     v128_t cumCorr_v = v128_splat_f32(cumulativeCorrectionFactor);
-    v128_t workTerm = v128_mul_f32(v128_mul_f32(v128_splat_f32(2.0f), accVn), v128_mul_f32(C, cumCorr_v));
+    v128_t C_abs = v128_abs_f32(C);
+    v128_t C_clamped = v128_min_f32(C_abs, v128_splat_f32(MAX_POSITION_CORRECTION));
+    v128_t signC = v128_select(v128_gt_f32(C, zero_v), one_v, neg_one_v);
+    v128_t workTerm = v128_mul_f32(v128_splat_f32(2.0f), v128_mul_f32(accVn, v128_mul_f32(v128_mul_f32(C_clamped, signC), cumCorr_v)));
     
-    v128_t vB_balanced_sq = v128_sub_f32(v128_mul_f32(vB, vB), workTerm);
-    v128_t bias = v128_mul_f32(v128_select(v128_gt_f32(C, zero_v), one_v, neg_one_v), wasm_f32x4_sqrt(wasm_f32x4_max(zero_v, vB_balanced_sq)));
+    v128_t vB_balanced_sq = v128_add_f32(v128_mul_f32(vB, vB), workTerm);
+    v128_t bias = v128_mul_f32(signC, wasm_f32x4_sqrt(wasm_f32x4_max(zero_v, vB_balanced_sq)));
 
     // Store back results
     float resNormalX[4], resNormalY[4], resImpulse[4], resMass[4], resBias[4], resRAx[4], resRAy[4], resRBx[4], resRBy[4];

@@ -319,7 +319,7 @@ export const HeavyOnLightStackScenario: Scenario = {
 		adapter.setGravity(0, 9.81);
 
 		// Ground
-		adapter.createBox("ground", 0, 5, 100, 1, true, { color: "#333", sFriction: 0.9, kFriction: .5 });
+		adapter.createBox("ground", 0, 5, 100, 1, true, { color: "#333", sFriction: 0.9, kFriction: 0.5 });
 
 		const count = 10;
 		const boxWidth = 1.0;
