@@ -1,117 +1,127 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gearbox2D Examples | Protocol Interface</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-  <script type="module" crossorigin src="./assets/showcase-CDPYESWz.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="./assets/markdown-tUR2hliS.js">
-  <link rel="modulepreload" crossorigin href="./assets/engine-2kz6Uq2U.js">
-  <link rel="stylesheet" crossorigin href="./assets/markdown-DGfjjK-Z.css">
-</head>
-<body>
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <h2 id="sidebar-title">Examples</h2>
-            <div id="sidebar-actions">
-                <a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
-                <button id="reset-button-mobile" class="sidebar-icon-button" title="Reset"><i class="fas fa-redo-alt"></i></button>
-                <button id="info-toggle-mobile" class="sidebar-icon-button" title="Information"><i class="fas fa-info-circle"></i></button>
-                <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
-            </div>
-        </div>
-        <ul id="examples-list">
-            <!-- Examples will be dynamically generated from the examples.js data -->
-        </ul>
-    </div>
-    
-    <div id="main">
-        <div id="main-header">
-            <div class="header-left">
-                <a href="index.html" class="home-link" title="Back to Home">
-                    <i class="fas fa-home"></i>
-                    <span>Home</span>
-                </a>
-                <h1 id="example-name">Loading example...</h1>
-            </div>
-            <div class="header-right">
-                <button id="info-toggle" title="Show Information">
-                    <i class="fas fa-info-circle"></i>
-                    <span class="button-text">Info</span>
-                </button>
-                <button id="reset-button" title="Reset current example">
-                    <i class="fas fa-redo-alt"></i>
-                    <span class="button-text">Reset Example</span>
-                </button>
-            </div>
-        </div>
-        
-        <div id="content">
-            <div id="canvas-container">
-                <canvas id="debug-canvas" width="1000" height="1000"></canvas>
-            </div>
-            
-            <div id="metrics">
-                <div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
-                <div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
-                <div id="fps"><i class="fas fa-tachometer-alt"></i>Render FPS: 0</div>
-            </div>
-            
-            <div id="description"></div>
-            
-            <div id="code-container">
-                <div id="code-header">
-                    <div id="code-header-title">Example Code</div>
-                    <button id="toggle-code">
-                        <span>Show Code</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-                
-                <div id="code-section" style="display: none;">
-                    <div id="code-tabs">
-                        <div class="code-tabs-left">
-                            <button class="code-tab" data-panel="general">Setup</button>
-                            <button class="code-tab active" data-panel="init">Init</button>
-                            <button class="code-tab" data-panel="tick">Tick</button>
-                            <button class="code-tab" data-panel="render">Render</button>
-                        </div>
-                        <button id="copy-code" title="Copy code to clipboard">
-                            <i class="fas fa-copy"></i>
-                            <span>Copy</span>
-                        </button>
-                    </div>
-                    
-                    <div class="code-panel" id="general-panel">
-                        <pre id="general-code"></pre>
-                    </div>
-                    
-                    <div class="code-panel active" id="init-panel">
-                        <pre id="init-code"></pre>
-                    </div>
-                    
-                    <div class="code-panel" id="tick-panel">
-                        <pre id="tick-code"></pre>
-                    </div>
-                    
-                    <div class="code-panel" id="render-panel">
-                        <pre id="render-code"></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        var hljs;
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
-</body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Gearbox2D Examples | Protocol Interface</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Orbitron:wght@400;700;900&family=Fira+Code&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css"
+		/>
+		<script type="module" crossorigin src="./assets/showcase-j-7oPrlZ.js"></script>
+		<link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
+		<link rel="modulepreload" crossorigin href="./assets/markdown-BkL98NbL.js">
+		<link rel="modulepreload" crossorigin href="./assets/engine-BoCR9vTi.js">
+		<link rel="stylesheet" crossorigin href="./assets/markdown-DGfjjK-Z.css">
+	</head>
+	<body>
+		<div id="sidebar">
+			<div id="sidebar-header">
+				<h2 id="sidebar-title">Examples</h2>
+				<div id="sidebar-actions">
+					<a href="index.html" class="sidebar-icon-button" title="Home"><i class="fas fa-home"></i></a>
+					<button id="reset-button-mobile" class="sidebar-icon-button" title="Reset">
+						<i class="fas fa-redo-alt"></i>
+					</button>
+					<button id="info-toggle-mobile" class="sidebar-icon-button" title="Information">
+						<i class="fas fa-info-circle"></i>
+					</button>
+					<button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+				</div>
+			</div>
+			<ul id="examples-list">
+				<!-- Examples will be dynamically generated from the examples.js data -->
+			</ul>
+		</div>
+
+		<div id="main">
+			<div id="main-header">
+				<div class="header-left">
+					<a href="index.html" class="home-link" title="Back to Home">
+						<i class="fas fa-home"></i>
+						<span>Home</span>
+					</a>
+					<h1 id="example-name">Loading example...</h1>
+				</div>
+				<div class="header-right">
+					<button id="info-toggle" title="Show Information">
+						<i class="fas fa-info-circle"></i>
+						<span class="button-text">Info</span>
+					</button>
+					<button id="reset-button" title="Reset current example">
+						<i class="fas fa-redo-alt"></i>
+						<span class="button-text">Reset Example</span>
+					</button>
+				</div>
+			</div>
+
+			<div id="content">
+				<div id="canvas-container">
+					<canvas id="debug-canvas" width="1000" height="1000"></canvas>
+				</div>
+
+				<div id="metrics">
+					<div id="step-time"><i class="fas fa-stopwatch"></i>Step Time: 0 μs</div>
+					<div id="memory"><i class="fas fa-memory"></i>Memory: 0 MB</div>
+					<div id="fps"><i class="fas fa-tachometer-alt"></i>Render FPS: 0</div>
+				</div>
+
+				<div id="description"></div>
+
+				<div id="code-container">
+					<div id="code-header">
+						<div id="code-header-title">Example Code</div>
+						<button id="toggle-code">
+							<span>Show Code</span>
+							<i class="fas fa-chevron-down"></i>
+						</button>
+					</div>
+
+					<div id="code-section" style="display: none">
+						<div id="code-tabs">
+							<div class="code-tabs-left">
+								<button class="code-tab" data-panel="general">Setup</button>
+								<button class="code-tab active" data-panel="init">Init</button>
+								<button class="code-tab" data-panel="tick">Tick</button>
+								<button class="code-tab" data-panel="render">Render</button>
+							</div>
+							<button id="copy-code" title="Copy code to clipboard">
+								<i class="fas fa-copy"></i>
+								<span>Copy</span>
+							</button>
+						</div>
+
+						<div class="code-panel" id="general-panel">
+							<pre id="general-code"></pre>
+						</div>
+
+						<div class="code-panel active" id="init-panel">
+							<pre id="init-code"></pre>
+						</div>
+
+						<div class="code-panel" id="tick-panel">
+							<pre id="tick-code"></pre>
+						</div>
+
+						<div class="code-panel" id="render-panel">
+							<pre id="render-code"></pre>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			var hljs;
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
+	</body>
 </html>
