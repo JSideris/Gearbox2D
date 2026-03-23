@@ -12,6 +12,8 @@ export default defineConfig({
         main: resolve(__dirname, 'site/index.html'),
         showcase: resolve(__dirname, 'site/showcase.html'),
         documentation: resolve(__dirname, 'site/documentation.html'),
+        benchmarks: resolve(__dirname, 'site/benchmarks.html'),
+        blog: resolve(__dirname, 'site/blog.html'),
       },
     },
     outDir: '../dist/site',

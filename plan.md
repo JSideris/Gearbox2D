@@ -226,3 +226,6 @@
 - Newton's cradle tests are showing some regression. After several bounces,
 - Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
 - Benchmark script shows dense load tests run at 1.5 ms per frame, equal to Box 2d, but browser test is showing us running at 3.5 ms per frame. This needs to be investigated. Box2d is the benchmark to beat.
+- Engine seems to have better performance in ST mode. Worth looking into this to re-evaluate whether MT is worth it.
+- Slight jitter visible in the stacks benchmark. Might be possible to fix by making slight tweaks to some of the engine's constants.
+- In the chain belt example, we can observe clipping and violent jitter. This was a regression likely introduced in mid Februrary 2026 while debugging other stability issues.
