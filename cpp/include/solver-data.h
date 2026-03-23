@@ -3,7 +3,7 @@
 
 #include "vec2.h"
 
-struct SolverData {
+struct alignas(16) SolverData {
     Vec2 v;
     float w;
     float im;

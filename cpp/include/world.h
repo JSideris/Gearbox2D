@@ -24,6 +24,7 @@
 #include "constants.h"
 #include "joint.h"
 #include "solver-data.h"
+#include "simd-math.h"
 
 class Body;
 class Fixture;
@@ -77,6 +78,7 @@ struct ContactConstraint {
     Vec2 localAnchorA, localAnchorB, localNormalA;
 
     void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
+    static void preSolveSIMD(ContactConstraint** batch, float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
     void solve(bool enableNormal, bool enableFriction);
     void solvePosition();
 
