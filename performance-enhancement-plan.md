@@ -75,7 +75,7 @@ This document outlines a phased approach to improving the performance of the Gea
 - **Action:** Group contact constraints into batches of 4 or 8 that do not share bodies and solve them using SIMD instructions.
 - **Benefit:** Theoretical 4-8x speedup for the most computationally intensive part of the engine.
 
-### 4.3. Bulk World-Data Sync
+### 4.3. Bulk World-Data Sync [DONE]
 - **Goal:** Eliminate scalar overhead in synchronization passes.
 - **Action:** Use the SIMD math layer to perform world-space vertex transforms and AABB re-synchronization for all active bodies in a single vectorized pass.
 - **Benefit:** Improves performance during high-movement frames.

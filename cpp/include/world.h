@@ -250,6 +250,7 @@ public:
     void _doBroadPhase();
     void _doIntegrateVelocitiesSIMD(float dt);
     void _doIntegratePositionsSIMD(float dt);
+    void _syncFixturesSIMD();
     void _doNarrowPhase(float dt);
     void _doContactManagement();
     void _doResolution(float dt, int substepIndex);

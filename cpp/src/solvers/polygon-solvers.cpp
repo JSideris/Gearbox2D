@@ -8,68 +8,31 @@
 using namespace std;
 
 struct Polygon {
-    vector<Vec2> vertices;
-    vector<Vec2> normals;
+    const float* fdata;
+    int vertexCount;
     int fixtureIndex;
+
+    Vec2 getVertex(int i) const {
+        return Vec2(
+            fdata[GET_FIXTURE_FDATA_INDEX(fixtureIndex, FIXTURE_FDATA_WORLD_VERTEX_START + i * 2)],
+            fdata[GET_FIXTURE_FDATA_INDEX(fixtureIndex, FIXTURE_FDATA_WORLD_VERTEX_START + i * 2 + 1)]
+        );
+    }
+    Vec2 getNormal(int i) const {
+        return Vec2(
+            fdata[GET_FIXTURE_FDATA_INDEX(fixtureIndex, FIXTURE_FDATA_WORLD_NORMAL_START + i * 2)],
+            fdata[GET_FIXTURE_FDATA_INDEX(fixtureIndex, FIXTURE_FDATA_WORLD_NORMAL_START + i * 2 + 1)]
+        );
+    }
 };
 
 static Polygon getPolygon(const World& world, int fIdx) {
-    int bIdx = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_BODY_INDEX)];
-    float bx = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)];
-    float by = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)];
-    float br = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)];
-    float lx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_X)];
-    float ly = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_Y)];
-    float lr = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_LOCAL_R)];
-    
-    float cosR = cos(br), sinR = sin(br);
-    Vec2 fixturePos(bx + (lx * cosR - ly * sinR), by + (lx * sinR + ly * cosR));
-    float fixtureRot = br + lr;
-    float cosF = cos(fixtureRot), sinF = sin(fixtureRot);
-
     Polygon poly;
     poly.fixtureIndex = fIdx;
-    int shape = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fIdx, FIXTURE_IDATA_SHAPE)];
+    poly.vertexCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_COUNT)];
+    if (poly.vertexCount == 0) poly.vertexCount = 4; // Fallback just in case
 
-    if (shape == (int)ObjectShape::POLYGON) {
-        int vCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_COUNT)];
-        for (int i = 0; i < vCount; ++i) {
-            float vx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_START + i * 2)];
-            float vy = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)];
-            poly.vertices.push_back(Vec2(fixturePos.x + (vx * cosF - vy * sinF), fixturePos.y + (vx * sinF + vy * cosF)));
-        }
-    } else if (shape == (int)ObjectShape::BOX || shape == (int)ObjectShape::AABB) {
-        float w = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_W)];
-        float h = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_H)];
-        float hw = w / 2.0f;
-        float hh = h / 2.0f;
-        float realCos = (shape == (int)ObjectShape::AABB) ? 1.0f : cosF;
-        float realSin = (shape == (int)ObjectShape::AABB) ? 0.0f : sinF;
-
-        poly.vertices.push_back(Vec2(fixturePos.x + (-hw * realCos - -hh * realSin), fixturePos.y + (-hw * realSin + -hh * realCos)));
-        poly.vertices.push_back(Vec2(fixturePos.x + ( hw * realCos - -hh * realSin), fixturePos.y + ( hw * realSin + -hh * realCos)));
-        poly.vertices.push_back(Vec2(fixturePos.x + ( hw * realCos -  hh * realSin), fixturePos.y + ( hw * realSin +  hh * realCos)));
-        poly.vertices.push_back(Vec2(fixturePos.x + (-hw * realCos -  hh * realSin), fixturePos.y + (-hw * realSin +  hh * realCos)));
-    } else if (shape == (int)ObjectShape::CAPSULE) {
-        float r = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_RADIUS)];
-        float h = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(fIdx, FIXTURE_FDATA_H)];
-        float hw = r;
-        float hh = h / 2.0f;
-        // Approximate capsule as a box for SAT
-        poly.vertices.push_back(Vec2(fixturePos.x + (-hw * cosF - -hh * sinF), fixturePos.y + (-hw * sinF + -hh * cosF)));
-        poly.vertices.push_back(Vec2(fixturePos.x + ( hw * cosF - -hh * sinF), fixturePos.y + ( hw * sinF + -hh * cosF)));
-        poly.vertices.push_back(Vec2(fixturePos.x + ( hw * cosF -  hh * sinF), fixturePos.y + ( hw * sinF +  hh * cosF)));
-        poly.vertices.push_back(Vec2(fixturePos.x + (-hw * cosF -  hh * sinF), fixturePos.y + (-hw * sinF +  hh * cosF)));
-    }
-
-    for (size_t i = 0; i < poly.vertices.size(); ++i) {
-        Vec2 p1 = poly.vertices[i];
-        Vec2 p2 = poly.vertices[(i + 1) % poly.vertices.size()];
-        Vec2 edge = p2 - p1;
-        Vec2 n(edge.y, -edge.x);
-        poly.normals.push_back(n.normalize());
-    }
-
+    poly.fdata = world.liveFixtureFloatData.data();
     return poly;
 }
 
@@ -77,19 +40,19 @@ static float findAxisOfMinimumPenetration(const Polygon& polyA, const Polygon& p
     float maxSeparation = -FLT_MAX;
     bestIndex = -1;
 
-    for (size_t i = 0; i < polyA.normals.size(); ++i) {
-        Vec2 n = polyA.normals[i];
+    for (int i = 0; i < polyA.vertexCount; ++i) {
+        Vec2 n = polyA.getNormal(i);
         
         // Find extreme point on B in direction -n
         float minDot = FLT_MAX;
-        for (const auto& v : polyB.vertices) {
-            float d = (v - polyA.vertices[i]).dot(n);
+        for (int j = 0; j < polyB.vertexCount; ++j) {
+            float d = (polyB.getVertex(j) - polyA.getVertex(i)).dot(n);
             if (d < minDot) minDot = d;
         }
 
         if (minDot > maxSeparation) {
             maxSeparation = minDot;
-            bestIndex = (int)i;
+            bestIndex = i;
         }
     }
     return maxSeparation;
@@ -113,25 +76,25 @@ bool CollisionSolver::_solvePolygonPolygon() {
 
     // Normal should point from A to B. 
     // Outward normal of reference face.
-    Vec2 refNormal = refPoly.normals[refAxis];
+    Vec2 refNormal = refPoly.getNormal(refAxis);
     Vec2 normal = aIsReference ? refNormal : refNormal * -1.0f;
 
     // Find incident face (most anti-parallel to refNormal)
     int incAxis = -1;
     float minDot = FLT_MAX;
-    for (size_t i = 0; i < incPoly.normals.size(); ++i) {
-        float d = incPoly.normals[i].dot(refNormal);
+    for (int i = 0; i < incPoly.vertexCount; ++i) {
+        float d = incPoly.getNormal(i).dot(refNormal);
         if (d < minDot) {
             minDot = d;
-            incAxis = (int)i;
+            incAxis = i;
         }
     }
 
-    Vec2 incVertices[2] = { incPoly.vertices[incAxis], incPoly.vertices[(incAxis + 1) % incPoly.vertices.size()] };
+    Vec2 incVertices[2] = { incPoly.getVertex(incAxis), incPoly.getVertex((incAxis + 1) % incPoly.vertexCount) };
 
     // Reference face planes
-    Vec2 v1 = refPoly.vertices[refAxis];
-    Vec2 v2 = refPoly.vertices[(refAxis + 1) % refPoly.vertices.size()];
+    Vec2 v1 = refPoly.getVertex(refAxis);
+    Vec2 v2 = refPoly.getVertex((refAxis + 1) % refPoly.vertexCount);
     Vec2 sideNormal = (v2 - v1).normalize();
     float refOffset = refNormal.dot(v1);
     float sideOffset1 = sideNormal.dot(v1);
@@ -210,14 +173,14 @@ bool CollisionSolver::_solvePolygonPoint() {
     Vec2 bestNormal;
     int bestFace = -1;
 
-    for (size_t i = 0; i < polyA.vertices.size(); ++i) {
-        Vec2 n = polyA.normals[i];
-        float d = (pB - polyA.vertices[i]).dot(n);
+    for (int i = 0; i < polyA.vertexCount; ++i) {
+        Vec2 n = polyA.getNormal(i);
+        float d = (pB - polyA.getVertex(i)).dot(n);
         if (d > _speculativeMargin) return false;
         if (d < minDepth) {
             minDepth = d;
             bestNormal = n;
-            bestFace = (int)i;
+            bestFace = i;
         }
     }
 
@@ -258,18 +221,18 @@ bool CollisionSolver::_solvePolygonCircle() {
     float maxSeparation = -FLT_MAX;
     int bestFace = -1;
 
-    for (size_t i = 0; i < polyA.vertices.size(); ++i) {
-        float sep = (pB - polyA.vertices[i]).dot(polyA.normals[i]);
+    for (int i = 0; i < polyA.vertexCount; ++i) {
+        float sep = (pB - polyA.getVertex(i)).dot(polyA.getNormal(i));
         if (sep > rB + _speculativeMargin) return false;
         if (sep > maxSeparation) {
             maxSeparation = sep;
-            bestFace = (int)i;
+            bestFace = i;
         }
     }
 
     if (maxSeparation < 0) {
         // Circle center is inside polygon
-        Vec2 normal = polyA.normals[bestFace];
+        Vec2 normal = polyA.getNormal(bestFace);
         float penetration = rB - maxSeparation;
         Vec2 contactPoint = pB - normal * rB;
         
@@ -293,8 +256,8 @@ bool CollisionSolver::_solvePolygonCircle() {
     }
 
     // Circle center is outside. Check vertices.
-    Vec2 v1 = polyA.vertices[bestFace];
-    Vec2 v2 = polyA.vertices[(bestFace + 1) % polyA.vertices.size()];
+    Vec2 v1 = polyA.getVertex(bestFace);
+    Vec2 v2 = polyA.getVertex((bestFace + 1) % polyA.vertexCount);
     
     float dot1 = (pB - v1).dot(v2 - v1);
     float dot2 = (pB - v2).dot(v1 - v2);
@@ -303,7 +266,7 @@ bool CollisionSolver::_solvePolygonCircle() {
         float distSq = (pB - v1).magnitudeSquared();
         if (distSq > (rB + _speculativeMargin) * (rB + _speculativeMargin)) return false;
         float dist = sqrt(distSq);
-        Vec2 normal = (dist > 0.0001f) ? (pB - v1) / dist : polyA.normals[bestFace];
+        Vec2 normal = (dist > 0.0001f) ? (pB - v1) / dist : polyA.getNormal(bestFace);
         float penetration = rB - dist;
         Vec2 contactPoint = v1;
         
@@ -328,7 +291,7 @@ bool CollisionSolver::_solvePolygonCircle() {
         float distSq = (pB - v2).magnitudeSquared();
         if (distSq > (rB + _speculativeMargin) * (rB + _speculativeMargin)) return false;
         float dist = sqrt(distSq);
-        Vec2 normal = (dist > 0.0001f) ? (pB - v2) / dist : polyA.normals[bestFace];
+        Vec2 normal = (dist > 0.0001f) ? (pB - v2) / dist : polyA.getNormal(bestFace);
         float penetration = rB - dist;
         Vec2 contactPoint = v2;
         
@@ -343,7 +306,7 @@ bool CollisionSolver::_solvePolygonCircle() {
         Vec2 vRel = (vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB)) - (vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA));
         
         ContactID id;
-        id.features.indexA = (uint8_t)((bestFace + 1) % polyA.vertices.size());
+        id.features.indexA = (uint8_t)((bestFace + 1) % polyA.vertexCount);
         id.features.indexB = 0;
         id.features.typeA = 0; // vertex
         id.features.typeB = 0; // vertex
@@ -351,7 +314,7 @@ bool CollisionSolver::_solvePolygonCircle() {
         return true;
     } else {
         float penetration = rB - maxSeparation;
-        Vec2 normal = polyA.normals[bestFace];
+        Vec2 normal = polyA.getNormal(bestFace);
         Vec2 contactPoint = pB - normal * rB;
         
         int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];

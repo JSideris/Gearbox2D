@@ -62,46 +62,70 @@ Fixture::Fixture(World& world, int id, int worldIndex, Body* body, emscripten_va
     float density = !options["density"].isUndefined() ? options["density"].as<float>() : 1.0f;
     world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_DENSITY)] = density;
 
-    // Polygon vertex data
+    // Vertex data for shapes that act as polygons in narrow phase
+    int vCount = 0;
+    std::vector<Vec2> localVertices;
+
     if (shape == ObjectShape::POLYGON && !options["vertices"].isUndefined()) {
         emscripten_val vertices = options["vertices"];
-        int count = vertices["length"].as<int>();
-        count = std::min(count, MAX_POLYGON_VERTICES);
+        vCount = vertices["length"].as<int>();
+        vCount = std::min(vCount, MAX_POLYGON_VERTICES);
         
-        std::vector<Vec2> polyVertices;
-        for (int i = 0; i < count; ++i) {
-            polyVertices.push_back(Vec2(vertices[i]["x"].as<float>(), vertices[i]["y"].as<float>()));
+        for (int i = 0; i < vCount; ++i) {
+            localVertices.push_back(Vec2(vertices[i]["x"].as<float>(), vertices[i]["y"].as<float>()));
         }
 
         // Check winding order (should be CCW)
         float area = 0.0f;
-        for (int i = 0; i < count; ++i) {
-            Vec2 p1 = polyVertices[i];
-            Vec2 p2 = polyVertices[(i + 1) % count];
+        for (int i = 0; i < vCount; ++i) {
+            Vec2 p1 = localVertices[i];
+            Vec2 p2 = localVertices[(i + 1) % vCount];
             area += p1.cross(p2);
         }
         
         if (area < 0) {
-            std::reverse(polyVertices.begin(), polyVertices.end());
+            std::reverse(localVertices.begin(), localVertices.end());
         }
 
-        world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)] = (float)count;
-        
         float maxPolyExtentSq = 0.0f;
-        for (int i = 0; i < MAX_POLYGON_VERTICES; ++i) {
-            if (i < count) {
-                float vx = polyVertices[i].x;
-                float vy = polyVertices[i].y;
-                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)] = vx;
-                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)] = vy;
-                maxPolyExtentSq = std::max(maxPolyExtentSq, vx * vx + vy * vy);
-            } else {
-                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)] = 0.0f;
-                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)] = 0.0f;
-            }
+        for (int i = 0; i < vCount; ++i) {
+            maxPolyExtentSq = std::max(maxPolyExtentSq, localVertices[i].x * localVertices[i].x + localVertices[i].y * localVertices[i].y);
         }
         maxExtent = std::sqrt(maxPolyExtentSq);
         world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_MAX_EXTENT)] = maxExtent;
+    } else if (shape == ObjectShape::BOX || shape == ObjectShape::AABB) {
+        float hw = valW / 2.0f;
+        float hh = valH / 2.0f;
+        vCount = 4;
+        localVertices.push_back(Vec2(-hw, -hh));
+        localVertices.push_back(Vec2( hw, -hh));
+        localVertices.push_back(Vec2( hw,  hh));
+        localVertices.push_back(Vec2(-hw,  hh));
+    } else if (shape == ObjectShape::CAPSULE) {
+        float r = valW; // radius
+        float h = valH;
+        float hw = r;
+        float hh = h / 2.0f;
+        vCount = 4;
+        localVertices.push_back(Vec2(-hw, -hh));
+        localVertices.push_back(Vec2( hw, -hh));
+        localVertices.push_back(Vec2( hw,  hh));
+        localVertices.push_back(Vec2(-hw,  hh));
+    }
+
+    if (vCount > 0) {
+        world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)] = (float)vCount;
+        for (int i = 0; i < MAX_POLYGON_VERTICES; ++i) {
+            if (i < vCount) {
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)] = localVertices[i].x;
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)] = localVertices[i].y;
+            } else {
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)] = localVertices[0].x;
+                world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)] = localVertices[0].y;
+            }
+        }
+    } else {
+        world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)] = 0;
     }
 }
 

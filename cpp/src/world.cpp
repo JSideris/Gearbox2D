@@ -619,6 +619,284 @@ void World::_doIntegratePositionsSIMD(float dt) {
     }
 }
 
+void World::_syncFixturesSIMD() {
+    int fixtureCount = (int)fixturesList.size();
+    if (fixtureCount == 0) return;
+
+#ifdef __EMSCRIPTEN__
+    int vectorizedCount = (fixtureCount / 4) * 4;
+
+    float* fdata = liveFixtureFloatData.data();
+    int* idata = liveFixtureIntData.data();
+    float* bfdata = liveBodyFloatData.data();
+    int* bidata = liveBodyIntData.data();
+
+    v128_t pad_v = v128_splat_f32(0.1f);
+    v128_t margin_ratio_v = v128_splat_f32(0.05f);
+    v128_t zero_v = v128_splat_f32(0.0f);
+    v128_t half_v = v128_splat_f32(0.5f);
+    v128_t two_v = v128_splat_f32(2.0f);
+    v128_t large_v = v128_splat_f32(1e10f);
+    v128_t nlarge_v = v128_splat_f32(-1e10f);
+
+    for (int i = 0; i < vectorizedCount; i += 4) {
+        v128_t bIdx_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_BODY_INDEX)]);
+        v128_t shape_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_SHAPE)]);
+        
+        uint32_t bIdx[4];
+        wasm_v128_store(bIdx, bIdx_v);
+        
+        alignas(16) float bx[4], by[4], br[4], bvx[4], bvy[4], brs[4];
+        alignas(16) int bflags[4];
+        alignas(16) int btypes[4];
+        for (int j = 0; j < 4; ++j) {
+            int bodyIndex = bIdx[j];
+            bx[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_X)];
+            by[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_Y)];
+            br[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_R)];
+            bvx[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_VX)];
+            bvy[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_VY)];
+            brs[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_RS)];
+            bflags[j] = bidata[GET_BODY_IDATA_INDEX(bodyIndex, BODY_IDATA_FLAGS)];
+            btypes[j] = bidata[GET_BODY_IDATA_INDEX(bodyIndex, BODY_IDATA_TYPE)];
+        }
+        
+        v128_t bflags_v = wasm_v128_load(bflags);
+        v128_t btypes_v = wasm_v128_load(btypes);
+        v128_t isFixed = wasm_i32x4_eq(btypes_v, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
+        
+        v128_t isSleepingMask = wasm_i32x4_ne(wasm_v128_and(bflags_v, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
+        
+        // Only skip if all 4 are sleeping AND none are fixed objects.
+        // Fixed objects need their world-space data for narrow-phase even if they don't move.
+        v128_t canSkipMask = wasm_v128_andnot(isSleepingMask, isFixed);
+        if (v128_bitmask(canSkipMask) == 0xF) continue;
+        
+        v128_t bx_v = wasm_v128_load(bx);
+        v128_t by_v = wasm_v128_load(by);
+        v128_t br_v = wasm_v128_load(br);
+        v128_t bvx_v = wasm_v128_load(bvx);
+        v128_t bvy_v = wasm_v128_load(bvy);
+        v128_t brs_v = wasm_v128_load(brs);
+
+        v128_t lx = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_X)]);
+        v128_t ly = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_Y)]);
+        v128_t lr = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_R)]);
+        v128_t w = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_W)]);
+        v128_t h = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_H)]);
+        
+        v128_t cosR = wasm_f32x4_cos(br_v);
+        v128_t sinR = wasm_f32x4_sin(br_v);
+        
+        v128_t wx = v128_add_f32(bx_v, v128_sub_f32(v128_mul_f32(lx, cosR), v128_mul_f32(ly, sinR)));
+        v128_t wy = v128_add_f32(by_v, v128_add_f32(v128_mul_f32(lx, sinR), v128_mul_f32(ly, cosR)));
+        
+        v128_t totalRot = v128_add_f32(br_v, lr);
+        v128_t isAabbMask = wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::AABB));
+        
+        v128_t one_v = v128_splat_f32(1.0f);
+        
+        v128_t cosTotal = v128_select(isAabbMask, one_v, wasm_f32x4_cos(totalRot));
+        v128_t sinTotal = v128_select(isAabbMask, zero_v, wasm_f32x4_sin(totalRot));
+
+        v128_t vCount_v = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_COUNT)]);
+        float vCounts[4];
+        wasm_v128_store(vCounts, vCount_v);
+        int maxVCount = std::max({(int)vCounts[0], (int)vCounts[1], (int)vCounts[2], (int)vCounts[3]});
+
+        v128_t aabbMinX = large_v;
+        v128_t aabbMinY = large_v;
+        v128_t aabbMaxX = nlarge_v;
+        v128_t aabbMaxY = nlarge_v;
+
+        if (maxVCount > 0) {
+            for (int k = 0; k < MAX_POLYGON_VERTICES; ++k) {
+                v128_t vx = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2)]);
+                v128_t vy = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2 + 1)]);
+                
+                v128_t worldVX = v128_add_f32(wx, v128_sub_f32(v128_mul_f32(vx, cosTotal), v128_mul_f32(vy, sinTotal)));
+                v128_t worldVY = v128_add_f32(wy, v128_add_f32(v128_mul_f32(vx, sinTotal), v128_mul_f32(vy, cosTotal)));
+                
+                wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)], worldVX);
+                wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)], worldVY);
+
+                aabbMinX = v128_min_f32(aabbMinX, worldVX);
+                aabbMinY = v128_min_f32(aabbMinY, worldVY);
+                aabbMaxX = v128_max_f32(aabbMaxX, worldVX);
+                aabbMaxY = v128_max_f32(aabbMaxY, worldVY);
+            }
+        }
+        
+        for (int k = 0; k < maxVCount; ++k) {
+            int next_k = (k + 1) % MAX_POLYGON_VERTICES;
+            v128_t p1x = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)]);
+            v128_t p1y = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)]);
+            v128_t p2x = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2)]);
+            v128_t p2y = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2 + 1)]);
+            
+            v128_t edgeX = v128_sub_f32(p2x, p1x);
+            v128_t edgeY = v128_sub_f32(p2y, p1y);
+            
+            v128_t nx = edgeY;
+            v128_t ny = v128_sub_f32(zero_v, edgeX);
+            
+            v128_t lenSq = v128_add_f32(v128_mul_f32(nx, nx), v128_mul_f32(ny, ny));
+            v128_t len = wasm_f32x4_sqrt(lenSq);
+            v128_t lenGtZero = v128_gt_f32(len, zero_v);
+            nx = v128_select(lenGtZero, v128_div_f32(nx, len), zero_v);
+            ny = v128_select(lenGtZero, v128_div_f32(ny, len), zero_v);
+            
+            wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2)], nx);
+            wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2 + 1)], ny);
+        }
+
+        v128_t isCircleMask = wasm_v128_or(
+            wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::CIRCLE)),
+            wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::POINT))
+        );
+        v128_t circMinX = v128_sub_f32(wx, w);
+        v128_t circMinY = v128_sub_f32(wy, w);
+        v128_t circMaxX = v128_add_f32(wx, w);
+        v128_t circMaxY = v128_add_f32(wy, w);
+        
+        aabbMinX = v128_select(isCircleMask, circMinX, aabbMinX);
+        aabbMinY = v128_select(isCircleMask, circMinY, aabbMinY);
+        aabbMaxX = v128_select(isCircleMask, circMaxX, aabbMaxX);
+        aabbMaxY = v128_select(isCircleMask, circMaxY, aabbMaxY);
+        
+        v128_t isCapsuleMask = wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::CAPSULE));
+        aabbMinX = v128_select(isCapsuleMask, v128_sub_f32(aabbMinX, w), aabbMinX);
+        aabbMinY = v128_select(isCapsuleMask, v128_sub_f32(aabbMinY, w), aabbMinY);
+        aabbMaxX = v128_select(isCapsuleMask, v128_add_f32(aabbMaxX, w), aabbMaxX);
+        aabbMaxY = v128_select(isCapsuleMask, v128_add_f32(aabbMaxY, w), aabbMaxY);
+
+        v128_t oldAx1 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX1)]);
+        v128_t oldAy1 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY1)]);
+        v128_t oldAx2 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX2)]);
+        v128_t oldAy2 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY2)]);
+        
+        v128_t contains = wasm_v128_and(
+            wasm_v128_and(v128_le_f32(oldAx1, aabbMinX), v128_le_f32(oldAy1, aabbMinY)),
+            wasm_v128_and(v128_ge_f32(oldAx2, aabbMaxX), v128_ge_f32(oldAy2, aabbMaxY))
+        );
+        
+        v128_t hx = v128_mul_f32(v128_sub_f32(aabbMaxX, aabbMinX), half_v);
+        v128_t hy = v128_mul_f32(v128_sub_f32(aabbMaxY, aabbMinY), half_v);
+        v128_t size = v128_mul_f32(v128_max_f32(hx, hy), two_v);
+        
+        v128_t margin = v128_mul_f32(size, margin_ratio_v);
+        v128_t absRs = wasm_f32x4_abs(brs_v);
+        
+        v128_t paddingX_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_v), zero_v);
+        v128_t paddingY_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_v), zero_v);
+        v128_t paddingX_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_v), zero_v);
+        v128_t paddingY_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_v), zero_v);
+        
+        v128_t fatMinX = v128_sub_f32(v128_add_f32(aabbMinX, paddingX_neg), margin);
+        v128_t fatMinY = v128_sub_f32(v128_add_f32(aabbMinY, paddingY_neg), margin);
+        v128_t fatMaxX = v128_add_f32(v128_add_f32(aabbMaxX, paddingX_pos), margin);
+        v128_t fatMaxY = v128_add_f32(v128_add_f32(aabbMaxY, paddingY_pos), margin);
+        
+        v128_t updateMask = v128_not(contains);
+        updateMask = wasm_v128_andnot(updateMask, isSleepingMask);
+        
+        v128_t finalAx1 = v128_select(updateMask, fatMinX, oldAx1);
+        v128_t finalAy1 = v128_select(updateMask, fatMinY, oldAy1);
+        v128_t finalAx2 = v128_select(updateMask, fatMaxX, oldAx2);
+        v128_t finalAy2 = v128_select(updateMask, fatMaxY, oldAy2);
+        
+        wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX1)], finalAx1);
+        wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY1)], finalAy1);
+        wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX2)], finalAx2);
+        wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY2)], finalAy2);
+
+        if (v128_any_true(updateMask)) {
+            uint32_t maskBits[4];
+            wasm_v128_store(maskBits, updateMask);
+            for (int j = 0; j < 4; ++j) {
+                if (maskBits[j]) {
+                    Fixture* f = fixturesList[i + j];
+                    f->aabb.min.x = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AX1)];
+                    f->aabb.min.y = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AY1)];
+                    f->aabb.max.x = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AX2)];
+                    f->aabb.max.y = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AY2)];
+                    if (f->bvhNode) {
+                        f->bvhNode = bvh.updateLeaf(f->bvhNode, f->aabb, f->getCollisionProperties());
+                    }
+                }
+            }
+        }
+    }
+    
+    for (int i = vectorizedCount; i < fixtureCount; ++i) {
+#else
+    for (int i = 0; i < fixtureCount; ++i) {
+#endif
+        Fixture* f = fixturesList[i];
+        if (f->body->isSleeping && f->body->type != ObjectType::FIXED_OBJECT) continue;
+        
+        float cosR = std::cos(f->body->getRotation());
+        float sinR = std::sin(f->body->getRotation());
+        
+        float px = f->body->getX();
+        float py = f->body->getY();
+        float lx = f->getLocalX();
+        float ly = f->getLocalY();
+        float wx = px + (lx * cosR - ly * sinR);
+        float wy = py + (lx * sinR + ly * cosR);
+        
+        float lr = f->getLocalR();
+        float totalRot = f->body->getRotation() + lr;
+        float cosTotal = std::cos(totalRot);
+        float sinTotal = std::sin(totalRot);
+        if (f->shape == ObjectShape::AABB) {
+            cosTotal = 1.0f;
+            sinTotal = 0.0f;
+        }
+
+        int vCount = (int)liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_COUNT)];
+
+        if (vCount > 0) {
+            for(int k=0; k<MAX_POLYGON_VERTICES; ++k) {
+                float vx = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2)];
+                float vy = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2 + 1)];
+                
+                float worldVX = wx + (vx * cosTotal - vy * sinTotal);
+                float worldVY = wy + (vx * sinTotal + vy * cosTotal);
+                liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)] = worldVX;
+                liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)] = worldVY;
+            }
+        }
+
+        for (int k = 0; k < vCount; ++k) {
+            int next_k = (k + 1) % MAX_POLYGON_VERTICES;
+            float p1x = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)];
+            float p1y = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)];
+            float p2x = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2)];
+            float p2y = liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2 + 1)];
+            
+            float edgeX = p2x - p1x;
+            float edgeY = p2y - p1y;
+            float len = std::sqrt(edgeX * edgeX + edgeY * edgeY);
+            if (len > 0) {
+                liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2)] = edgeY / len;
+                liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2 + 1)] = -edgeX / len;
+            } else {
+                liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2)] = 0.0f;
+                liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2 + 1)] = 0.0f;
+            }
+        }
+        
+        Aabb tightAabb = f->computeAabb(cosR, sinR, 1);
+        if (!f->aabb.contains(tightAabb)) {
+            f->updateAabb(cosR, sinR, 0);
+            if (f->bvhNode) {
+                f->bvhNode = bvh.updateLeaf(f->bvhNode, f->aabb, f->getCollisionProperties());
+            }
+        }
+    }
+}
+
 void World::_doBroadPhase() {
     bvh.detectCollisions();
 }
@@ -1193,21 +1471,9 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         }
     }
     
-    // 5. Re-synchronize AABBs after position correction
+    // 5. Re-synchronize AABBs after position correction using SIMD
     if (positionIterations > 0) {
-        for (auto* body : bodiesList) {
-            if (body->isSleeping) continue;
-            float pr = body->getRotation();
-            float cosR = std::cos(pr);
-            float sinR = std::sin(pr);
-            for (auto* fixture : body->fixtures) {
-                Aabb tightAabb = fixture->computeAabb(cosR, sinR, 1);
-                if (!fixture->aabb.contains(tightAabb)) {
-                    fixture->updateAabb(cosR, sinR, 0);
-                    fixture->bvhNode = bvh.updateLeaf(fixture->bvhNode, fixture->aabb, fixture->getCollisionProperties());
-                }
-            }
-        }
+        _syncFixturesSIMD();
     }
 }
 
