@@ -16,5 +16,6 @@ extern std::vector<Scenario> g_scenarios;
 void setupLargeStack(World& world);
 void setupHighDensity(World& world);
 void setupJointChain(World& world);
+void setupParticlesStress(World& world);
 
 #endif

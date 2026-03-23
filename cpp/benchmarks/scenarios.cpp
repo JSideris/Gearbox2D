@@ -109,3 +109,53 @@ void setupJointChain(World& world) {
         prevId = id;
     }
 }
+
+void setupParticlesStress(World& world) {
+    world.clear();
+    world.setGravity(0.0f, 0.0f); // Often stress tests like this use zero gravity or container bounce
+    
+    int id = 10000;
+    float thickness = 2.0f;
+    float length = 11.0f;
+
+    // Walls (AABB in original, but creating as BOX here to match existing setup style)
+    // Wall Top
+    world.createBody(id++, createBodyOptions(5.0f, 0.0f, ObjectType::FIXED_OBJECT));
+    world.createFixture(id - 1, 0, createFixtureOptions(ObjectShape::BOX, length, thickness));
+    
+    // Wall Bottom
+    world.createBody(id++, createBodyOptions(5.0f, 10.0f, ObjectType::FIXED_OBJECT));
+    world.createFixture(id - 1, 0, createFixtureOptions(ObjectShape::BOX, length, thickness));
+
+    // Wall Left
+    world.createBody(id++, createBodyOptions(0.0f, 5.0f, ObjectType::FIXED_OBJECT));
+    world.createFixture(id - 1, 0, createFixtureOptions(ObjectShape::BOX, thickness, length));
+
+    // Wall Right
+    world.createBody(id++, createBodyOptions(10.0f, 5.0f, ObjectType::FIXED_OBJECT));
+    world.createFixture(id - 1, 0, createFixtureOptions(ObjectShape::BOX, thickness, length));
+
+    std::mt19937 gen(42);
+    std::uniform_real_distribution<float> disPos(1.0f, 9.0f);
+    std::uniform_real_distribution<float> disVel(-0.5f, 0.5f);
+    std::uniform_real_distribution<float> disRot(0.0f, (float)M_PI);
+    std::uniform_real_distribution<float> disAngVel(-10.0f, 10.0f);
+
+    for (int i = 0; i < 2000; ++i) {
+        int bodyId = i + 1;
+        
+        emscripten_val options = createBodyOptions(disPos(gen), disPos(gen), ObjectType::DYNAMIC_OBJECT, 0.5f);
+        options["vx"] = disVel(gen);
+        options["vy"] = disVel(gen);
+        options["r"] = disRot(gen);
+        options["rs"] = disAngVel(gen);
+        options["angularDamping"] = 0.5f;
+        options["linearDamping"] = 0.0f;
+        
+        world.createBody(bodyId, options);
+        
+        emscripten_val fixOptions = createFixtureOptions(ObjectShape::CIRCLE, 0.0f, 0.0f, 0.05f);
+        fixOptions["restitution"] = 0.5f;
+        world.createFixture(bodyId, 0, fixOptions);
+    }
+}

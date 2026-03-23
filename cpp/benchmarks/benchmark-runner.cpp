@@ -68,7 +68,8 @@ int main(int argc, char** argv) {
     std::vector<Scenario> scenarios = {
         {"Large Stack", setupLargeStack},
         {"High Density", setupHighDensity},
-        {"Joint Chain", setupJointChain}
+        {"Joint Chain", setupJointChain},
+        {"2000 Particles", setupParticlesStress}
     };
 
     for (const auto& scenario : scenarios) {
