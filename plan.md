@@ -183,9 +183,20 @@
 - [ ] Experimental: Re-insert into BVH upon sleep.
 - [ ] Experimental: Sleep drift (sleeping at terminal velocity).
 
-### Parallelization (Do Last)
-- [ ] Find opportunities to optimize using SIMD.
-- [ ] Find opportunities to optimize using multi-threading.
+### Parallelization
+#### SIMD Vectorization (WASM SIMD128)
+- [x] SIMD-accelerated math library (2D dot, cross, rotate, etc.).
+- [x] Vectorized global integrators (4-way SoA processing).
+- [x] SIMD narrow-phase solvers (Circle-Circle, Box-Box, etc.).
+- [x] SIMD BVH traversal (4/8-way bounding box tests).
+- [x] SIMD constraint and joint solvers (batched solving).
+- [x] Bulk world-data synchronization (vectorized vertex transforms).
+
+#### Multi-threading
+- [x] Persistent thread pool system.
+- [x] Parallel island solver (concurrent independent islands).
+- [x] Parallel narrow-phase detection (multi-threaded collision pairs).
+- [ ] Parallel global integrators (gravity and motion updates).
 
 ## Advanced Features
 - [x] Smart anti-tunelling (Speculative Contacts).
@@ -211,3 +222,7 @@
 
 ## Known Issues
 - Spring joints can't be adjusted at runtime - see the commented-out spring test case.
+- Bullet through paper is somewhat unreliable. Also affects the high-energy bounce benchmark, which is broken for Gearbox2d.
+- Newton's cradle tests are showing some regression. After several bounces,
+- Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
+- Benchmark script shows dense load tests run at 1.5 ms per frame, equal to Box 2d, but browser test is showing us running at 3.5 ms per frame. This needs to be investigated. Box2d is the benchmark to beat.
