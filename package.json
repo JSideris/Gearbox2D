@@ -17,6 +17,7 @@
     "test:cpp": "make test -B",
     "test": "npm run test:cpp && npm run test:ts",
     "bench:cpp": "make benchmark -B",
+    "bench:compare": "bash scripts/compare-benchmarks.sh",
     "bench": "npm run bench:cpp",
     "site": "vite",
     "site:build": "vite build",
