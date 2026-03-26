@@ -85,14 +85,14 @@ int CollisionSolver::_solveCircleCircleSIMD(int indexA, const int indicesB[4], f
     Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
     float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
 
-    v128_t pAX_v = v128_splat_f32(pA.x);
-    v128_t pAY_v = v128_splat_f32(pA.y);
-    v128_t rA_v = v128_splat_f32(rA);
-    v128_t vAX_v = v128_splat_f32(vA.x);
-    v128_t vAY_v = v128_splat_f32(vA.y);
-    v128_t wA_v = v128_splat_f32(wA);
-    v128_t dt_v = v128_splat_f32(dt);
-    v128_t specMargin_v = v128_splat_f32(world.getSpeculativeMargin());
+    V128 pAX_v = v128_splat_f32(pA.x);
+    V128 pAY_v = v128_splat_f32(pA.y);
+    V128 rA_v = v128_splat_f32(rA);
+    V128 vAX_v = v128_splat_f32(vA.x);
+    V128 vAY_v = v128_splat_f32(vA.y);
+    V128 wA_v = v128_splat_f32(wA);
+    V128 dt_v = v128_splat_f32(dt);
+    V128 specMargin_v = v128_splat_f32(world.getSpeculativeMargin());
 
     int bIdxB[4];
     float rB[4], bXB[4], bYB[4], bRB[4], lXB[4], lYB[4], vBX[4], vBY[4], wB[4];
@@ -109,48 +109,48 @@ int CollisionSolver::_solveCircleCircleSIMD(int indexA, const int indicesB[4], f
         wB[i] = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB[i], BODY_FDATA_RS)];
     }
 
-    v128_t rB_v = v128_make_f32(rB[0], rB[1], rB[2], rB[3]);
-    v128_t bXB_v = v128_make_f32(bXB[0], bXB[1], bXB[2], bXB[3]);
-    v128_t bYB_v = v128_make_f32(bYB[0], bYB[1], bYB[2], bYB[3]);
-    v128_t bRB_v = v128_make_f32(bRB[0], bRB[1], bRB[2], bRB[3]);
-    v128_t lXB_v = v128_make_f32(lXB[0], lXB[1], lXB[2], lXB[3]);
-    v128_t lYB_v = v128_make_f32(lYB[0], lYB[1], lYB[2], lYB[3]);
-    v128_t vBX_v = v128_make_f32(vBX[0], vBX[1], vBX[2], vBX[3]);
-    v128_t vBY_v = v128_make_f32(vBY[0], vBY[1], vBY[2], vBY[3]);
-    v128_t wB_v = v128_make_f32(wB[0], wB[1], wB[2], wB[3]);
+    V128 rB_v = v128_make_f32(rB[0], rB[1], rB[2], rB[3]);
+    V128 bXB_v = v128_make_f32(bXB[0], bXB[1], bXB[2], bXB[3]);
+    V128 bYB_v = v128_make_f32(bYB[0], bYB[1], bYB[2], bYB[3]);
+    V128 bRB_v = v128_make_f32(bRB[0], bRB[1], bRB[2], bRB[3]);
+    V128 lXB_v = v128_make_f32(lXB[0], lXB[1], lXB[2], lXB[3]);
+    V128 lYB_v = v128_make_f32(lYB[0], lYB[1], lYB[2], lYB[3]);
+    V128 vBX_v = v128_make_f32(vBX[0], vBX[1], vBX[2], vBX[3]);
+    V128 vBY_v = v128_make_f32(vBY[0], vBY[1], vBY[2], vBY[3]);
+    V128 wB_v = v128_make_f32(wB[0], wB[1], wB[2], wB[3]);
 
-    v128_t cosB_v = v128_make_f32(cos(bRB[0]), cos(bRB[1]), cos(bRB[2]), cos(bRB[3]));
-    v128_t sinB_v = v128_make_f32(sin(bRB[0]), sin(bRB[1]), sin(bRB[2]), sin(bRB[3]));
+    V128 cosB_v = v128_make_f32(cos(bRB[0]), cos(bRB[1]), cos(bRB[2]), cos(bRB[3]));
+    V128 sinB_v = v128_make_f32(sin(bRB[0]), sin(bRB[1]), sin(bRB[2]), sin(bRB[3]));
 
-    v128_t pBX_v = v128_add_f32(bXB_v, v128_rotate_x_f32(lXB_v, lYB_v, cosB_v, sinB_v));
-    v128_t pBY_v = v128_add_f32(bYB_v, v128_rotate_y_f32(lXB_v, lYB_v, cosB_v, sinB_v));
+    V128 pBX_v = v128_add_f32(bXB_v, v128_rotate_x_f32(lXB_v, lYB_v, cosB_v, sinB_v));
+    V128 pBY_v = v128_add_f32(bYB_v, v128_rotate_y_f32(lXB_v, lYB_v, cosB_v, sinB_v));
 
-    v128_t pDiffX_v = v128_sub_f32(pBX_v, pAX_v);
-    v128_t pDiffY_v = v128_sub_f32(pBY_v, pAY_v);
-    v128_t pd2_v = v128_mag_sq_f32(pDiffX_v, pDiffY_v);
+    V128 pDiffX_v = v128_sub_f32(pBX_v, pAX_v);
+    V128 pDiffY_v = v128_sub_f32(pBY_v, pAY_v);
+    V128 pd2_v = v128_mag_sq_f32(pDiffX_v, pDiffY_v);
 
-    v128_t combinedRadius_v = v128_add_f32(rA_v, rB_v);
-    v128_t combinedMargin_v = v128_add_f32(combinedRadius_v, specMargin_v);
-    v128_t overlapMask = v128_lt_f32(pd2_v, v128_mul_f32(combinedMargin_v, combinedMargin_v));
+    V128 combinedRadius_v = v128_add_f32(rA_v, rB_v);
+    V128 combinedMargin_v = v128_add_f32(combinedRadius_v, specMargin_v);
+    V128 overlapMask = v128_lt_f32(pd2_v, v128_mul_f32(combinedMargin_v, combinedMargin_v));
 
     if (!v128_any_true(overlapMask)) return 0;
 
-    v128_t distance_v = wasm_f32x4_sqrt(pd2_v);
-    v128_t dist_gt_0001_v = v128_gt_f32(distance_v, v128_splat_f32(0.0001f));
-    v128_t invDist_v = v128_div_f32(v128_splat_f32(1.0f), distance_v);
+    V128 distance_v = wasm_f32x4_sqrt(pd2_v);
+    V128 dist_gt_0001_v = v128_gt_f32(distance_v, v128_splat_f32(0.0001f));
+    V128 invDist_v = v128_div_f32(v128_splat_f32(1.0f), distance_v);
 
-    v128_t normalX_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffX_v, invDist_v), v128_splat_f32(0.0f));
-    v128_t normalY_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffY_v, invDist_v), v128_splat_f32(-1.0f));
-    v128_t penetrationDepth_v = v128_sub_f32(combinedRadius_v, distance_v);
+    V128 normalX_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffX_v, invDist_v), v128_splat_f32(0.0f));
+    V128 normalY_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffY_v, invDist_v), v128_splat_f32(-1.0f));
+    V128 penetrationDepth_v = v128_sub_f32(combinedRadius_v, distance_v);
 
-    v128_t relVX_v = v128_sub_f32(vBX_v, vAX_v);
-    v128_t relVY_v = v128_sub_f32(vBY_v, vAY_v);
-    v128_t vn_v = v128_add_f32(v128_mul_f32(relVX_v, normalX_v), v128_mul_f32(relVY_v, normalY_v));
+    V128 relVX_v = v128_sub_f32(vBX_v, vAX_v);
+    V128 relVY_v = v128_sub_f32(vBY_v, vAY_v);
+    V128 vn_v = v128_add_f32(v128_mul_f32(relVX_v, normalX_v), v128_mul_f32(relVY_v, normalY_v));
 
-    v128_t specCond1 = v128_le_f32(penetrationDepth_v, v128_splat_f32(0.0f));
-    v128_t specCond2 = v128_ge_f32(vn_v, v128_div_f32(penetrationDepth_v, dt_v));
-    v128_t ignoreMask = v128_and(specCond1, specCond2);
-    v128_t finalMask = v128_andnot(overlapMask, ignoreMask);
+    V128 specCond1 = v128_le_f32(penetrationDepth_v, v128_splat_f32(0.0f));
+    V128 specCond2 = v128_ge_f32(vn_v, v128_div_f32(penetrationDepth_v, dt_v));
+    V128 ignoreMask = v128_and(specCond1, specCond2);
+    V128 finalMask = v128_andnot(overlapMask, ignoreMask);
 
     int collisionCount = 0;
     int bitmask = v128_bitmask(finalMask);
@@ -286,14 +286,14 @@ int CollisionSolver::_solveCirclePointSIMD(int indexA, const int indicesB[4], fl
     Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
     float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
 
-    v128_t pAX_v = v128_splat_f32(pA.x);
-    v128_t pAY_v = v128_splat_f32(pA.y);
-    v128_t rA_v = v128_splat_f32(rA);
-    v128_t vAX_v = v128_splat_f32(vA.x);
-    v128_t vAY_v = v128_splat_f32(vA.y);
-    v128_t wA_v = v128_splat_f32(wA);
-    v128_t dt_v = v128_splat_f32(dt);
-    v128_t specMargin_v = v128_splat_f32(world.getSpeculativeMargin());
+    V128 pAX_v = v128_splat_f32(pA.x);
+    V128 pAY_v = v128_splat_f32(pA.y);
+    V128 rA_v = v128_splat_f32(rA);
+    V128 vAX_v = v128_splat_f32(vA.x);
+    V128 vAY_v = v128_splat_f32(vA.y);
+    V128 wA_v = v128_splat_f32(wA);
+    V128 dt_v = v128_splat_f32(dt);
+    V128 specMargin_v = v128_splat_f32(world.getSpeculativeMargin());
 
     int bIdxB[4];
     float bXB[4], bYB[4], bRB[4], lXB[4], lYB[4], vBX[4], vBY[4];
@@ -308,45 +308,45 @@ int CollisionSolver::_solveCirclePointSIMD(int indexA, const int indicesB[4], fl
         vBY[i] = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB[i], BODY_FDATA_VY)];
     }
 
-    v128_t bXB_v = v128_make_f32(bXB[0], bXB[1], bXB[2], bXB[3]);
-    v128_t bYB_v = v128_make_f32(bYB[0], bYB[1], bYB[2], bYB[3]);
-    v128_t bRB_v = v128_make_f32(bRB[0], bRB[1], bRB[2], bRB[3]);
-    v128_t lXB_v = v128_make_f32(lXB[0], lXB[1], lXB[2], lXB[3]);
-    v128_t lYB_v = v128_make_f32(lYB[0], lYB[1], lYB[2], lYB[3]);
-    v128_t vBX_v = v128_make_f32(vBX[0], vBX[1], vBX[2], vBX[3]);
-    v128_t vBY_v = v128_make_f32(vBY[0], vBY[1], vBY[2], vBY[3]);
+    V128 bXB_v = v128_make_f32(bXB[0], bXB[1], bXB[2], bXB[3]);
+    V128 bYB_v = v128_make_f32(bYB[0], bYB[1], bYB[2], bYB[3]);
+    V128 bRB_v = v128_make_f32(bRB[0], bRB[1], bRB[2], bRB[3]);
+    V128 lXB_v = v128_make_f32(lXB[0], lXB[1], lXB[2], lXB[3]);
+    V128 lYB_v = v128_make_f32(lYB[0], lYB[1], lYB[2], lYB[3]);
+    V128 vBX_v = v128_make_f32(vBX[0], vBX[1], vBX[2], vBX[3]);
+    V128 vBY_v = v128_make_f32(vBY[0], vBY[1], vBY[2], vBY[3]);
 
-    v128_t cosB_v = v128_make_f32(cos(bRB[0]), cos(bRB[1]), cos(bRB[2]), cos(bRB[3]));
-    v128_t sinB_v = v128_make_f32(sin(bRB[0]), sin(bRB[1]), sin(bRB[2]), sin(bRB[3]));
+    V128 cosB_v = v128_make_f32(cos(bRB[0]), cos(bRB[1]), cos(bRB[2]), cos(bRB[3]));
+    V128 sinB_v = v128_make_f32(sin(bRB[0]), sin(bRB[1]), sin(bRB[2]), sin(bRB[3]));
 
-    v128_t pBX_v = v128_add_f32(bXB_v, v128_rotate_x_f32(lXB_v, lYB_v, cosB_v, sinB_v));
-    v128_t pBY_v = v128_add_f32(bYB_v, v128_rotate_y_f32(lXB_v, lYB_v, cosB_v, sinB_v));
+    V128 pBX_v = v128_add_f32(bXB_v, v128_rotate_x_f32(lXB_v, lYB_v, cosB_v, sinB_v));
+    V128 pBY_v = v128_add_f32(bYB_v, v128_rotate_y_f32(lXB_v, lYB_v, cosB_v, sinB_v));
 
-    v128_t pDiffX_v = v128_sub_f32(pBX_v, pAX_v);
-    v128_t pDiffY_v = v128_sub_f32(pBY_v, pAY_v);
-    v128_t pd2_v = v128_mag_sq_f32(pDiffX_v, pDiffY_v);
+    V128 pDiffX_v = v128_sub_f32(pBX_v, pAX_v);
+    V128 pDiffY_v = v128_sub_f32(pBY_v, pAY_v);
+    V128 pd2_v = v128_mag_sq_f32(pDiffX_v, pDiffY_v);
 
-    v128_t combinedMargin_v = v128_add_f32(rA_v, specMargin_v);
-    v128_t overlapMask = v128_lt_f32(pd2_v, v128_mul_f32(combinedMargin_v, combinedMargin_v));
+    V128 combinedMargin_v = v128_add_f32(rA_v, specMargin_v);
+    V128 overlapMask = v128_lt_f32(pd2_v, v128_mul_f32(combinedMargin_v, combinedMargin_v));
 
     if (!v128_any_true(overlapMask)) return 0;
 
-    v128_t distance_v = wasm_f32x4_sqrt(pd2_v);
-    v128_t dist_gt_0001_v = v128_gt_f32(distance_v, v128_splat_f32(0.0001f));
-    v128_t invDist_v = v128_div_f32(v128_splat_f32(1.0f), distance_v);
+    V128 distance_v = wasm_f32x4_sqrt(pd2_v);
+    V128 dist_gt_0001_v = v128_gt_f32(distance_v, v128_splat_f32(0.0001f));
+    V128 invDist_v = v128_div_f32(v128_splat_f32(1.0f), distance_v);
 
-    v128_t normalX_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffX_v, invDist_v), v128_splat_f32(0.0f));
-    v128_t normalY_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffY_v, invDist_v), v128_splat_f32(-1.0f));
-    v128_t penetrationDepth_v = v128_sub_f32(rA_v, distance_v);
+    V128 normalX_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffX_v, invDist_v), v128_splat_f32(0.0f));
+    V128 normalY_v = v128_select(dist_gt_0001_v, v128_mul_f32(pDiffY_v, invDist_v), v128_splat_f32(-1.0f));
+    V128 penetrationDepth_v = v128_sub_f32(rA_v, distance_v);
 
-    v128_t relVX_v = v128_sub_f32(vBX_v, vAX_v);
-    v128_t relVY_v = v128_sub_f32(vBY_v, vAY_v);
-    v128_t vn_v = v128_add_f32(v128_mul_f32(relVX_v, normalX_v), v128_mul_f32(relVY_v, normalY_v));
+    V128 relVX_v = v128_sub_f32(vBX_v, vAX_v);
+    V128 relVY_v = v128_sub_f32(vBY_v, vAY_v);
+    V128 vn_v = v128_add_f32(v128_mul_f32(relVX_v, normalX_v), v128_mul_f32(relVY_v, normalY_v));
 
-    v128_t specCond1 = v128_le_f32(penetrationDepth_v, v128_splat_f32(0.0f));
-    v128_t specCond2 = v128_ge_f32(vn_v, v128_div_f32(penetrationDepth_v, dt_v));
-    v128_t ignoreMask = v128_and(specCond1, specCond2);
-    v128_t finalMask = v128_andnot(overlapMask, ignoreMask);
+    V128 specCond1 = v128_le_f32(penetrationDepth_v, v128_splat_f32(0.0f));
+    V128 specCond2 = v128_ge_f32(vn_v, v128_div_f32(penetrationDepth_v, dt_v));
+    V128 ignoreMask = v128_and(specCond1, specCond2);
+    V128 finalMask = v128_andnot(overlapMask, ignoreMask);
 
     int collisionCount = 0;
     int bitmask = v128_bitmask(finalMask);

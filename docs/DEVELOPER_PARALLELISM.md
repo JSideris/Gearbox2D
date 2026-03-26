@@ -11,7 +11,7 @@ Gearbox2D supports both Multithreaded (MT) and Single-threaded (ST) modes using 
 
 ## Data-Parallelism (SIMD)
 
-Gearbox2D uses **WASM SIMD128** to accelerate global physics passes (e.g., position and velocity integration). This requires a specific data layout and access pattern.
+Gearbox2D uses **Google Highway** to provide portable SIMD support (WASM SIMD128, AVX2, NEON). This requires a specific data layout and access pattern.
 
 ### Structure-of-Arrays (SoA)
 
@@ -41,9 +41,10 @@ These must match exactly between C++ (`constants.h`) and TypeScript (`constants.
 
 ### Centralized SIMD Helpers (`simd-math.h`)
 
-All SIMD operations should use the macros defined in `cpp/include/simd-math.h`. This header provides:
-1.  **WASM Intrinsics**: Wrappers like `v128_add_f32`, `v128_load_f32`, and `v128_select`.
-2.  **Native Fallbacks**: No-op or scalar implementations that allow the code to compile and run on native (non-WASM) environments for testing.
+All SIMD operations should use the macros defined in `cpp/include/simd-math.h`. This header provides a portable abstraction layer built on **Google Highway**:
+1.  **Highway Macros**: Wrappers like `v128_add_f32`, `v128_load_f32`, and `v128_select` that map to `hn::` operations.
+2.  **Multi-Platform Support**: Automatically targets WASM SIMD, AVX2, NEON, or SSE depending on the compilation target.
+3.  **Automatic Fallbacks**: Highway provides its own optimized scalar fallbacks when SIMD is unavailable.
 
 ### SIMD Implementation Pattern
 
@@ -54,10 +55,10 @@ int vectorizedCount = (count / 4) * 4;
 
 for (int i = 0; i < vectorizedCount; i += 4) {
     // 1. Load 4 values at once
-    v128_t vx = v128_load_f32(&liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
+    V128 vx = v128_load_f32(&liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
     
     // 2. Perform SIMD math
-    v128_t res = v128_add_f32(vx, some_other_v128);
+    V128 res = v128_add_f32(vx, some_other_v128);
     
     // 3. Store results back
     v128_store_f32(&liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)], res);
@@ -80,12 +81,12 @@ The math library is designed for Structure-of-Arrays (SoA) layouts. This means g
 
 ```cpp
 // Example: Dot product of 4 pairs of vectors
-v128_t ax = v128_load_f32(&x_array[i]);
-v128_t ay = v128_load_f32(&y_array[i]);
-v128_t bx = v128_load_f32(&other_x[i]);
-v128_t by = v128_load_f32(&other_y[i]);
+V128 ax = v128_load_f32(&x_array[i]);
+V128 ay = v128_load_f32(&y_array[i]);
+V128 bx = v128_load_f32(&other_x[i]);
+V128 by = v128_load_f32(&other_y[i]);
 
-v128_t results = v128_dot_f32(ax, ay, bx, by); // Result contains 4 dot products
+V128 results = v128_dot_f32(ax, ay, bx, by); // Result contains 4 dot products
 ```
 
 #### 2. Available High-Level Macros
@@ -104,10 +105,10 @@ v128_t results = v128_dot_f32(ax, ay, bx, by); // Result contains 4 dot products
 -   **Constraint Solvers**: Group constraints into batches of 4 that share no common bodies to avoid race conditions.
 
 #### 4. Implementation Rules
-1.  **Always Provide Native Fallbacks**: When adding a new macro to `simd-math.h`, you **MUST** implement a functional fallback in the `#else` block. This ensures native tests continue to pass.
+1.  **Prefer Highway Ops**: When adding new functionality, use `hwy::HWY_NAMESPACE` (`hn::`) operations directly in `simd-math.h`.
 2.  **Avoid SIMD Branching**: Use comparison macros (e.g., `v128_gt_f32`) and `v128_select` to handle logic instead of `if` statements inside vectorized loops.
-3.  **Use `wasm_f32x4_sqrt` sparingly**: Sqrt is expensive even in SIMD. Prefer `v128_mag_sq_f32` for threshold checks.
-4.  **Alignment**: Ensure data arrays are aligned to 16-byte boundaries for optimal `v128_load` performance.
+3.  **Use Sqrt sparingly**: Sqrt is expensive even in SIMD. Prefer `v128_mag_sq_f32` for threshold checks.
+4.  **Alignment**: Ensure data arrays are aligned to 16-byte boundaries for optimal SIMD performance.
 
 ---
 

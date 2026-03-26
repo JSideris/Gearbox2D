@@ -63,11 +63,11 @@ void DistanceJoint::preSolve(float dt) {
 
 void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
 #ifdef __EMSCRIPTEN__
-    v128_t dt_v = v128_splat_f32(dt);
-    v128_t zero_v = v128_splat_f32(0.0f);
-    v128_t one_v = v128_splat_f32(1.0f);
-    v128_t threshold_v = v128_splat_f32(1e-4f);
-    v128_t baumgarte_v = v128_splat_f32(BAUMGARTE_FACTOR);
+    V128 dt_v = v128_splat_f32(dt);
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 one_v = v128_splat_f32(1.0f);
+    V128 threshold_v = v128_splat_f32(1e-4f);
+    V128 baumgarte_v = v128_splat_f32(BAUMGARTE_FACTOR);
 
     // Gather indices and body data
     int idxA[4], idxB[4];
@@ -89,79 +89,79 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
         );
     };
 
-    v128_t pAx = gather_body_fdata(idxA, BODY_FDATA_X);
-    v128_t pAy = gather_body_fdata(idxA, BODY_FDATA_Y);
-    v128_t thetaA = gather_body_fdata(idxA, BODY_FDATA_R);
-    v128_t pBx = gather_body_fdata(idxB, BODY_FDATA_X);
-    v128_t pBy = gather_body_fdata(idxB, BODY_FDATA_Y);
-    v128_t thetaB = gather_body_fdata(idxB, BODY_FDATA_R);
+    V128 pAx = gather_body_fdata(idxA, BODY_FDATA_X);
+    V128 pAy = gather_body_fdata(idxA, BODY_FDATA_Y);
+    V128 thetaA = gather_body_fdata(idxA, BODY_FDATA_R);
+    V128 pBx = gather_body_fdata(idxB, BODY_FDATA_X);
+    V128 pBy = gather_body_fdata(idxB, BODY_FDATA_Y);
+    V128 thetaB = gather_body_fdata(idxB, BODY_FDATA_R);
 
-    v128_t localAnchorAx = v128_make_f32(joints[0]->localAnchorA.x, joints[1]->localAnchorA.x, joints[2]->localAnchorA.x, joints[3]->localAnchorA.x);
-    v128_t localAnchorAy = v128_make_f32(joints[0]->localAnchorA.y, joints[1]->localAnchorA.y, joints[2]->localAnchorA.y, joints[3]->localAnchorA.y);
-    v128_t localAnchorBx = v128_make_f32(joints[0]->localAnchorB.x, joints[1]->localAnchorB.x, joints[2]->localAnchorB.x, joints[3]->localAnchorB.x);
-    v128_t localAnchorBy = v128_make_f32(joints[0]->localAnchorB.y, joints[1]->localAnchorB.y, joints[2]->localAnchorB.y, joints[3]->localAnchorB.y);
+    V128 localAnchorAx = v128_make_f32(joints[0]->localAnchorA.x, joints[1]->localAnchorA.x, joints[2]->localAnchorA.x, joints[3]->localAnchorA.x);
+    V128 localAnchorAy = v128_make_f32(joints[0]->localAnchorA.y, joints[1]->localAnchorA.y, joints[2]->localAnchorA.y, joints[3]->localAnchorA.y);
+    V128 localAnchorBx = v128_make_f32(joints[0]->localAnchorB.x, joints[1]->localAnchorB.x, joints[2]->localAnchorB.x, joints[3]->localAnchorB.x);
+    V128 localAnchorBy = v128_make_f32(joints[0]->localAnchorB.y, joints[1]->localAnchorB.y, joints[2]->localAnchorB.y, joints[3]->localAnchorB.y);
 
-    v128_t cosA = wasm_f32x4_cos(thetaA);
-    v128_t sinA = wasm_f32x4_sin(thetaA);
-    v128_t cosB = wasm_f32x4_cos(thetaB);
-    v128_t sinB = wasm_f32x4_sin(thetaB);
+    V128 cosA = wasm_f32x4_cos(thetaA);
+    V128 sinA = wasm_f32x4_sin(thetaA);
+    V128 cosB = wasm_f32x4_cos(thetaB);
+    V128 sinB = wasm_f32x4_sin(thetaB);
 
-    v128_t rAx = v128_rotate_x_f32(localAnchorAx, localAnchorAy, cosA, sinA);
-    v128_t rAy = v128_rotate_y_f32(localAnchorAx, localAnchorAy, cosA, sinA);
-    v128_t rBx = v128_rotate_x_f32(localAnchorBx, localAnchorBy, cosB, sinB);
-    v128_t rBy = v128_rotate_y_f32(localAnchorBx, localAnchorBy, cosB, sinB);
+    V128 rAx = v128_rotate_x_f32(localAnchorAx, localAnchorAy, cosA, sinA);
+    V128 rAy = v128_rotate_y_f32(localAnchorAx, localAnchorAy, cosA, sinA);
+    V128 rBx = v128_rotate_x_f32(localAnchorBx, localAnchorBy, cosB, sinB);
+    V128 rBy = v128_rotate_y_f32(localAnchorBx, localAnchorBy, cosB, sinB);
 
-    v128_t dx = v128_sub_f32(v128_add_f32(pBx, rBx), v128_add_f32(pAx, rAx));
-    v128_t dy = v128_sub_f32(v128_add_f32(pBy, rBy), v128_add_f32(pAy, rAy));
-    v128_t dMag = v128_mag_f32(dx, dy);
+    V128 dx = v128_sub_f32(v128_add_f32(pBx, rBx), v128_add_f32(pAx, rAx));
+    V128 dy = v128_sub_f32(v128_add_f32(pBy, rBy), v128_add_f32(pAy, rAy));
+    V128 dMag = v128_mag_f32(dx, dy);
 
-    v128_t hasLastNormal = v128_make_mask_f32(joints[0]->hasLastNormal, joints[1]->hasLastNormal, joints[2]->hasLastNormal, joints[3]->hasLastNormal);
-    v128_t lastNormalX = v128_make_f32(joints[0]->lastNormal.x, joints[1]->lastNormal.x, joints[2]->lastNormal.x, joints[3]->lastNormal.x);
-    v128_t lastNormalY = v128_make_f32(joints[0]->lastNormal.y, joints[1]->lastNormal.y, joints[2]->lastNormal.y, joints[3]->lastNormal.y);
+    V128 hasLastNormal = v128_make_mask_f32(joints[0]->hasLastNormal, joints[1]->hasLastNormal, joints[2]->hasLastNormal, joints[3]->hasLastNormal);
+    V128 lastNormalX = v128_make_f32(joints[0]->lastNormal.x, joints[1]->lastNormal.x, joints[2]->lastNormal.x, joints[3]->lastNormal.x);
+    V128 lastNormalY = v128_make_f32(joints[0]->lastNormal.y, joints[1]->lastNormal.y, joints[2]->lastNormal.y, joints[3]->lastNormal.y);
 
-    v128_t normalX, normalY;
-    v128_t useD = v128_gt_f32(dMag, threshold_v);
+    V128 normalX, normalY;
+    V128 useD = v128_gt_f32(dMag, threshold_v);
     
     // Normal calculation
-    v128_t invDMag = v128_div_f32(one_v, dMag);
-    v128_t normDX = v128_mul_f32(dx, invDMag);
-    v128_t normDY = v128_mul_f32(dy, invDMag);
+    V128 invDMag = v128_div_f32(one_v, dMag);
+    V128 normDX = v128_mul_f32(dx, invDMag);
+    V128 normDY = v128_mul_f32(dy, invDMag);
 
-    v128_t defaultNormalX = v128_select(hasLastNormal, lastNormalX, zero_v);
-    v128_t defaultNormalY = v128_select(hasLastNormal, lastNormalY, one_v);
+    V128 defaultNormalX = v128_select(hasLastNormal, lastNormalX, zero_v);
+    V128 defaultNormalY = v128_select(hasLastNormal, lastNormalY, one_v);
 
     normalX = v128_select(useD, normDX, defaultNormalX);
     normalY = v128_select(useD, normDY, defaultNormalY);
 
     // Warm start impulse adjustment
-    v128_t impulse = v128_make_f32(joints[0]->impulse, joints[1]->impulse, joints[2]->impulse, joints[3]->impulse);
-    v128_t dotLastNorm = v128_dot_f32(lastNormalX, lastNormalY, normalX, normalY);
+    V128 impulse = v128_make_f32(joints[0]->impulse, joints[1]->impulse, joints[2]->impulse, joints[3]->impulse);
+    V128 dotLastNorm = v128_dot_f32(lastNormalX, lastNormalY, normalX, normalY);
     impulse = v128_select(hasLastNormal, v128_mul_f32(impulse, dotLastNorm), impulse);
 
     // Mass calculation
-    v128_t imA = gather_body_fdata(idxA, BODY_FDATA_IM);
-    v128_t imB = gather_body_fdata(idxB, BODY_FDATA_IM);
-    v128_t iIA = gather_body_fdata(idxA, BODY_FDATA_INV_INERTIA);
-    v128_t iIB = gather_body_fdata(idxB, BODY_FDATA_INV_INERTIA);
+    V128 imA = gather_body_fdata(idxA, BODY_FDATA_IM);
+    V128 imB = gather_body_fdata(idxB, BODY_FDATA_IM);
+    V128 iIA = gather_body_fdata(idxA, BODY_FDATA_INV_INERTIA);
+    V128 iIB = gather_body_fdata(idxB, BODY_FDATA_INV_INERTIA);
 
-    v128_t rnA = v128_cross_f32(rAx, rAy, normalX, normalY);
-    v128_t rnB = v128_cross_f32(rBx, rBy, normalX, normalY);
-    v128_t k = v128_add_f32(v128_add_f32(imA, imB), v128_add_f32(v128_mul_f32(v128_mul_f32(iIA, rnA), rnA), v128_mul_f32(v128_mul_f32(iIB, rnB), rnB)));
-    v128_t mass = v128_select(v128_gt_f32(k, zero_v), v128_div_f32(one_v, k), zero_v);
+    V128 rnA = v128_cross_f32(rAx, rAy, normalX, normalY);
+    V128 rnB = v128_cross_f32(rBx, rBy, normalX, normalY);
+    V128 k = v128_add_f32(v128_add_f32(imA, imB), v128_add_f32(v128_mul_f32(v128_mul_f32(iIA, rnA), rnA), v128_mul_f32(v128_mul_f32(iIB, rnB), rnB)));
+    V128 mass = v128_select(v128_gt_f32(k, zero_v), v128_div_f32(one_v, k), zero_v);
 
     // KRB Bias calculation
-    v128_t length = v128_make_f32(joints[0]->length, joints[1]->length, joints[2]->length, joints[3]->length);
-    v128_t C = v128_sub_f32(dMag, length);
-    v128_t vB = v128_div_f32(v128_mul_f32(baumgarte_v, C), dt_v);
+    V128 length = v128_make_f32(joints[0]->length, joints[1]->length, joints[2]->length, joints[3]->length);
+    V128 C = v128_sub_f32(dMag, length);
+    V128 vB = v128_div_f32(v128_mul_f32(baumgarte_v, C), dt_v);
 
-    v128_t forceVX_A = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
-    v128_t forceVY_A = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
-    v128_t forceVX_B = gather_body_fdata(idxB, BODY_FDATA_FORCE_VX);
-    v128_t forceVY_B = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
+    V128 forceVX_A = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
+    V128 forceVY_A = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
+    V128 forceVX_B = gather_body_fdata(idxB, BODY_FDATA_FORCE_VX);
+    V128 forceVY_B = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
 
-    v128_t forceVn = v128_dot_f32(v128_sub_f32(forceVX_B, forceVX_A), v128_sub_f32(forceVY_B, forceVY_A), normalX, normalY);
+    V128 forceVn = v128_dot_f32(v128_sub_f32(forceVX_B, forceVX_A), v128_sub_f32(forceVY_B, forceVY_A), normalX, normalY);
 
-    v128_t bias = v128_sub_f32(vB, forceVn);
+    V128 bias = v128_sub_f32(vB, forceVn);
 
     // Store back results
     float resNormalX[4], resNormalY[4], resImpulse[4], resMass[4], resBias[4], resRAx[4], resRAy[4], resRBx[4], resRBy[4];

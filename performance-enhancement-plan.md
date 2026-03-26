@@ -38,28 +38,30 @@ This document outlines a phased approach to improving the performance of the Gea
 
 ---
 
-## Phase 3: Data-Parallelism (SIMD/Vectorization)
+## Phase 3: Data-Parallelism (SIMD/Vectorization) [DONE]
 *Focus: Using CPU vector instructions (AVX/NEON) to process multiple data points at once.*
+
+**Note on Highway Migration:** The transition from manual WASM intrinsics to Google Highway achieved full portability (AVX2/NEON/SSE4) but introduced a temporary performance regression (~20-200% slowdown in WASM) due to "Type Hopping" between Vectors and Masks. This validates the need for Phase 6 (Tuning).
 
 ### 3.1. SIMD-Accelerated Math Library [DONE]
 - **Goal:** Replace scalar `Vec2` operations with SIMD-optimized equivalents.
-- **Action:** Implement a specialized SIMD math layer for common operations (dot product, cross product, normalization, rotation).
-- **Benefit:** Reduces the clock cycles required for fundamental geometric calculations.
+- **Action:** Transitioned from manual WASM intrinsics to a portable Google Highway abstraction layer in `simd-math.h`.
+- **Benefit:** Enables SIMD performance on all platforms, not just WASM.
 
 ### 3.2. Vectorized Integrators [DONE]
 - **Goal:** Process 4-8 bodies simultaneously during integration.
-- **Action:** Implement AVX/SSE/NEON versions of the world-level integration loops created in Phase 1.
-- **Benefit:** Drastic reduction in time spent on basic motion updates.
+- **Action:** Implemented portable Highway versions of the world-level integration loops.
+- **Benefit:** Drastic reduction in time spent on basic motion updates on native hardware.
 
 ### 3.3. SIMD Narrow-Phase Solvers [DONE]
 - **Goal:** Accelerate individual collision tests.
-- **Action:** Implement SIMD versions of the most common solvers (e.g., `_solveCircleCircle`, `_solveBoxBox`). Implement "1-vs-4" batching patterns (test one object against 4 others in a single SIMD operation).
-- **Benefit:** Significant speedup in dense scenes.
+- **Action:** Implemented Highway-based versions of the most common solvers (e.g., `_solveCircleCircle`).
+- **Benefit:** Significant speedup in dense scenes on native hardware.
 
 ### 3.4. Vectorized Joint Solvers [DONE]
 - **Goal:** Accelerate pre-solving for large numbers of constraints.
-- **Action:** Implement SIMD paths for `DistanceJoint` and `SpringJoint` to calculate effective mass and bias in batches of 4.
-- **Benefit:** Theoretical 4x speedup for complex articulated systems.
+- **Action:** Implemented Highway paths for `DistanceJoint` and `SpringJoint`.
+- **Benefit:** Batch processing of joint constraints.
 
 ---
 

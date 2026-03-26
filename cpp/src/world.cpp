@@ -307,51 +307,51 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
 
     int vectorizedCount = (bodyCount / 4) * 4;
 
-    v128_t dt_v = v128_splat_f32(dt);
-    v128_t gravX_v = v128_splat_f32(gravity.x);
-    v128_t gravY_v = v128_splat_f32(gravity.y);
-    v128_t maxVelSq_v = v128_splat_f32(MAX_VELOCITY * MAX_VELOCITY);
-    v128_t zero_v = v128_splat_f32(0.0f);
-    v128_t one_v = v128_splat_f32(1.0f);
+    V128 dt_v = v128_splat_f32(dt);
+    V128 gravX_v = v128_splat_f32(gravity.x);
+    V128 gravY_v = v128_splat_f32(gravity.y);
+    V128 maxVelSq_v = v128_splat_f32(MAX_VELOCITY * MAX_VELOCITY);
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 one_v = v128_splat_f32(1.0f);
 
     float* fdata = liveBodyFloatData.data();
     int* idata = liveBodyIntData.data();
 
     for (int i = 0; i < vectorizedCount; i += 4) {
         // Load isSleeping mask
-        v128_t flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
-        v128_t isSleepingMask = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
+        V128 flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
+        V128 isSleepingMask = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
         
         // Load attributes
-        v128_t im = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IM)]);
-        v128_t m = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_M)]);
-        v128_t gScale = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_G_SCALE)]);
-        v128_t fx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FX)]);
-        v128_t fy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FY)]);
-        v128_t nfx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFX)]);
-        v128_t nfy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFY)]);
-        v128_t damping = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_DAMPING)]);
-        v128_t vx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
-        v128_t vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
+        V128 im = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IM)]);
+        V128 m = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_M)]);
+        V128 gScale = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_G_SCALE)]);
+        V128 fx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FX)]);
+        V128 fy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FY)]);
+        V128 nfx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFX)]);
+        V128 nfy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFY)]);
+        V128 damping = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_DAMPING)]);
+        V128 vx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
+        V128 vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
 
         // 1. Compute gravity force
-        v128_t gravFX = v128_mul_f32(v128_mul_f32(gravX_v, m), gScale);
-        v128_t gravFY = v128_mul_f32(v128_mul_f32(gravY_v, m), gScale);
+        V128 gravFX = v128_mul_f32(v128_mul_f32(gravX_v, m), gScale);
+        V128 gravFY = v128_mul_f32(v128_mul_f32(gravY_v, m), gScale);
 
         // 2. Apply external forces (NFX, NFY)
-        v128_t totalFX = v128_add_f32(fx, nfx);
-        v128_t totalFY = v128_add_f32(fy, nfy);
+        V128 totalFX = v128_add_f32(fx, nfx);
+        V128 totalFY = v128_add_f32(fy, nfy);
         
         // Clear NFX, NFY
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFX)], zero_v);
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFY)], zero_v);
 
         // 3. Calculate forceVelocity for KRB (only if im > 0 and NOT sleeping)
-        v128_t im_gt_zero = v128_gt_f32(im, zero_v);
-        v128_t validMask = wasm_v128_andnot(im_gt_zero, isSleepingMask);
+        V128 im_gt_zero = v128_gt_f32(im, zero_v);
+        V128 validMask = wasm_v128_andnot(im_gt_zero, isSleepingMask);
         
-        v128_t forceVX = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
-        v128_t forceVY = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
+        V128 forceVX = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
+        V128 forceVY = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
         
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FORCE_VX)], v128_select(validMask, forceVX, zero_v));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FORCE_VY)], v128_select(validMask, forceVY, zero_v));
@@ -361,19 +361,19 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
         totalFY = v128_sub_f32(totalFY, v128_mul_f32(vy, damping));
 
         // 5. Integrate total velocity
-        v128_t dvx = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
-        v128_t dvy = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
+        V128 dvx = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
+        V128 dvy = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
         
-        v128_t nextVX = v128_add_f32(vx, dvx);
-        v128_t nextVY = v128_add_f32(vy, dvy);
+        V128 nextVX = v128_add_f32(vx, dvx);
+        V128 nextVY = v128_add_f32(vy, dvy);
 
         // 6. Cap velocity
-        v128_t speedSq = v128_mag_sq_f32(nextVX, nextVY);
-        v128_t speedLimitMask = v128_gt_f32(speedSq, maxVelSq_v);
+        V128 speedSq = v128_mag_sq_f32(nextVX, nextVY);
+        V128 speedLimitMask = v128_gt_f32(speedSq, maxVelSq_v);
         
         // if (speedSq > maxVelSq) v *= maxVel / sqrt(speedSq)
-        v128_t speed = wasm_f32x4_sqrt(speedSq);
-        v128_t invSpeed = v128_div_f32(v128_splat_f32(MAX_VELOCITY), speed);
+        V128 speed = wasm_f32x4_sqrt(speedSq);
+        V128 invSpeed = v128_div_f32(v128_splat_f32(MAX_VELOCITY), speed);
         
         nextVX = v128_select(speedLimitMask, v128_mul_f32(nextVX, invSpeed), nextVX);
         nextVY = v128_select(speedLimitMask, v128_mul_f32(nextVY, invSpeed), nextVY);
@@ -443,55 +443,55 @@ void World::_doIntegratePositionsSIMD(float dt) {
 
     int vectorizedCount = (bodyCount / 4) * 4;
 
-    v128_t dt_v = v128_splat_f32(dt);
-    v128_t zero_v = v128_splat_f32(0.0f);
-    v128_t one_v = v128_splat_f32(1.0f);
-    v128_t wake_threshold_v = v128_splat_f32(WAKE_MOVEMENT_THRESHOLD);
-    v128_t sleep_vel_sq_v = v128_splat_f32(SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD);
-    v128_t sleep_ang_vel_v = v128_splat_f32(SLEEP_ANGULAR_VELOCITY_THRESHOLD);
+    V128 dt_v = v128_splat_f32(dt);
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 one_v = v128_splat_f32(1.0f);
+    V128 wake_threshold_v = v128_splat_f32(WAKE_MOVEMENT_THRESHOLD);
+    V128 sleep_vel_sq_v = v128_splat_f32(SLEEP_VELOCITY_THRESHOLD * SLEEP_VELOCITY_THRESHOLD);
+    V128 sleep_ang_vel_v = v128_splat_f32(SLEEP_ANGULAR_VELOCITY_THRESHOLD);
 
     float* fdata = liveBodyFloatData.data();
     int* idata = liveBodyIntData.data();
 
     for (int i = 0; i < vectorizedCount; i += 4) {
         // Load data for 4 bodies
-        v128_t type = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_TYPE)]);
-        v128_t flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
+        V128 type = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_TYPE)]);
+        V128 flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
         
-        v128_t isFixed = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
-        v128_t isDynamic = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::DYNAMIC_OBJECT));
-        v128_t isSleeping = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
+        V128 isFixed = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
+        V128 isDynamic = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::DYNAMIC_OBJECT));
+        V128 isSleeping = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
         
-        v128_t skipMask = wasm_v128_or(isFixed, isSleeping);
+        V128 skipMask = wasm_v128_or(isFixed, isSleeping);
 
-        v128_t x = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)]);
-        v128_t y = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_Y)]);
-        v128_t r = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_R)]);
-        v128_t vx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
-        v128_t vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
-        v128_t rs = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_RS)]);
-        v128_t damping_a = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ANGULAR_DAMPING)]);
+        V128 x = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)]);
+        V128 y = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_Y)]);
+        V128 r = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_R)]);
+        V128 vx = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)]);
+        V128 vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
+        V128 rs = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_RS)]);
+        V128 damping_a = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ANGULAR_DAMPING)]);
         
-        v128_t lastX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_X)]);
-        v128_t lastY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_Y)]);
-        v128_t lastR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_R)]);
+        V128 lastX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_X)]);
+        V128 lastY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_Y)]);
+        V128 lastR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_R)]);
         
-        v128_t accX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_X)]);
-        v128_t accY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_Y)]);
-        v128_t accR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_R)]);
-        v128_t sleepTimer = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_SLEEP_TIMER)]);
+        V128 accX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_X)]);
+        V128 accY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_Y)]);
+        V128 accR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_R)]);
+        V128 sleepTimer = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_SLEEP_TIMER)]);
 
         // 1. Angular Damping (only dynamic)
-        v128_t dampFactor = v128_sub_f32(one_v, v128_mul_f32(damping_a, dt_v));
+        V128 dampFactor = v128_sub_f32(one_v, v128_mul_f32(damping_a, dt_v));
         rs = v128_select(isDynamic, v128_mul_f32(rs, dampFactor), rs);
 
         // 2. Integrate
-        v128_t nextX = v128_add_f32(x, v128_mul_f32(vx, dt_v));
-        v128_t nextY = v128_add_f32(y, v128_mul_f32(vy, dt_v));
-        v128_t nextR = v128_add_f32(r, v128_mul_f32(rs, dt_v));
+        V128 nextX = v128_add_f32(x, v128_mul_f32(vx, dt_v));
+        V128 nextY = v128_add_f32(y, v128_mul_f32(vy, dt_v));
+        V128 nextR = v128_add_f32(r, v128_mul_f32(rs, dt_v));
 
         // 3. NaN check (simplified SIMD version: just check vx, vy, rs)
-        v128_t finiteMask = wasm_v128_and(wasm_v128_and(wasm_f32x4_eq(vx, vx), wasm_f32x4_eq(vy, vy)), wasm_f32x4_eq(rs, rs));
+        V128 finiteMask = wasm_v128_and(wasm_v128_and(wasm_f32x4_eq(vx, vx), wasm_f32x4_eq(vy, vy)), wasm_f32x4_eq(rs, rs));
         
         nextX = v128_select(finiteMask, nextX, lastX);
         nextY = v128_select(finiteMask, nextY, lastY);
@@ -501,25 +501,25 @@ void World::_doIntegratePositionsSIMD(float dt) {
         rs = v128_select(finiteMask, rs, zero_v);
 
         // 4. Movement track
-        v128_t dx = v128_sub_f32(nextX, lastX);
-        v128_t dy = v128_sub_f32(nextY, lastY);
-        v128_t dr = v128_sub_f32(nextR, lastR);
+        V128 dx = v128_sub_f32(nextX, lastX);
+        V128 dy = v128_sub_f32(nextY, lastY);
+        V128 dr = v128_sub_f32(nextR, lastR);
         
         accX = v128_add_f32(accX, dx);
         accY = v128_add_f32(accY, dy);
         accR = v128_add_f32(accR, dr);
         
-        v128_t absAccX = wasm_f32x4_abs(accX);
-        v128_t absAccY = wasm_f32x4_abs(accY);
-        v128_t absAccR = wasm_f32x4_abs(accR);
+        V128 absAccX = wasm_f32x4_abs(accX);
+        V128 absAccY = wasm_f32x4_abs(accY);
+        V128 absAccR = wasm_f32x4_abs(accR);
         
-        v128_t moved = wasm_v128_or(wasm_v128_or(wasm_f32x4_ne(dx, zero_v), wasm_f32x4_ne(dy, zero_v)), wasm_f32x4_ne(dr, zero_v));
-        v128_t significantMove = wasm_v128_or(wasm_v128_or(v128_gt_f32(absAccX, wake_threshold_v), v128_gt_f32(absAccY, wake_threshold_v)), v128_gt_f32(absAccR, wake_threshold_v));
+        V128 moved = wasm_v128_or(wasm_v128_or(wasm_f32x4_ne(dx, zero_v), wasm_f32x4_ne(dy, zero_v)), wasm_f32x4_ne(dr, zero_v));
+        V128 significantMove = wasm_v128_or(wasm_v128_or(v128_gt_f32(absAccX, wake_threshold_v), v128_gt_f32(absAccY, wake_threshold_v)), v128_gt_f32(absAccR, wake_threshold_v));
         
-        v128_t velSq = v128_mag_sq_f32(vx, vy);
-        v128_t aboveSleepVel = wasm_v128_or(v128_gt_f32(velSq, sleep_vel_sq_v), v128_gt_f32(wasm_f32x4_abs(rs), sleep_ang_vel_v));
+        V128 velSq = v128_mag_sq_f32(vx, vy);
+        V128 aboveSleepVel = wasm_v128_or(v128_gt_f32(velSq, sleep_vel_sq_v), v128_gt_f32(wasm_f32x4_abs(rs), sleep_ang_vel_v));
         
-        v128_t resetTimerMask = wasm_v128_and(wasm_v128_and(moved, significantMove), aboveSleepVel);
+        V128 resetTimerMask = wasm_v128_and(wasm_v128_and(moved, significantMove), aboveSleepVel);
         
         sleepTimer = v128_select(resetTimerMask, zero_v, v128_add_f32(sleepTimer, dt_v));
         accX = v128_select(resetTimerMask, zero_v, accX);
@@ -631,17 +631,17 @@ void World::_syncFixturesSIMD() {
     float* bfdata = liveBodyFloatData.data();
     int* bidata = liveBodyIntData.data();
 
-    v128_t pad_v = v128_splat_f32(0.1f);
-    v128_t margin_ratio_v = v128_splat_f32(0.05f);
-    v128_t zero_v = v128_splat_f32(0.0f);
-    v128_t half_v = v128_splat_f32(0.5f);
-    v128_t two_v = v128_splat_f32(2.0f);
-    v128_t large_v = v128_splat_f32(1e10f);
-    v128_t nlarge_v = v128_splat_f32(-1e10f);
+    V128 pad_v = v128_splat_f32(0.1f);
+    V128 margin_ratio_v = v128_splat_f32(0.05f);
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 half_v = v128_splat_f32(0.5f);
+    V128 two_v = v128_splat_f32(2.0f);
+    V128 large_v = v128_splat_f32(1e10f);
+    V128 nlarge_v = v128_splat_f32(-1e10f);
 
     for (int i = 0; i < vectorizedCount; i += 4) {
-        v128_t bIdx_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_BODY_INDEX)]);
-        v128_t shape_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_SHAPE)]);
+        V128 bIdx_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_BODY_INDEX)]);
+        V128 shape_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_SHAPE)]);
         
         uint32_t bIdx[4];
         wasm_v128_store(bIdx, bIdx_v);
@@ -661,61 +661,61 @@ void World::_syncFixturesSIMD() {
             btypes[j] = bidata[GET_BODY_IDATA_INDEX(bodyIndex, BODY_IDATA_TYPE)];
         }
         
-        v128_t bflags_v = wasm_v128_load(bflags);
-        v128_t btypes_v = wasm_v128_load(btypes);
-        v128_t isFixed = wasm_i32x4_eq(btypes_v, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
+        V128 bflags_v = wasm_v128_load(bflags);
+        V128 btypes_v = wasm_v128_load(btypes);
+        V128 isFixed = wasm_i32x4_eq(btypes_v, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
         
-        v128_t isSleepingMask = wasm_i32x4_ne(wasm_v128_and(bflags_v, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
+        V128 isSleepingMask = wasm_i32x4_ne(wasm_v128_and(bflags_v, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
         
         // Only skip if all 4 are sleeping AND none are fixed objects.
         // Fixed objects need their world-space data for narrow-phase even if they don't move.
-        v128_t canSkipMask = wasm_v128_andnot(isSleepingMask, isFixed);
+        V128 canSkipMask = wasm_v128_andnot(isSleepingMask, isFixed);
         if (v128_bitmask(canSkipMask) == 0xF) continue;
         
-        v128_t bx_v = wasm_v128_load(bx);
-        v128_t by_v = wasm_v128_load(by);
-        v128_t br_v = wasm_v128_load(br);
-        v128_t bvx_v = wasm_v128_load(bvx);
-        v128_t bvy_v = wasm_v128_load(bvy);
-        v128_t brs_v = wasm_v128_load(brs);
+        V128 bx_v = wasm_v128_load(bx);
+        V128 by_v = wasm_v128_load(by);
+        V128 br_v = wasm_v128_load(br);
+        V128 bvx_v = wasm_v128_load(bvx);
+        V128 bvy_v = wasm_v128_load(bvy);
+        V128 brs_v = wasm_v128_load(brs);
 
-        v128_t lx = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_X)]);
-        v128_t ly = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_Y)]);
-        v128_t lr = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_R)]);
-        v128_t w = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_W)]);
-        v128_t h = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_H)]);
+        V128 lx = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_X)]);
+        V128 ly = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_Y)]);
+        V128 lr = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_LOCAL_R)]);
+        V128 w = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_W)]);
+        V128 h = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_H)]);
         
-        v128_t cosR = wasm_f32x4_cos(br_v);
-        v128_t sinR = wasm_f32x4_sin(br_v);
+        V128 cosR = wasm_f32x4_cos(br_v);
+        V128 sinR = wasm_f32x4_sin(br_v);
         
-        v128_t wx = v128_add_f32(bx_v, v128_sub_f32(v128_mul_f32(lx, cosR), v128_mul_f32(ly, sinR)));
-        v128_t wy = v128_add_f32(by_v, v128_add_f32(v128_mul_f32(lx, sinR), v128_mul_f32(ly, cosR)));
+        V128 wx = v128_add_f32(bx_v, v128_sub_f32(v128_mul_f32(lx, cosR), v128_mul_f32(ly, sinR)));
+        V128 wy = v128_add_f32(by_v, v128_add_f32(v128_mul_f32(lx, sinR), v128_mul_f32(ly, cosR)));
         
-        v128_t totalRot = v128_add_f32(br_v, lr);
-        v128_t isAabbMask = wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::AABB));
+        V128 totalRot = v128_add_f32(br_v, lr);
+        V128 isAabbMask = wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::AABB));
         
-        v128_t one_v = v128_splat_f32(1.0f);
+        V128 one_v = v128_splat_f32(1.0f);
         
-        v128_t cosTotal = v128_select(isAabbMask, one_v, wasm_f32x4_cos(totalRot));
-        v128_t sinTotal = v128_select(isAabbMask, zero_v, wasm_f32x4_sin(totalRot));
+        V128 cosTotal = v128_select(isAabbMask, one_v, wasm_f32x4_cos(totalRot));
+        V128 sinTotal = v128_select(isAabbMask, zero_v, wasm_f32x4_sin(totalRot));
 
-        v128_t vCount_v = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_COUNT)]);
+        V128 vCount_v = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_COUNT)]);
         float vCounts[4];
         wasm_v128_store(vCounts, vCount_v);
         int maxVCount = std::max({(int)vCounts[0], (int)vCounts[1], (int)vCounts[2], (int)vCounts[3]});
 
-        v128_t aabbMinX = large_v;
-        v128_t aabbMinY = large_v;
-        v128_t aabbMaxX = nlarge_v;
-        v128_t aabbMaxY = nlarge_v;
+        V128 aabbMinX = large_v;
+        V128 aabbMinY = large_v;
+        V128 aabbMaxX = nlarge_v;
+        V128 aabbMaxY = nlarge_v;
 
         if (maxVCount > 0) {
             for (int k = 0; k < MAX_POLYGON_VERTICES; ++k) {
-                v128_t vx = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2)]);
-                v128_t vy = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2 + 1)]);
+                V128 vx = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2)]);
+                V128 vy = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_START + k * 2 + 1)]);
                 
-                v128_t worldVX = v128_add_f32(wx, v128_sub_f32(v128_mul_f32(vx, cosTotal), v128_mul_f32(vy, sinTotal)));
-                v128_t worldVY = v128_add_f32(wy, v128_add_f32(v128_mul_f32(vx, sinTotal), v128_mul_f32(vy, cosTotal)));
+                V128 worldVX = v128_add_f32(wx, v128_sub_f32(v128_mul_f32(vx, cosTotal), v128_mul_f32(vy, sinTotal)));
+                V128 worldVY = v128_add_f32(wy, v128_add_f32(v128_mul_f32(vx, sinTotal), v128_mul_f32(vy, cosTotal)));
                 
                 wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)], worldVX);
                 wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)], worldVY);
@@ -729,20 +729,20 @@ void World::_syncFixturesSIMD() {
         
         for (int k = 0; k < maxVCount; ++k) {
             int next_k = (k + 1) % MAX_POLYGON_VERTICES;
-            v128_t p1x = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)]);
-            v128_t p1y = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)]);
-            v128_t p2x = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2)]);
-            v128_t p2y = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2 + 1)]);
+            V128 p1x = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)]);
+            V128 p1y = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)]);
+            V128 p2x = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2)]);
+            V128 p2y = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + next_k * 2 + 1)]);
             
-            v128_t edgeX = v128_sub_f32(p2x, p1x);
-            v128_t edgeY = v128_sub_f32(p2y, p1y);
+            V128 edgeX = v128_sub_f32(p2x, p1x);
+            V128 edgeY = v128_sub_f32(p2y, p1y);
             
-            v128_t nx = edgeY;
-            v128_t ny = v128_sub_f32(zero_v, edgeX);
+            V128 nx = edgeY;
+            V128 ny = v128_sub_f32(zero_v, edgeX);
             
-            v128_t lenSq = v128_add_f32(v128_mul_f32(nx, nx), v128_mul_f32(ny, ny));
-            v128_t len = wasm_f32x4_sqrt(lenSq);
-            v128_t lenGtZero = v128_gt_f32(len, zero_v);
+            V128 lenSq = v128_add_f32(v128_mul_f32(nx, nx), v128_mul_f32(ny, ny));
+            V128 len = wasm_f32x4_sqrt(lenSq);
+            V128 lenGtZero = v128_gt_f32(len, zero_v);
             nx = v128_select(lenGtZero, v128_div_f32(nx, len), zero_v);
             ny = v128_select(lenGtZero, v128_div_f32(ny, len), zero_v);
             
@@ -750,60 +750,60 @@ void World::_syncFixturesSIMD() {
             wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_NORMAL_START + k * 2 + 1)], ny);
         }
 
-        v128_t isCircleMask = wasm_v128_or(
+        V128 isCircleMask = wasm_v128_or(
             wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::CIRCLE)),
             wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::POINT))
         );
-        v128_t circMinX = v128_sub_f32(wx, w);
-        v128_t circMinY = v128_sub_f32(wy, w);
-        v128_t circMaxX = v128_add_f32(wx, w);
-        v128_t circMaxY = v128_add_f32(wy, w);
+        V128 circMinX = v128_sub_f32(wx, w);
+        V128 circMinY = v128_sub_f32(wy, w);
+        V128 circMaxX = v128_add_f32(wx, w);
+        V128 circMaxY = v128_add_f32(wy, w);
         
         aabbMinX = v128_select(isCircleMask, circMinX, aabbMinX);
         aabbMinY = v128_select(isCircleMask, circMinY, aabbMinY);
         aabbMaxX = v128_select(isCircleMask, circMaxX, aabbMaxX);
         aabbMaxY = v128_select(isCircleMask, circMaxY, aabbMaxY);
         
-        v128_t isCapsuleMask = wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::CAPSULE));
+        V128 isCapsuleMask = wasm_i32x4_eq(shape_v, wasm_i32x4_splat((int)ObjectShape::CAPSULE));
         aabbMinX = v128_select(isCapsuleMask, v128_sub_f32(aabbMinX, w), aabbMinX);
         aabbMinY = v128_select(isCapsuleMask, v128_sub_f32(aabbMinY, w), aabbMinY);
         aabbMaxX = v128_select(isCapsuleMask, v128_add_f32(aabbMaxX, w), aabbMaxX);
         aabbMaxY = v128_select(isCapsuleMask, v128_add_f32(aabbMaxY, w), aabbMaxY);
 
-        v128_t oldAx1 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX1)]);
-        v128_t oldAy1 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY1)]);
-        v128_t oldAx2 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX2)]);
-        v128_t oldAy2 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY2)]);
+        V128 oldAx1 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX1)]);
+        V128 oldAy1 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY1)]);
+        V128 oldAx2 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX2)]);
+        V128 oldAy2 = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY2)]);
         
-        v128_t contains = wasm_v128_and(
+        V128 contains = wasm_v128_and(
             wasm_v128_and(v128_le_f32(oldAx1, aabbMinX), v128_le_f32(oldAy1, aabbMinY)),
             wasm_v128_and(v128_ge_f32(oldAx2, aabbMaxX), v128_ge_f32(oldAy2, aabbMaxY))
         );
         
-        v128_t hx = v128_mul_f32(v128_sub_f32(aabbMaxX, aabbMinX), half_v);
-        v128_t hy = v128_mul_f32(v128_sub_f32(aabbMaxY, aabbMinY), half_v);
-        v128_t size = v128_mul_f32(v128_max_f32(hx, hy), two_v);
+        V128 hx = v128_mul_f32(v128_sub_f32(aabbMaxX, aabbMinX), half_v);
+        V128 hy = v128_mul_f32(v128_sub_f32(aabbMaxY, aabbMinY), half_v);
+        V128 size = v128_mul_f32(v128_max_f32(hx, hy), two_v);
         
-        v128_t margin = v128_mul_f32(size, margin_ratio_v);
-        v128_t absRs = wasm_f32x4_abs(brs_v);
+        V128 margin = v128_mul_f32(size, margin_ratio_v);
+        V128 absRs = wasm_f32x4_abs(brs_v);
         
-        v128_t paddingX_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_v), zero_v);
-        v128_t paddingY_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_v), zero_v);
-        v128_t paddingX_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_v), zero_v);
-        v128_t paddingY_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_v), zero_v);
+        V128 paddingX_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_v), zero_v);
+        V128 paddingY_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_v), zero_v);
+        V128 paddingX_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_v), zero_v);
+        V128 paddingY_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_v), zero_v);
         
-        v128_t fatMinX = v128_sub_f32(v128_add_f32(aabbMinX, paddingX_neg), margin);
-        v128_t fatMinY = v128_sub_f32(v128_add_f32(aabbMinY, paddingY_neg), margin);
-        v128_t fatMaxX = v128_add_f32(v128_add_f32(aabbMaxX, paddingX_pos), margin);
-        v128_t fatMaxY = v128_add_f32(v128_add_f32(aabbMaxY, paddingY_pos), margin);
+        V128 fatMinX = v128_sub_f32(v128_add_f32(aabbMinX, paddingX_neg), margin);
+        V128 fatMinY = v128_sub_f32(v128_add_f32(aabbMinY, paddingY_neg), margin);
+        V128 fatMaxX = v128_add_f32(v128_add_f32(aabbMaxX, paddingX_pos), margin);
+        V128 fatMaxY = v128_add_f32(v128_add_f32(aabbMaxY, paddingY_pos), margin);
         
-        v128_t updateMask = v128_not(contains);
+        V128 updateMask = v128_not(contains);
         updateMask = wasm_v128_andnot(updateMask, isSleepingMask);
         
-        v128_t finalAx1 = v128_select(updateMask, fatMinX, oldAx1);
-        v128_t finalAy1 = v128_select(updateMask, fatMinY, oldAy1);
-        v128_t finalAx2 = v128_select(updateMask, fatMaxX, oldAx2);
-        v128_t finalAy2 = v128_select(updateMask, fatMaxY, oldAy2);
+        V128 finalAx1 = v128_select(updateMask, fatMinX, oldAx1);
+        V128 finalAy1 = v128_select(updateMask, fatMinY, oldAy1);
+        V128 finalAx2 = v128_select(updateMask, fatMaxX, oldAx2);
+        V128 finalAy2 = v128_select(updateMask, fatMaxY, oldAy2);
         
         wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AX1)], finalAx1);
         wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY1)], finalAy1);
@@ -2059,9 +2059,9 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
 
 void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
 #ifdef __EMSCRIPTEN__
-    v128_t dt_v = v128_splat_f32(dt);
-    v128_t zero_v = v128_splat_f32(0.0f);
-    v128_t one_v = v128_splat_f32(1.0f);
+    V128 dt_v = v128_splat_f32(dt);
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 one_v = v128_splat_f32(1.0f);
 
     int idxA[4], idxB[4];
     for (int i = 0; i < 4; ++i) {
@@ -2081,145 +2081,145 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
         );
     };
 
-    v128_t pAx = gather_body_fdata(idxA, BODY_FDATA_X);
-    v128_t pAy = gather_body_fdata(idxA, BODY_FDATA_Y);
-    v128_t pBx = gather_body_fdata(idxB, BODY_FDATA_X);
-    v128_t pBy = gather_body_fdata(idxB, BODY_FDATA_Y);
+    V128 pAx = gather_body_fdata(idxA, BODY_FDATA_X);
+    V128 pAy = gather_body_fdata(idxA, BODY_FDATA_Y);
+    V128 pBx = gather_body_fdata(idxB, BODY_FDATA_X);
+    V128 pBy = gather_body_fdata(idxB, BODY_FDATA_Y);
 
-    v128_t pointX = v128_make_f32(batch[0]->point.x, batch[1]->point.x, batch[2]->point.x, batch[3]->point.x);
-    v128_t pointY = v128_make_f32(batch[0]->point.y, batch[1]->point.y, batch[2]->point.y, batch[3]->point.y);
+    V128 pointX = v128_make_f32(batch[0]->point.x, batch[1]->point.x, batch[2]->point.x, batch[3]->point.x);
+    V128 pointY = v128_make_f32(batch[0]->point.y, batch[1]->point.y, batch[2]->point.y, batch[3]->point.y);
 
-    v128_t rAx = v128_sub_f32(pointX, pAx);
-    v128_t rAy = v128_sub_f32(pointY, pAy);
-    v128_t rBx = v128_sub_f32(pointX, pBx);
-    v128_t rBy = v128_sub_f32(pointY, pBy);
+    V128 rAx = v128_sub_f32(pointX, pAx);
+    V128 rAy = v128_sub_f32(pointY, pAy);
+    V128 rBx = v128_sub_f32(pointX, pBx);
+    V128 rBy = v128_sub_f32(pointY, pBy);
 
-    v128_t normalX = v128_make_f32(batch[0]->normal.x, batch[1]->normal.x, batch[2]->normal.x, batch[3]->normal.x);
-    v128_t normalY = v128_make_f32(batch[0]->normal.y, batch[1]->normal.y, batch[2]->normal.y, batch[3]->normal.y);
+    V128 normalX = v128_make_f32(batch[0]->normal.x, batch[1]->normal.x, batch[2]->normal.x, batch[3]->normal.x);
+    V128 normalY = v128_make_f32(batch[0]->normal.y, batch[1]->normal.y, batch[2]->normal.y, batch[3]->normal.y);
 
-    v128_t imA = gather_body_fdata(idxA, BODY_FDATA_IM);
-    v128_t imB = gather_body_fdata(idxB, BODY_FDATA_IM);
-    v128_t iIA = gather_body_fdata(idxA, BODY_FDATA_INV_INERTIA);
-    v128_t iIB = gather_body_fdata(idxB, BODY_FDATA_INV_INERTIA);
+    V128 imA = gather_body_fdata(idxA, BODY_FDATA_IM);
+    V128 imB = gather_body_fdata(idxB, BODY_FDATA_IM);
+    V128 iIA = gather_body_fdata(idxA, BODY_FDATA_INV_INERTIA);
+    V128 iIB = gather_body_fdata(idxB, BODY_FDATA_INV_INERTIA);
 
-    v128_t rnA = v128_sub_f32(v128_mul_f32(rAx, normalY), v128_mul_f32(rAy, normalX));
-    v128_t rnB = v128_sub_f32(v128_mul_f32(rBx, normalY), v128_mul_f32(rBy, normalX));
+    V128 rnA = v128_sub_f32(v128_mul_f32(rAx, normalY), v128_mul_f32(rAy, normalX));
+    V128 rnB = v128_sub_f32(v128_mul_f32(rBx, normalY), v128_mul_f32(rBy, normalX));
 
-    v128_t kNormal = v128_add_f32(v128_add_f32(imA, imB), 
+    V128 kNormal = v128_add_f32(v128_add_f32(imA, imB), 
                      v128_add_f32(v128_mul_f32(iIA, v128_mul_f32(rnA, rnA)), 
                                   v128_mul_f32(iIB, v128_mul_f32(rnB, rnB))));
 
-    v128_t normalMass = v128_select(v128_gt_f32(kNormal, v128_splat_f32(0.00001f)), v128_div_f32(one_v, kNormal), zero_v);
+    V128 normalMass = v128_select(v128_gt_f32(kNormal, v128_splat_f32(0.00001f)), v128_div_f32(one_v, kNormal), zero_v);
 
-    v128_t vAx = gather_body_fdata(idxA, BODY_FDATA_VX);
-    v128_t vAy = gather_body_fdata(idxA, BODY_FDATA_VY);
-    v128_t wA = gather_body_fdata(idxA, BODY_FDATA_RS);
+    V128 vAx = gather_body_fdata(idxA, BODY_FDATA_VX);
+    V128 vAy = gather_body_fdata(idxA, BODY_FDATA_VY);
+    V128 wA = gather_body_fdata(idxA, BODY_FDATA_RS);
     
-    v128_t vBx = gather_body_fdata(idxB, BODY_FDATA_VX);
-    v128_t vBy = gather_body_fdata(idxB, BODY_FDATA_VY);
-    v128_t wB = gather_body_fdata(idxB, BODY_FDATA_RS);
+    V128 vBx = gather_body_fdata(idxB, BODY_FDATA_VX);
+    V128 vBy = gather_body_fdata(idxB, BODY_FDATA_VY);
+    V128 wB = gather_body_fdata(idxB, BODY_FDATA_RS);
 
-    v128_t tangVelAx = v128_mul_f32(v128_sub_f32(zero_v, rAy), wA);
-    v128_t tangVelAy = v128_mul_f32(rAx, wA);
-    v128_t tangVelBx = v128_mul_f32(v128_sub_f32(zero_v, rBy), wB);
-    v128_t tangVelBy = v128_mul_f32(rBx, wB);
+    V128 tangVelAx = v128_mul_f32(v128_sub_f32(zero_v, rAy), wA);
+    V128 tangVelAy = v128_mul_f32(rAx, wA);
+    V128 tangVelBx = v128_mul_f32(v128_sub_f32(zero_v, rBy), wB);
+    V128 tangVelBy = v128_mul_f32(rBx, wB);
 
-    v128_t relVelX = v128_sub_f32(v128_add_f32(vBx, tangVelBx), v128_add_f32(vAx, tangVelAx));
-    v128_t relVelY = v128_sub_f32(v128_add_f32(vBy, tangVelBy), v128_add_f32(vAy, tangVelAy));
+    V128 relVelX = v128_sub_f32(v128_add_f32(vBx, tangVelBx), v128_add_f32(vAx, tangVelAx));
+    V128 relVelY = v128_sub_f32(v128_add_f32(vBy, tangVelBy), v128_add_f32(vAy, tangVelAy));
     
-    v128_t vn = v128_add_f32(v128_mul_f32(relVelX, normalX), v128_mul_f32(relVelY, normalY));
+    V128 vn = v128_add_f32(v128_mul_f32(relVelX, normalX), v128_mul_f32(relVelY, normalY));
 
-    v128_t forceVn = zero_v;
-    v128_t fvAx = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
-    v128_t fvAy = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
-    v128_t fvBx = gather_body_fdata(idxB, BODY_FDATA_FORCE_VX);
-    v128_t fvBy = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
+    V128 forceVn = zero_v;
+    V128 fvAx = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
+    V128 fvAy = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
+    V128 fvBx = gather_body_fdata(idxB, BODY_FDATA_FORCE_VX);
+    V128 fvBy = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
     forceVn = v128_add_f32(v128_mul_f32(v128_sub_f32(fvBx, fvAx), normalX), v128_mul_f32(v128_sub_f32(fvBy, fvAy), normalY));
 
-    v128_t relativeVn = v128_sub_f32(vn, forceVn);
+    V128 relativeVn = v128_sub_f32(vn, forceVn);
 
-    v128_t restitution = v128_make_f32(batch[0]->restitution, batch[1]->restitution, batch[2]->restitution, batch[3]->restitution);
-    v128_t vBounce = v128_mul_f32(v128_sub_f32(zero_v, restitution), relativeVn);
+    V128 restitution = v128_make_f32(batch[0]->restitution, batch[1]->restitution, batch[2]->restitution, batch[3]->restitution);
+    V128 vBounce = v128_mul_f32(v128_sub_f32(zero_v, restitution), relativeVn);
     
-    v128_t depth = v128_make_f32(batch[0]->depth, batch[1]->depth, batch[2]->depth, batch[3]->depth);
-    v128_t depth_lt_zero = v128_lt_f32(depth, zero_v);
+    V128 depth = v128_make_f32(batch[0]->depth, batch[1]->depth, batch[2]->depth, batch[3]->depth);
+    V128 depth_lt_zero = v128_lt_f32(depth, zero_v);
     
-    v128_t staticFric = v128_make_f32(batch[0]->staticFriction, batch[1]->staticFriction, batch[2]->staticFriction, batch[3]->staticFriction);
-    v128_t kineticFric = v128_make_f32(batch[0]->kineticFriction, batch[1]->kineticFriction, batch[2]->kineticFriction, batch[3]->kineticFriction);
+    V128 staticFric = v128_make_f32(batch[0]->staticFriction, batch[1]->staticFriction, batch[2]->staticFriction, batch[3]->staticFriction);
+    V128 kineticFric = v128_make_f32(batch[0]->kineticFriction, batch[1]->kineticFriction, batch[2]->kineticFriction, batch[3]->kineticFriction);
     
     staticFric = v128_select(depth_lt_zero, zero_v, staticFric);
     kineticFric = v128_select(depth_lt_zero, zero_v, kineticFric);
     
-    v128_t enableRestitution_v = enableRestitution ? v128_splat_f32(1.0f) : zero_v;
-    v128_t restThresh_v = v128_splat_f32(-RESTITUTION_THRESHOLD);
-    v128_t depth_over_dt = v128_div_f32(depth, dt_v);
+    V128 enableRestitution_v = enableRestitution ? v128_splat_f32(1.0f) : zero_v;
+    V128 restThresh_v = v128_splat_f32(-RESTITUTION_THRESHOLD);
+    V128 depth_over_dt = v128_div_f32(depth, dt_v);
     
-    v128_t cond1 = v128_lt_f32(relativeVn, restThresh_v);
-    v128_t cond2 = wasm_v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
-    v128_t shouldBounce = wasm_v128_and(wasm_f32x4_ne(enableRestitution_v, zero_v), wasm_v128_or(cond1, cond2));
+    V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
+    V128 cond2 = wasm_v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
+    V128 shouldBounce = wasm_v128_and(wasm_f32x4_ne(enableRestitution_v, zero_v), wasm_v128_or(cond1, cond2));
     
     int posIter = batch[0]->a->world.getPositionIterations();
     float posIterFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)posIter);
-    v128_t cumCorrFactor = v128_splat_f32(posIterFactor);
-    v128_t maxPosCorr = v128_splat_f32(MAX_POSITION_CORRECTION);
-    v128_t penSlop = v128_splat_f32(PENETRATION_SLOP);
+    V128 cumCorrFactor = v128_splat_f32(posIterFactor);
+    V128 maxPosCorr = v128_splat_f32(MAX_POSITION_CORRECTION);
+    V128 penSlop = v128_splat_f32(PENETRATION_SLOP);
     
-    v128_t depth_gt_zero = v128_gt_f32(depth, zero_v);
-    v128_t depthAfterVel = v128_max_f32(zero_v, v128_sub_f32(v128_sub_f32(depth, penSlop), v128_mul_f32(vBounce, dt_v)));
-    v128_t expectedDisp = v128_select(depth_gt_zero, v128_mul_f32(v128_min_f32(depthAfterVel, maxPosCorr), cumCorrFactor), zero_v);
+    V128 depth_gt_zero = v128_gt_f32(depth, zero_v);
+    V128 depthAfterVel = v128_max_f32(zero_v, v128_sub_f32(v128_sub_f32(depth, penSlop), v128_mul_f32(vBounce, dt_v)));
+    V128 expectedDisp = v128_select(depth_gt_zero, v128_mul_f32(v128_min_f32(depthAfterVel, maxPosCorr), cumCorrFactor), zero_v);
     
-    v128_t accVn = v128_div_f32(forceVn, dt_v);
-    v128_t workTerm = v128_mul_f32(v128_splat_f32(2.0f), v128_mul_f32(accVn, expectedDisp));
-    v128_t vImpactSq = v128_mul_f32(relativeVn, relativeVn);
-    v128_t vSurfSq = v128_add_f32(vImpactSq, workTerm);
-    v128_t vFinal = v128_mul_f32(restitution, wasm_f32x4_sqrt(v128_max_f32(zero_v, vSurfSq)));
+    V128 accVn = v128_div_f32(forceVn, dt_v);
+    V128 workTerm = v128_mul_f32(v128_splat_f32(2.0f), v128_mul_f32(accVn, expectedDisp));
+    V128 vImpactSq = v128_mul_f32(relativeVn, relativeVn);
+    V128 vSurfSq = v128_add_f32(vImpactSq, workTerm);
+    V128 vFinal = v128_mul_f32(restitution, wasm_f32x4_sqrt(v128_max_f32(zero_v, vSurfSq)));
     
-    v128_t bias_bounce_spec = v128_sub_f32(zero_v, v128_max_f32(vFinal, depth_over_dt));
-    v128_t bias_bounce_norm = v128_sub_f32(zero_v, vFinal);
-    v128_t bias_bounce = v128_select(depth_lt_zero, bias_bounce_spec, bias_bounce_norm);
+    V128 bias_bounce_spec = v128_sub_f32(zero_v, v128_max_f32(vFinal, depth_over_dt));
+    V128 bias_bounce_norm = v128_sub_f32(zero_v, vFinal);
+    V128 bias_bounce = v128_select(depth_lt_zero, bias_bounce_spec, bias_bounce_norm);
     
-    v128_t bias_no_bounce_spec = v128_sub_f32(zero_v, depth_over_dt);
-    v128_t bias_no_bounce_norm = zero_v;
-    v128_t bias_no_bounce = v128_select(depth_lt_zero, bias_no_bounce_spec, bias_no_bounce_norm);
+    V128 bias_no_bounce_spec = v128_sub_f32(zero_v, depth_over_dt);
+    V128 bias_no_bounce_norm = zero_v;
+    V128 bias_no_bounce = v128_select(depth_lt_zero, bias_no_bounce_spec, bias_no_bounce_norm);
     
-    v128_t bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+    V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
     
-    v128_t tangentX = v128_sub_f32(zero_v, normalY);
-    v128_t tangentY = normalX;
+    V128 tangentX = v128_sub_f32(zero_v, normalY);
+    V128 tangentY = normalX;
     
-    v128_t rtA = v128_sub_f32(v128_mul_f32(rAx, tangentY), v128_mul_f32(rAy, tangentX));
-    v128_t rtB = v128_sub_f32(v128_mul_f32(rBx, tangentY), v128_mul_f32(rBy, tangentX));
+    V128 rtA = v128_sub_f32(v128_mul_f32(rAx, tangentY), v128_mul_f32(rAy, tangentX));
+    V128 rtB = v128_sub_f32(v128_mul_f32(rBx, tangentY), v128_mul_f32(rBy, tangentX));
     
-    v128_t kTangent = v128_add_f32(v128_add_f32(imA, imB), 
+    V128 kTangent = v128_add_f32(v128_add_f32(imA, imB), 
                      v128_add_f32(v128_mul_f32(iIA, v128_mul_f32(rtA, rtA)), 
                                   v128_mul_f32(iIB, v128_mul_f32(rtB, rtB))));
                                   
-    v128_t tangentMass = v128_select(v128_gt_f32(kTangent, v128_splat_f32(0.00001f)), v128_div_f32(one_v, kTangent), zero_v);
+    V128 tangentMass = v128_select(v128_gt_f32(kTangent, v128_splat_f32(0.00001f)), v128_div_f32(one_v, kTangent), zero_v);
     
     if (!enableFriction) {
         staticFric = zero_v;
         kineticFric = zero_v;
     }
     
-    v128_t thetaA = gather_body_fdata(idxA, BODY_FDATA_R);
-    v128_t thetaB = gather_body_fdata(idxB, BODY_FDATA_R);
+    V128 thetaA = gather_body_fdata(idxA, BODY_FDATA_R);
+    V128 thetaB = gather_body_fdata(idxB, BODY_FDATA_R);
     
-    v128_t negThetaA = v128_sub_f32(zero_v, thetaA);
-    v128_t cA = wasm_f32x4_cos(negThetaA);
-    v128_t sA = wasm_f32x4_sin(negThetaA);
+    V128 negThetaA = v128_sub_f32(zero_v, thetaA);
+    V128 cA = wasm_f32x4_cos(negThetaA);
+    V128 sA = wasm_f32x4_sin(negThetaA);
     
-    v128_t localAnchorAx = v128_sub_f32(v128_mul_f32(rAx, cA), v128_mul_f32(rAy, sA));
-    v128_t localAnchorAy = v128_add_f32(v128_mul_f32(rAx, sA), v128_mul_f32(rAy, cA));
+    V128 localAnchorAx = v128_sub_f32(v128_mul_f32(rAx, cA), v128_mul_f32(rAy, sA));
+    V128 localAnchorAy = v128_add_f32(v128_mul_f32(rAx, sA), v128_mul_f32(rAy, cA));
     
-    v128_t localNormalAx = v128_sub_f32(v128_mul_f32(normalX, cA), v128_mul_f32(normalY, sA));
-    v128_t localNormalAy = v128_add_f32(v128_mul_f32(normalX, sA), v128_mul_f32(normalY, cA));
+    V128 localNormalAx = v128_sub_f32(v128_mul_f32(normalX, cA), v128_mul_f32(normalY, sA));
+    V128 localNormalAy = v128_add_f32(v128_mul_f32(normalX, sA), v128_mul_f32(normalY, cA));
     
-    v128_t negThetaB = v128_sub_f32(zero_v, thetaB);
-    v128_t cB = wasm_f32x4_cos(negThetaB);
-    v128_t sB = wasm_f32x4_sin(negThetaB);
+    V128 negThetaB = v128_sub_f32(zero_v, thetaB);
+    V128 cB = wasm_f32x4_cos(negThetaB);
+    V128 sB = wasm_f32x4_sin(negThetaB);
     
-    v128_t localAnchorBx = v128_sub_f32(v128_mul_f32(rBx, cB), v128_mul_f32(rBy, sB));
-    v128_t localAnchorBy = v128_add_f32(v128_mul_f32(rBx, sB), v128_mul_f32(rBy, cB));
+    V128 localAnchorBx = v128_sub_f32(v128_mul_f32(rBx, cB), v128_mul_f32(rBy, sB));
+    V128 localAnchorBy = v128_add_f32(v128_mul_f32(rBx, sB), v128_mul_f32(rBy, cB));
 
     float resRAx[4], resRAy[4], resRBx[4], resRBy[4];
     float resNormalMass[4], resBias[4], resTangentX[4], resTangentY[4], resTangentMass[4];

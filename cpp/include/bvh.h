@@ -408,37 +408,37 @@ private:
         
         while (!current->isLeaf) {
             // SIMD-accelerated cost calculation for 4 children
-            v128_t q_minX = v128_splat_f32(newBounds.min.x);
-            v128_t q_minY = v128_splat_f32(newBounds.min.y);
-            v128_t q_maxX = v128_splat_f32(newBounds.max.x);
-            v128_t q_maxY = v128_splat_f32(newBounds.max.y);
+            V128 q_minX = v128_splat_f32(newBounds.min.x);
+            V128 q_minY = v128_splat_f32(newBounds.min.y);
+            V128 q_maxX = v128_splat_f32(newBounds.max.x);
+            V128 q_maxY = v128_splat_f32(newBounds.max.y);
 
-            v128_t c_minX = v128_load_f32(current->childMinX);
-            v128_t c_minY = v128_load_f32(current->childMinY);
-            v128_t c_maxX = v128_load_f32(current->childMaxX);
-            v128_t c_maxY = v128_load_f32(current->childMaxY);
+            V128 c_minX = v128_load_f32(current->childMinX);
+            V128 c_minY = v128_load_f32(current->childMinY);
+            V128 c_maxX = v128_load_f32(current->childMaxX);
+            V128 c_maxY = v128_load_f32(current->childMaxY);
 
             // Old Area: 2 * ((c.max.x - c.min.x) + (c.max.y - c.min.y))
-            v128_t oldWidth = v128_sub_f32(c_maxX, c_minX);
-            v128_t oldHeight = v128_sub_f32(c_maxY, c_minY);
-            v128_t oldArea = v128_mul_f32(v128_splat_f32(2.0f), v128_add_f32(oldWidth, oldHeight));
+            V128 oldWidth = v128_sub_f32(c_maxX, c_minX);
+            V128 oldHeight = v128_sub_f32(c_maxY, c_minY);
+            V128 oldArea = v128_mul_f32(v128_splat_f32(2.0f), v128_add_f32(oldWidth, oldHeight));
 
             // Combined bounds: min = min(c.min, q.min), max = max(c.max, q.max)
-            v128_t combinedMinX = v128_min_f32(c_minX, q_minX);
-            v128_t combinedMinY = v128_min_f32(c_minY, q_minY);
-            v128_t combinedMaxX = v128_max_f32(c_maxX, q_maxX);
-            v128_t combinedMaxY = v128_max_f32(c_maxY, q_maxY);
+            V128 combinedMinX = v128_min_f32(c_minX, q_minX);
+            V128 combinedMinY = v128_min_f32(c_minY, q_minY);
+            V128 combinedMaxX = v128_max_f32(c_maxX, q_maxX);
+            V128 combinedMaxY = v128_max_f32(c_maxY, q_maxY);
 
             // New Surface area
-            v128_t newWidth = v128_sub_f32(combinedMaxX, combinedMinX);
-            v128_t newHeight = v128_sub_f32(combinedMaxY, combinedMinY);
-            v128_t newArea = v128_mul_f32(v128_splat_f32(2.0f), v128_add_f32(newWidth, newHeight));
+            V128 newWidth = v128_sub_f32(combinedMaxX, combinedMinX);
+            V128 newHeight = v128_sub_f32(combinedMaxY, combinedMinY);
+            V128 newArea = v128_mul_f32(v128_splat_f32(2.0f), v128_add_f32(newWidth, newHeight));
 
             // Area Increase = newArea - oldArea
-            v128_t areaIncrease = v128_sub_f32(newArea, oldArea);
+            V128 areaIncrease = v128_sub_f32(newArea, oldArea);
 
             // Cost = areaIncrease + tiny fraction of newArea to differentiate identical increases
-            v128_t baseCost = v128_add_f32(areaIncrease, v128_mul_f32(newArea, v128_splat_f32(0.01f)));
+            V128 baseCost = v128_add_f32(areaIncrease, v128_mul_f32(newArea, v128_splat_f32(0.01f)));
 
             float costs[4];
             v128_store_f32(costs, baseCost);
@@ -568,23 +568,23 @@ private:
             results.push_back(node);
         } else {
             // SIMD 4-way check
-            v128_t q_minX = v128_splat_f32(queryBounds.min.x);
-            v128_t q_minY = v128_splat_f32(queryBounds.min.y);
-            v128_t q_maxX = v128_splat_f32(queryBounds.max.x);
-            v128_t q_maxY = v128_splat_f32(queryBounds.max.y);
+            V128 q_minX = v128_splat_f32(queryBounds.min.x);
+            V128 q_minY = v128_splat_f32(queryBounds.min.y);
+            V128 q_maxX = v128_splat_f32(queryBounds.max.x);
+            V128 q_maxY = v128_splat_f32(queryBounds.max.y);
 
-            v128_t c_minX = v128_load_f32(node->childMinX);
-            v128_t c_minY = v128_load_f32(node->childMinY);
-            v128_t c_maxX = v128_load_f32(node->childMaxX);
-            v128_t c_maxY = v128_load_f32(node->childMaxY);
+            V128 c_minX = v128_load_f32(node->childMinX);
+            V128 c_minY = v128_load_f32(node->childMinY);
+            V128 c_maxX = v128_load_f32(node->childMaxX);
+            V128 c_maxY = v128_load_f32(node->childMaxY);
 
             // Overlap check: (q.min.x <= c.max.x && q.max.x >= c.min.x) && (q.min.y <= c.max.y && q.max.y >= c.min.y)
-            v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
-            v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
-            v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
-            v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+            V128 overlapX1 = v128_le_f32(q_minX, c_maxX);
+            V128 overlapX2 = v128_ge_f32(q_maxX, c_minX);
+            V128 overlapY1 = v128_le_f32(q_minY, c_maxY);
+            V128 overlapY2 = v128_ge_f32(q_maxY, c_minY);
 
-            v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+            V128 overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
             int mask = v128_bitmask(overlap);
 
             for (int i = 0; i < node->childCount; ++i) {
@@ -621,22 +621,22 @@ private:
         // Recurse on children
         if (nodeA->isLeaf) {
             // nodeA is leaf, nodeB is internal. Test nodeA against children of nodeB using SIMD
-            v128_t q_minX = v128_splat_f32(nodeA->bounds.min.x);
-            v128_t q_minY = v128_splat_f32(nodeA->bounds.min.y);
-            v128_t q_maxX = v128_splat_f32(nodeA->bounds.max.x);
-            v128_t q_maxY = v128_splat_f32(nodeA->bounds.max.y);
+            V128 q_minX = v128_splat_f32(nodeA->bounds.min.x);
+            V128 q_minY = v128_splat_f32(nodeA->bounds.min.y);
+            V128 q_maxX = v128_splat_f32(nodeA->bounds.max.x);
+            V128 q_maxY = v128_splat_f32(nodeA->bounds.max.y);
 
-            v128_t c_minX = v128_load_f32(nodeB->childMinX);
-            v128_t c_minY = v128_load_f32(nodeB->childMinY);
-            v128_t c_maxX = v128_load_f32(nodeB->childMaxX);
-            v128_t c_maxY = v128_load_f32(nodeB->childMaxY);
+            V128 c_minX = v128_load_f32(nodeB->childMinX);
+            V128 c_minY = v128_load_f32(nodeB->childMinY);
+            V128 c_maxX = v128_load_f32(nodeB->childMaxX);
+            V128 c_maxY = v128_load_f32(nodeB->childMaxY);
 
-            v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
-            v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
-            v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
-            v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+            V128 overlapX1 = v128_le_f32(q_minX, c_maxX);
+            V128 overlapX2 = v128_ge_f32(q_maxX, c_minX);
+            V128 overlapY1 = v128_le_f32(q_minY, c_maxY);
+            V128 overlapY2 = v128_ge_f32(q_maxY, c_minY);
 
-            v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+            V128 overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
             int mask = v128_bitmask(overlap);
 
             for (int i = 0; i < nodeB->childCount; ++i) {
@@ -646,22 +646,22 @@ private:
             }
         } else if (nodeB->isLeaf) {
             // nodeB is leaf, nodeA is internal. Test nodeB against children of nodeA using SIMD
-            v128_t q_minX = v128_splat_f32(nodeB->bounds.min.x);
-            v128_t q_minY = v128_splat_f32(nodeB->bounds.min.y);
-            v128_t q_maxX = v128_splat_f32(nodeB->bounds.max.x);
-            v128_t q_maxY = v128_splat_f32(nodeB->bounds.max.y);
+            V128 q_minX = v128_splat_f32(nodeB->bounds.min.x);
+            V128 q_minY = v128_splat_f32(nodeB->bounds.min.y);
+            V128 q_maxX = v128_splat_f32(nodeB->bounds.max.x);
+            V128 q_maxY = v128_splat_f32(nodeB->bounds.max.y);
 
-            v128_t c_minX = v128_load_f32(nodeA->childMinX);
-            v128_t c_minY = v128_load_f32(nodeA->childMinY);
-            v128_t c_maxX = v128_load_f32(nodeA->childMaxX);
-            v128_t c_maxY = v128_load_f32(nodeA->childMaxY);
+            V128 c_minX = v128_load_f32(nodeA->childMinX);
+            V128 c_minY = v128_load_f32(nodeA->childMinY);
+            V128 c_maxX = v128_load_f32(nodeA->childMaxX);
+            V128 c_maxY = v128_load_f32(nodeA->childMaxY);
 
-            v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
-            v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
-            v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
-            v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+            V128 overlapX1 = v128_le_f32(q_minX, c_maxX);
+            V128 overlapX2 = v128_ge_f32(q_maxX, c_minX);
+            V128 overlapY1 = v128_le_f32(q_minY, c_maxY);
+            V128 overlapY2 = v128_ge_f32(q_maxY, c_minY);
 
-            v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+            V128 overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
             int mask = v128_bitmask(overlap);
 
             for (int i = 0; i < nodeA->childCount; ++i) {
@@ -673,22 +673,22 @@ private:
             // Both are internal nodes. Descend the LARGER node to prevent combinatorial explosion.
             if (nodeA->bounds.getSurfaceArea() > nodeB->bounds.getSurfaceArea()) {
                 // nodeA is larger. Splat nodeB's bounds and test against nodeA's children
-                v128_t q_minX = v128_splat_f32(nodeB->bounds.min.x);
-                v128_t q_minY = v128_splat_f32(nodeB->bounds.min.y);
-                v128_t q_maxX = v128_splat_f32(nodeB->bounds.max.x);
-                v128_t q_maxY = v128_splat_f32(nodeB->bounds.max.y);
+                V128 q_minX = v128_splat_f32(nodeB->bounds.min.x);
+                V128 q_minY = v128_splat_f32(nodeB->bounds.min.y);
+                V128 q_maxX = v128_splat_f32(nodeB->bounds.max.x);
+                V128 q_maxY = v128_splat_f32(nodeB->bounds.max.y);
 
-                v128_t c_minX = v128_load_f32(nodeA->childMinX);
-                v128_t c_minY = v128_load_f32(nodeA->childMinY);
-                v128_t c_maxX = v128_load_f32(nodeA->childMaxX);
-                v128_t c_maxY = v128_load_f32(nodeA->childMaxY);
+                V128 c_minX = v128_load_f32(nodeA->childMinX);
+                V128 c_minY = v128_load_f32(nodeA->childMinY);
+                V128 c_maxX = v128_load_f32(nodeA->childMaxX);
+                V128 c_maxY = v128_load_f32(nodeA->childMaxY);
 
-                v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
-                v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
-                v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
-                v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+                V128 overlapX1 = v128_le_f32(q_minX, c_maxX);
+                V128 overlapX2 = v128_ge_f32(q_maxX, c_minX);
+                V128 overlapY1 = v128_le_f32(q_minY, c_maxY);
+                V128 overlapY2 = v128_ge_f32(q_maxY, c_minY);
 
-                v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+                V128 overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
                 int mask = v128_bitmask(overlap);
 
                 for (int i = 0; i < nodeA->childCount; ++i) {
@@ -698,22 +698,22 @@ private:
                 }
             } else {
                 // nodeB is larger. Splat nodeA's bounds and test against nodeB's children
-                v128_t q_minX = v128_splat_f32(nodeA->bounds.min.x);
-                v128_t q_minY = v128_splat_f32(nodeA->bounds.min.y);
-                v128_t q_maxX = v128_splat_f32(nodeA->bounds.max.x);
-                v128_t q_maxY = v128_splat_f32(nodeA->bounds.max.y);
+                V128 q_minX = v128_splat_f32(nodeA->bounds.min.x);
+                V128 q_minY = v128_splat_f32(nodeA->bounds.min.y);
+                V128 q_maxX = v128_splat_f32(nodeA->bounds.max.x);
+                V128 q_maxY = v128_splat_f32(nodeA->bounds.max.y);
 
-                v128_t c_minX = v128_load_f32(nodeB->childMinX);
-                v128_t c_minY = v128_load_f32(nodeB->childMinY);
-                v128_t c_maxX = v128_load_f32(nodeB->childMaxX);
-                v128_t c_maxY = v128_load_f32(nodeB->childMaxY);
+                V128 c_minX = v128_load_f32(nodeB->childMinX);
+                V128 c_minY = v128_load_f32(nodeB->childMinY);
+                V128 c_maxX = v128_load_f32(nodeB->childMaxX);
+                V128 c_maxY = v128_load_f32(nodeB->childMaxY);
 
-                v128_t overlapX1 = v128_le_f32(q_minX, c_maxX);
-                v128_t overlapX2 = v128_ge_f32(q_maxX, c_minX);
-                v128_t overlapY1 = v128_le_f32(q_minY, c_maxY);
-                v128_t overlapY2 = v128_ge_f32(q_maxY, c_minY);
+                V128 overlapX1 = v128_le_f32(q_minX, c_maxX);
+                V128 overlapX2 = v128_ge_f32(q_maxX, c_minX);
+                V128 overlapY1 = v128_le_f32(q_minY, c_maxY);
+                V128 overlapY2 = v128_ge_f32(q_maxY, c_minY);
 
-                v128_t overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
+                V128 overlap = v128_and(v128_and(overlapX1, overlapX2), v128_and(overlapY1, overlapY2));
                 int mask = v128_bitmask(overlap);
 
                 for (int i = 0; i < nodeB->childCount; ++i) {

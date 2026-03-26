@@ -1,287 +1,98 @@
 #ifndef SIMD_MATH_H
 #define SIMD_MATH_H
 
-#ifdef __EMSCRIPTEN__
-#include <wasm_simd128.h>
-
-// Helper macros for WASM SIMD
-#define v128_load_f32(ptr) wasm_v128_load(ptr)
-#define v128_store_f32(ptr, v) wasm_v128_store(ptr, v)
-
-// Splat a float to all 4 lanes
-#define v128_splat_f32(f) wasm_f32x4_splat(f)
-
-// Arithmetic
-#define v128_add_f32(a, b) wasm_f32x4_add(a, b)
-#define v128_sub_f32(a, b) wasm_f32x4_sub(a, b)
-#define v128_mul_f32(a, b) wasm_f32x4_mul(a, b)
-#define v128_div_f32(a, b) wasm_f32x4_div(a, b)
-
-// Comparisons (returns masks)
-#define v128_eq_f32(a, b) wasm_f32x4_eq(a, b)
-#define v128_ne_f32(a, b) wasm_f32x4_ne(a, b)
-#define v128_lt_f32(a, b) wasm_f32x4_lt(a, b)
-#define v128_le_f32(a, b) wasm_f32x4_le(a, b)
-#define v128_gt_f32(a, b) wasm_f32x4_gt(a, b)
-#define v128_ge_f32(a, b) wasm_f32x4_ge(a, b)
-
-// Logical
-#define v128_and(a, b) wasm_v128_and(a, b)
-#define v128_or(a, b) wasm_v128_or(a, b)
-#define v128_xor(a, b) wasm_v128_xor(a, b)
-#define v128_not(a) wasm_v128_not(a)
-#define v128_andnot(a, b) wasm_v128_andnot(a, b)
-
-// Select (mask ? a : b)
-#define v128_select(mask, a, b) wasm_v128_bitselect(a, b, mask)
-
-#define v128_any_true(v) wasm_v128_any_true(v)
-#define v128_bitmask(v) wasm_i32x4_bitmask(v)
-#define v128_abs_f32(v) wasm_f32x4_abs(v)
-#define v128_min_f32(a, b) wasm_f32x4_pmin(a, b)
-#define v128_max_f32(a, b) wasm_f32x4_pmax(a, b)
-#define v128_sqrt_f32(a) wasm_f32x4_sqrt(a)
-#define v128_make_f32(f1, f2, f3, f4) wasm_f32x4_make(f1, f2, f3, f4)
-#define v128_extract_lane_f32(v, lane) wasm_f32x4_extract_lane(v, lane)
-
-// Integer SIMD
-#define wasm_i32x4_splat(i) wasm_i32x4_splat(i)
-#define wasm_i32x4_eq(a, b) wasm_i32x4_eq(a, b)
-#define wasm_i32x4_ne(a, b) wasm_i32x4_ne(a, b)
-
-inline v128_t wasm_v128_make_mask(bool m0, bool m1, bool m2, bool m3) {
-    return wasm_i32x4_make(m0 ? -1 : 0, m1 ? -1 : 0, m2 ? -1 : 0, m3 ? -1 : 0);
-}
-#define v128_make_mask_f32(m0, m1, m2, m3) wasm_v128_make_mask(m0, m1, m2, m3)
-
-// Trignometry (Scalar fallback as WASM SIMD has no native sin/cos)
-inline v128_t wasm_f32x4_sin(v128_t v) {
-    float f[4];
-    wasm_v128_store(f, v);
-    return wasm_f32x4_make(std::sin(f[0]), std::sin(f[1]), std::sin(f[2]), std::sin(f[3]));
-}
-inline v128_t wasm_f32x4_cos(v128_t v) {
-    float f[4];
-    wasm_v128_store(f, v);
-    return wasm_f32x4_make(std::cos(f[0]), std::cos(f[1]), std::cos(f[2]), std::cos(f[3]));
-}
-
-// Higher-level Vector Math (4-way)
-#define v128_dot_f32(ax, ay, bx, by) v128_add_f32(v128_mul_f32(ax, bx), v128_mul_f32(ay, by))
-#define v128_cross_f32(ax, ay, bx, by) v128_sub_f32(v128_mul_f32(ax, by), v128_mul_f32(ay, bx))
-#define v128_mag_sq_f32(vx, vy) v128_add_f32(v128_mul_f32(vx, vx), v128_mul_f32(vy, vy))
-#define v128_mag_f32(vx, vy) wasm_f32x4_sqrt(v128_mag_sq_f32(vx, vy))
-
-// Rotate 4 vectors by 4 angles (provided as cos/sin)
-#define v128_rotate_x_f32(vx, vy, cosA, sinA) v128_sub_f32(v128_mul_f32(vx, cosA), v128_mul_f32(vy, sinA))
-#define v128_rotate_y_f32(vx, vy, cosA, sinA) v128_add_f32(v128_mul_f32(vx, sinA), v128_mul_f32(vy, cosA))
-
-#else
-// Fallback/No-op for non-WASM builds
 #include <cmath>
 #include <algorithm>
 #include <cstring>
 
-typedef struct { float f[4]; } v128_t;
-inline v128_t v128_make_mask_fallback(bool m0, bool m1, bool m2, bool m3) {
-    v128_t v;
-    uint32_t masks[4] = { m0 ? 0xFFFFFFFF : 0, m1 ? 0xFFFFFFFF : 0, m2 ? 0xFFFFFFFF : 0, m3 ? 0xFFFFFFFF : 0 };
-    std::memcpy(v.f, masks, sizeof(masks));
-    return v;
-}
-inline v128_t v128_load_fallback(const float* ptr) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = ptr[i];
-    return v;
-}
-inline void v128_store_fallback(float* ptr, v128_t v) {
-    for (int i = 0; i < 4; ++i) ptr[i] = v.f[i];
-}
-inline v128_t v128_splat_fallback(float f) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = f;
-    return v;
-}
-inline v128_t v128_add_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = a.f[i] + b.f[i];
-    return v;
-}
-inline v128_t v128_sub_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = a.f[i] - b.f[i];
-    return v;
-}
-inline v128_t v128_mul_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = a.f[i] * b.f[i];
-    return v;
-}
-inline v128_t v128_div_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = a.f[i] / b.f[i];
-    return v;
-}
-inline v128_t v128_sqrt_fallback(v128_t a) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = std::sqrt(a.f[i]);
-    return v;
-}
-inline bool v128_any_true_fallback(v128_t v) {
-    for (int i = 0; i < 4; ++i) {
-        if (*(uint32_t*)&v.f[i] != 0) return true;
-    }
-    return false;
-}
-inline int v128_bitmask_fallback(v128_t v) {
-    int mask = 0;
-    for (int i = 0; i < 4; ++i) {
-        if (*(uint32_t*)&v.f[i] & 0x80000000) mask |= (1 << i);
-    }
-    return mask;
-}
-inline v128_t v128_abs_fallback(v128_t a) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = std::abs(a.f[i]);
-    return v;
-}
-inline v128_t v128_min_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = std::min(a.f[i], b.f[i]);
-    return v;
-}
-inline v128_t v128_max_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) v.f[i] = std::max(a.f[i], b.f[i]);
-    return v;
-}
-inline v128_t v128_make_fallback(float f1, float f2, float f3, float f4) {
-    v128_t v;
-    v.f[0] = f1; v.f[1] = f2; v.f[2] = f3; v.f[3] = f4;
-    return v;
-}
+#include "hwy/highway.h"
+#include "hwy/contrib/math/math-inl.h"
 
-#define v128_load_f32(ptr) v128_load_fallback(ptr)
-#define v128_store_f32(ptr, v) v128_store_fallback(ptr, v)
-#define v128_splat_f32(f) v128_splat_fallback(f)
-#define v128_add_f32(a, b) v128_add_fallback(a, b)
-#define v128_sub_f32(a, b) v128_sub_fallback(a, b)
-#define v128_mul_f32(a, b) v128_mul_fallback(a, b)
-#define v128_div_f32(a, b) v128_div_fallback(a, b)
-#define v128_sqrt_f32(a) v128_sqrt_fallback(a)
-#define v128_min_f32(a, b) v128_min_fallback(a, b)
-#define v128_max_f32(a, b) v128_max_fallback(a, b)
-#define wasm_f32x4_sqrt(a) v128_sqrt_fallback(a)
-#define wasm_f32x4_min(a, b) v128_min_fallback(a, b)
-#define wasm_f32x4_max(a, b) v128_max_fallback(a, b)
-#define wasm_f32x4_sin(a) v128_make_fallback(std::sin(a.f[0]), std::sin(a.f[1]), std::sin(a.f[2]), std::sin(a.f[3]))
-#define wasm_f32x4_cos(a) v128_make_fallback(std::cos(a.f[0]), std::cos(a.f[1]), std::cos(a.f[2]), std::cos(a.f[3]))
+namespace hn = hwy::HWY_NAMESPACE;
 
-#define v128_make_mask_f32(m0, m1, m2, m3) v128_make_mask_fallback(m0, m1, m2, m3)
+// Descriptor for 128-bit vectors (4 floats)
+using DF = hn::FixedTag<float, 4>;
+using DI = hn::FixedTag<int32_t, 4>;
+using V128 = hn::Vec<DF>;
 
-#define v128_eq_f32(a, b) v128_make_mask_fallback((a.f[0] == b.f[0]), (a.f[1] == b.f[1]), (a.f[2] == b.f[2]), (a.f[3] == b.f[3]))
-#define v128_ne_f32(a, b) v128_make_mask_fallback((a.f[0] != b.f[0]), (a.f[1] != b.f[1]), (a.f[2] != b.f[2]), (a.f[3] != b.f[3]))
-#define v128_lt_f32(a, b) v128_make_mask_fallback((a.f[0] < b.f[0]),  (a.f[1] < b.f[1]),  (a.f[2] < b.f[2]),  (a.f[3] < b.f[3]))
-#define v128_le_f32(a, b) v128_make_mask_fallback((a.f[0] <= b.f[0]), (a.f[1] <= b.f[1]), (a.f[2] <= b.f[2]), (a.f[3] <= b.f[3]))
-#define v128_gt_f32(a, b) v128_make_mask_fallback((a.f[0] > b.f[0]),  (a.f[1] > b.f[1]),  (a.f[2] > b.f[2]),  (a.f[3] > b.f[3]))
-#define v128_ge_f32(a, b) v128_make_mask_fallback((a.f[0] >= b.f[0]), (a.f[1] >= b.f[1]), (a.f[2] >= b.f[2]), (a.f[3] >= b.f[3]))
-inline v128_t v128_and_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) {
-        uint32_t ia = *(uint32_t*)&a.f[i];
-        uint32_t ib = *(uint32_t*)&b.f[i];
-        uint32_t res = ia & ib;
-        v.f[i] = *(float*)&res;
-    }
-    return v;
-}
-inline v128_t v128_or_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) {
-        uint32_t ia = *(uint32_t*)&a.f[i];
-        uint32_t ib = *(uint32_t*)&b.f[i];
-        uint32_t res = ia | ib;
-        v.f[i] = *(float*)&res;
-    }
-    return v;
-}
-inline v128_t v128_xor_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) {
-        uint32_t ia = *(uint32_t*)&a.f[i];
-        uint32_t ib = *(uint32_t*)&b.f[i];
-        uint32_t res = ia ^ ib;
-        v.f[i] = *(float*)&res;
-    }
-    return v;
-}
-inline v128_t v128_not_fallback(v128_t a) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) {
-        uint32_t ia = *(uint32_t*)&a.f[i];
-        uint32_t res = ~ia;
-        v.f[i] = *(float*)&res;
-    }
-    return v;
-}
-inline v128_t v128_andnot_fallback(v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) {
-        uint32_t ia = *(uint32_t*)&a.f[i];
-        uint32_t ib = *(uint32_t*)&b.f[i];
-        uint32_t res = ia & ~ib;
-        v.f[i] = *(float*)&res;
-    }
-    return v;
-}
+// Memory operations
+#define v128_load_f32(ptr) hn::Load(DF(), reinterpret_cast<const float*>(ptr))
+#define v128_store_f32(ptr, v) hn::Store(v, DF(), reinterpret_cast<float*>(ptr))
 
-#define v128_and(a, b) v128_and_fallback(a, b)
-#define v128_or(a, b) v128_or_fallback(a, b)
-#define v128_xor(a, b) v128_xor_fallback(a, b)
-#define v128_not(a) v128_not_fallback(a)
-#define v128_andnot(a, b) v128_andnot_fallback(a, b)
+// Splat
+#define v128_splat_f32(f) hn::Set(DF(), f)
 
-#define v128_any_true(v) v128_any_true_fallback(v)
-#define v128_bitmask(v) v128_bitmask_fallback(v)
-#define v128_abs_f32(v) v128_abs_fallback(v)
-#define v128_make_f32(f1, f2, f3, f4) v128_make_fallback(f1, f2, f3, f4)
-#define v128_extract_lane_f32(v, lane) v.f[lane]
+// Arithmetic
+#define v128_add_f32(a, b) hn::Add(a, b)
+#define v128_sub_f32(a, b) hn::Sub(a, b)
+#define v128_mul_f32(a, b) hn::Mul(a, b)
+#define v128_div_f32(a, b) hn::Div(a, b)
 
-// wasm_ prefix fallbacks for native builds
-#define wasm_v128_load(ptr) v128_load_fallback(ptr)
-#define wasm_v128_store(ptr, v) v128_store_fallback(ptr, v)
-#define wasm_v128_and(a, b) v128_and_fallback(a, b)
-#define wasm_v128_or(a, b) v128_or_fallback(a, b)
-#define wasm_v128_xor(a, b) v128_xor_fallback(a, b)
-#define wasm_v128_andnot(a, b) v128_andnot_fallback(a, b)
-#define wasm_f32x4_extract_lane(v, lane) v.f[lane]
-#define wasm_i32x4_splat(i) v128_splat_fallback((float)i)
-#define wasm_i32x4_eq(a, b) v128_eq_f32(a, b)
-#define wasm_i32x4_ne(a, b) v128_ne_f32(a, b)
-#define wasm_f32x4_abs(a) v128_abs_fallback(a)
+// Comparisons (Returns masks converted to vectors for compatibility)
+#define v128_eq_f32(a, b) hn::VecFromMask(DF(), hn::Eq(a, b))
+#define v128_ne_f32(a, b) hn::VecFromMask(DF(), hn::Ne(a, b))
+#define v128_lt_f32(a, b) hn::VecFromMask(DF(), hn::Lt(a, b))
+#define v128_le_f32(a, b) hn::VecFromMask(DF(), hn::Le(a, b))
+#define v128_gt_f32(a, b) hn::VecFromMask(DF(), hn::Gt(a, b))
+#define v128_ge_f32(a, b) hn::VecFromMask(DF(), hn::Ge(a, b))
+
+// Logical
+#define v128_and(a, b) hn::And(a, b)
+#define v128_or(a, b) hn::Or(a, b)
+#define v128_xor(a, b) hn::Xor(a, b)
+#define v128_not(a) hn::Not(a)
+#define v128_andnot(a, b) hn::AndNot(b, a) // returns a & ~b
+
+// Select (mask ? a : b)
+#define v128_select(mask, a, b) hn::IfThenElse(hn::MaskFromVec(mask), a, b)
+
+#define v128_any_true(v) (!hn::AllFalse(DF(), hn::MaskFromVec(v)))
+#define v128_bitmask(v) static_cast<int>(hn::BitsFromMask(DF(), hn::MaskFromVec(v)))
+#define v128_abs_f32(v) hn::Abs(v)
+#define v128_min_f32(a, b) hn::Min(a, b)
+#define v128_max_f32(a, b) hn::Max(a, b)
+#define v128_sqrt_f32(a) hn::Sqrt(a)
+
+inline V128 v128_make_f32(float f1, float f2, float f3, float f4) {
+	alignas(16) float values[4] = { f1, f2, f3, f4 };
+	return hn::Load(DF(), values);
+}
+#define v128_extract_lane_f32(v, lane) hn::ExtractLane(v, lane)
+
+// wasm_ prefix aliases for compatibility
+#define wasm_v128_load(ptr) v128_load_f32(ptr)
+#define wasm_v128_store(ptr, v) v128_store_f32(ptr, v)
+#define wasm_v128_and(a, b) v128_and(a, b)
+#define wasm_v128_or(a, b) v128_or(a, b)
+#define wasm_v128_xor(a, b) v128_xor(a, b)
+#define wasm_v128_andnot(a, b) v128_andnot(a, b)
+#define wasm_f32x4_extract_lane(v, lane) v128_extract_lane_f32(v, lane)
+#define wasm_i32x4_splat(i) hn::BitCast(DF(), hn::Set(DI(), i))
+#define wasm_i32x4_eq(a, b) hn::BitCast(DF(), hn::VecFromMask(DI(), hn::Eq(hn::BitCast(DI(), a), hn::BitCast(DI(), b))))
+#define wasm_i32x4_ne(a, b) hn::BitCast(DF(), hn::VecFromMask(DI(), hn::Ne(hn::BitCast(DI(), a), hn::BitCast(DI(), b))))
+#define wasm_f32x4_abs(a) v128_abs_f32(a)
 #define wasm_f32x4_eq(a, b) v128_eq_f32(a, b)
 #define wasm_f32x4_ne(a, b) v128_ne_f32(a, b)
+#define wasm_f32x4_sqrt(a) v128_sqrt_f32(a)
+#define wasm_f32x4_sin(a) hn::Sin(DF(), a)
+#define wasm_f32x4_cos(a) hn::Cos(DF(), a)
 
-inline v128_t v128_select_fallback(v128_t mask, v128_t a, v128_t b) {
-    v128_t v;
-    for (int i = 0; i < 4; ++i) {
-        uint32_t m = *(uint32_t*)&mask.f[i];
-        uint32_t va = *(uint32_t*)&a.f[i];
-        uint32_t vb = *(uint32_t*)&b.f[i];
-        uint32_t res = (va & m) | (vb & ~m);
-        v.f[i] = *(float*)&res;
-    }
-    return v;
+inline V128 v128_make_mask_f32(bool m0, bool m1, bool m2, bool m3) {
+	alignas(16) uint32_t masks[4] = { 
+		m0 ? 0xFFFFFFFFu : 0u, 
+		m1 ? 0xFFFFFFFFu : 0u, 
+		m2 ? 0xFFFFFFFFu : 0u, 
+		m3 ? 0xFFFFFFFFu : 0u 
+	};
+	return hn::Load(DF(), reinterpret_cast<const float*>(masks));
 }
-#define v128_select(mask, a, b) v128_select_fallback(mask, a, b)
 
-// Fallback Math
+// Higher-level Vector Math
 #define v128_dot_f32(ax, ay, bx, by) v128_add_f32(v128_mul_f32(ax, bx), v128_mul_f32(ay, by))
 #define v128_cross_f32(ax, ay, bx, by) v128_sub_f32(v128_mul_f32(ax, by), v128_mul_f32(ay, bx))
 #define v128_mag_sq_f32(vx, vy) v128_add_f32(v128_mul_f32(vx, vx), v128_mul_f32(vy, vy))
-#define v128_mag_f32(vx, vy) wasm_f32x4_sqrt(v128_mag_sq_f32(vx, vy))
+#define v128_mag_f32(vx, vy) v128_sqrt_f32(v128_mag_sq_f32(vx, vy))
 #define v128_rotate_x_f32(vx, vy, cosA, sinA) v128_sub_f32(v128_mul_f32(vx, cosA), v128_mul_f32(vy, sinA))
 #define v128_rotate_y_f32(vx, vy, cosA, sinA) v128_add_f32(v128_mul_f32(vx, sinA), v128_mul_f32(vy, cosA))
-#endif
 
 #endif // SIMD_MATH_H

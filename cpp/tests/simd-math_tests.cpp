@@ -9,12 +9,12 @@ TEST(SimdMathTest, DotProduct) {
     float bx_raw[4] = {9.0f, 10.0f, 11.0f, 12.0f};
     float by_raw[4] = {13.0f, 14.0f, 15.0f, 16.0f};
 
-    v128_t ax = v128_load_f32(ax_raw);
-    v128_t ay = v128_load_f32(ay_raw);
-    v128_t bx = v128_load_f32(bx_raw);
-    v128_t by = v128_load_f32(by_raw);
+    V128 ax = v128_load_f32(ax_raw);
+    V128 ay = v128_load_f32(ay_raw);
+    V128 bx = v128_load_f32(bx_raw);
+    V128 by = v128_load_f32(by_raw);
 
-    v128_t result = v128_dot_f32(ax, ay, bx, by);
+    V128 result = v128_dot_f32(ax, ay, bx, by);
     float result_raw[4];
     v128_store_f32(result_raw, result);
 
@@ -31,12 +31,12 @@ TEST(SimdMathTest, CrossProduct) {
     float bx_raw[4] = {9.0f, 10.0f, 11.0f, 12.0f};
     float by_raw[4] = {13.0f, 14.0f, 15.0f, 16.0f};
 
-    v128_t ax = v128_load_f32(ax_raw);
-    v128_t ay = v128_load_f32(ay_raw);
-    v128_t bx = v128_load_f32(bx_raw);
-    v128_t by = v128_load_f32(by_raw);
+    V128 ax = v128_load_f32(ax_raw);
+    V128 ay = v128_load_f32(ay_raw);
+    V128 bx = v128_load_f32(bx_raw);
+    V128 by = v128_load_f32(by_raw);
 
-    v128_t result = v128_cross_f32(ax, ay, bx, by);
+    V128 result = v128_cross_f32(ax, ay, bx, by);
     float result_raw[4];
     v128_store_f32(result_raw, result);
 
@@ -51,10 +51,10 @@ TEST(SimdMathTest, MagnitudeSquared) {
     float vx_raw[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     float vy_raw[4] = {5.0f, 6.0f, 7.0f, 8.0f};
 
-    v128_t vx = v128_load_f32(vx_raw);
-    v128_t vy = v128_load_f32(vy_raw);
+    V128 vx = v128_load_f32(vx_raw);
+    V128 vy = v128_load_f32(vy_raw);
 
-    v128_t result = v128_mag_sq_f32(vx, vy);
+    V128 result = v128_mag_sq_f32(vx, vy);
     float result_raw[4];
     v128_store_f32(result_raw, result);
 
@@ -69,10 +69,10 @@ TEST(SimdMathTest, Magnitude) {
     float vx_raw[4] = {3.0f, 5.0f, 8.0f, 7.0f};
     float vy_raw[4] = {4.0f, 12.0f, 15.0f, 24.0f};
 
-    v128_t vx = v128_load_f32(vx_raw);
-    v128_t vy = v128_load_f32(vy_raw);
+    V128 vx = v128_load_f32(vx_raw);
+    V128 vy = v128_load_f32(vy_raw);
 
-    v128_t result = v128_mag_f32(vx, vy);
+    V128 result = v128_mag_f32(vx, vy);
     float result_raw[4];
     v128_store_f32(result_raw, result);
 
@@ -93,13 +93,13 @@ TEST(SimdMathTest, Rotation) {
         sinA_raw[i] = std::sin(angles[i]);
     }
 
-    v128_t vx = v128_load_f32(vx_raw);
-    v128_t vy = v128_load_f32(vy_raw);
-    v128_t cosA = v128_load_f32(cosA_raw);
-    v128_t sinA = v128_load_f32(sinA_raw);
+    V128 vx = v128_load_f32(vx_raw);
+    V128 vy = v128_load_f32(vy_raw);
+    V128 cosA = v128_load_f32(cosA_raw);
+    V128 sinA = v128_load_f32(sinA_raw);
 
-    v128_t rx = v128_rotate_x_f32(vx, vy, cosA, sinA);
-    v128_t ry = v128_rotate_y_f32(vx, vy, cosA, sinA);
+    V128 rx = v128_rotate_x_f32(vx, vy, cosA, sinA);
+    V128 ry = v128_rotate_y_f32(vx, vy, cosA, sinA);
 
     float rx_raw[4], ry_raw[4];
     v128_store_f32(rx_raw, rx);
