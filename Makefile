@@ -4,6 +4,8 @@ INCLUDE_DIR = cpp/include
 TEST_DIR = cpp/tests
 BENCH_DIR = cpp/benchmarks
 BUILD_DIR = dist/wasm
+HIGHWAY_DIR = third_party/highway
+
 TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
 BENCH_SRC = $(wildcard $(BENCH_DIR)/*.cpp)
 GTEST_DIR ?= /usr/src/googletest/googletest
@@ -27,12 +29,12 @@ OUTPUT_JS_MT = $(BUILD_DIR)/gearbox-module-mt.js
 OUTPUT_JS_ST = $(BUILD_DIR)/gearbox-module-st.js
 
 # C++ compiler flags
-COMMON_FLAGS = -O3 -msimd128 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker'
+COMMON_FLAGS = -O3 -msimd128 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker' -I$(HIGHWAY_DIR)
 MT_FLAGS = -pthread -s PTHREAD_POOL_SIZE=4 -s ALLOW_MEMORY_GROWTH=1 -DGEARBOX_MT
 ST_FLAGS = 
 
-GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -pthread -DGEARBOX_MT
-BENCH_FLAGS = -I$(INCLUDE_DIR) -pthread -DGEARBOX_MT -O3
+GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT
+BENCH_FLAGS = -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT -O3 -march=native -mfma
 
 # Default target to build the project
 all: wasm
