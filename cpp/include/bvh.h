@@ -169,6 +169,8 @@ struct AggregatedProperties {
 
 class BvhNode {
 public:
+    static constexpr int MAX_CHILDREN = 4;
+
     Aabb bounds;
     BvhNode* parent;
     bool isLeaf;
@@ -176,13 +178,12 @@ public:
     int childCount;
 
     // SoA data for SIMD loading of child bounds
-    // We allocate 8 to maintain 16-byte alignment and safely allow a 5th temporary child during splits
-    alignas(16) float childMinX[8];
-    alignas(16) float childMinY[8];
-    alignas(16) float childMaxX[8];
-    alignas(16) float childMaxY[8];
+    alignas(16) float childMinX[MAX_CHILDREN];
+    alignas(16) float childMinY[MAX_CHILDREN];
+    alignas(16) float childMaxX[MAX_CHILDREN];
+    alignas(16) float childMaxY[MAX_CHILDREN];
 
-    BvhNode* children[8];
+    BvhNode* children[MAX_CHILDREN];
 
 	// For leaf nodes
 	CollisionProperties properties;  // Leaf collision properties
@@ -197,7 +198,7 @@ public:
 	BvhNode(const Aabb& aabb, void* userData, const CollisionProperties& props)
     : bounds(aabb), parent(nullptr), isLeaf(true), height(0), childCount(0),
       data(userData), properties(props) {
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < MAX_CHILDREN; ++i) {
             children[i] = nullptr;
             childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
             childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
@@ -209,7 +210,7 @@ public:
     // Constructor for internal node
     BvhNode()
 		: parent(nullptr), isLeaf(false), height(0), childCount(0), data(nullptr) {
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < MAX_CHILDREN; ++i) {
             children[i] = nullptr;
             childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
             childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
@@ -250,7 +251,7 @@ public:
             }
         }
         // Fill remaining slots with "empty" bounds that won't overlap anything
-        for (int i = childCount; i < 8; ++i) {
+        for (int i = childCount; i < MAX_CHILDREN; ++i) {
             childMinX[i] = childMinY[i] = std::numeric_limits<float>::max();
             childMaxX[i] = childMaxY[i] = std::numeric_limits<float>::lowest();
         }
@@ -300,7 +301,7 @@ public:
 	}
     
     void addChild(BvhNode* child) {
-        if (childCount >= 8) return; // Safely allow temporarily exceeding 4 children before splitting
+        if (childCount >= MAX_CHILDREN) return;
         children[childCount] = child;
         child->parent = this;
         childCount++;
@@ -480,9 +481,13 @@ private:
         delete node;
     }
     
-    // Split a node that has more than 4 children
-    void splitNode(BvhNode* node) {
-        if (node->childCount <= 4) return;
+    // Split a node by incorporating a 5th child and redistributing children
+    void splitNode(BvhNode* node, BvhNode* extraChild) {
+        // Collect all 5 candidates
+        BvhNode* allChildren[5];
+        for (int i = 0; i < node->childCount; ++i) allChildren[i] = node->children[i];
+        allChildren[node->childCount] = extraChild;
+        int totalCount = node->childCount + 1;
 
         // Find the axis to split along based on children's centers
         float minX = std::numeric_limits<float>::max();
@@ -490,8 +495,8 @@ private:
         float minY = std::numeric_limits<float>::max();
         float maxY = std::numeric_limits<float>::lowest();
 
-        for (int i = 0; i < node->childCount; ++i) {
-            Vec2 center = node->children[i]->bounds.getCenter();
+        for (int i = 0; i < totalCount; ++i) {
+            Vec2 center = allChildren[i]->bounds.getCenter();
             minX = std::min(minX, center.x);
             maxX = std::max(maxX, center.x);
             minY = std::min(minY, center.y);
@@ -501,27 +506,35 @@ private:
         bool splitX = (maxX - minX) > (maxY - minY);
         
         // Sort children along the chosen axis
-        std::sort(node->children, node->children + node->childCount, [splitX](BvhNode* a, BvhNode* b) {
+        std::sort(allChildren, allChildren + totalCount, [splitX](BvhNode* a, BvhNode* b) {
             Vec2 ca = a->bounds.getCenter();
             Vec2 cb = b->bounds.getCenter();
             return splitX ? ca.x < cb.x : ca.y < cb.y;
         });
 
         // Split into two nodes
-        int splitIndex = node->childCount / 2;
-        int originalCount = node->childCount;
+        int splitIndex = totalCount / 2;
         
         BvhNode* newNode = new BvhNode();
         newNode->parent = node->parent;
         
-        // Move second half of children to newNode
+        // Clear current node's children to prevent stale pointers
+        for (int i = 0; i < BvhNode::MAX_CHILDREN; ++i) {
+            node->children[i] = nullptr;
+        }
+
+        // Assign first half of children to original node
         node->childCount = splitIndex;
-        newNode->childCount = originalCount - splitIndex;
-        
+        for (int i = 0; i < node->childCount; ++i) {
+            node->children[i] = allChildren[i];
+            node->children[i]->parent = node;
+        }
+
+        // Assign second half of children to newNode
+        newNode->childCount = totalCount - splitIndex;
         for (int i = 0; i < newNode->childCount; ++i) {
-            newNode->children[i] = node->children[splitIndex + i];
+            newNode->children[i] = allChildren[splitIndex + i];
             newNode->children[i]->parent = newNode;
-            node->children[splitIndex + i] = nullptr;
         }
 
         node->updateBounds();
@@ -539,12 +552,12 @@ private:
             newRoot->addChild(newNode);
             root = newRoot;
         } else {
-            // add newNode to parent
-            node->parent->addChild(newNode);
-            if (node->parent->childCount > 4) {
-                splitNode(node->parent);
-            } else {
+            // If parent is not full, add to parent. Otherwise split parent.
+            if (node->parent->childCount < BvhNode::MAX_CHILDREN) {
+                node->parent->addChild(newNode);
                 updateAncestors(node->parent->parent);
+            } else {
+                splitNode(node->parent, newNode);
             }
         }
     }
@@ -774,14 +787,11 @@ public:
 
         // Add to parent of bestNode
         BvhNode* parent = bestNode->parent;
-        parent->children[parent->childCount++] = newLeaf;
-        newLeaf->parent = parent;
-
-        // Check if parent needs split
-        if (parent->childCount > 4) {
-            splitNode(parent);
+        if (parent->childCount < BvhNode::MAX_CHILDREN) {
+            parent->addChild(newLeaf);
+            updateAncestors(parent->parent);
         } else {
-            updateAncestors(parent);
+            splitNode(parent, newLeaf);
         }
         
         return newLeaf;
