@@ -14,8 +14,15 @@ Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the
 
 ### 1. Installation
 
+#### Via NPM
 ```bash
 npm install gearbox2d
+```
+
+#### From Source (for Development)
+If you want to build the engine from source, ensure you clone with submodules:
+```bash
+git clone --recursive https://github.com/JSideris/Gearbox2D.git
 ```
 
 For more ways to install (including CDN usage), see the [Installation Guide](docs/installation.md).

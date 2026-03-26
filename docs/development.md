@@ -43,8 +43,13 @@ To build Gearbox2D, you'll need the following dependencies installed.
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/JSideris/Gearbox2D.git
+    # Ensure you use --recursive to fetch submodules (e.g., Google Highway)
+    git clone --recursive https://github.com/JSideris/Gearbox2D.git
     cd Gearbox2D
+    ```
+    *If you already cloned the repo without submodules, run:*
+    ```bash
+    git submodule update --init --recursive
     ```
 
 2.  **Install Node.js dependencies**:
