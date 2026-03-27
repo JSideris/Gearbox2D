@@ -243,7 +243,7 @@ void SpringJoint::solveFast() {
 }
 
 void SpringJoint::solveFastSIMD(SpringJoint** joints) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     // Load joint properties
     V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
     V128 bias = v128_make_f32(joints[0]->bias, joints[1]->bias, joints[2]->bias, joints[3]->bias);

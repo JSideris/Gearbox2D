@@ -67,7 +67,7 @@ void GearJoint::solveFast() {
 }
 
 void GearJoint::solveFastSIMD(GearJoint** joints) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     // Load joint properties
     V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
     V128 ratio = v128_make_f32(joints[0]->ratio, joints[1]->ratio, joints[2]->ratio, joints[3]->ratio);

@@ -50,10 +50,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         c.kineticFriction = std::sqrt(kFricA * kFricB);
         c.id = col.id;
 
-#ifndef __EMSCRIPTEN__
-        c.preSolve(dt, hasRestitution, hasPenetrationResolution, hasFriction);
-#endif
-
         // Warm Starting
         std::pair<int, int> fPair = {fA->id, fB->id};
         if (fPair.first > fPair.second) std::swap(fPair.first, fPair.second);

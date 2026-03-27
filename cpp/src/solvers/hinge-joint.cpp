@@ -87,7 +87,7 @@ void HingeJoint::solveFast() {
 }
 
 void HingeJoint::solveFastSIMD(HingeJoint** joints) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     // Load joint properties
     V128 m00 = v128_make_f32(joints[0]->massMatrix[0][0], joints[1]->massMatrix[0][0], joints[2]->massMatrix[0][0], joints[3]->massMatrix[0][0]);
     V128 m01 = v128_make_f32(joints[0]->massMatrix[0][1], joints[1]->massMatrix[0][1], joints[2]->massMatrix[0][1], joints[3]->massMatrix[0][1]);

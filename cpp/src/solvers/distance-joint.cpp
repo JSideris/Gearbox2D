@@ -3,9 +3,6 @@
 #include "world.h"
 #include "simd-math.h"
 #include <cmath>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
 
 DistanceJoint::DistanceJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length)
     : Joint(id, a, b), localAnchorA(anchorA), localAnchorB(anchorB), length(length), impulse(0.0f) {}
@@ -246,7 +243,7 @@ void DistanceJoint::solveFast() {
 }
 
 void DistanceJoint::solveFastSIMD(DistanceJoint** joints) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     // Load joint properties
     V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
     V128 bias = v128_make_f32(joints[0]->bias, joints[1]->bias, joints[2]->bias, joints[3]->bias);
