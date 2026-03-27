@@ -185,16 +185,21 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
         joints[i]->lastNormal = joints[i]->normal;
         joints[i]->hasLastNormal = true;
 
-        for (int i = 0; i < 4; ++i) {
-            batch[i]->preSolve(dt, enableRestitution, enablePenetration, enableFriction);
-        }
-    #endif
+        // Warm start
+        Vec2 p = joints[i]->normal * joints[i]->impulse;
+        float imA = joints[i]->bodyA->getInverseMass();
+        float imB = joints[i]->bodyB->getInverseMass();
+        float iIA = joints[i]->bodyA->getInverseInertia();
         float iIB = joints[i]->bodyB->getInverseInertia();
 
-        joints[i]->bodyA->setVelocityInternal(joints[i]->bodyA->getVelocity() - p * imA);
-        joints[i]->bodyA->setAngularVelocityInternal(joints[i]->bodyA->getAngularVelocity() - joints[i]->rA.cross(p) * iIA);
-        joints[i]->bodyB->setVelocityInternal(joints[i]->bodyB->getVelocity() + p * imB);
-        joints[i]->bodyB->setAngularVelocityInternal(joints[i]->bodyB->getAngularVelocity() + joints[i]->rB.cross(p) * iIB);
+        if (imA > 0.0f) {
+            joints[i]->bodyA->setVelocityInternal(joints[i]->bodyA->getVelocity() - p * imA);
+            joints[i]->bodyA->setAngularVelocityInternal(joints[i]->bodyA->getAngularVelocity() - joints[i]->rA.cross(p) * iIA);
+        }
+        if (imB > 0.0f) {
+            joints[i]->bodyB->setVelocityInternal(joints[i]->bodyB->getVelocity() + p * imB);
+            joints[i]->bodyB->setAngularVelocityInternal(joints[i]->bodyB->getAngularVelocity() + joints[i]->rB.cross(p) * iIB);
+        }
     }
 #else
     for (int i = 0; i < 4; ++i) joints[i]->preSolve(dt);

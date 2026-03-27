@@ -1597,7 +1597,14 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // Velocity Iterations
     for (int iter = 0; iter < velocityIterations; ++iter) {
         for (const auto& batch : island.contactBatches) {
-            for (ContactConstraint* c : batch) c->solveFast();
+            size_t i = 0;
+            for (; i + 3 < batch.size(); i += 4) {
+                ContactConstraint* b[4] = {batch[i], batch[i+1], batch[i+2], batch[i+3]};
+                ContactConstraint::solveFastSIMD(b);
+            }
+            for (; i < batch.size(); ++i) {
+                batch[i]->solveFast();
+            }
         }
         for (const auto& batch : island.jointBatches) {
             for (size_t i = 0; i < batch.size(); ) {
@@ -2382,6 +2389,138 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     for (int i = 0; i < 4; ++i) {
         batch[i]->preSolve(dt, enableRestitution, enablePenetration, enableFriction);
     }
+#endif
+}
+
+void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
+#if HWY_TARGET != HWY_SCALAR
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 one_v = v128_splat_f32(1.0f);
+    V128 neg_one_v = v128_splat_f32(-1.0f);
+
+    SolverData* sA[4];
+    SolverData* sB[4];
+    for (int i = 0; i < 4; ++i) {
+        sA[i] = static_cast<SolverData*>(batch[i]->context.a);
+        sB[i] = static_cast<SolverData*>(batch[i]->context.b);
+    }
+
+    // Gather constraint data
+    V128 rAx = v128_make_f32(batch[0]->rA.x, batch[1]->rA.x, batch[2]->rA.x, batch[3]->rA.x);
+    V128 rAy = v128_make_f32(batch[0]->rA.y, batch[1]->rA.y, batch[2]->rA.y, batch[3]->rA.y);
+    V128 rBx = v128_make_f32(batch[0]->rB.x, batch[1]->rB.x, batch[2]->rB.x, batch[3]->rB.x);
+    V128 rBy = v128_make_f32(batch[0]->rB.y, batch[1]->rB.y, batch[2]->rB.y, batch[3]->rB.y);
+    V128 normalX = v128_make_f32(batch[0]->normal.x, batch[1]->normal.x, batch[2]->normal.x, batch[3]->normal.x);
+    V128 normalY = v128_make_f32(batch[0]->normal.y, batch[1]->normal.y, batch[2]->normal.y, batch[3]->normal.y);
+    V128 nMass = v128_make_f32(batch[0]->normalMass, batch[1]->normalMass, batch[2]->normalMass, batch[3]->normalMass);
+    V128 bias = v128_make_f32(batch[0]->bias, batch[1]->bias, batch[2]->bias, batch[3]->bias);
+    V128 normalImpulse = v128_make_f32(batch[0]->normalImpulse, batch[1]->normalImpulse, batch[2]->normalImpulse, batch[3]->normalImpulse);
+
+    // Gather body data
+    V128 vAx = v128_make_f32(sA[0]->v.x, sA[1]->v.x, sA[2]->v.x, sA[3]->v.x);
+    V128 vAy = v128_make_f32(sA[0]->v.y, sA[1]->v.y, sA[2]->v.y, sA[3]->v.y);
+    V128 wA  = v128_make_f32(sA[0]->w,   sA[1]->w,   sA[2]->w,   sA[3]->w);
+    V128 imA = v128_make_f32(sA[0]->im,  sA[1]->im,  sA[2]->im,  sA[3]->im);
+    V128 iIA = v128_make_f32(sA[0]->iI,  sA[1]->iI,  sA[2]->iI,  sA[3]->iI);
+
+    V128 vBx = v128_make_f32(sB[0]->v.x, sB[1]->v.x, sB[2]->v.x, sB[3]->v.x);
+    V128 vBy = v128_make_f32(sB[0]->v.y, sB[1]->v.y, sB[2]->v.y, sB[3]->v.y);
+    V128 wB  = v128_make_f32(sB[0]->w,   sB[1]->w,   sB[2]->w,   sB[3]->w);
+    V128 imB = v128_make_f32(sB[0]->im,  sB[1]->im,  sB[2]->im,  sB[3]->im);
+    V128 iIB = v128_make_f32(sB[0]->iI,  sB[1]->iI,  sB[2]->iI,  sB[3]->iI);
+
+    // Normal constraint
+    V128 vrAx = v128_mul_f32(neg_one_v, v128_mul_f32(wA, rAy));
+    V128 vrAy = v128_mul_f32(wA, rAx);
+    V128 vrBx = v128_mul_f32(neg_one_v, v128_mul_f32(wB, rBy));
+    V128 vrBy = v128_mul_f32(wB, rBx);
+
+    V128 relVelX = v128_sub_f32(v128_add_f32(vBx, vrBx), v128_add_f32(vAx, vrAx));
+    V128 relVelY = v128_sub_f32(v128_add_f32(vBy, vrBy), v128_add_f32(vAy, vrAy));
+    
+    V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
+    V128 dLambda = v128_mul_f32(v128_neg_f32(v128_add_f32(vn, bias)), nMass);
+    
+    V128 oldImpulse = normalImpulse;
+    normalImpulse = v128_max_f32(v128_add_f32(oldImpulse, dLambda), zero_v);
+    dLambda = v128_sub_f32(normalImpulse, oldImpulse);
+    
+    V128 impulseX = v128_mul_f32(normalX, dLambda);
+    V128 impulseY = v128_mul_f32(normalY, dLambda);
+
+    // Apply normal impulse
+    V128 torqueA = v128_cross_f32(rAx, rAy, impulseX, impulseY);
+    vAx = v128_sub_f32(vAx, v128_mul_f32(impulseX, imA));
+    vAy = v128_sub_f32(vAy, v128_mul_f32(impulseY, imA));
+    wA = v128_sub_f32(wA, v128_mul_f32(torqueA, iIA));
+
+    V128 torqueB = v128_cross_f32(rBx, rBy, impulseX, impulseY);
+    vBx = v128_add_f32(vBx, v128_mul_f32(impulseX, imB));
+    vBy = v128_add_f32(vBy, v128_mul_f32(impulseY, imB));
+    wB = v128_add_f32(wB, v128_mul_f32(torqueB, iIB));
+
+    // Friction constraint
+    V128 staticFric = v128_make_f32(batch[0]->staticFriction, batch[1]->staticFriction, batch[2]->staticFriction, batch[3]->staticFriction);
+    if (v128_any_true(v128_gt_f32(staticFric, zero_v))) {
+        V128 kineticFric = v128_make_f32(batch[0]->kineticFriction, batch[1]->kineticFriction, batch[2]->kineticFriction, batch[3]->kineticFriction);
+        V128 tangentX = v128_make_f32(batch[0]->tangent.x, batch[1]->tangent.x, batch[2]->tangent.x, batch[3]->tangent.x);
+        V128 tangentY = v128_make_f32(batch[0]->tangent.y, batch[1]->tangent.y, batch[2]->tangent.y, batch[3]->tangent.y);
+        V128 tMass = v128_make_f32(batch[0]->tangentMass, batch[1]->tangentMass, batch[2]->tangentMass, batch[3]->tangentMass);
+        V128 frictionImpulse = v128_make_f32(batch[0]->frictionImpulse, batch[1]->frictionImpulse, batch[2]->frictionImpulse, batch[3]->frictionImpulse);
+
+        V128 vrAx_f = v128_mul_f32(neg_one_v, v128_mul_f32(wA, rAy));
+        V128 vrAy_f = v128_mul_f32(wA, rAx);
+        V128 vrBx_f = v128_mul_f32(neg_one_v, v128_mul_f32(wB, rBy));
+        V128 vrBy_f = v128_mul_f32(wB, rBx);
+        V128 relVelX_f = v128_sub_f32(v128_add_f32(vBx, vrBx_f), v128_add_f32(vAx, vrAx_f));
+        V128 relVelY_f = v128_sub_f32(v128_add_f32(vBy, vrBy_f), v128_add_f32(vAy, vrAy_f));
+        
+        V128 vt = v128_dot_f32(relVelX_f, relVelY_f, tangentX, tangentY);
+        V128 dLambdaT = v128_mul_f32(v128_neg_f32(vt), tMass);
+
+        V128 maxStaticFric = v128_mul_f32(staticFric, normalImpulse);
+        V128 maxKineticFric = v128_mul_f32(kineticFric, normalImpulse);
+        V128 oldImpulseT = frictionImpulse;
+        V128 newImpulseT = v128_add_f32(oldImpulseT, dLambdaT);
+        
+        V128 overMax = v128_gt_f32(v128_abs_f32(newImpulseT), maxStaticFric);
+        frictionImpulse = v128_select(overMax, v128_max_f32(v128_neg_f32(maxKineticFric), v128_min_f32(maxKineticFric, newImpulseT)), newImpulseT);
+        
+        // Zero out friction impulse for lanes where staticFriction is 0
+        frictionImpulse = v128_select(v128_gt_f32(staticFric, zero_v), frictionImpulse, zero_v);
+
+        dLambdaT = v128_sub_f32(frictionImpulse, oldImpulseT);
+        V128 fImpulseX = v128_mul_f32(tangentX, dLambdaT);
+        V128 fImpulseY = v128_mul_f32(tangentY, dLambdaT);
+
+        // Apply friction impulse
+        vAx = v128_sub_f32(vAx, v128_mul_f32(fImpulseX, imA));
+        vAy = v128_sub_f32(vAy, v128_mul_f32(fImpulseY, imA));
+        wA = v128_sub_f32(wA, v128_mul_f32(v128_cross_f32(rAx, rAy, fImpulseX, fImpulseY), iIA));
+
+        vBx = v128_add_f32(vBx, v128_mul_f32(fImpulseX, imB));
+        vBy = v128_add_f32(vBy, v128_mul_f32(fImpulseY, imB));
+        wB = v128_add_f32(wB, v128_mul_f32(v128_cross_f32(rBx, rBy, fImpulseX, fImpulseY), iIB));
+
+        // Store back friction impulses to constraints
+        alignas(16) float resImpulseT[4];
+        v128_store_f32(resImpulseT, frictionImpulse);
+        for (int i = 0; i < 4; ++i) batch[i]->frictionImpulse = resImpulseT[i];
+    }
+
+    // Store back updated dynamic data
+    alignas(16) float resVAx[4], resVAy[4], resWA[4], resVBx[4], resVBy[4], resWB[4], resImpulseN[4];
+    v128_store_f32(resVAx, vAx); v128_store_f32(resVAy, vAy); v128_store_f32(resWA, wA);
+    v128_store_f32(resVBx, vBx); v128_store_f32(resVBy, vBy); v128_store_f32(resWB, wB);
+    v128_store_f32(resImpulseN, normalImpulse);
+
+    for (int i = 0; i < 4; ++i) {
+        sA[i]->v.x = resVAx[i]; sA[i]->v.y = resVAy[i]; sA[i]->w = resWA[i];
+        sB[i]->v.x = resVBx[i]; sB[i]->v.y = resVBy[i]; sB[i]->w = resWB[i];
+        batch[i]->normalImpulse = resImpulseN[i];
+    }
+#else
+    for (int i = 0; i < 4; ++i) batch[i]->solveFast();
 #endif
 }
 

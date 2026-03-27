@@ -79,6 +79,7 @@ struct ContactConstraint {
 
     void preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
     static void preSolveSIMD(ContactConstraint** batch, float dt, bool enableRestitution, bool enablePenetration, bool enableFriction);
+    static void solveFastSIMD(ContactConstraint** batch);
     void solve(bool enableNormal, bool enableFriction);
     void solvePosition();
 
