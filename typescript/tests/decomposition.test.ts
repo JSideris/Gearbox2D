@@ -50,17 +50,17 @@ describe("Polygon Decomposition", () => {
 		const star = makeStar(5, 5, 2);
 		const originalArea = polygonArea(star);
 		const pieces = decompose(star);
-		console.log("Star 5 pieces:", pieces.length);
+		// console.log("Star 5 pieces:", pieces.length);
 		let sumArea = 0;
 		for (let i = 0; i < pieces.length; i++) {
 			const piece = pieces[i];
 			sumArea += polygonArea(piece);
-			console.log(
-				`Piece ${i} length: ${piece.length}, isConcave: ${isConcave(piece)}, isSimple: ${isSimplePolygon(piece)}`,
-			);
-			for (const p of piece) {
-				console.log(`  (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
-			}
+			// console.log(
+			// 	`Piece ${i} length: ${piece.length}, isConcave: ${isConcave(piece)}, isSimple: ${isSimplePolygon(piece)}`,
+			// );
+			// for (const p of piece) {
+			// 	console.log(`  (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
+			// }
 			expect(isConcave(piece)).toBe(false);
 			expect(isSimplePolygon(piece)).toBe(true);
 		}
@@ -80,17 +80,17 @@ describe("Polygon Decomposition", () => {
 		];
 		const originalArea = polygonArea(uShape);
 		const pieces = decompose(uShape);
-		console.log("U-shape pieces:", pieces.length);
+		// console.log("U-shape pieces:", pieces.length);
 		let sumArea = 0;
 		for (let i = 0; i < pieces.length; i++) {
 			const piece = pieces[i];
 			sumArea += polygonArea(piece);
-			console.log(
-				`Piece ${i} length: ${piece.length}, isConcave: ${isConcave(piece)}, isSimple: ${isSimplePolygon(piece)}`,
-			);
-			for (const p of piece) {
-				console.log(`  (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
-			}
+			// console.log(
+			// 	`Piece ${i} length: ${piece.length}, isConcave: ${isConcave(piece)}, isSimple: ${isSimplePolygon(piece)}`,
+			// );
+			// for (const p of piece) {
+			// 	console.log(`  (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
+			// }
 			expect(isConcave(piece)).toBe(false);
 			expect(isSimplePolygon(piece)).toBe(true);
 		}
@@ -110,17 +110,17 @@ describe("Polygon Decomposition", () => {
 		];
 		const originalArea = polygonArea(cShape);
 		const pieces = decompose(cShape);
-		console.log("C-shape pieces:", pieces.length);
+		// console.log("C-shape pieces:", pieces.length);
 		let sumArea = 0;
 		for (let i = 0; i < pieces.length; i++) {
 			const piece = pieces[i];
 			sumArea += polygonArea(piece);
-			console.log(
-				`Piece ${i} length: ${piece.length}, isConcave: ${isConcave(piece)}, isSimple: ${isSimplePolygon(piece)}`,
-			);
-			for (const p of piece) {
-				console.log(`  (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
-			}
+			// console.log(
+			// 	`Piece ${i} length: ${piece.length}, isConcave: ${isConcave(piece)}, isSimple: ${isSimplePolygon(piece)}`,
+			// );
+			// for (const p of piece) {
+			// 	console.log(`  (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
+			// }
 			expect(isConcave(piece)).toBe(false);
 			expect(isSimplePolygon(piece)).toBe(true);
 		}

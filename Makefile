@@ -22,7 +22,7 @@ TEST_TARGET = runTests
 BENCH_TARGET = runBenchmarks
 
 # Source files
-SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
+SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/world/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
 
 # Output files
 OUTPUT_JS_MT = $(BUILD_DIR)/gearbox-module-mt.js
