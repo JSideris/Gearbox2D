@@ -1242,7 +1242,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
     
     // 1.5 SIMD preSolve for contacts
-#ifdef __EMSCRIPTEN__
     int contactCount = contactConstraints.size();
     int contactVectorizedCount = (contactCount / 4) * 4;
     for (int i = 0; i < contactVectorizedCount; i += 4) {
@@ -1257,7 +1256,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     for (int i = contactVectorizedCount; i < contactCount; ++i) {
         contactConstraints[i].preSolve(dt, hasRestitution, hasPenetrationResolution, hasFriction);
     }
-#endif
     
     // 2. Pre-solve all joints globally so they can modify body velocities for warm-starting
     
@@ -2199,10 +2197,11 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
 }
 
 void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     V128 dt_v = v128_splat_f32(dt);
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
+    V128 eps_v = v128_splat_f32(0.00001f);
 
     int idxA[4], idxB[4];
     for (int i = 0; i < 4; ++i) {
@@ -2222,84 +2221,83 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
         );
     };
 
+    // Body A data
     V128 pAx = gather_body_fdata(idxA, BODY_FDATA_X);
     V128 pAy = gather_body_fdata(idxA, BODY_FDATA_Y);
+    V128 vAx = gather_body_fdata(idxA, BODY_FDATA_VX);
+    V128 vAy = gather_body_fdata(idxA, BODY_FDATA_VY);
+    V128 wA  = gather_body_fdata(idxA, BODY_FDATA_RS);
+    V128 imA = gather_body_fdata(idxA, BODY_FDATA_IM);
+    V128 iIA = gather_body_fdata(idxA, BODY_FDATA_INV_INERTIA);
+    V128 fvAx = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
+    V128 fvAy = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
+    V128 thetaA = gather_body_fdata(idxA, BODY_FDATA_R);
+
+    // Body B data
     V128 pBx = gather_body_fdata(idxB, BODY_FDATA_X);
     V128 pBy = gather_body_fdata(idxB, BODY_FDATA_Y);
+    V128 vBx = gather_body_fdata(idxB, BODY_FDATA_VX);
+    V128 vBy = gather_body_fdata(idxB, BODY_FDATA_VY);
+    V128 wB  = gather_body_fdata(idxB, BODY_FDATA_RS);
+    V128 imB = gather_body_fdata(idxB, BODY_FDATA_IM);
+    V128 iIB = gather_body_fdata(idxB, BODY_FDATA_INV_INERTIA);
+    V128 fvBx = gather_body_fdata(idxB, BODY_FDATA_FORCE_VX);
+    V128 fvBy = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
+    V128 thetaB = gather_body_fdata(idxB, BODY_FDATA_R);
 
+    // Batch data
     V128 pointX = v128_make_f32(batch[0]->point.x, batch[1]->point.x, batch[2]->point.x, batch[3]->point.x);
     V128 pointY = v128_make_f32(batch[0]->point.y, batch[1]->point.y, batch[2]->point.y, batch[3]->point.y);
+    V128 normalX = v128_make_f32(batch[0]->normal.x, batch[1]->normal.x, batch[2]->normal.x, batch[3]->normal.x);
+    V128 normalY = v128_make_f32(batch[0]->normal.y, batch[1]->normal.y, batch[2]->normal.y, batch[3]->normal.y);
+    V128 restitution = v128_make_f32(batch[0]->restitution, batch[1]->restitution, batch[2]->restitution, batch[3]->restitution);
+    V128 depth = v128_make_f32(batch[0]->depth, batch[1]->depth, batch[2]->depth, batch[3]->depth);
+    V128 staticFric = v128_make_f32(batch[0]->staticFriction, batch[1]->staticFriction, batch[2]->staticFriction, batch[3]->staticFriction);
+    V128 kineticFric = v128_make_f32(batch[0]->kineticFriction, batch[1]->kineticFriction, batch[2]->kineticFriction, batch[3]->kineticFriction);
 
+    // Relative vectors rA, rB
     V128 rAx = v128_sub_f32(pointX, pAx);
     V128 rAy = v128_sub_f32(pointY, pAy);
     V128 rBx = v128_sub_f32(pointX, pBx);
     V128 rBy = v128_sub_f32(pointY, pBy);
 
-    V128 normalX = v128_make_f32(batch[0]->normal.x, batch[1]->normal.x, batch[2]->normal.x, batch[3]->normal.x);
-    V128 normalY = v128_make_f32(batch[0]->normal.y, batch[1]->normal.y, batch[2]->normal.y, batch[3]->normal.y);
-
-    V128 imA = gather_body_fdata(idxA, BODY_FDATA_IM);
-    V128 imB = gather_body_fdata(idxB, BODY_FDATA_IM);
-    V128 iIA = gather_body_fdata(idxA, BODY_FDATA_INV_INERTIA);
-    V128 iIB = gather_body_fdata(idxB, BODY_FDATA_INV_INERTIA);
-
+    // Normal mass calculation
     V128 rnA = v128_sub_f32(v128_mul_f32(rAx, normalY), v128_mul_f32(rAy, normalX));
     V128 rnB = v128_sub_f32(v128_mul_f32(rBx, normalY), v128_mul_f32(rBy, normalX));
-
     V128 kNormal = v128_add_f32(v128_add_f32(imA, imB), 
                      v128_add_f32(v128_mul_f32(iIA, v128_mul_f32(rnA, rnA)), 
                                   v128_mul_f32(iIB, v128_mul_f32(rnB, rnB))));
+    V128 normalMass = v128_select(v128_gt_f32(kNormal, eps_v), v128_div_f32(one_v, kNormal), zero_v);
 
-    V128 normalMass = v128_select(v128_gt_f32(kNormal, v128_splat_f32(0.00001f)), v128_div_f32(one_v, kNormal), zero_v);
-
-    V128 vAx = gather_body_fdata(idxA, BODY_FDATA_VX);
-    V128 vAy = gather_body_fdata(idxA, BODY_FDATA_VY);
-    V128 wA = gather_body_fdata(idxA, BODY_FDATA_RS);
-    
-    V128 vBx = gather_body_fdata(idxB, BODY_FDATA_VX);
-    V128 vBy = gather_body_fdata(idxB, BODY_FDATA_VY);
-    V128 wB = gather_body_fdata(idxB, BODY_FDATA_RS);
-
-    V128 tangVelAx = v128_mul_f32(v128_sub_f32(zero_v, rAy), wA);
+    // Relative velocity
+    V128 tangVelAx = v128_mul_f32(v128_neg_f32(rAy), wA);
     V128 tangVelAy = v128_mul_f32(rAx, wA);
-    V128 tangVelBx = v128_mul_f32(v128_sub_f32(zero_v, rBy), wB);
+    V128 tangVelBx = v128_mul_f32(v128_neg_f32(rBy), wB);
     V128 tangVelBy = v128_mul_f32(rBx, wB);
-
     V128 relVelX = v128_sub_f32(v128_add_f32(vBx, tangVelBx), v128_add_f32(vAx, tangVelAx));
     V128 relVelY = v128_sub_f32(v128_add_f32(vBy, tangVelBy), v128_add_f32(vAy, tangVelAy));
-    
-    V128 vn = v128_add_f32(v128_mul_f32(relVelX, normalX), v128_mul_f32(relVelY, normalY));
+    V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
 
-    V128 forceVn = zero_v;
-    V128 fvAx = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
-    V128 fvAy = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
-    V128 fvBx = gather_body_fdata(idxB, BODY_FDATA_FORCE_VX);
-    V128 fvBy = gather_body_fdata(idxB, BODY_FDATA_FORCE_VY);
-    forceVn = v128_add_f32(v128_mul_f32(v128_sub_f32(fvBx, fvAx), normalX), v128_mul_f32(v128_sub_f32(fvBy, fvAy), normalY));
-
+    // Component A: Force Velocity Compensation
+    V128 forceVn = v128_dot_f32(v128_sub_f32(fvBx, fvAx), v128_sub_f32(fvBy, fvAy), normalX, normalY);
     V128 relativeVn = v128_sub_f32(vn, forceVn);
+    V128 vBounce = v128_mul_f32(v128_neg_f32(restitution), relativeVn);
 
-    V128 restitution = v128_make_f32(batch[0]->restitution, batch[1]->restitution, batch[2]->restitution, batch[3]->restitution);
-    V128 vBounce = v128_mul_f32(v128_sub_f32(zero_v, restitution), relativeVn);
-    
-    V128 depth = v128_make_f32(batch[0]->depth, batch[1]->depth, batch[2]->depth, batch[3]->depth);
+    // Speculative contact masks
     V128 depth_lt_zero = v128_lt_f32(depth, zero_v);
-    
-    V128 staticFric = v128_make_f32(batch[0]->staticFriction, batch[1]->staticFriction, batch[2]->staticFriction, batch[3]->staticFriction);
-    V128 kineticFric = v128_make_f32(batch[0]->kineticFriction, batch[1]->kineticFriction, batch[2]->kineticFriction, batch[3]->kineticFriction);
-    
     staticFric = v128_select(depth_lt_zero, zero_v, staticFric);
     kineticFric = v128_select(depth_lt_zero, zero_v, kineticFric);
-    
-    V128 enableRestitution_v = enableRestitution ? v128_splat_f32(1.0f) : zero_v;
+
+    // Bouncing condition
+    V128 enableRestitution_v = enableRestitution ? one_v : zero_v;
     V128 restThresh_v = v128_splat_f32(-RESTITUTION_THRESHOLD);
     V128 depth_over_dt = v128_div_f32(depth, dt_v);
-    
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
-    V128 cond2 = wasm_v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
-    V128 shouldBounce = wasm_v128_and(wasm_f32x4_ne(enableRestitution_v, zero_v), wasm_v128_or(cond1, cond2));
-    
-    int posIter = batch[0]->a->world.getPositionIterations();
+    V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
+    V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
+
+    // Component B: Kinematic Energy Balancing
+    int posIter = world.getPositionIterations();
     float posIterFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)posIter);
     V128 cumCorrFactor = v128_splat_f32(posIterFactor);
     V128 maxPosCorr = v128_splat_f32(MAX_POSITION_CORRECTION);
@@ -2311,57 +2309,45 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     
     V128 accVn = v128_div_f32(forceVn, dt_v);
     V128 workTerm = v128_mul_f32(v128_splat_f32(2.0f), v128_mul_f32(accVn, expectedDisp));
-    V128 vImpactSq = v128_mul_f32(relativeVn, relativeVn);
-    V128 vSurfSq = v128_add_f32(vImpactSq, workTerm);
-    V128 vFinal = v128_mul_f32(restitution, wasm_f32x4_sqrt(v128_max_f32(zero_v, vSurfSq)));
-    
-    V128 bias_bounce_spec = v128_sub_f32(zero_v, v128_max_f32(vFinal, depth_over_dt));
-    V128 bias_bounce_norm = v128_sub_f32(zero_v, vFinal);
-    V128 bias_bounce = v128_select(depth_lt_zero, bias_bounce_spec, bias_bounce_norm);
-    
-    V128 bias_no_bounce_spec = v128_sub_f32(zero_v, depth_over_dt);
-    V128 bias_no_bounce_norm = zero_v;
-    V128 bias_no_bounce = v128_select(depth_lt_zero, bias_no_bounce_spec, bias_no_bounce_norm);
-    
+    V128 vSurfSq = v128_add_f32(v128_mul_f32(relativeVn, relativeVn), workTerm);
+    V128 vFinal = v128_mul_f32(restitution, v128_sqrt_f32(v128_max_f32(zero_v, vSurfSq)));
+
+    // Bias calculation
+    V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
+    V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
     V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
-    
-    V128 tangentX = v128_sub_f32(zero_v, normalY);
+
+    // Tangent and tangent mass
+    V128 tangentX = v128_neg_f32(normalY);
     V128 tangentY = normalX;
-    
     V128 rtA = v128_sub_f32(v128_mul_f32(rAx, tangentY), v128_mul_f32(rAy, tangentX));
     V128 rtB = v128_sub_f32(v128_mul_f32(rBx, tangentY), v128_mul_f32(rBy, tangentX));
-    
     V128 kTangent = v128_add_f32(v128_add_f32(imA, imB), 
                      v128_add_f32(v128_mul_f32(iIA, v128_mul_f32(rtA, rtA)), 
                                   v128_mul_f32(iIB, v128_mul_f32(rtB, rtB))));
-                                  
-    V128 tangentMass = v128_select(v128_gt_f32(kTangent, v128_splat_f32(0.00001f)), v128_div_f32(one_v, kTangent), zero_v);
-    
+    V128 tangentMass = v128_select(v128_gt_f32(kTangent, eps_v), v128_div_f32(one_v, kTangent), zero_v);
+
     if (!enableFriction) {
         staticFric = zero_v;
         kineticFric = zero_v;
     }
-    
-    V128 thetaA = gather_body_fdata(idxA, BODY_FDATA_R);
-    V128 thetaB = gather_body_fdata(idxB, BODY_FDATA_R);
-    
-    V128 negThetaA = v128_sub_f32(zero_v, thetaA);
-    V128 cA = wasm_f32x4_cos(negThetaA);
-    V128 sA = wasm_f32x4_sin(negThetaA);
-    
+
+    // Local coordinates transformation
+    V128 negThetaA = v128_neg_f32(thetaA);
+    V128 cA = v128_cos_f32(negThetaA);
+    V128 sA = v128_sin_f32(negThetaA);
     V128 localAnchorAx = v128_sub_f32(v128_mul_f32(rAx, cA), v128_mul_f32(rAy, sA));
     V128 localAnchorAy = v128_add_f32(v128_mul_f32(rAx, sA), v128_mul_f32(rAy, cA));
-    
     V128 localNormalAx = v128_sub_f32(v128_mul_f32(normalX, cA), v128_mul_f32(normalY, sA));
     V128 localNormalAy = v128_add_f32(v128_mul_f32(normalX, sA), v128_mul_f32(normalY, cA));
-    
-    V128 negThetaB = v128_sub_f32(zero_v, thetaB);
-    V128 cB = wasm_f32x4_cos(negThetaB);
-    V128 sB = wasm_f32x4_sin(negThetaB);
-    
+
+    V128 negThetaB = v128_neg_f32(thetaB);
+    V128 cB = v128_cos_f32(negThetaB);
+    V128 sB = v128_sin_f32(negThetaB);
     V128 localAnchorBx = v128_sub_f32(v128_mul_f32(rBx, cB), v128_mul_f32(rBy, sB));
     V128 localAnchorBy = v128_add_f32(v128_mul_f32(rBx, sB), v128_mul_f32(rBy, cB));
 
+    // Result buffers (Fixed 4 lanes safe due to FixedTag)
     float resRAx[4], resRAy[4], resRBx[4], resRBy[4];
     float resNormalMass[4], resBias[4], resTangentX[4], resTangentY[4], resTangentMass[4];
     float resStaticFric[4], resKineticFric[4];

@@ -62,7 +62,7 @@ void DistanceJoint::preSolve(float dt) {
 }
 
 void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     V128 dt_v = v128_splat_f32(dt);
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
@@ -164,7 +164,7 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     V128 bias = v128_sub_f32(vB, forceVn);
 
     // Store back results
-    float resNormalX[4], resNormalY[4], resImpulse[4], resMass[4], resBias[4], resRAx[4], resRAy[4], resRBx[4], resRBy[4];
+    alignas(64) float resNormalX[SIMD_LANE_COUNT], resNormalY[SIMD_LANE_COUNT], resImpulse[SIMD_LANE_COUNT], resMass[SIMD_LANE_COUNT], resBias[SIMD_LANE_COUNT], resRAx[SIMD_LANE_COUNT], resRAy[SIMD_LANE_COUNT], resRBx[SIMD_LANE_COUNT], resRBy[SIMD_LANE_COUNT];
     v128_store_f32(resNormalX, normalX);
     v128_store_f32(resNormalY, normalY);
     v128_store_f32(resImpulse, impulse);
@@ -185,11 +185,10 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
         joints[i]->lastNormal = joints[i]->normal;
         joints[i]->hasLastNormal = true;
 
-        // Apply initial impulse scalar-wise to avoid race conditions
-        Vec2 p = joints[i]->normal * joints[i]->impulse;
-        float imA = joints[i]->bodyA->getInverseMass();
-        float imB = joints[i]->bodyB->getInverseMass();
-        float iIA = joints[i]->bodyA->getInverseInertia();
+        for (int i = 0; i < 4; ++i) {
+            batch[i]->preSolve(dt, enableRestitution, enablePenetration, enableFriction);
+        }
+    #endif
         float iIB = joints[i]->bodyB->getInverseInertia();
 
         joints[i]->bodyA->setVelocityInternal(joints[i]->bodyA->getVelocity() - p * imA);

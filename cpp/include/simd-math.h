@@ -10,9 +10,9 @@
 
 namespace hn = hwy::HWY_NAMESPACE;
 
-// Descriptor for scalable vectors
-using DF = hn::ScalableTag<float>;
-using DI = hn::ScalableTag<int32_t>;
+// Descriptor for fixed-size 128-bit vectors (4 lanes)
+using DF = hn::FixedTag<float, 4>;
+using DI = hn::FixedTag<int32_t, 4>;
 using V128 = hn::Vec<DF>;
 using SimdVec = hn::Vec<DF>;
 using SimdMask = hn::Mask<DF>;
@@ -31,6 +31,11 @@ using SimdMask = hn::Mask<DF>;
 #define v128_sub_f32(a, b) hn::Sub(a, b)
 #define v128_mul_f32(a, b) hn::Mul(a, b)
 #define v128_div_f32(a, b) hn::Div(a, b)
+#define v128_neg_f32(v) hn::Neg(v)
+
+// Math
+#define v128_sin_f32(v) hn::Sin(DF(), v)
+#define v128_cos_f32(v) hn::Cos(DF(), v)
 
 // Comparisons (Returns masks converted to vectors for compatibility)
 #define v128_eq_f32(a, b) hn::VecFromMask(DF(), hn::Eq(a, b))

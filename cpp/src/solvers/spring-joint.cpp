@@ -54,7 +54,7 @@ void SpringJoint::preSolve(float dt) {
 }
 
 void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     V128 dt_v = v128_splat_f32(dt);
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
@@ -164,7 +164,7 @@ void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
     V128 final_mass = v128_select(isSpring, mass_spring, mass_scalar);
 
     // Store back results
-    float resNormalX[4], resNormalY[4], resImpulse[4], resMass[4], resBias[4], resGamma[4], resRAx[4], resRAy[4], resRBx[4], resRBy[4];
+    alignas(64) float resNormalX[SIMD_LANE_COUNT], resNormalY[SIMD_LANE_COUNT], resImpulse[SIMD_LANE_COUNT], resMass[SIMD_LANE_COUNT], resBias[SIMD_LANE_COUNT], resGamma[SIMD_LANE_COUNT], resRAx[SIMD_LANE_COUNT], resRAy[SIMD_LANE_COUNT], resRBx[SIMD_LANE_COUNT], resRBy[SIMD_LANE_COUNT];
     v128_store_f32(resNormalX, normalX);
     v128_store_f32(resNormalY, normalY);
     v128_store_f32(resImpulse, impulse);
