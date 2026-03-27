@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Native Build Dependencies
         run: |
@@ -29,7 +31,7 @@ jobs:
           mkdir build
           cd build
           cmake ..
-          make
+          make -j$(nproc)
         env:
           GTEST_DIR: /tmp/googletest/googletest
 
@@ -42,10 +44,11 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      - name: Create WASM placeholder for tests
+      - name: Create WASM placeholders for tests
         run: |
           mkdir -p dist/wasm
-          touch dist/wasm/gearbox-module.js
+          touch dist/wasm/gearbox-module-mt.js
+          touch dist/wasm/gearbox-module-st.js
 
       - name: Run Native C++ Tests
         run: make test -B
@@ -56,25 +59,19 @@ jobs:
       - name: Run TypeScript Tests
         run: npm run test:ts
 
-      # Only proceed to Build and Deploy if on master branch and not a PR
       - name: Install Emscripten
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         uses: mymindstorm/setup-emsdk@v14
 
       - name: Build WASM Core
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: npm run build:cpp
 
       - name: Build TypeScript Wrapper
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: npm run build:ts
 
       - name: Build Examples Site
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: npm run site:build
 
       - name: Add .nojekyll
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: touch dist/site/.nojekyll
 
       - name: Deploy to GitHub Pages
