@@ -109,6 +109,10 @@ struct Island {
     std::vector<Body*> bodies;
     std::vector<ContactConstraint*> contacts;
     std::vector<Joint*> joints;
+    
+    std::vector<std::vector<ContactConstraint*>> contactBatches;
+    std::vector<std::vector<Joint*>> jointBatches;
+
     bool canSleep;
 
     Island() : canSleep(false) {}
@@ -117,6 +121,8 @@ struct Island {
         bodies.clear();
         contacts.clear();
         joints.clear();
+        contactBatches.clear();
+        jointBatches.clear();
         canSleep = false;
     }
 };
@@ -176,6 +182,7 @@ private:
     void _maybePrunePairs();
 
     void _buildAndProcessIslands(float dt, int substepIndex);
+    void _colorIsland(Island& island);
     void _solveIslandVelocity(Island& island, float dt, int substepIndex);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 

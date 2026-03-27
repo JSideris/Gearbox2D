@@ -1387,6 +1387,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         }
         
         if (!currentIsland.bodies.empty()) {
+            _colorIsland(currentIsland);
             islands.push_back(std::move(currentIsland));
         }
     }
@@ -1477,6 +1478,85 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
 }
 
+void World::_colorIsland(Island& island) {
+    island.contactBatches.clear();
+    island.jointBatches.clear();
+
+    if (island.contacts.empty() && island.joints.empty()) {
+        return;
+    }
+
+    // 1. Color Contacts
+    if (!island.contacts.empty()) {
+        std::vector<uint64_t> bodyBatchMasks(bodiesList.size(), 0);
+        for (ContactConstraint* c : island.contacts) {
+            uint64_t mask = 0;
+            if (c->a->type != ObjectType::FIXED_OBJECT) mask |= bodyBatchMasks[c->a->worldIndex];
+            if (c->b->type != ObjectType::FIXED_OBJECT) mask |= bodyBatchMasks[c->b->worldIndex];
+
+            int batchIdx = 0;
+            while ((mask >> batchIdx) & 1) {
+                batchIdx++;
+                if (batchIdx >= 64) break;
+            }
+            if (batchIdx >= 64) batchIdx = 63;
+
+            if (batchIdx >= (int)island.contactBatches.size()) {
+                island.contactBatches.resize(batchIdx + 1);
+            }
+            island.contactBatches[batchIdx].push_back(c);
+
+            if (c->a->type != ObjectType::FIXED_OBJECT) bodyBatchMasks[c->a->worldIndex] |= (1ULL << batchIdx);
+            if (c->b->type != ObjectType::FIXED_OBJECT) bodyBatchMasks[c->b->worldIndex] |= (1ULL << batchIdx);
+        }
+    }
+
+    // 2. Color Joints
+    if (!island.joints.empty()) {
+        std::vector<uint64_t> bodyBatchMasks(bodiesList.size(), 0);
+        for (Joint* j : island.joints) {
+            uint64_t mask = 0;
+            
+            Body* bodies[6];
+            int bodyCount = 0;
+            bodies[bodyCount++] = j->bodyA;
+            bodies[bodyCount++] = j->bodyB;
+            
+            GearJoint* gear = dynamic_cast<GearJoint*>(j);
+            if (gear) {
+                bodies[bodyCount++] = gear->joint1->bodyA;
+                bodies[bodyCount++] = gear->joint1->bodyB;
+                bodies[bodyCount++] = gear->joint2->bodyA;
+                bodies[bodyCount++] = gear->joint2->bodyB;
+            }
+
+            for (int i = 0; i < bodyCount; ++i) {
+                if (bodies[i]->type != ObjectType::FIXED_OBJECT) {
+                    mask |= bodyBatchMasks[bodies[i]->worldIndex];
+                }
+            }
+
+            int batchIdx = 0;
+            while ((mask >> batchIdx) & 1) {
+                batchIdx++;
+                if (batchIdx >= 64) break;
+            }
+            if (batchIdx >= 64) batchIdx = 63;
+
+            if (batchIdx >= (int)island.jointBatches.size()) {
+                island.jointBatches.resize(batchIdx + 1);
+            }
+            island.jointBatches[batchIdx].push_back(j);
+
+            for (int i = 0; i < bodyCount; ++i) {
+                if (bodies[i]->type != ObjectType::FIXED_OBJECT) {
+                    bodyBatchMasks[bodies[i]->worldIndex] |= (1ULL << batchIdx);
+                }
+            }
+        }
+    }
+}
+
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
@@ -1534,8 +1614,12 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     
     // Velocity Iterations
     for (int iter = 0; iter < velocityIterations; ++iter) {
-        for (ContactConstraint* c : island.contacts) c->solveFast();
-        for (Joint* j : island.joints) j->solveFast();
+        for (const auto& batch : island.contactBatches) {
+            for (ContactConstraint* c : batch) c->solveFast();
+        }
+        for (const auto& batch : island.jointBatches) {
+            for (Joint* j : batch) j->solveFast();
+        }
     }
     
     // Sync velocities back
@@ -1549,8 +1633,12 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
 void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
     // Position Iterations
     for (int p = 0; p < positionIterations; ++p) {
-        for (ContactConstraint* c : island.contacts) c->solvePosition();
-        for (Joint* j : island.joints) j->solvePosition();
+        for (const auto& batch : island.contactBatches) {
+            for (ContactConstraint* c : batch) c->solvePosition();
+        }
+        for (const auto& batch : island.jointBatches) {
+            for (Joint* j : batch) j->solvePosition();
+        }
     }
 
     // 3. Check if the island can go to sleep
