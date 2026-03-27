@@ -1,6 +1,7 @@
 #include "hinge-joint.h"
 #include "body.h"
 #include "world.h"
+#include "simd-math.h"
 #include <cmath>
 
 HingeJoint::HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB)
@@ -83,6 +84,96 @@ void HingeJoint::solveFast() {
             sB.w += rB.cross(lambda) * sB.iI;
         }
     }
+}
+
+void HingeJoint::solveFastSIMD(HingeJoint** joints) {
+#ifdef __EMSCRIPTEN__
+    // Load joint properties
+    V128 m00 = v128_make_f32(joints[0]->massMatrix[0][0], joints[1]->massMatrix[0][0], joints[2]->massMatrix[0][0], joints[3]->massMatrix[0][0]);
+    V128 m01 = v128_make_f32(joints[0]->massMatrix[0][1], joints[1]->massMatrix[0][1], joints[2]->massMatrix[0][1], joints[3]->massMatrix[0][1]);
+    V128 m11 = v128_make_f32(joints[0]->massMatrix[1][1], joints[1]->massMatrix[1][1], joints[2]->massMatrix[1][1], joints[3]->massMatrix[1][1]);
+
+    V128 biasX = v128_make_f32(joints[0]->bias.x, joints[1]->bias.x, joints[2]->bias.x, joints[3]->bias.x);
+    V128 biasY = v128_make_f32(joints[0]->bias.y, joints[1]->bias.y, joints[2]->bias.y, joints[3]->bias.y);
+
+    V128 rAx = v128_make_f32(joints[0]->rA.x, joints[1]->rA.x, joints[2]->rA.x, joints[3]->rA.x);
+    V128 rAy = v128_make_f32(joints[0]->rA.y, joints[1]->rA.y, joints[2]->rA.y, joints[3]->rA.y);
+    V128 rBx = v128_make_f32(joints[0]->rB.x, joints[1]->rB.x, joints[2]->rB.x, joints[3]->rB.x);
+    V128 rBy = v128_make_f32(joints[0]->rB.y, joints[1]->rB.y, joints[2]->rB.y, joints[3]->rB.y);
+
+    SolverData* sA[4];
+    SolverData* sB[4];
+    for (int i = 0; i < 4; ++i) {
+        sA[i] = static_cast<SolverData*>(joints[i]->context.a);
+        sB[i] = static_cast<SolverData*>(joints[i]->context.b);
+    }
+
+    // Load velocities and mass properties
+    V128 vAx = v128_make_f32(sA[0]->v.x, sA[1]->v.x, sA[2]->v.x, sA[3]->v.x);
+    V128 vAy = v128_make_f32(sA[0]->v.y, sA[1]->v.y, sA[2]->v.y, sA[3]->v.y);
+    V128 wA  = v128_make_f32(sA[0]->w,   sA[1]->w,   sA[2]->w,   sA[3]->w);
+    V128 vBx = v128_make_f32(sB[0]->v.x, sB[1]->v.x, sB[2]->v.x, sB[3]->v.x);
+    V128 vBy = v128_make_f32(sB[0]->v.y, sB[1]->v.y, sB[2]->v.y, sB[3]->v.y);
+    V128 wB  = v128_make_f32(sB[0]->w,   sB[1]->w,   sB[2]->w,   sB[3]->w);
+
+    V128 imA = v128_make_f32(sA[0]->im, sA[1]->im, sA[2]->im, sA[3]->im);
+    V128 iIA = v128_make_f32(sA[0]->iI, sA[1]->iI, sA[2]->iI, sA[3]->iI);
+    V128 imB = v128_make_f32(sB[0]->im, sB[1]->im, sB[2]->im, sB[3]->im);
+    V128 iIB = v128_make_f32(sB[0]->iI, sB[1]->iI, sB[2]->iI, sB[3]->iI);
+
+    // Relative velocity at anchors
+    V128 vrAx = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(wA, rAy));
+    V128 vrAy = v128_mul_f32(wA, rAx);
+    V128 vrBx = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(wB, rBy));
+    V128 vrBy = v128_mul_f32(wB, rBx);
+
+    V128 CdotX = v128_sub_f32(v128_add_f32(vBx, vrBx), v128_add_f32(vAx, vrAx));
+    V128 CdotY = v128_sub_f32(v128_add_f32(vBy, vrBy), v128_add_f32(vAy, vrAy));
+
+    V128 termX = v128_add_f32(CdotX, biasX);
+    V128 termY = v128_add_f32(CdotY, biasY);
+
+    V128 lambdaX = v128_mul_f32(v128_splat_f32(-1.0f), v128_add_f32(v128_mul_f32(m00, termX), v128_mul_f32(m01, termY)));
+    V128 lambdaY = v128_mul_f32(v128_splat_f32(-1.0f), v128_add_f32(v128_mul_f32(m01, termX), v128_mul_f32(m11, termY)));
+
+    // Finiteness check
+    V128 finite = v128_and(v128_is_finite(lambdaX), v128_is_finite(lambdaY));
+    lambdaX = v128_select(finite, lambdaX, v128_splat_f32(0.0f));
+    lambdaY = v128_select(finite, lambdaY, v128_splat_f32(0.0f));
+
+    // Apply impulse
+    vAx = v128_sub_f32(vAx, v128_mul_f32(lambdaX, imA));
+    vAy = v128_sub_f32(vAy, v128_mul_f32(lambdaY, imA));
+    wA = v128_sub_f32(wA, v128_mul_f32(v128_cross_f32(rAx, rAy, lambdaX, lambdaY), iIA));
+
+    vBx = v128_add_f32(vBx, v128_mul_f32(lambdaX, imB));
+    vBy = v128_add_f32(vBy, v128_mul_f32(lambdaY, imB));
+    wB = v128_add_f32(wB, v128_mul_f32(v128_cross_f32(rBx, rBy, lambdaX, lambdaY), iIB));
+
+    // Store back results
+    alignas(16) float resVAx[4], resVAy[4], resWA[4], resVBx[4], resVBy[4], resWB[4], resLX[4], resLY[4];
+    v128_store_f32(resVAx, vAx);
+    v128_store_f32(resVAy, vAy);
+    v128_store_f32(resWA, wA);
+    v128_store_f32(resVBx, vBx);
+    v128_store_f32(resVBy, vBy);
+    v128_store_f32(resWB, wB);
+    v128_store_f32(resLX, lambdaX);
+    v128_store_f32(resLY, lambdaY);
+
+    for (int i = 0; i < 4; ++i) {
+        sA[i]->v.x = resVAx[i];
+        sA[i]->v.y = resVAy[i];
+        sA[i]->w = resWA[i];
+        sB[i]->v.x = resVBx[i];
+        sB[i]->v.y = resVBy[i];
+        sB[i]->w = resWB[i];
+        joints[i]->impulse.x += resLX[i];
+        joints[i]->impulse.y += resLY[i];
+    }
+#else
+    for (int i = 0; i < 4; ++i) joints[i]->solveFast();
+#endif
 }
 
 Vec2 HingeJoint::getReactionForce(float inv_dt) const { return impulse * inv_dt; }

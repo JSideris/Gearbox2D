@@ -16,6 +16,7 @@ public:
     void preSolve(float dt) override;
     void solve() override;
     void solveFast() override;
+    static void solveFastSIMD(GearJoint** joints);
     void solvePosition() override;
 
     Vec2 getReactionForce(float inv_dt) const override;

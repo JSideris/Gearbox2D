@@ -1638,6 +1638,36 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
                         i += 4;
                         continue;
                     }
+
+                    if (j0->getType() == JointType::HINGE &&
+                        j1->getType() == JointType::HINGE &&
+                        j2->getType() == JointType::HINGE &&
+                        j3->getType() == JointType::HINGE) {
+                        HingeJoint* hjs[4] = {
+                            static_cast<HingeJoint*>(j0),
+                            static_cast<HingeJoint*>(j1),
+                            static_cast<HingeJoint*>(j2),
+                            static_cast<HingeJoint*>(j3)
+                        };
+                        HingeJoint::solveFastSIMD(hjs);
+                        i += 4;
+                        continue;
+                    }
+
+                    if (j0->getType() == JointType::GEAR &&
+                        j1->getType() == JointType::GEAR &&
+                        j2->getType() == JointType::GEAR &&
+                        j3->getType() == JointType::GEAR) {
+                        GearJoint* gjs[4] = {
+                            static_cast<GearJoint*>(j0),
+                            static_cast<GearJoint*>(j1),
+                            static_cast<GearJoint*>(j2),
+                            static_cast<GearJoint*>(j3)
+                        };
+                        GearJoint::solveFastSIMD(gjs);
+                        i += 4;
+                        continue;
+                    }
                 }
                 batch[i]->solveFast();
                 i++;

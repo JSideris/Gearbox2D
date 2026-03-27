@@ -17,7 +17,6 @@ void setupLargeStack(World& world);
 void setupHighDensity(World& world);
 void setupJointChain(World& world);
 void setupParticlesStress(World& world);
-void setupDistanceJointChain(World& world);
-void setupSpringJointChain(World& world);
+void setupMixedJoints(World& world);
 
 #endif

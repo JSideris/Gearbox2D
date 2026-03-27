@@ -30,6 +30,8 @@ This plan breaks down the migration to Google Highway and SIMD optimization into
 
 *   **Task 4.1**: Implement `DistanceJoint::solveFastSIMD`.
 *   **Task 4.2**: Implement `SpringJoint::solveFastSIMD`.
+*   **Task 4.3**: Implement `HingeJoint::solveFastSIMD`.
+*   **Task 4.4**: Implement `GearJoint::solveFastSIMD`.
 *   **Verification**: Run `DistanceJointTest` and `SpringJointTest`. Verify performance gains with `make benchmark`.
 
 ## Phase 5: Contact Solver Vectorization (Hardest Part)

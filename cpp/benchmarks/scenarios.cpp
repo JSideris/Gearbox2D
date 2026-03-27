@@ -160,50 +160,50 @@ void setupParticlesStress(World& world) {
     }
 }
 
-void setupDistanceJointChain(World& world) {
+void setupMixedJoints(World& world) {
     world.clear();
     world.setGravity(0.0f, 10.0f);
 
-    int count = 100; // More joints for better benchmark
-    float startX = 0.0f;
-    float startY = -50.0f;
-    float length = 1.0f;
+    int chains = 5;
+    int jointsPerChain = 40;
+    float length = 0.5f;
 
-    // Anchor
-    int anchorId = 20000;
-    world.createBody(anchorId, createBodyOptions(startX, startY, ObjectType::FIXED_OBJECT));
+    for (int c = 0; c < chains; ++c) {
+        float startX = (c - chains / 2.0f) * 5.0f;
+        float startY = -10.0f;
+        int anchorId = 40000 + c * 1000;
+        world.createBody(anchorId, createBodyOptions(startX, startY, ObjectType::FIXED_OBJECT));
 
-    int prevId = anchorId;
-    for (int i = 0; i < count; ++i) {
-        int id = i + 1;
-        world.createBody(id, createBodyOptions(startX + (i + 1) * length, startY, ObjectType::DYNAMIC_OBJECT));
-        
-        // Distance Joint
-        world.createDistanceJoint(id, prevId, id, 0.0f, 0.0f, 0.0f, 0.0f, length);
-        prevId = id;
+        int prevId = anchorId;
+        for (int j = 0; j < jointsPerChain; ++j) {
+            int id = anchorId + j + 1;
+            world.createBody(id, createBodyOptions(startX + (j + 1) * length, startY, ObjectType::DYNAMIC_OBJECT));
+            
+            int type = (c + j) % 3;
+            if (type == 0) {
+                world.createDistanceJoint(id, prevId, id, 0.0f, 0.0f, 0.0f, 0.0f, length);
+            } else if (type == 1) {
+                world.createSpringJoint(id, prevId, id, 0.0f, 0.0f, 0.0f, 0.0f, length, 5.0f, 0.7f);
+            } else {
+                world.createHingeJoint(id, prevId, id, startX + j * length, startY, startX + j * length, startY);
+            }
+            prevId = id;
+        }
     }
-}
 
-void setupSpringJointChain(World& world) {
-    world.clear();
-    world.setGravity(0.0f, 10.0f);
-
-    int count = 100;
-    float startX = 0.0f;
-    float startY = -50.0f;
-    float length = 1.0f;
-
-    // Anchor
-    int anchorId = 30000;
-    world.createBody(anchorId, createBodyOptions(startX, startY, ObjectType::FIXED_OBJECT));
-
-    int prevId = anchorId;
-    for (int i = 0; i < count; ++i) {
-        int id = i + 1;
-        world.createBody(id, createBodyOptions(startX + (i + 1) * length, startY, ObjectType::DYNAMIC_OBJECT));
+    // Add GearJoints (4 independent pairs to trigger SIMD)
+    for (int g = 0; g < 4; ++g) {
+        float gx = 15.0f + g * 4.0f;
+        float gy = 0.0f;
+        int baseId = 50000 + g * 100;
         
-        // Spring Joint
-        world.createSpringJoint(id, prevId, id, 0.0f, 0.0f, 0.0f, 0.0f, length, 2.0f, 0.5f);
-        prevId = id;
+        world.createBody(baseId, createBodyOptions(gx, gy, ObjectType::FIXED_OBJECT));
+        world.createBody(baseId + 1, createBodyOptions(gx + 1.0f, gy, ObjectType::DYNAMIC_OBJECT));
+        world.createBody(baseId + 2, createBodyOptions(gx + 2.0f, gy, ObjectType::DYNAMIC_OBJECT));
+        
+        world.createHingeJoint(baseId + 10, baseId, baseId + 1, gx, gy, gx, gy);
+        world.createHingeJoint(baseId + 11, baseId, baseId + 2, gx + 2.0f, gy, gx + 2.0f, gy);
+        
+        world.createGearJoint(baseId + 20, baseId + 10, baseId + 11, 1.0f);
     }
 }
