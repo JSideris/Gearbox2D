@@ -14,10 +14,14 @@ namespace hn = hwy::HWY_NAMESPACE;
 using DF = hn::FixedTag<float, 4>;
 using DI = hn::FixedTag<int32_t, 4>;
 using V128 = hn::Vec<DF>;
+using SimdVec = hn::Vec<DF>;
+using SimdMask = hn::Mask<DF>;
+
+#define SIMD_LANE_COUNT 4
 
 // Memory operations
-#define v128_load_f32(ptr) hn::Load(DF(), reinterpret_cast<const float*>(ptr))
-#define v128_store_f32(ptr, v) hn::Store(v, DF(), reinterpret_cast<float*>(ptr))
+#define v128_load_f32(ptr) hn::LoadU(DF(), reinterpret_cast<const float*>(ptr))
+#define v128_store_f32(ptr, v) hn::StoreU(v, DF(), reinterpret_cast<float*>(ptr))
 
 // Splat
 #define v128_splat_f32(f) hn::Set(DF(), f)
