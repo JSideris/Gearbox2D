@@ -112,3 +112,74 @@ TEST(SimdMathTest, Rotation) {
         EXPECT_NEAR(ry_raw[i], expected_y, 1e-5);
     }
 }
+
+// Phase 1.2: Google Highway Infrastructure Tests
+
+TEST(SimdMathTest, HighwayDFBasics) {
+    const DF d;
+    auto v = hn::Set(d, 42.0f);
+    float result[4];
+    hn::StoreU(v, d, result);
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_EQ(result[i], 42.0f);
+    }
+}
+
+TEST(SimdMathTest, HighwayArithmetic) {
+    const DF d;
+    auto a = hn::Set(d, 10.0f);
+    auto b = hn::Set(d, 2.0f);
+    
+    float add_res[4], sub_res[4], mul_res[4], div_res[4];
+    hn::StoreU(hn::Add(a, b), d, add_res);
+    hn::StoreU(hn::Sub(a, b), d, sub_res);
+    hn::StoreU(hn::Mul(a, b), d, mul_res);
+    hn::StoreU(hn::Div(a, b), d, div_res);
+    
+    for (int i = 0; i < 4; ++i) {
+        EXPECT_FLOAT_EQ(add_res[i], 12.0f);
+        EXPECT_FLOAT_EQ(sub_res[i], 8.0f);
+        EXPECT_FLOAT_EQ(mul_res[i], 20.0f);
+        EXPECT_FLOAT_EQ(div_res[i], 5.0f);
+    }
+}
+
+TEST(SimdMathTest, HighwayMasking) {
+    const DF d;
+    auto a = v128_make_f32(1.0f, 2.0f, 3.0f, 4.0f);
+    auto b = hn::Set(d, 2.5f);
+    
+    // a < b => {true, true, false, false}
+    auto mask = hn::Lt(a, b);
+    auto if_then_else = hn::IfThenElse(mask, a, b);
+    
+    float res[4];
+    hn::StoreU(if_then_else, d, res);
+    
+    EXPECT_FLOAT_EQ(res[0], 1.0f); // 1.0 < 2.5 -> 1.0
+    EXPECT_FLOAT_EQ(res[1], 2.0f); // 2.0 < 2.5 -> 2.0
+    EXPECT_FLOAT_EQ(res[2], 2.5f); // 3.0 < 2.5 -> 2.5
+    EXPECT_FLOAT_EQ(res[3], 2.5f); // 4.0 < 2.5 -> 2.5
+}
+
+TEST(SimdMathTest, HighwayMathFunctions) {
+    const DF d;
+    auto angles = v128_make_f32(0.0f, M_PI / 2.0f, M_PI, 1.5f * M_PI);
+    
+    auto sins = hn::Sin(d, angles);
+    auto coss = hn::Cos(d, angles);
+    
+    float sin_res[4], cos_res[4];
+    hn::StoreU(sins, d, sin_res);
+    hn::StoreU(coss, d, cos_res);
+    
+    EXPECT_NEAR(sin_res[0], 0.0f, 1e-6);
+    EXPECT_NEAR(sin_res[1], 1.0f, 1e-6);
+    EXPECT_NEAR(sin_res[2], 0.0f, 1e-6);
+    EXPECT_NEAR(sin_res[3], -1.0f, 1e-6);
+    
+    EXPECT_NEAR(cos_res[0], 1.0f, 1e-6);
+    EXPECT_NEAR(cos_res[1], 0.0f, 1e-6);
+    EXPECT_NEAR(cos_res[2], -1.0f, 1e-6);
+    EXPECT_NEAR(cos_res[3], 0.0f, 1e-6);
+}
