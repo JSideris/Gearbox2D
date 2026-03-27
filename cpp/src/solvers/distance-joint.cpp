@@ -98,10 +98,10 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     V128 localAnchorBx = v128_make_f32(joints[0]->localAnchorB.x, joints[1]->localAnchorB.x, joints[2]->localAnchorB.x, joints[3]->localAnchorB.x);
     V128 localAnchorBy = v128_make_f32(joints[0]->localAnchorB.y, joints[1]->localAnchorB.y, joints[2]->localAnchorB.y, joints[3]->localAnchorB.y);
 
-    V128 cosA = wasm_f32x4_cos(thetaA);
-    V128 sinA = wasm_f32x4_sin(thetaA);
-    V128 cosB = wasm_f32x4_cos(thetaB);
-    V128 sinB = wasm_f32x4_sin(thetaB);
+    V128 cosA = v128_cos_f32(thetaA);
+    V128 sinA = v128_sin_f32(thetaA);
+    V128 cosB = v128_cos_f32(thetaB);
+    V128 sinB = v128_sin_f32(thetaB);
 
     V128 rAx = v128_rotate_x_f32(localAnchorAx, localAnchorAy, cosA, sinA);
     V128 rAy = v128_rotate_y_f32(localAnchorAx, localAnchorAy, cosA, sinA);

@@ -135,7 +135,7 @@ int CollisionSolver::_solveCircleCircleSIMD(int indexA, const int indicesB[4], f
 
     if (!v128_any_true(overlapMask)) return 0;
 
-    V128 distance_v = wasm_f32x4_sqrt(pd2_v);
+    V128 distance_v = v128_sqrt_f32(pd2_v);
     V128 dist_gt_0001_v = v128_gt_f32(distance_v, v128_splat_f32(0.0001f));
     V128 invDist_v = v128_div_f32(v128_splat_f32(1.0f), distance_v);
 
@@ -161,36 +161,36 @@ int CollisionSolver::_solveCircleCircleSIMD(int indexA, const int indicesB[4], f
             float pen, nx, ny, pbx, pby, rb;
             switch(i) {
                 case 0:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 0);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 0);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 0);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 0);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 0);
-                    rb = wasm_f32x4_extract_lane(rB_v, 0);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 0);
+                    nx = v128_extract_lane_f32(normalX_v, 0);
+                    ny = v128_extract_lane_f32(normalY_v, 0);
+                    pbx = v128_extract_lane_f32(pBX_v, 0);
+                    pby = v128_extract_lane_f32(pBY_v, 0);
+                    rb = v128_extract_lane_f32(rB_v, 0);
                     break;
                 case 1:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 1);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 1);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 1);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 1);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 1);
-                    rb = wasm_f32x4_extract_lane(rB_v, 1);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 1);
+                    nx = v128_extract_lane_f32(normalX_v, 1);
+                    ny = v128_extract_lane_f32(normalY_v, 1);
+                    pbx = v128_extract_lane_f32(pBX_v, 1);
+                    pby = v128_extract_lane_f32(pBY_v, 1);
+                    rb = v128_extract_lane_f32(rB_v, 1);
                     break;
                 case 2:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 2);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 2);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 2);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 2);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 2);
-                    rb = wasm_f32x4_extract_lane(rB_v, 2);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 2);
+                    nx = v128_extract_lane_f32(normalX_v, 2);
+                    ny = v128_extract_lane_f32(normalY_v, 2);
+                    pbx = v128_extract_lane_f32(pBX_v, 2);
+                    pby = v128_extract_lane_f32(pBY_v, 2);
+                    rb = v128_extract_lane_f32(rB_v, 2);
                     break;
                 case 3:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 3);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 3);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 3);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 3);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 3);
-                    rb = wasm_f32x4_extract_lane(rB_v, 3);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 3);
+                    nx = v128_extract_lane_f32(normalX_v, 3);
+                    ny = v128_extract_lane_f32(normalY_v, 3);
+                    pbx = v128_extract_lane_f32(pBX_v, 3);
+                    pby = v128_extract_lane_f32(pBY_v, 3);
+                    rb = v128_extract_lane_f32(rB_v, 3);
                     break;
                 default: pen = nx = ny = pbx = pby = rb = 0.0f; break;
             }
@@ -331,7 +331,7 @@ int CollisionSolver::_solveCirclePointSIMD(int indexA, const int indicesB[4], fl
 
     if (!v128_any_true(overlapMask)) return 0;
 
-    V128 distance_v = wasm_f32x4_sqrt(pd2_v);
+    V128 distance_v = v128_sqrt_f32(pd2_v);
     V128 dist_gt_0001_v = v128_gt_f32(distance_v, v128_splat_f32(0.0001f));
     V128 invDist_v = v128_div_f32(v128_splat_f32(1.0f), distance_v);
 
@@ -357,32 +357,32 @@ int CollisionSolver::_solveCirclePointSIMD(int indexA, const int indicesB[4], fl
             float pen, nx, ny, pbx, pby;
             switch(i) {
                 case 0:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 0);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 0);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 0);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 0);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 0);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 0);
+                    nx = v128_extract_lane_f32(normalX_v, 0);
+                    ny = v128_extract_lane_f32(normalY_v, 0);
+                    pbx = v128_extract_lane_f32(pBX_v, 0);
+                    pby = v128_extract_lane_f32(pBY_v, 0);
                     break;
                 case 1:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 1);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 1);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 1);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 1);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 1);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 1);
+                    nx = v128_extract_lane_f32(normalX_v, 1);
+                    ny = v128_extract_lane_f32(normalY_v, 1);
+                    pbx = v128_extract_lane_f32(pBX_v, 1);
+                    pby = v128_extract_lane_f32(pBY_v, 1);
                     break;
                 case 2:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 2);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 2);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 2);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 2);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 2);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 2);
+                    nx = v128_extract_lane_f32(normalX_v, 2);
+                    ny = v128_extract_lane_f32(normalY_v, 2);
+                    pbx = v128_extract_lane_f32(pBX_v, 2);
+                    pby = v128_extract_lane_f32(pBY_v, 2);
                     break;
                 case 3:
-                    pen = wasm_f32x4_extract_lane(penetrationDepth_v, 3);
-                    nx = wasm_f32x4_extract_lane(normalX_v, 3);
-                    ny = wasm_f32x4_extract_lane(normalY_v, 3);
-                    pbx = wasm_f32x4_extract_lane(pBX_v, 3);
-                    pby = wasm_f32x4_extract_lane(pBY_v, 3);
+                    pen = v128_extract_lane_f32(penetrationDepth_v, 3);
+                    nx = v128_extract_lane_f32(normalX_v, 3);
+                    ny = v128_extract_lane_f32(normalY_v, 3);
+                    pbx = v128_extract_lane_f32(pBX_v, 3);
+                    pby = v128_extract_lane_f32(pBY_v, 3);
                     break;
                 default: pen = nx = ny = pbx = pby = 0.0f; break;
             }

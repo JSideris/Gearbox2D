@@ -25,6 +25,7 @@ using SimdMask = hn::Mask<DF>;
 
 // Splat
 #define v128_splat_f32(f) hn::Set(DF(), f)
+#define v128_splat_i32(i) hn::BitCast(DF(), hn::Set(DI(), i))
 
 // Arithmetic
 #define v128_add_f32(a, b) hn::Add(a, b)
@@ -44,6 +45,8 @@ using SimdMask = hn::Mask<DF>;
 #define v128_le_f32(a, b) hn::VecFromMask(DF(), hn::Le(a, b))
 #define v128_gt_f32(a, b) hn::VecFromMask(DF(), hn::Gt(a, b))
 #define v128_ge_f32(a, b) hn::VecFromMask(DF(), hn::Ge(a, b))
+#define v128_eq_i32(a, b) hn::BitCast(DF(), hn::VecFromMask(DI(), hn::Eq(hn::BitCast(DI(), a), hn::BitCast(DI(), b))))
+#define v128_ne_i32(a, b) hn::BitCast(DF(), hn::VecFromMask(DI(), hn::Ne(hn::BitCast(DI(), a), hn::BitCast(DI(), b))))
 
 // Logical
 #define v128_and(a, b) hn::And(a, b)
@@ -69,24 +72,6 @@ inline V128 v128_make_f32(float f1, float f2, float f3, float f4) {
 	return hn::Load(DF(), values);
 }
 #define v128_extract_lane_f32(v, lane) hn::ExtractLane(v, lane)
-
-// wasm_ prefix aliases for compatibility
-#define wasm_v128_load(ptr) v128_load_f32(ptr)
-#define wasm_v128_store(ptr, v) v128_store_f32(ptr, v)
-#define wasm_v128_and(a, b) v128_and(a, b)
-#define wasm_v128_or(a, b) v128_or(a, b)
-#define wasm_v128_xor(a, b) v128_xor(a, b)
-#define wasm_v128_andnot(a, b) v128_andnot(a, b)
-#define wasm_f32x4_extract_lane(v, lane) v128_extract_lane_f32(v, lane)
-#define wasm_i32x4_splat(i) hn::BitCast(DF(), hn::Set(DI(), i))
-#define wasm_i32x4_eq(a, b) hn::BitCast(DF(), hn::VecFromMask(DI(), hn::Eq(hn::BitCast(DI(), a), hn::BitCast(DI(), b))))
-#define wasm_i32x4_ne(a, b) hn::BitCast(DF(), hn::VecFromMask(DI(), hn::Ne(hn::BitCast(DI(), a), hn::BitCast(DI(), b))))
-#define wasm_f32x4_abs(a) v128_abs_f32(a)
-#define wasm_f32x4_eq(a, b) v128_eq_f32(a, b)
-#define wasm_f32x4_ne(a, b) v128_ne_f32(a, b)
-#define wasm_f32x4_sqrt(a) v128_sqrt_f32(a)
-#define wasm_f32x4_sin(a) hn::Sin(DF(), a)
-#define wasm_f32x4_cos(a) hn::Cos(DF(), a)
 
 inline V128 v128_make_mask_f32(bool m0, bool m1, bool m2, bool m3) {
 	alignas(16) uint32_t masks[4] = { 
