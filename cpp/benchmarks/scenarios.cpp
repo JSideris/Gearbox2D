@@ -183,3 +183,27 @@ void setupDistanceJointChain(World& world) {
         prevId = id;
     }
 }
+
+void setupSpringJointChain(World& world) {
+    world.clear();
+    world.setGravity(0.0f, 10.0f);
+
+    int count = 100;
+    float startX = 0.0f;
+    float startY = -50.0f;
+    float length = 1.0f;
+
+    // Anchor
+    int anchorId = 30000;
+    world.createBody(anchorId, createBodyOptions(startX, startY, ObjectType::FIXED_OBJECT));
+
+    int prevId = anchorId;
+    for (int i = 0; i < count; ++i) {
+        int id = i + 1;
+        world.createBody(id, createBodyOptions(startX + (i + 1) * length, startY, ObjectType::DYNAMIC_OBJECT));
+        
+        // Spring Joint
+        world.createSpringJoint(id, prevId, id, 0.0f, 0.0f, 0.0f, 0.0f, length, 2.0f, 0.5f);
+        prevId = id;
+    }
+}

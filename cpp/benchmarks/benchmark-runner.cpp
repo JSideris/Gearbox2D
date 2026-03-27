@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
         {"High Density", setupHighDensity},
         {"Joint Chain", setupJointChain},
         {"Distance Chain", setupDistanceJointChain},
+        {"Spring Chain", setupSpringJointChain},
         {"2000 Particles", setupParticlesStress}
     };
 

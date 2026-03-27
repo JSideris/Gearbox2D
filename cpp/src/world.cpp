@@ -1623,6 +1623,21 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
                         i += 4;
                         continue;
                     }
+
+                    if (j0->getType() == JointType::SPRING &&
+                        j1->getType() == JointType::SPRING &&
+                        j2->getType() == JointType::SPRING &&
+                        j3->getType() == JointType::SPRING) {
+                        SpringJoint* sjs[4] = {
+                            static_cast<SpringJoint*>(j0),
+                            static_cast<SpringJoint*>(j1),
+                            static_cast<SpringJoint*>(j2),
+                            static_cast<SpringJoint*>(j3)
+                        };
+                        SpringJoint::solveFastSIMD(sjs);
+                        i += 4;
+                        continue;
+                    }
                 }
                 batch[i]->solveFast();
                 i++;

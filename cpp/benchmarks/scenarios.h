@@ -18,5 +18,6 @@ void setupHighDensity(World& world);
 void setupJointChain(World& world);
 void setupParticlesStress(World& world);
 void setupDistanceJointChain(World& world);
+void setupSpringJointChain(World& world);
 
 #endif

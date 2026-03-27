@@ -18,6 +18,7 @@ public:
     static void preSolveSIMD(SpringJoint** joints, float dt);
     void solve() override;
     void solveFast() override;
+    static void solveFastSIMD(SpringJoint** joints);
     void solvePosition() override;
 
     Vec2 getReactionForce(float inv_dt) const override;
