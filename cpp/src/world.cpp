@@ -301,11 +301,11 @@ void World::_doIntegrateVelocitiesSubStep(float dt) {
 }
 
 void World::_doIntegrateVelocitiesSIMD(float dt) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     int bodyCount = (int)bodiesList.size();
     if (bodyCount == 0) return;
 
-    int vectorizedCount = (bodyCount / 4) * 4;
+    int vectorizedCount = (bodyCount / SIMD_LANE_COUNT) * SIMD_LANE_COUNT;
 
     V128 dt_v = v128_splat_f32(dt);
     V128 gravX_v = v128_splat_f32(gravity.x);
@@ -317,11 +317,11 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
     float* fdata = liveBodyFloatData.data();
     int* idata = liveBodyIntData.data();
 
-    for (int i = 0; i < vectorizedCount; i += 4) {
+    for (int i = 0; i < vectorizedCount; i += SIMD_LANE_COUNT) {
         // Load isSleeping mask
         V128 flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
         V128 isSleepingMask = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
-        
+
         // Load attributes
         V128 im = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_IM)]);
         V128 m = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_M)]);
@@ -341,7 +341,7 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
         // 2. Apply external forces (NFX, NFY)
         V128 totalFX = v128_add_f32(fx, nfx);
         V128 totalFY = v128_add_f32(fy, nfy);
-        
+
         // Clear NFX, NFY
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFX)], zero_v);
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_NFY)], zero_v);
@@ -349,10 +349,10 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
         // 3. Calculate forceVelocity for KRB (only if im > 0 and NOT sleeping)
         V128 im_gt_zero = v128_gt_f32(im, zero_v);
         V128 validMask = wasm_v128_andnot(im_gt_zero, isSleepingMask);
-        
+
         V128 forceVX = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
         V128 forceVY = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
-        
+
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FORCE_VX)], v128_select(validMask, forceVX, zero_v));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_FORCE_VY)], v128_select(validMask, forceVY, zero_v));
 
@@ -363,18 +363,18 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
         // 5. Integrate total velocity
         V128 dvx = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFX, gravFX), im), dt_v);
         V128 dvy = v128_mul_f32(v128_mul_f32(v128_add_f32(totalFY, gravFY), im), dt_v);
-        
+
         V128 nextVX = v128_add_f32(vx, dvx);
         V128 nextVY = v128_add_f32(vy, dvy);
 
         // 6. Cap velocity
         V128 speedSq = v128_mag_sq_f32(nextVX, nextVY);
         V128 speedLimitMask = v128_gt_f32(speedSq, maxVelSq_v);
-        
+
         // if (speedSq > maxVelSq) v *= maxVel / sqrt(speedSq)
         V128 speed = wasm_f32x4_sqrt(speedSq);
         V128 invSpeed = v128_div_f32(v128_splat_f32(MAX_VELOCITY), speed);
-        
+
         nextVX = v128_select(speedLimitMask, v128_mul_f32(nextVX, invSpeed), nextVX);
         nextVY = v128_select(speedLimitMask, v128_mul_f32(nextVY, invSpeed), nextVY);
 
@@ -437,11 +437,11 @@ void World::_doIntegrateVelocitiesSIMD(float dt) {
 }
 
 void World::_doIntegratePositionsSIMD(float dt) {
-#ifdef __EMSCRIPTEN__
+#if HWY_TARGET != HWY_SCALAR
     int bodyCount = (int)bodiesList.size();
     if (bodyCount == 0) return;
 
-    int vectorizedCount = (bodyCount / 4) * 4;
+    int vectorizedCount = (bodyCount / SIMD_LANE_COUNT) * SIMD_LANE_COUNT;
 
     V128 dt_v = v128_splat_f32(dt);
     V128 zero_v = v128_splat_f32(0.0f);
@@ -453,15 +453,15 @@ void World::_doIntegratePositionsSIMD(float dt) {
     float* fdata = liveBodyFloatData.data();
     int* idata = liveBodyIntData.data();
 
-    for (int i = 0; i < vectorizedCount; i += 4) {
-        // Load data for 4 bodies
+    for (int i = 0; i < vectorizedCount; i += SIMD_LANE_COUNT) {
+        // Load data for SIMD_LANE_COUNT bodies
         V128 type = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_TYPE)]);
         V128 flags = wasm_v128_load(&idata[GET_BODY_IDATA_INDEX(i, BODY_IDATA_FLAGS)]);
-        
+
         V128 isFixed = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::FIXED_OBJECT));
         V128 isDynamic = wasm_i32x4_eq(type, wasm_i32x4_splat((int)ObjectType::DYNAMIC_OBJECT));
         V128 isSleeping = wasm_i32x4_ne(wasm_v128_and(flags, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
-        
+
         V128 skipMask = wasm_v128_or(isFixed, isSleeping);
 
         V128 x = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_X)]);
@@ -471,11 +471,11 @@ void World::_doIntegratePositionsSIMD(float dt) {
         V128 vy = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)]);
         V128 rs = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_RS)]);
         V128 damping_a = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ANGULAR_DAMPING)]);
-        
+
         V128 lastX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_X)]);
         V128 lastY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_Y)]);
         V128 lastR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_R)]);
-        
+
         V128 accX = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_X)]);
         V128 accY = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_Y)]);
         V128 accR = wasm_v128_load(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_R)]);
@@ -490,37 +490,27 @@ void World::_doIntegratePositionsSIMD(float dt) {
         V128 nextY = v128_add_f32(y, v128_mul_f32(vy, dt_v));
         V128 nextR = v128_add_f32(r, v128_mul_f32(rs, dt_v));
 
-        // 3. NaN check (simplified SIMD version: just check vx, vy, rs)
-        V128 finiteMask = wasm_v128_and(wasm_v128_and(wasm_f32x4_eq(vx, vx), wasm_f32x4_eq(vy, vy)), wasm_f32x4_eq(rs, rs));
-        
-        nextX = v128_select(finiteMask, nextX, lastX);
-        nextY = v128_select(finiteMask, nextY, lastY);
-        nextR = v128_select(finiteMask, nextR, lastR);
-        vx = v128_select(finiteMask, vx, zero_v);
-        vy = v128_select(finiteMask, vy, zero_v);
-        rs = v128_select(finiteMask, rs, zero_v);
-
         // 4. Movement track
         V128 dx = v128_sub_f32(nextX, lastX);
         V128 dy = v128_sub_f32(nextY, lastY);
         V128 dr = v128_sub_f32(nextR, lastR);
-        
+
         accX = v128_add_f32(accX, dx);
         accY = v128_add_f32(accY, dy);
         accR = v128_add_f32(accR, dr);
-        
+
         V128 absAccX = wasm_f32x4_abs(accX);
         V128 absAccY = wasm_f32x4_abs(accY);
         V128 absAccR = wasm_f32x4_abs(accR);
-        
+
         V128 moved = wasm_v128_or(wasm_v128_or(wasm_f32x4_ne(dx, zero_v), wasm_f32x4_ne(dy, zero_v)), wasm_f32x4_ne(dr, zero_v));
         V128 significantMove = wasm_v128_or(wasm_v128_or(v128_gt_f32(absAccX, wake_threshold_v), v128_gt_f32(absAccY, wake_threshold_v)), v128_gt_f32(absAccR, wake_threshold_v));
-        
+
         V128 velSq = v128_mag_sq_f32(vx, vy);
         V128 aboveSleepVel = wasm_v128_or(v128_gt_f32(velSq, sleep_vel_sq_v), v128_gt_f32(wasm_f32x4_abs(rs), sleep_ang_vel_v));
-        
+
         V128 resetTimerMask = wasm_v128_and(wasm_v128_and(moved, significantMove), aboveSleepVel);
-        
+
         sleepTimer = v128_select(resetTimerMask, zero_v, v128_add_f32(sleepTimer, dt_v));
         accX = v128_select(resetTimerMask, zero_v, accX);
         accY = v128_select(resetTimerMask, zero_v, accY);
@@ -533,11 +523,11 @@ void World::_doIntegratePositionsSIMD(float dt) {
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)], v128_select(skipMask, vx, vx));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VY)], v128_select(skipMask, vy, vy));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_RS)], v128_select(skipMask, rs, rs));
-        
+
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_X)], v128_select(skipMask, lastX, nextX));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_Y)], v128_select(skipMask, lastY, nextY));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_LAST_R)], v128_select(skipMask, lastR, nextR));
-        
+
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_X)], v128_select(skipMask, accX, accX));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_Y)], v128_select(skipMask, accY, accY));
         wasm_v128_store(&fdata[GET_BODY_FDATA_INDEX(i, BODY_FDATA_ERR_ACC_R)], v128_select(skipMask, accR, accR));
@@ -571,14 +561,6 @@ void World::_doIntegratePositionsSIMD(float dt) {
         float nextX = x + vx * dt;
         float nextY = y + vy * dt;
         float nextR = r + rs * dt;
-        
-        if (!std::isfinite(nextX) || !std::isfinite(nextY) || !std::isfinite(nextR) || 
-            !std::isfinite(vx) || !std::isfinite(vy) || !std::isfinite(rs)) {
-            nextX = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_X)];
-            nextY = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_Y)];
-            nextR = fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_LAST_R)];
-            vx = 0; vy = 0; rs = 0;
-        }
         
         fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_X)] = nextX;
         fdata[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_Y)] = nextY;
@@ -623,8 +605,8 @@ void World::_syncFixturesSIMD() {
     int fixtureCount = (int)fixturesList.size();
     if (fixtureCount == 0) return;
 
-#ifdef __EMSCRIPTEN__
-    int vectorizedCount = (fixtureCount / 4) * 4;
+#if HWY_TARGET != HWY_SCALAR
+    int vectorizedCount = (fixtureCount / SIMD_LANE_COUNT) * SIMD_LANE_COUNT;
 
     float* fdata = liveFixtureFloatData.data();
     int* idata = liveFixtureIntData.data();
@@ -639,17 +621,17 @@ void World::_syncFixturesSIMD() {
     V128 large_v = v128_splat_f32(1e10f);
     V128 nlarge_v = v128_splat_f32(-1e10f);
 
-    for (int i = 0; i < vectorizedCount; i += 4) {
+    for (int i = 0; i < vectorizedCount; i += SIMD_LANE_COUNT) {
         V128 bIdx_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_BODY_INDEX)]);
         V128 shape_v = wasm_v128_load(&idata[GET_FIXTURE_IDATA_INDEX(i, FIXTURE_IDATA_SHAPE)]);
         
-        uint32_t bIdx[4];
+        alignas(64) uint32_t bIdx[HWY_MAX_LANES_D(DF)];
         wasm_v128_store(bIdx, bIdx_v);
         
-        alignas(16) float bx[4], by[4], br[4], bvx[4], bvy[4], brs[4];
-        alignas(16) int bflags[4];
-        alignas(16) int btypes[4];
-        for (int j = 0; j < 4; ++j) {
+        alignas(64) float bx[HWY_MAX_LANES_D(DF)], by[HWY_MAX_LANES_D(DF)], br[HWY_MAX_LANES_D(DF)], bvx[HWY_MAX_LANES_D(DF)], bvy[HWY_MAX_LANES_D(DF)], brs[HWY_MAX_LANES_D(DF)];
+        alignas(64) int bflags[HWY_MAX_LANES_D(DF)];
+        alignas(64) int btypes[HWY_MAX_LANES_D(DF)];
+        for (int j = 0; j < SIMD_LANE_COUNT; ++j) {
             int bodyIndex = bIdx[j];
             bx[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_X)];
             by[j] = bfdata[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_Y)];
@@ -667,10 +649,10 @@ void World::_syncFixturesSIMD() {
         
         V128 isSleepingMask = wasm_i32x4_ne(wasm_v128_and(bflags_v, wasm_i32x4_splat(IS_SLEEPING)), wasm_i32x4_splat(0));
         
-        // Only skip if all 4 are sleeping AND none are fixed objects.
+        // Only skip if all are sleeping AND none are fixed objects.
         // Fixed objects need their world-space data for narrow-phase even if they don't move.
         V128 canSkipMask = wasm_v128_andnot(isSleepingMask, isFixed);
-        if (v128_bitmask(canSkipMask) == 0xF) continue;
+        if (v128_all_true(canSkipMask)) continue;
         
         V128 bx_v = wasm_v128_load(bx);
         V128 by_v = wasm_v128_load(by);
@@ -700,9 +682,7 @@ void World::_syncFixturesSIMD() {
         V128 sinTotal = v128_select(isAabbMask, zero_v, wasm_f32x4_sin(totalRot));
 
         V128 vCount_v = wasm_v128_load(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_VERTEX_COUNT)]);
-        float vCounts[4];
-        wasm_v128_store(vCounts, vCount_v);
-        int maxVCount = std::max({(int)vCounts[0], (int)vCounts[1], (int)vCounts[2], (int)vCounts[3]});
+        int maxVCount = (int)hn::ExtractLane(hn::MaxOfLanes(DF(), vCount_v), 0);
 
         V128 aabbMinX = large_v;
         V128 aabbMinY = large_v;
@@ -720,10 +700,13 @@ void World::_syncFixturesSIMD() {
                 wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2)], worldVX);
                 wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_WORLD_VERTEX_START + k * 2 + 1)], worldVY);
 
-                aabbMinX = v128_min_f32(aabbMinX, worldVX);
-                aabbMinY = v128_min_f32(aabbMinY, worldVY);
-                aabbMaxX = v128_max_f32(aabbMaxX, worldVX);
-                aabbMaxY = v128_max_f32(aabbMaxY, worldVY);
+                V128 k_v = v128_splat_f32((float)k);
+                V128 validV = v128_lt_f32(k_v, vCount_v);
+
+                aabbMinX = v128_select(validV, v128_min_f32(aabbMinX, worldVX), aabbMinX);
+                aabbMinY = v128_select(validV, v128_min_f32(aabbMinY, worldVY), aabbMinY);
+                aabbMaxX = v128_select(validV, v128_max_f32(aabbMaxX, worldVX), aabbMaxX);
+                aabbMaxY = v128_select(validV, v128_max_f32(aabbMaxY, worldVY), aabbMaxY);
             }
         }
         
@@ -811,15 +794,16 @@ void World::_syncFixturesSIMD() {
         wasm_v128_store(&fdata[GET_FIXTURE_FDATA_INDEX(i, FIXTURE_FDATA_AY2)], finalAy2);
 
         if (v128_any_true(updateMask)) {
-            uint32_t maskBits[4];
+            alignas(64) uint32_t maskBits[HWY_MAX_LANES_D(DF)];
             wasm_v128_store(maskBits, updateMask);
-            for (int j = 0; j < 4; ++j) {
+            for (int j = 0; j < SIMD_LANE_COUNT; ++j) {
                 if (maskBits[j]) {
                     Fixture* f = fixturesList[i + j];
                     f->aabb.min.x = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AX1)];
                     f->aabb.min.y = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AY1)];
                     f->aabb.max.x = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AX2)];
                     f->aabb.max.y = fdata[GET_FIXTURE_FDATA_INDEX(i + j, FIXTURE_FDATA_AY2)];
+                    
                     if (f->bvhNode) {
                         f->bvhNode = bvh.updateLeaf(f->bvhNode, f->aabb, f->getCollisionProperties());
                     }

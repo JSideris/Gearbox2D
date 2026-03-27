@@ -10,14 +10,14 @@
 
 namespace hn = hwy::HWY_NAMESPACE;
 
-// Descriptor for 128-bit vectors (4 floats)
-using DF = hn::FixedTag<float, 4>;
-using DI = hn::FixedTag<int32_t, 4>;
+// Descriptor for scalable vectors
+using DF = hn::ScalableTag<float>;
+using DI = hn::ScalableTag<int32_t>;
 using V128 = hn::Vec<DF>;
 using SimdVec = hn::Vec<DF>;
 using SimdMask = hn::Mask<DF>;
 
-#define SIMD_LANE_COUNT 4
+#define SIMD_LANE_COUNT ((int)hn::Lanes(DF()))
 
 // Memory operations
 #define v128_load_f32(ptr) hn::LoadU(DF(), reinterpret_cast<const float*>(ptr))
@@ -51,11 +51,13 @@ using SimdMask = hn::Mask<DF>;
 #define v128_select(mask, a, b) hn::IfThenElse(hn::MaskFromVec(mask), a, b)
 
 #define v128_any_true(v) (!hn::AllFalse(DF(), hn::MaskFromVec(v)))
+#define v128_all_true(v) (hn::AllTrue(DF(), hn::MaskFromVec(v)))
 #define v128_bitmask(v) static_cast<int>(hn::BitsFromMask(DF(), hn::MaskFromVec(v)))
 #define v128_abs_f32(v) hn::Abs(v)
 #define v128_min_f32(a, b) hn::Min(a, b)
 #define v128_max_f32(a, b) hn::Max(a, b)
 #define v128_sqrt_f32(a) hn::Sqrt(a)
+#define v128_is_finite(v) hn::VecFromMask(DF(), hn::IsFinite(v))
 
 inline V128 v128_make_f32(float f1, float f2, float f3, float f4) {
 	alignas(16) float values[4] = { f1, f2, f3, f4 };
