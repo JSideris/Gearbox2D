@@ -241,6 +241,93 @@ void DistanceJoint::solveFast() {
     }
 }
 
+void DistanceJoint::solveFastSIMD(DistanceJoint** joints) {
+#ifdef __EMSCRIPTEN__
+    // Load joint properties
+    V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
+    V128 bias = v128_make_f32(joints[0]->bias, joints[1]->bias, joints[2]->bias, joints[3]->bias);
+    V128 normalX = v128_make_f32(joints[0]->normal.x, joints[1]->normal.x, joints[2]->normal.x, joints[3]->normal.x);
+    V128 normalY = v128_make_f32(joints[0]->normal.y, joints[1]->normal.y, joints[2]->normal.y, joints[3]->normal.y);
+    V128 rAx = v128_make_f32(joints[0]->rA.x, joints[1]->rA.x, joints[2]->rA.x, joints[3]->rA.x);
+    V128 rAy = v128_make_f32(joints[0]->rA.y, joints[1]->rA.y, joints[2]->rA.y, joints[3]->rA.y);
+    V128 rBx = v128_make_f32(joints[0]->rB.x, joints[1]->rB.x, joints[2]->rB.x, joints[3]->rB.x);
+    V128 rBy = v128_make_f32(joints[0]->rB.y, joints[1]->rB.y, joints[2]->rB.y, joints[3]->rB.y);
+
+    SolverData* sA[4];
+    SolverData* sB[4];
+    for (int i = 0; i < 4; ++i) {
+        sA[i] = static_cast<SolverData*>(joints[i]->context.a);
+        sB[i] = static_cast<SolverData*>(joints[i]->context.b);
+    }
+
+    // Load velocities and mass properties
+    V128 vAx = v128_make_f32(sA[0]->v.x, sA[1]->v.x, sA[2]->v.x, sA[3]->v.x);
+    V128 vAy = v128_make_f32(sA[0]->v.y, sA[1]->v.y, sA[2]->v.y, sA[3]->v.y);
+    V128 wA  = v128_make_f32(sA[0]->w,   sA[1]->w,   sA[2]->w,   sA[3]->w);
+    V128 vBx = v128_make_f32(sB[0]->v.x, sB[1]->v.x, sB[2]->v.x, sB[3]->v.x);
+    V128 vBy = v128_make_f32(sB[0]->v.y, sB[1]->v.y, sB[2]->v.y, sB[3]->v.y);
+    V128 wB  = v128_make_f32(sB[0]->w,   sB[1]->w,   sB[2]->w,   sB[3]->w);
+
+    V128 imA = v128_make_f32(sA[0]->im, sA[1]->im, sA[2]->im, sA[3]->im);
+    V128 iIA = v128_make_f32(sA[0]->iI, sA[1]->iI, sA[2]->iI, sA[3]->iI);
+    V128 imB = v128_make_f32(sB[0]->im, sB[1]->im, sB[2]->im, sB[3]->im);
+    V128 iIB = v128_make_f32(sB[0]->iI, sB[1]->iI, sB[2]->iI, sB[3]->iI);
+
+    // Relative velocity at anchors
+    V128 vrAx = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(wA, rAy));
+    V128 vrAy = v128_mul_f32(wA, rAx);
+    V128 vrBx = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(wB, rBy));
+    V128 vrBy = v128_mul_f32(wB, rBx);
+
+    V128 relVx = v128_sub_f32(v128_add_f32(vBx, vrBx), v128_add_f32(vAx, vrAx));
+    V128 relVy = v128_sub_f32(v128_add_f32(vBy, vrBy), v128_add_f32(vAy, vrAy));
+
+    // Cdot = relV.dot(normal)
+    V128 Cdot = v128_dot_f32(relVx, relVy, normalX, normalY);
+
+    // lambda = -mass * (Cdot + bias)
+    V128 lambda = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(mass, v128_add_f32(Cdot, bias)));
+
+    // Apply impulse
+    V128 px = v128_mul_f32(normalX, lambda);
+    V128 py = v128_mul_f32(normalY, lambda);
+
+    // sA.v -= p * imA
+    vAx = v128_sub_f32(vAx, v128_mul_f32(px, imA));
+    vAy = v128_sub_f32(vAy, v128_mul_f32(py, imA));
+    // sA.w -= rA.cross(p) * iIA
+    wA = v128_sub_f32(wA, v128_mul_f32(v128_cross_f32(rAx, rAy, px, py), iIA));
+
+    // sB.v += p * imB
+    vBx = v128_add_f32(vBx, v128_mul_f32(px, imB));
+    vBy = v128_add_f32(vBy, v128_mul_f32(py, imB));
+    // sB.w += rB.cross(p) * iIB
+    wB = v128_add_f32(wB, v128_mul_f32(v128_cross_f32(rBx, rBy, px, py), iIB));
+
+    // Store back results
+    alignas(16) float resVAx[4], resVAy[4], resWA[4], resVBx[4], resVBy[4], resWB[4], resLambda[4];
+    v128_store_f32(resVAx, vAx);
+    v128_store_f32(resVAy, vAy);
+    v128_store_f32(resWA, wA);
+    v128_store_f32(resVBx, vBx);
+    v128_store_f32(resVBy, vBy);
+    v128_store_f32(resWB, wB);
+    v128_store_f32(resLambda, lambda);
+
+    for (int i = 0; i < 4; ++i) {
+        sA[i]->v.x = resVAx[i];
+        sA[i]->v.y = resVAy[i];
+        sA[i]->w = resWA[i];
+        sB[i]->v.x = resVBx[i];
+        sB[i]->v.y = resVBy[i];
+        sB[i]->w = resWB[i];
+        joints[i]->impulse += resLambda[i];
+    }
+#else
+    for (int i = 0; i < 4; ++i) joints[i]->solveFast();
+#endif
+}
+
 Vec2 DistanceJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
 float DistanceJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
 void DistanceJoint::setLength(float l) { length = l; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }

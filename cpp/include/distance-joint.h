@@ -11,10 +11,12 @@ public:
 
     DistanceJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length);
 
+    JointType getType() const override { return JointType::DISTANCE; }
     void preSolve(float dt) override;
     static void preSolveSIMD(DistanceJoint** joints, float dt);
     void solve() override;
     void solveFast() override;
+    static void solveFastSIMD(DistanceJoint** joints);
     void solvePosition() override;
 
     Vec2 getReactionForce(float inv_dt) const override;

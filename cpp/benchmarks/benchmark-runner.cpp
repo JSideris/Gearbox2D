@@ -69,6 +69,7 @@ int main(int argc, char** argv) {
         {"Large Stack", setupLargeStack},
         {"High Density", setupHighDensity},
         {"Joint Chain", setupJointChain},
+        {"Distance Chain", setupDistanceJointChain},
         {"2000 Particles", setupParticlesStress}
     };
 

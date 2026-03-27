@@ -13,6 +13,7 @@ public:
 
     SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio);
 
+    JointType getType() const override { return JointType::SPRING; }
     void preSolve(float dt) override;
     static void preSolveSIMD(SpringJoint** joints, float dt);
     void solve() override;

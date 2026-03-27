@@ -5,6 +5,14 @@
 
 class Body;
 
+enum class JointType {
+    UNKNOWN,
+    DISTANCE,
+    SPRING,
+    HINGE,
+    GEAR
+};
+
 class Joint {
 public:
     int id;
@@ -23,6 +31,7 @@ public:
     Joint(int id, Body* a, Body* b) : id(id), bodyA(a), bodyB(b), inIsland(false) {}
     virtual ~Joint() {}
 
+    virtual JointType getType() const = 0;
     virtual void preSolve(float dt) = 0;
     virtual void solve() = 0;
     virtual void solveFast() = 0;

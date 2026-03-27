@@ -12,6 +12,7 @@ public:
 
     GearJoint(int id, HingeJoint* joint1, HingeJoint* joint2, float ratio);
 
+    JointType getType() const override { return JointType::GEAR; }
     void preSolve(float dt) override;
     void solve() override;
     void solveFast() override;

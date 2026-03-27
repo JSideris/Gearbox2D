@@ -1602,7 +1602,31 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
             for (ContactConstraint* c : batch) c->solveFast();
         }
         for (const auto& batch : island.jointBatches) {
-            for (Joint* j : batch) j->solveFast();
+            for (size_t i = 0; i < batch.size(); ) {
+                if (i + 3 < batch.size()) {
+                    Joint* j0 = batch[i];
+                    Joint* j1 = batch[i+1];
+                    Joint* j2 = batch[i+2];
+                    Joint* j3 = batch[i+3];
+
+                    if (j0->getType() == JointType::DISTANCE &&
+                        j1->getType() == JointType::DISTANCE &&
+                        j2->getType() == JointType::DISTANCE &&
+                        j3->getType() == JointType::DISTANCE) {
+                        DistanceJoint* djs[4] = {
+                            static_cast<DistanceJoint*>(j0),
+                            static_cast<DistanceJoint*>(j1),
+                            static_cast<DistanceJoint*>(j2),
+                            static_cast<DistanceJoint*>(j3)
+                        };
+                        DistanceJoint::solveFastSIMD(djs);
+                        i += 4;
+                        continue;
+                    }
+                }
+                batch[i]->solveFast();
+                i++;
+            }
         }
     }
     

@@ -10,6 +10,7 @@ public:
 
     HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB);
 
+    JointType getType() const override { return JointType::HINGE; }
     void preSolve(float dt) override;
     void solve() override;
     void solveFast() override;

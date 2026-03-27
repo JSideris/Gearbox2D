@@ -159,3 +159,27 @@ void setupParticlesStress(World& world) {
         world.createFixture(bodyId, 0, fixOptions);
     }
 }
+
+void setupDistanceJointChain(World& world) {
+    world.clear();
+    world.setGravity(0.0f, 10.0f);
+
+    int count = 100; // More joints for better benchmark
+    float startX = 0.0f;
+    float startY = -50.0f;
+    float length = 1.0f;
+
+    // Anchor
+    int anchorId = 20000;
+    world.createBody(anchorId, createBodyOptions(startX, startY, ObjectType::FIXED_OBJECT));
+
+    int prevId = anchorId;
+    for (int i = 0; i < count; ++i) {
+        int id = i + 1;
+        world.createBody(id, createBodyOptions(startX + (i + 1) * length, startY, ObjectType::DYNAMIC_OBJECT));
+        
+        // Distance Joint
+        world.createDistanceJoint(id, prevId, id, 0.0f, 0.0f, 0.0f, 0.0f, length);
+        prevId = id;
+    }
+}
