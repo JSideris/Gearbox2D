@@ -134,5 +134,10 @@ Applying the unified KRB framework yields significant improvements across the en
 
 ---
 
-## 6. Conclusion
+## 6. Known Limitations
+KRB currently audits energy on a per-constraint basis. In scenarios where resolving one constraint (e.g., a horizontal collision) forces a secondary constraint to perform work against gravity (e.g., a pendulum joint pulling an object upward), the isolated audit may fail to account for the total systemic change in potential energy, resulting in minor energy leaks. This represents an area for future research into coupled-constraint energy auditing.
+
+---
+
+## 7. Conclusion
 Kinematic Restitution Balancing is a universal correction for discrete physics solvers. By decomposing the fix into force velocity compensation (Component A) and kinematic energy balancing (Component B), KRB can be applied accurately to both unilateral and bilateral constraints. It provides a level of stability and energy conservation previously reserved for expensive dual-pass solvers or specialized reduced-coordinate formulations, all while maintaining the performance profile of a standard Sequential Impulse solver.
