@@ -114,15 +114,10 @@ float accVn = forceVn / dt;
 float workTerm = 2.0f * accVn * expectedDisplacement;
 
 float v_bias_sq = v_bias_ideal * v_bias_ideal;
-if (workTerm > 0.0f) {
-    // Fighting gravity: reduce the bias
-    float adjusted_v_bias_sq = max(0.0f, v_bias_sq - workTerm);
-    float v_bias_actual = sqrt(adjusted_v_bias_sq);
-    bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
-} else {
-    // Gravity neutral or helping: cap at ideal bias to prevent energy gain
-    bias = v_bias_ideal - forceVn;
-}
+// Bidirectional energy audit
+float adjusted_v_bias_sq = max(0.0f, v_bias_sq - workTerm);
+float v_bias_actual = sqrt(adjusted_v_bias_sq);
+bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
 
 float relative_vn = v_relative.dot(normal) - forceVn;
 float lambda = -mass * (relative_vn + bias);
