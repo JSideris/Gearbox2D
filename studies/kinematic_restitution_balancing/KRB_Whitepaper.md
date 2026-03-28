@@ -69,13 +69,15 @@ Speculative contacts, however, are created *before* overlap occurs to prevent hi
 ### 3.2 Bilateral Constraints (Joints) & The Zero-Velocity Paradox
 Bilateral constraints (joints) aim to maintain a target relative velocity of zero. 
 
-**Crucially, Component B (Kinematic Energy Balancing) cannot be applied to bilateral constraints.**
+Early revisions of KRB suggested entirely omitting Component B for joints to prevent a "numerical dead zone" (the Zero-Velocity Paradox) where a joint "cannot afford the energy tax" to fix small position errors if the objects are at rest.
 
-In a joint, the positional bias $v_{bias} = \frac{\beta}{\Delta t} C(\mathbf{x})$ is proportional to the geometric error $C$. Therefore, the quadratic term $v_{bias}^2$ is $O(C^2)$. The energy tax term $2 (\mathbf{a}_{ext} \cdot \mathbf{n}) (\beta C)$ is $O(C)$. 
+However, completely omitting Component B creates a subtle but persistent **energy leak**. When the positional solver (Baumgarte) performs work against gravity to correct joint stretch, doing so without a corresponding reduction in kinetic energy injects artificial energy into the system every frame. In oscillatory setups like a Newton's Cradle, this manifests as accumulated sway and instability.
 
-For any small geometric error $C$, the linear tax term is mathematically guaranteed to be larger than the quadratic correction energy ($v_{bias}^2$). Applying the Component B square-root formula ($\sqrt{v^2 - tax}$) to a zero-velocity constraint results in a negative value inside the square root, which is clamped to zero. This creates a **numerical dead zone** where the joint is paralyzed and ignores small errors because it "cannot afford the energy tax" to fix them.
+To preserve perfect energy conservation, **Component B must be applied to joints**, but capped to avoid completely paralyzing the joint. The ideal correction velocity $v_{bias} = \frac{\beta}{\Delta t} C(\mathbf{x})$ demands a kinetic energy cost of $v_{bias}^2$. If the work term implies we are fighting gravity, we must audit the energy:
 
-Therefore, for bilateral constraints where the target relative velocity is zero, **Component B is satisfied implicitly by Component A**, as the position correction $\beta C$ is a kinematic displacement and not a physical restitution. Applying a quadratic energy tax to a zero-velocity constraint is a theoretical error. Joints *only* require Component A (Force-Neutral Joint Solving) to eliminate gravity drift and achieve stability.
+$$v_{bias\_actual} = \sqrt{\max(0, v_{bias}^2 - 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) (\beta C))}$$
+
+If the available kinetic energy cannot pay the potential energy tax, the joint allows a microscopic amount of "Baumgarte sag." This prioritizes perfect global energy conservation over infinite stiffness at rest—which is physically accurate, as a resting pendulum requires tension and a tiny amount of stretch to hang.
 
 ---
 
@@ -96,22 +98,33 @@ v_surf = sqrt(max(0, (v_impact)² + 2 * dot(a_ext, n) * h_expected))
 v_final = e * v_surf
 ```
 
-### 4.2 Distance Joints (Component A Only)
-For joints, we calculate the bias using only Component A.
+### 4.2 Distance Joints (Component A + B)
+For joints, we calculate the bias using both Component A and a modified Component B.
 
 ```cpp
-// Component A: Force Velocity Compensation (Extract the gravity drift)
+// Component A: Force Velocity Compensation
 float forceVn = (bodyB->forceVelocity - bodyA->forceVelocity).dot(normal);
 
-// The actual relative velocity to correct against
-float Cdot = v_relative.dot(normal);
-float relative_vn = Cdot - forceVn;
+// Theoretical ideal velocity needed to fix error
+float v_bias_ideal = beta * C / dt;
 
-// Calculate the Baumgarte bias normally, without Component B
-float C = dMag - length;
-float bias = beta * C / dt;
+// Component B: Energy Audit for the correction work
+float expectedDisplacement = v_bias_ideal * dt; 
+float accVn = forceVn / dt;
+float workTerm = 2.0f * accVn * expectedDisplacement;
 
-// The lambda solved for will naturally account for the force-neutral state
+float v_bias_sq = v_bias_ideal * v_bias_ideal;
+if (workTerm > 0.0f) {
+    // Fighting gravity: reduce the bias
+    float adjusted_v_bias_sq = max(0.0f, v_bias_sq - workTerm);
+    float v_bias_actual = sqrt(adjusted_v_bias_sq);
+    bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
+} else {
+    // Gravity neutral or helping: cap at ideal bias to prevent energy gain
+    bias = v_bias_ideal - forceVn;
+}
+
+float relative_vn = v_relative.dot(normal) - forceVn;
 float lambda = -mass * (relative_vn + bias);
 ```
 

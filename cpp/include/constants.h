@@ -53,8 +53,11 @@
 #define GET_BODY_FDATA_INDEX(idx, offset) ((offset) * MAX_BODIES + (idx))
 
 // --- Solver Constants ---
+// These are to be hand-tuned only. 
+// They have already been rigerously tuned. Avoid messing with them - when debugging, prioritize other hypotheses first.
+// In the future, these should be relative to the size of the shapes.
 #define BAUMGARTE_FACTOR 0.2f
-#define PENETRATION_SLOP 0.008f
+#define PENETRATION_SLOP 0.016f
 #define RESTITUTION_THRESHOLD 0.01f
 #define MAX_POSITION_CORRECTION 0.2f
 

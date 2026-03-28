@@ -49,7 +49,20 @@ void DistanceJoint::preSolve(float dt) {
     // Component A: Force Velocity Compensation
     float forceVn = (bodyB->getForceVelocity() - bodyA->getForceVelocity()).dot(normal);
     
-    bias = (BAUMGARTE_FACTOR * C / dt) - forceVn;
+    // Component B: Energy Audit for the correction work
+    float v_bias_ideal = BAUMGARTE_FACTOR * C / dt;
+    float expectedDisplacement = v_bias_ideal * dt; 
+    float accVn = forceVn / dt;
+    float workTerm = 2.0f * accVn * expectedDisplacement;
+    
+    float v_bias_sq = v_bias_ideal * v_bias_ideal;
+    if (workTerm > 0.0f) {
+        float adjusted_v_bias_sq = std::max(0.0f, v_bias_sq - workTerm);
+        float v_bias_actual = std::sqrt(adjusted_v_bias_sq);
+        bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
+    } else {
+        bias = v_bias_ideal - forceVn;
+    }
 
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
@@ -147,9 +160,10 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     V128 mass = v128_select(v128_gt_f32(k, zero_v), v128_div_f32(one_v, k), zero_v);
 
     // KRB Bias calculation
+    // Component A: Force Velocity Compensation
     V128 length = v128_make_f32(joints[0]->length, joints[1]->length, joints[2]->length, joints[3]->length);
     V128 C = v128_sub_f32(dMag, length);
-    V128 vB = v128_div_f32(v128_mul_f32(baumgarte_v, C), dt_v);
+    V128 v_bias_ideal = v128_div_f32(v128_mul_f32(baumgarte_v, C), dt_v);
 
     V128 forceVX_A = gather_body_fdata(idxA, BODY_FDATA_FORCE_VX);
     V128 forceVY_A = gather_body_fdata(idxA, BODY_FDATA_FORCE_VY);
@@ -158,7 +172,23 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
 
     V128 forceVn = v128_dot_f32(v128_sub_f32(forceVX_B, forceVX_A), v128_sub_f32(forceVY_B, forceVY_A), normalX, normalY);
 
-    V128 bias = v128_sub_f32(vB, forceVn);
+    // Component B: Energy Audit for the correction work
+    V128 expectedDisplacement = v128_mul_f32(v_bias_ideal, dt_v);
+    V128 accVn = v128_div_f32(forceVn, dt_v);
+    V128 workTerm = v128_mul_f32(v128_splat_f32(2.0f), v128_mul_f32(accVn, expectedDisplacement));
+
+    V128 v_bias_sq = v128_mul_f32(v_bias_ideal, v_bias_ideal);
+    V128 workTerm_gt_zero = v128_gt_f32(workTerm, zero_v);
+    
+    V128 adjusted_v_bias_sq = v128_max_f32(zero_v, v128_sub_f32(v_bias_sq, workTerm));
+    V128 v_bias_actual = v128_sqrt_f32(adjusted_v_bias_sq);
+    
+    V128 v_bias_ideal_gt_zero = v128_gt_f32(v_bias_ideal, zero_v);
+    V128 v_bias_actual_signed = v128_select(v_bias_ideal_gt_zero, v_bias_actual, v128_neg_f32(v_bias_actual));
+    
+    V128 final_v_bias = v128_select(workTerm_gt_zero, v_bias_actual_signed, v_bias_ideal);
+    
+    V128 bias = v128_sub_f32(final_v_bias, forceVn);
 
     // Store back results
     alignas(64) float resNormalX[SIMD_LANE_COUNT], resNormalY[SIMD_LANE_COUNT], resImpulse[SIMD_LANE_COUNT], resMass[SIMD_LANE_COUNT], resBias[SIMD_LANE_COUNT], resRAx[SIMD_LANE_COUNT], resRAy[SIMD_LANE_COUNT], resRBx[SIMD_LANE_COUNT], resRBy[SIMD_LANE_COUNT];
