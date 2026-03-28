@@ -22,6 +22,7 @@ using SimdMask = hn::Mask<DF>;
 // Memory operations
 #define v128_load_f32(ptr) hn::LoadU(DF(), reinterpret_cast<const float*>(ptr))
 #define v128_store_f32(ptr, v) hn::StoreU(v, DF(), reinterpret_cast<float*>(ptr))
+#define v128_masked_store_f32(ptr, mask, v) hn::BlendedStore(v, hn::MaskFromVec(mask), DF(), reinterpret_cast<float*>(ptr))
 
 // Splat
 #define v128_splat_f32(f) hn::Set(DF(), f)
@@ -66,6 +67,7 @@ using SimdMask = hn::Mask<DF>;
 #define v128_max_f32(a, b) hn::Max(a, b)
 #define v128_sqrt_f32(a) hn::Sqrt(a)
 #define v128_is_finite(v) hn::VecFromMask(DF(), hn::IsFinite(v))
+#define v128_first_n(n) hn::VecFromMask(DF(), hn::FirstN(DF(), n))
 
 inline V128 v128_make_f32(float f1, float f2, float f3, float f4) {
 	alignas(16) float values[4] = { f1, f2, f3, f4 };
