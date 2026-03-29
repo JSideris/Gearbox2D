@@ -117,9 +117,12 @@ float v_bias_sq = v_bias_ideal * v_bias_ideal;
 // Bidirectional energy audit
 float adjusted_v_bias_sq = max(0.0f, v_bias_sq - workTerm);
 float v_bias_actual = sqrt(adjusted_v_bias_sq);
+// Force compensation (-forceVn) is folded into the bias here to avoid
+// subtracting it from relative_vn during every solver iteration.
 bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
 
-float relative_vn = v_relative.dot(normal) - forceVn;
+// During the iterative solve phase:
+float relative_vn = v_relative.dot(normal);
 float lambda = -mass * (relative_vn + bias);
 ```
 
