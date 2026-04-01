@@ -288,6 +288,9 @@
 					<div class="engine-tab active" data-engine="all">
 						<span class="engine-tab-text">All Engines</span>
 					</div>
+					<div class="engine-tab" data-engine="compare" id="compare-tab" style="display: none">
+						<span class="engine-tab-text">Compare Builds</span>
+					</div>
 					<div class="engine-tab" data-engine="gearbox2d">
 						<label class="engine-toggle-wrapper">
 							<input type="checkbox" class="engine-toggle" checked data-engine="gearbox2d" />
@@ -329,16 +332,20 @@
 						<canvas id="metric-chart"></canvas>
 					</div>
 					<div id="engine-legend">
-						<div class="legend-item">
+						<div class="legend-item" id="legend-gearbox2d">
 							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>Gearbox2D
 						</div>
-						<div class="legend-item">
+						<div class="legend-item" id="legend-clone" style="display: none">
+							<span class="legend-color" style="color: #8fbc8f; background: #8fbc8f"></span>Gearbox2D
+							(Clone)
+						</div>
+						<div class="legend-item" id="legend-matterjs">
 							<span class="legend-color" style="color: #f472b6; background: #f472b6"></span>Matter.js
 						</div>
-						<div class="legend-item">
+						<div class="legend-item" id="legend-p2js">
 							<span class="legend-color" style="color: #a855f7; background: #a855f7"></span>P2.js
 						</div>
-						<div class="legend-item">
+						<div class="legend-item" id="legend-box2dwasm">
 							<span class="legend-color" style="color: #60a5fa; background: #60a5fa"></span>Box2D-WASM
 						</div>
 					</div>
@@ -393,6 +400,13 @@
 						data: {
 							datasets: [
 								{ label: "Gearbox2D", borderColor: "#4ade80", data: [], tension: 0.1, pointRadius: 0 },
+								{
+									label: "Gearbox2D (Clone)",
+									borderColor: "#8fbc8f",
+									data: [],
+									tension: 0.1,
+									pointRadius: 0,
+								},
 								{ label: "Matter.js", borderColor: "#f472b6", data: [], tension: 0.1, pointRadius: 0 },
 								{ label: "P2.js", borderColor: "#a855f7", data: [], tension: 0.1, pointRadius: 0 },
 								{ label: "Box2D-WASM", borderColor: "#60a5fa", data: [], tension: 0.1, pointRadius: 0 },
@@ -422,7 +436,7 @@
 							},
 						},
 					});
-					this.engineMap = { gearbox2d: 0, matterjs: 1, p2js: 2, box2dwasm: 3 };
+					this.engineMap = { gearbox2d: 0, "gearbox2d-clone": 1, matterjs: 2, p2js: 3, box2dwasm: 4 };
 				}
 
 				addPoint(engine, time, value) {
@@ -461,6 +475,7 @@
 			let isRunning = false;
 			let frameId = null;
 			let gearboxWorld = null;
+			let gearboxClone = null;
 			let currentScenarioKey = "large-stack";
 			let benchmarkStartTime = 0;
 			let lastChartUpdateTime = 0;
@@ -552,6 +567,19 @@
 					await gearbox.init();
 					gearboxWorld = gearbox.createWorld();
 					console.log("Gearbox2D initialized globally");
+
+					if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+						try {
+							const mod = await import("gearbox2d-clone");
+							gearboxClone = mod.default;
+							if (gearboxClone !== gearbox) {
+								document.getElementById("compare-tab").style.display = "flex";
+							}
+						} catch (e) {
+							console.log("Clone not found or failed to load");
+						}
+					}
+
 					// Auto-start first benchmark
 					startBenchmark();
 				} catch (e) {
@@ -615,11 +643,13 @@
 				label.textContent =
 					engineType === "gearbox2d"
 						? "Gearbox2D"
-						: engineType === "matterjs"
-							? "Matter.js"
-							: engineType === "p2js"
-								? "P2.js"
-								: "Box2D-WASM";
+						: engineType === "gearbox2d-clone"
+							? "Gearbox2D (Clone)"
+							: engineType === "matterjs"
+								? "Matter.js"
+								: engineType === "p2js"
+									? "P2.js"
+									: "Box2D-WASM";
 				wrapper.appendChild(label);
 
 				const canvas = document.createElement("canvas");
@@ -634,7 +664,12 @@
 					case "gearbox2d":
 						if (!gearboxWorld) await gearbox.init();
 						if (!gearboxWorld) gearboxWorld = gearbox.createWorld();
-						adapter = new GearboxAdapter(gearboxWorld);
+						adapter = new GearboxAdapter(gearboxWorld, gearbox);
+						break;
+					case "gearbox2d-clone":
+						if (!gearboxClone.isInitialized) await gearboxClone.init();
+						const cloneWorld = gearboxClone.createWorld();
+						adapter = new GearboxAdapter(cloneWorld, gearboxClone);
 						break;
 					case "matterjs":
 						adapter = new MatterAdapter();
@@ -676,56 +711,73 @@
 				activeEngines = [];
 				canvasContainer.className = "";
 
-				if (selectedEngine === "all") {
+				if (selectedEngine === "all" || selectedEngine === "compare") {
 					canvasContainer.classList.add("all-mode");
 					metricsContainer.classList.add("all-mode");
 					engineLegend.style.display = "grid";
 					engineNameEl.style.display = "none";
 
-					const engineConfigs = [
-						{ type: "gearbox2d", alignRight: false },
-						{ type: "matterjs", alignRight: true },
-						{ type: "p2js", alignRight: false },
-						{ type: "box2dwasm", alignRight: true },
-					];
-
-					const filteredConfigs = engineConfigs.filter((config) => enabledEngines.includes(config.type));
-
-					if (filteredConfigs.length === 1) {
-						// Switch to single engine mode
-						const engine = filteredConfigs[0].type;
-						const tab = document.querySelector(`.engine-tab[data-engine="${engine}"]`);
-						if (tab) {
-							tabs.forEach((t) => t.classList.remove("active"));
-							tab.classList.add("active");
-							updateURL();
-							return startBenchmark();
-						}
-					}
-
-					canvasContainer.classList.add(`layout-${filteredConfigs.length}`);
-
-					if (filteredConfigs.length === 3) {
-						// Special case: TL, TR, BL empty, BR
-						// TL
-						activeEngines.push(
-							await createEngineInstance(filteredConfigs[0].type, filteredConfigs[0].alignRight, 0.6),
-						);
-						// TR
-						activeEngines.push(
-							await createEngineInstance(filteredConfigs[1].type, filteredConfigs[1].alignRight, 0.6),
-						);
-						// BL Empty
-						const empty = document.createElement("div");
-						empty.className = "engine-canvas-wrapper empty-slot";
-						canvasContainer.appendChild(empty);
-						// BR
-						activeEngines.push(
-							await createEngineInstance(filteredConfigs[2].type, filteredConfigs[2].alignRight, 0.6),
-						);
+					if (selectedEngine === "compare") {
+						document.getElementById("legend-clone").style.display = "flex";
+						Array.from(engineLegend.children).forEach((el) => {
+							if (el.id !== "legend-clone" && el.id !== "legend-gearbox2d") {
+								el.style.display = "none";
+							}
+						});
+						canvasContainer.classList.add("layout-2");
+						activeEngines.push(await createEngineInstance("gearbox2d", false, 0.6));
+						activeEngines.push(await createEngineInstance("gearbox2d-clone", true, 0.6));
 					} else {
-						for (const config of filteredConfigs) {
-							activeEngines.push(await createEngineInstance(config.type, config.alignRight, 0.6));
+						document.getElementById("legend-clone").style.display = "none";
+						Array.from(engineLegend.children).forEach((el) => {
+							if (el.id !== "legend-clone") el.style.display = "flex";
+						});
+
+						const engineConfigs = [
+							{ type: "gearbox2d", alignRight: false },
+							{ type: "matterjs", alignRight: true },
+							{ type: "p2js", alignRight: false },
+							{ type: "box2dwasm", alignRight: true },
+						];
+
+						const filteredConfigs = engineConfigs.filter((config) => enabledEngines.includes(config.type));
+
+						if (filteredConfigs.length === 1) {
+							// Switch to single engine mode
+							const engine = filteredConfigs[0].type;
+							const tab = document.querySelector(`.engine-tab[data-engine="${engine}"]`);
+							if (tab) {
+								tabs.forEach((t) => t.classList.remove("active"));
+								tab.classList.add("active");
+								updateURL();
+								return startBenchmark();
+							}
+						}
+
+						canvasContainer.classList.add(`layout-${filteredConfigs.length}`);
+
+						if (filteredConfigs.length === 3) {
+							// Special case: TL, TR, BL empty, BR
+							// TL
+							activeEngines.push(
+								await createEngineInstance(filteredConfigs[0].type, filteredConfigs[0].alignRight, 0.6),
+							);
+							// TR
+							activeEngines.push(
+								await createEngineInstance(filteredConfigs[1].type, filteredConfigs[1].alignRight, 0.6),
+							);
+							// BL Empty
+							const empty = document.createElement("div");
+							empty.className = "engine-canvas-wrapper empty-slot";
+							canvasContainer.appendChild(empty);
+							// BR
+							activeEngines.push(
+								await createEngineInstance(filteredConfigs[2].type, filteredConfigs[2].alignRight, 0.6),
+							);
+						} else {
+							for (const config of filteredConfigs) {
+								activeEngines.push(await createEngineInstance(config.type, config.alignRight, 0.6));
+							}
 						}
 					}
 				} else {

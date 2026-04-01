@@ -1,5 +1,6 @@
 # Build output
 dist/
+dist-clone/
 lib/build/
 *.wasm
 *.wasm.map

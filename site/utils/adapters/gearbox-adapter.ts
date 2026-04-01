@@ -6,11 +6,13 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 	private idMap = new Map<string | number, number>();
 	private bodies = new Map<number, any>();
 	private nextId = 1000;
+	private gearboxInstance: any;
 
-	constructor(existingWorld?: any) {
+	constructor(existingWorld?: any, gearboxInstance: any = gearbox) {
 		if (existingWorld) {
 			this.world = existingWorld;
 		}
+		this.gearboxInstance = gearboxInstance;
 	}
 
 	private getInternalId(id: string | number): number {
@@ -23,8 +25,8 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 
 	async init(): Promise<void> {
 		if (!this.world) {
-			await gearbox.init();
-			this.world = gearbox.createWorld();
+			await this.gearboxInstance.init();
+			this.world = this.gearboxInstance.createWorld();
 		}
 		this.world.setGravity(0, 9.8);
 		this.world.setHasRestitution(true);
@@ -151,7 +153,9 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			id: internalId,
 			x,
 			y,
-			type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
+			type: isStatic
+				? this.gearboxInstance.bodyTypes.FIXED_OBJECT
+				: this.gearboxInstance.bodyTypes.DYNAMIC_OBJECT,
 			mass: options.mass || 1.0,
 			vx: options.vx,
 			vy: options.vy,
@@ -162,7 +166,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			angularDamping: options.angularDamping,
 		});
 		body.createFixture({
-			shape: gearbox.shapes.BOX,
+			shape: this.gearboxInstance.shapes.BOX,
 			width: w,
 			height: h,
 			restitution: options.restitution ?? 0.1,
@@ -185,7 +189,9 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			id: internalId,
 			x,
 			y,
-			type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
+			type: isStatic
+				? this.gearboxInstance.bodyTypes.FIXED_OBJECT
+				: this.gearboxInstance.bodyTypes.DYNAMIC_OBJECT,
 			mass: options.mass || 1.0,
 			vx: options.vx,
 			vy: options.vy,
@@ -196,7 +202,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			angularDamping: options.angularDamping,
 		});
 		body.createFixture({
-			shape: gearbox.shapes.CIRCLE,
+			shape: this.gearboxInstance.shapes.CIRCLE,
 			radius,
 			restitution: options.restitution ?? 0.1,
 			sFriction: options.sFriction ?? 0.5,
@@ -234,7 +240,9 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			id: internalId,
 			x,
 			y,
-			type: isStatic ? gearbox.bodyTypes.FIXED_OBJECT : gearbox.bodyTypes.DYNAMIC_OBJECT,
+			type: isStatic
+				? this.gearboxInstance.bodyTypes.FIXED_OBJECT
+				: this.gearboxInstance.bodyTypes.DYNAMIC_OBJECT,
 			mass: options.mass || 1.0,
 			vx: options.vx,
 			vy: options.vy,
@@ -245,7 +253,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			angularDamping: options.angularDamping,
 		});
 		body.createFixture({
-			shape: gearbox.shapes.POINT,
+			shape: this.gearboxInstance.shapes.POINT,
 			restitution: options.restitution ?? 0.1,
 			sFriction: options.sFriction ?? 0.5,
 			kFriction: options.kFriction ?? 0.3,

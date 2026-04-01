@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import rawExamplesPlugin from './scripts/vite-plugin-raw-examples.js';
 
+const cloneExists = require('fs').existsSync(resolve(__dirname, 'dist-clone/js/gearbox.js'));
+
 export default defineConfig({
   root: 'site',
   base: './',
@@ -29,6 +31,9 @@ export default defineConfig({
   resolve: {
     alias: {
       'gearbox2d': resolve(__dirname, 'typescript/src/gearbox.ts'),
+      'gearbox2d-clone': cloneExists 
+        ? resolve(__dirname, 'dist-clone/js/gearbox.js') 
+        : resolve(__dirname, 'typescript/src/gearbox.ts'),
     },
   },
 });
