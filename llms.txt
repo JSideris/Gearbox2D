@@ -1,0 +1,18 @@
+# Gearbox2D
+
+> High-performance 2D physics and AI engine for the web.
+
+Gearbox2D is a blazing-fast, web-first 2D physics engine engineered from the ground up for the modern browser. Built in C++ and compiled to WebAssembly (WASM), it provides a high-performance core with a developer-friendly TypeScript wrapper.
+
+## Key Features
+
+- **Web-First Performance**: Zero-copy memory sharing between WASM and JavaScript via shared buffers.
+- **Authoritative Synchronization**: Designed for real-time multiplayer with stable state injection.
+- **Integrated AI**: Built-in support for NavMeshes, RVO/ORCA, and pathfinding at native speeds.
+
+## Documentation
+
+- [Full Documentation](/llms-full.txt): A single file containing all documentation for easy LLM ingestion.
+- [Introduction](/documentation.html#introduction)
+- [Installation](/documentation.html#installation)
+- [API Reference](/documentation.html#api-reference)

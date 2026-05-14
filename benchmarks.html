@@ -247,9 +247,9 @@
 				box-shadow: 0 0 8px currentColor;
 			}
 		</style>
-		<script type="module" crossorigin src="./assets/benchmarks-RH6Ob0PO.js"></script>
+		<script type="module" crossorigin src="./assets/benchmarks-CCVXYu6D.js"></script>
 		<link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-		<link rel="modulepreload" crossorigin href="./assets/engine-FBfol09p.js">
+		<link rel="modulepreload" crossorigin href="./assets/engine-BOyobCwa.js">
 		<link rel="stylesheet" crossorigin href="./assets/examples-styles-DGfjjK-Z.css">
 	</head>
 	<body>
@@ -290,6 +290,9 @@
 				<div class="engine-tabs">
 					<div class="engine-tab active" data-engine="all">
 						<span class="engine-tab-text">All Engines</span>
+					</div>
+					<div class="engine-tab" data-engine="compare" id="compare-tab" style="display: none">
+						<span class="engine-tab-text">Compare Builds</span>
 					</div>
 					<div class="engine-tab" data-engine="gearbox2d">
 						<label class="engine-toggle-wrapper">
@@ -332,16 +335,20 @@
 						<canvas id="metric-chart"></canvas>
 					</div>
 					<div id="engine-legend">
-						<div class="legend-item">
+						<div class="legend-item" id="legend-gearbox2d">
 							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>Gearbox2D
 						</div>
-						<div class="legend-item">
+						<div class="legend-item" id="legend-clone" style="display: none">
+							<span class="legend-color" style="color: #8fbc8f; background: #8fbc8f"></span>Gearbox2D
+							(Clone)
+						</div>
+						<div class="legend-item" id="legend-matterjs">
 							<span class="legend-color" style="color: #f472b6; background: #f472b6"></span>Matter.js
 						</div>
-						<div class="legend-item">
+						<div class="legend-item" id="legend-p2js">
 							<span class="legend-color" style="color: #a855f7; background: #a855f7"></span>P2.js
 						</div>
-						<div class="legend-item">
+						<div class="legend-item" id="legend-box2dwasm">
 							<span class="legend-color" style="color: #60a5fa; background: #60a5fa"></span>Box2D-WASM
 						</div>
 					</div>
