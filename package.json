@@ -21,7 +21,7 @@
     "clone-build": "node scripts/clone-build.js",
     "bench": "npm run bench:cpp",
     "site": "vite",
-    "site:build": "vite build",
+    "site:build": "node scripts/generate-llms-txt.js && vite build",
     "start": "npm run site",
     "prepublishOnly": "npm run build"
   },
