@@ -270,3 +270,69 @@ TEST(KrbCoupledEstimate, PostSolveDoesNotTouchJointsOnlyPendulum) {
 	EXPECT_TRUE(std::isfinite(work));
 	EXPECT_NEAR(work, 0.0f, 1e-6f);
 }
+
+TEST(KrbCoupledEstimate, IdleHungClusterDoesNotBounce) {
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 0.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(1.5f, 0.0f, 0.0f, true));
+
+	emscripten_val ballAOpts = createCircleOptions(-0.3f, 1.2f, 1.0f);
+	ballAOpts.properties["restitution"] = 0.0f;
+	emscripten_val ballBOpts = createCircleOptions(0.3f, 1.2f, 1.0f);
+	ballBOpts.properties["restitution"] = 0.0f;
+	world.createBody(10, ballAOpts);
+	world.createBody(11, ballBOpts);
+
+	world.createDistanceJoint(20, 1, 10, 0.0f, 0.0f, 0.0f, 0.0f, 1.2f);
+	world.createDistanceJoint(21, 2, 11, 0.0f, 0.0f, 0.0f, 0.0f, 1.2f);
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+	}
+
+	Body* ballA = world.getBody(10);
+	Body* ballB = world.getBody(11);
+	ASSERT_NE(ballA, nullptr);
+	ASSERT_NE(ballB, nullptr);
+
+	EXPECT_TRUE(std::isfinite(ballA->getPosition().x));
+	EXPECT_TRUE(std::isfinite(ballA->getPosition().y));
+	EXPECT_TRUE(std::isfinite(ballB->getPosition().x));
+	EXPECT_TRUE(std::isfinite(ballB->getPosition().y));
+	EXPECT_TRUE(std::isfinite(ballA->getVelocity().x));
+	EXPECT_TRUE(std::isfinite(ballA->getVelocity().y));
+	EXPECT_TRUE(std::isfinite(ballB->getVelocity().x));
+	EXPECT_TRUE(std::isfinite(ballB->getVelocity().y));
+
+	float work = world.getLastCoupledGravitationalWork();
+	EXPECT_TRUE(std::isfinite(work));
+}
+
+TEST(KrbCoupledEstimate, HingeContactDoesNotInheritTax) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 5.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(0.0f, 3.0f, 1.0f));
+	world.createHingeJoint(10, 1, 2, 0.0f, 0.0f, 0.0f, 0.0f);
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+	}
+
+	Body* dyn = world.getBody(2);
+	ASSERT_NE(dyn, nullptr);
+
+	EXPECT_TRUE(std::isfinite(dyn->getPosition().x));
+	EXPECT_TRUE(std::isfinite(dyn->getPosition().y));
+	EXPECT_TRUE(std::isfinite(dyn->getVelocity().x));
+	EXPECT_TRUE(std::isfinite(dyn->getVelocity().y));
+
+	float work = world.getLastCoupledGravitationalWork();
+	EXPECT_TRUE(std::isfinite(work));
+	EXPECT_NEAR(work, 0.0f, 1e-6f);
+}

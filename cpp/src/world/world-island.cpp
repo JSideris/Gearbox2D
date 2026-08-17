@@ -9,8 +9,12 @@
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace {
+
+constexpr float kIdleBiasFloor = 0.05f;
+constexpr float kDominantBiasFraction = 0.25f;
 
 bool islandHasGravity(const Island& island) {
     for (Body* b : island.bodies) {
@@ -22,6 +26,49 @@ bool islandHasGravity(const Island& island) {
         }
     }
     return false;
+}
+
+bool islandHasForeignCoupling(const Island& island) {
+    for (Joint* j : island.joints) {
+        if (j->getType() != JointType::DISTANCE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void pruneIdleContacts(std::unordered_map<ContactConstraint*, float>& workByContact) {
+    for (auto it = workByContact.begin(); it != workByContact.end(); ) {
+        if (std::abs(it->first->bias) < kIdleBiasFloor) {
+            it = workByContact.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    if (workByContact.empty()) {
+        return;
+    }
+
+    float bMax = 0.0f;
+    for (const auto& entry : workByContact) {
+        float absBias = std::abs(entry.first->bias);
+        if (absBias > bMax) {
+            bMax = absBias;
+        }
+    }
+    if (bMax < 1e-8f) {
+        workByContact.clear();
+        return;
+    }
+
+    float threshold = kDominantBiasFraction * bMax;
+    for (auto it = workByContact.begin(); it != workByContact.end(); ) {
+        if (std::abs(it->first->bias) < threshold) {
+            it = workByContact.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 float computeCoupledPairWork(DistanceJoint* dj, ContactConstraint* c, float dt) {
@@ -504,6 +551,9 @@ void World::_applyIslandCoupledLaunchTax(Island& island, float dt) {
     if (dt < 1e-8f) {
         return;
     }
+    if (islandHasForeignCoupling(island)) {
+        return;
+    }
 
     std::unordered_map<ContactConstraint*, float> workByContact;
 
@@ -520,6 +570,8 @@ void World::_applyIslandCoupledLaunchTax(Island& island, float dt) {
             }
         }
     }
+
+    pruneIdleContacts(workByContact);
 
     for (const auto& entry : workByContact) {
         ContactConstraint* c = entry.first;
@@ -549,6 +601,9 @@ void World::_applyIslandCoupledPostSolveTax(Island& island, float dt) {
         return;
     }
     if (dt < 1e-8f) {
+        return;
+    }
+    if (islandHasForeignCoupling(island)) {
         return;
     }
 
@@ -586,37 +641,49 @@ void World::_applyIslandCoupledPostSolveTax(Island& island, float dt) {
 
     std::unordered_map<Body*, float> wResBody;
     std::unordered_map<Body*, DistanceJoint*> firstJoint;
+    std::unordered_map<Body*, std::unordered_set<ContactConstraint*>> accumulated;
 
-    for (Joint* j : island.joints) {
-        DistanceJoint* dj = dynamic_cast<DistanceJoint*>(j);
-        if (!dj) {
-            continue;
+    for (const auto& mapEntry : island.coupledWorkByContact) {
+        ContactConstraint* c = mapEntry.first;
+        float wResC = 0.0f;
+        auto resIt = wRes.find(c);
+        if (resIt != wRes.end()) {
+            wResC = resIt->second;
         }
 
-        Body* dyn = nullptr;
-        Vec2 nRod;
-        float L = 0.0f;
-        if (!getFixedDynRod(dj, dyn, nRod, L)) {
-            continue;
-        }
-
-        for (ContactConstraint* c : island.contacts) {
-            if (island.coupledWorkByContact.find(c) == island.coupledWorkByContact.end()) {
+        Body* bodies[2] = {c->a, c->b};
+        for (int i = 0; i < 2; ++i) {
+            Body* dyn = bodies[i];
+            if (dyn->getInverseMass() <= 0.0f) {
                 continue;
             }
-            if (c->a != dyn && c->b != dyn) {
-                continue;
-            }
-            if (c->depth <= 0.0f) {
+            if (accumulated[dyn].count(c) != 0) {
                 continue;
             }
 
-            float wResC = 0.0f;
-            auto it = wRes.find(c);
-            if (it != wRes.end()) {
-                wResC = it->second;
+            DistanceJoint* dj = nullptr;
+            for (Joint* j : island.joints) {
+                DistanceJoint* candidate = dynamic_cast<DistanceJoint*>(j);
+                if (!candidate) {
+                    continue;
+                }
+                Body* rodDyn = nullptr;
+                Vec2 nRod;
+                float L = 0.0f;
+                if (!getFixedDynRod(candidate, rodDyn, nRod, L)) {
+                    continue;
+                }
+                if (rodDyn == dyn) {
+                    dj = candidate;
+                    break;
+                }
             }
+            if (!dj) {
+                continue;
+            }
+
             wResBody[dyn] += wResC;
+            accumulated[dyn].insert(c);
             if (firstJoint.find(dyn) == firstJoint.end()) {
                 firstJoint[dyn] = dj;
             }
