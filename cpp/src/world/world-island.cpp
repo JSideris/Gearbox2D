@@ -79,21 +79,18 @@ float computeCoupledPairWork(DistanceJoint* dj, ContactConstraint* c, float dt) 
     return 2.0f * acc.dot(delta);
 }
 
-float computeCoupledPostSolvePairWork(
+bool getFixedDynRod(
     DistanceJoint* dj,
-    ContactConstraint* c,
-    float dt,
-    const std::vector<SolverData>& solverBodies) {
-    if (dt < 1e-8f) {
-        return 0.0f;
-    }
-
+    Body*& dyn,
+    Vec2& nRod,
+    float& L,
+    Vec2* pDynOut = nullptr,
+    Vec2* pFixOut = nullptr) {
     Body* bodyA = dj->bodyA;
     Body* bodyB = dj->bodyB;
     float imA = bodyA->getInverseMass();
     float imB = bodyB->getInverseMass();
 
-    Body* dyn = nullptr;
     Body* fixed = nullptr;
     if (imA > 0.0f && imB == 0.0f) {
         dyn = bodyA;
@@ -102,14 +99,7 @@ float computeCoupledPostSolvePairWork(
         dyn = bodyB;
         fixed = bodyA;
     } else {
-        return 0.0f;
-    }
-
-    if (c->a != dyn && c->b != dyn) {
-        return 0.0f;
-    }
-    if (c->depth <= 0.0f) {
-        return 0.0f;
+        return false;
     }
 
     Vec2 rDyn = (dyn == bodyA)
@@ -121,11 +111,44 @@ float computeCoupledPostSolvePairWork(
     Vec2 pDyn = dyn->getPosition() + rDyn;
     Vec2 pFix = fixed->getPosition() + rFix;
     Vec2 d = pDyn - pFix;
-    float L = d.magnitude();
+    L = d.magnitude();
     if (L < 1e-4f) {
+        return false;
+    }
+    nRod = d * (1.0f / L);
+    if (pDynOut) {
+        *pDynOut = pDyn;
+    }
+    if (pFixOut) {
+        *pFixOut = pFix;
+    }
+    return true;
+}
+
+float computeCoupledPostSolvePairWork(
+    DistanceJoint* dj,
+    ContactConstraint* c,
+    float dt,
+    const std::vector<SolverData>& solverBodies) {
+    if (dt < 1e-8f) {
         return 0.0f;
     }
-    Vec2 nRod = d * (1.0f / L);
+
+    Body* dyn = nullptr;
+    Vec2 nRod;
+    float L = 0.0f;
+    Vec2 pDyn;
+    Vec2 pFix;
+    if (!getFixedDynRod(dj, dyn, nRod, L, &pDyn, &pFix)) {
+        return 0.0f;
+    }
+
+    if (c->a != dyn && c->b != dyn) {
+        return 0.0f;
+    }
+    if (c->depth <= 0.0f) {
+        return 0.0f;
+    }
 
     const SolverData& sd = solverBodies[dyn->worldIndex];
     Vec2 vDyn = sd.v;
@@ -560,7 +583,84 @@ void World::_applyIslandCoupledPostSolveTax(Island& island, float dt) {
         }
         wRes[c] = wPostC - wApplied;
     }
-    (void)wRes;
+
+    std::unordered_map<Body*, float> wResBody;
+    std::unordered_map<Body*, DistanceJoint*> firstJoint;
+
+    for (Joint* j : island.joints) {
+        DistanceJoint* dj = dynamic_cast<DistanceJoint*>(j);
+        if (!dj) {
+            continue;
+        }
+
+        Body* dyn = nullptr;
+        Vec2 nRod;
+        float L = 0.0f;
+        if (!getFixedDynRod(dj, dyn, nRod, L)) {
+            continue;
+        }
+
+        for (ContactConstraint* c : island.contacts) {
+            if (island.coupledWorkByContact.find(c) == island.coupledWorkByContact.end()) {
+                continue;
+            }
+            if (c->a != dyn && c->b != dyn) {
+                continue;
+            }
+            if (c->depth <= 0.0f) {
+                continue;
+            }
+
+            float wResC = 0.0f;
+            auto it = wRes.find(c);
+            if (it != wRes.end()) {
+                wResC = it->second;
+            }
+            wResBody[dyn] += wResC;
+            if (firstJoint.find(dyn) == firstJoint.end()) {
+                firstJoint[dyn] = dj;
+            }
+        }
+    }
+
+    for (const auto& entry : wResBody) {
+        Body* dyn = entry.first;
+        float W = entry.second;
+
+        DistanceJoint* dj = firstJoint[dyn];
+        Body* rodDyn = nullptr;
+        Vec2 nRod;
+        float L = 0.0f;
+        if (!getFixedDynRod(dj, rodDyn, nRod, L)) {
+            continue;
+        }
+
+        SolverData& sd = solverBodies[dyn->worldIndex];
+        if (sd.im <= 0.0f) {
+            continue;
+        }
+
+        Vec2 v = sd.v;
+        Vec2 vRad = nRod * v.dot(nRod);
+        Vec2 vTan = v - vRad;
+        float vTanSq = vTan.dot(vTan);
+        float vTanMag = std::sqrt(vTanSq);
+        if (vTanMag < 1e-8f) {
+            continue;
+        }
+        if (!std::isfinite(v.x) || !std::isfinite(v.y) ||
+            !std::isfinite(vTan.x) || !std::isfinite(vTan.y)) {
+            continue;
+        }
+
+        float vAdjSq = std::max(0.0f, vTanSq + W);
+        float scale = std::sqrt(vAdjSq) / vTanMag;
+        Vec2 vNew = vRad + vTan * scale;
+        if (!std::isfinite(vNew.x) || !std::isfinite(vNew.y)) {
+            continue;
+        }
+        sd.v = vNew;
+    }
 }
 
 void World::_colorIsland(Island& island) {
