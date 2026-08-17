@@ -115,6 +115,7 @@ struct Island {
     std::vector<std::vector<Joint*>> jointBatches;
 
     bool canSleep;
+    float coupledGravitationalWork = 0.0f;
 
     Island() : canSleep(false) {}
 
@@ -125,6 +126,7 @@ struct Island {
         contactBatches.clear();
         jointBatches.clear();
         canSleep = false;
+        coupledGravitationalWork = 0.0f;
     }
 };
 
@@ -157,6 +159,7 @@ private:
     int positionIterations = 3;
     int velocitySubSteps = 1;
     float speculativeMargin = 0.01f; // Default speculative margin
+    float lastCoupledGravitationalWork = 0.0f;
     int nextFixtureId = 1;
 
 #ifdef GEARBOX_MT
@@ -184,6 +187,7 @@ private:
 
     void _buildAndProcessIslands(float dt, int substepIndex);
     void _colorIsland(Island& island);
+    void _estimateIslandCoupledPe(Island& island, float dt);
     void _solveIslandVelocity(Island& island, float dt, int substepIndex);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 
@@ -232,6 +236,7 @@ public:
     void setHasFriction(bool value);
     void setGravity(float x, float y);
     Vec2 getGravity() const { return gravity; }
+    float getLastCoupledGravitationalWork() const { return lastCoupledGravitationalWork; }
 
     std::vector<int> queryBodiesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
     std::vector<int> queryFixturesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);

@@ -128,6 +128,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 2. DFS partitioning
     std::vector<Island> islands;
+    lastCoupledGravitationalWork = 0.0f;
     
     // 2.1 Pre-initialize solver data for all bodies to avoid race conditions 
     // when multiple islands share a static body.
@@ -202,6 +203,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         
         if (!currentIsland.bodies.empty()) {
             _colorIsland(currentIsland);
+            _estimateIslandCoupledPe(currentIsland, dt);
+            lastCoupledGravitationalWork += currentIsland.coupledGravitationalWork;
             islands.push_back(std::move(currentIsland));
         }
     }
@@ -290,6 +293,90 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     if (positionIterations > 0) {
         _syncFixturesSIMD();
     }
+}
+
+void World::_estimateIslandCoupledPe(Island& island, float dt) {
+    island.coupledGravitationalWork = 0.0f;
+
+    if (island.contacts.empty() || island.joints.empty()) {
+        return;
+    }
+
+    bool hasGravity = false;
+    for (Body* b : island.bodies) {
+        if (b->getInverseMass() > 0.0f) {
+            Vec2 forceVel = b->getForceVelocity();
+            if (forceVel.magnitudeSquared() > 1e-16f) {
+                hasGravity = true;
+                break;
+            }
+        }
+    }
+    if (!hasGravity) {
+        return;
+    }
+
+    float work = 0.0f;
+    const float eps = 1e-8f;
+
+    for (Joint* j : island.joints) {
+        DistanceJoint* dj = dynamic_cast<DistanceJoint*>(j);
+        if (!dj) {
+            continue;
+        }
+
+        Body* bodyA = dj->bodyA;
+        Body* bodyB = dj->bodyB;
+        float imA = bodyA->getInverseMass();
+        float imB = bodyB->getInverseMass();
+
+        Body* dyn = nullptr;
+        if (imA > 0.0f && imB == 0.0f) {
+            dyn = bodyA;
+        } else if (imB > 0.0f && imA == 0.0f) {
+            dyn = bodyB;
+        } else {
+            continue;
+        }
+
+        Vec2 rA = dj->getLocalAnchorA().rotate(bodyA->getRotation());
+        Vec2 rB = dj->getLocalAnchorB().rotate(bodyB->getRotation());
+        Vec2 d = (bodyB->getPosition() + rB) - (bodyA->getPosition() + rA);
+        float dMag = d.magnitude();
+        if (dMag < 1e-4f) {
+            continue;
+        }
+        Vec2 nRod = d * (1.0f / dMag);
+
+        for (ContactConstraint* c : island.contacts) {
+            if (c->a != dyn && c->b != dyn) {
+                continue;
+            }
+            if (c->depth < 0.0f) {
+                continue;
+            }
+            if (c->depth > 0.0f && c->bias == 0.0f) {
+                continue;
+            }
+            if (!(c->depth > 0.0f && c->bias != 0.0f)) {
+                continue;
+            }
+
+            float vLaunchRel = -c->bias;
+            Body* other = (c->a == dyn) ? c->b : c->a;
+            Vec2 nOnDyn = (c->b == dyn) ? c->normal : Vec2(-c->normal.x, -c->normal.y);
+            float imDyn = dyn->getInverseMass();
+            float imOther = other->getInverseMass();
+            float share = imDyn / std::max(imDyn + imOther, eps);
+            Vec2 vDyn = nOnDyn * (share * vLaunchRel);
+            Vec2 vTan = vDyn - nRod * vDyn.dot(nRod);
+            Vec2 delta = vTan * dt;
+            Vec2 acc = dyn->getForceVelocity() * (1.0f / dt);
+            work += 2.0f * acc.dot(delta);
+        }
+    }
+
+    island.coupledGravitationalWork = work;
 }
 
 void World::_colorIsland(Island& island) {
