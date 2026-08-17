@@ -44,6 +44,141 @@ bool isChainEligible(ContactConstraint* c, float vn) {
     return true;
 }
 
+void buildEligibleAdjacency(
+    Island& island,
+    std::unordered_map<Body*, std::vector<Body*>>& adj,
+    int& eligibleContactCount,
+    float& maxApproachingVn) {
+    adj.clear();
+    eligibleContactCount = 0;
+    maxApproachingVn = 0.0f;
+
+    for (ContactConstraint* c : island.contacts) {
+        float vn = computeContactVn(c);
+        if (!isChainEligible(c, vn)) {
+            continue;
+        }
+
+        eligibleContactCount++;
+        if (vn < -kChainResidualEps) {
+            float mag = std::abs(vn);
+            if (mag > maxApproachingVn) {
+                maxApproachingVn = mag;
+            }
+        }
+
+        adj[c->a].push_back(c->b);
+        adj[c->b].push_back(c->a);
+    }
+}
+
+bool isPathComponent(
+    const std::vector<Body*>& component,
+    const std::unordered_map<Body*, std::vector<Body*>>& adj) {
+    std::unordered_map<Body*, int> degree;
+    for (Body* b : component) {
+        degree[b] = 0;
+    }
+    for (Body* b : component) {
+        for (Body* nb : adj.at(b)) {
+            if (degree.find(nb) != degree.end()) {
+                degree[b]++;
+            }
+        }
+    }
+
+    int edgeCount = 0;
+    for (const auto& degEntry : degree) {
+        int d = degEntry.second;
+        edgeCount += d;
+        if (d > 2) {
+            return false;
+        }
+    }
+    edgeCount /= 2;
+    return edgeCount >= 2;
+}
+
+void walkOrderedPath(
+    const std::unordered_map<Body*, std::vector<Body*>>& adj,
+    const std::vector<Body*>& component,
+    std::vector<Body*>& ordered) {
+    ordered.clear();
+    if (component.empty()) {
+        return;
+    }
+
+    Body* start = component[0];
+    for (Body* b : component) {
+        if (adj.at(b).size() == 1) {
+            start = b;
+            break;
+        }
+    }
+
+    ordered.push_back(start);
+    Body* prev = nullptr;
+    Body* cur = start;
+    while (ordered.size() < component.size()) {
+        Body* next = nullptr;
+        for (Body* nb : adj.at(cur)) {
+            if (nb != prev) {
+                next = nb;
+                break;
+            }
+        }
+        if (!next) {
+            break;
+        }
+        ordered.push_back(next);
+        prev = cur;
+        cur = next;
+    }
+}
+
+int countAndVisitPathComponents(
+    const std::unordered_map<Body*, std::vector<Body*>>& adj,
+    bool visitOrderedPaths) {
+    int pathCount = 0;
+    std::unordered_set<Body*> visited;
+
+    for (const auto& entry : adj) {
+        Body* start = entry.first;
+        if (visited.count(start) != 0) {
+            continue;
+        }
+
+        std::vector<Body*> component;
+        std::vector<Body*> stack;
+        stack.push_back(start);
+        visited.insert(start);
+
+        while (!stack.empty()) {
+            Body* b = stack.back();
+            stack.pop_back();
+            component.push_back(b);
+            for (Body* nb : adj.at(b)) {
+                if (visited.insert(nb).second) {
+                    stack.push_back(nb);
+                }
+            }
+        }
+
+        if (!isPathComponent(component, adj)) {
+            continue;
+        }
+
+        pathCount++;
+        if (visitOrderedPaths) {
+            std::vector<Body*> ordered;
+            walkOrderedPath(adj, component, ordered);
+            (void)ordered;
+        }
+    }
+
+    return pathCount;
+}
+
 } // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
@@ -271,6 +406,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             if (isl.chainMaxApproachingVn > agg.maxApproachingVn) {
                 agg.maxApproachingVn = isl.chainMaxApproachingVn;
             }
+            agg.visitedPathCount += isl.chainPassVisitedPathCount;
+            agg.appliedPathCount += isl.chainPassAppliedPathCount;
         }
         lastChainResidual = agg;
 
@@ -429,75 +566,34 @@ void World::_characterizeIslandChainResidual(Island& island) {
     }
 
     std::unordered_map<Body*, std::vector<Body*>> adj;
-
-    for (ContactConstraint* c : island.contacts) {
-        float vn = computeContactVn(c);
-        if (!isChainEligible(c, vn)) {
-            continue;
-        }
-
-        island.chainEligibleContactCount++;
-        if (vn < -kChainResidualEps) {
-            float mag = std::abs(vn);
-            if (mag > island.chainMaxApproachingVn) {
-                island.chainMaxApproachingVn = mag;
-            }
-        }
-
-        adj[c->a].push_back(c->b);
-        adj[c->b].push_back(c->a);
+    buildEligibleAdjacency(island, adj, island.chainEligibleContactCount, island.chainMaxApproachingVn);
+    if (adj.empty()) {
+        return;
     }
 
-    std::unordered_set<Body*> visited;
-    for (const auto& entry : adj) {
-        Body* start = entry.first;
-        if (visited.count(start) != 0) {
-            continue;
-        }
+    island.chainPathCount = countAndVisitPathComponents(adj, false);
+}
 
-        std::vector<Body*> component;
-        std::vector<Body*> stack;
-        stack.push_back(start);
-        visited.insert(start);
+void World::_applyIslandChainRestitution(Island& island) {
+    island.chainPassVisitedPathCount = 0;
+    island.chainPassAppliedPathCount = 0;
 
-        while (!stack.empty()) {
-            Body* b = stack.back();
-            stack.pop_back();
-            component.push_back(b);
-            for (Body* nb : adj[b]) {
-                if (visited.insert(nb).second) {
-                    stack.push_back(nb);
-                }
-            }
-        }
-
-        std::unordered_map<Body*, int> degree;
-        for (Body* b : component) {
-            degree[b] = 0;
-        }
-        for (Body* b : component) {
-            for (Body* nb : adj[b]) {
-                if (degree.find(nb) != degree.end()) {
-                    degree[b]++;
-                }
-            }
-        }
-
-        int edgeCount = 0;
-        bool isBranch = false;
-        for (const auto& degEntry : degree) {
-            int d = degEntry.second;
-            edgeCount += d;
-            if (d > 2) {
-                isBranch = true;
-            }
-        }
-        edgeCount /= 2;
-
-        if (edgeCount >= 2 && !isBranch) {
-            island.chainPathCount++;
-        }
+    if (island.contacts.empty() ||
+        island.chainPathCount == 0 ||
+        island.chainEligibleContactCount < 2) {
+        return;
     }
+
+    std::unordered_map<Body*, std::vector<Body*>> adj;
+    int eligibleContactCount = 0;
+    float maxApproachingVn = 0.0f;
+    buildEligibleAdjacency(island, adj, eligibleContactCount, maxApproachingVn);
+    if (adj.empty()) {
+        return;
+    }
+
+    // Phase 4 elastic map hooks here; no solverBodies writes in this slice.
+    island.chainPassVisitedPathCount = countAndVisitPathComponents(adj, true);
 }
 
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
@@ -642,7 +738,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     }
 
     _characterizeIslandChainResidual(island);
-    // Chain-restitution pass may hook here after PGS (attempt 3+).
+    _applyIslandChainRestitution(island);
 
     // Sync velocities back
     for (Body* b : island.bodies) {
