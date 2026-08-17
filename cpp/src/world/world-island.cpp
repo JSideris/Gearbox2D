@@ -370,6 +370,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
 
 void World::_estimateIslandCoupledPe(Island& island, float dt) {
     island.coupledGravitationalWork = 0.0f;
+    island.coupledWorkByContact.clear();
 
     if (island.contacts.empty() || island.joints.empty()) {
         return;
@@ -396,6 +397,8 @@ void World::_estimateIslandCoupledPe(Island& island, float dt) {
 }
 
 void World::_applyIslandCoupledLaunchTax(Island& island, float dt) {
+    island.coupledWorkByContact.clear();
+
     if (island.contacts.empty() || island.joints.empty()) {
         return;
     }
@@ -434,6 +437,7 @@ void World::_applyIslandCoupledLaunchTax(Island& island, float dt) {
         float newBias = -std::sqrt(vAdjSq);
         if (std::isfinite(newBias)) {
             c->bias = newBias;
+            island.coupledWorkByContact[c] = Wc;
         }
     }
 }

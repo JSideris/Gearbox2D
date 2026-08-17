@@ -116,6 +116,7 @@ struct Island {
 
     bool canSleep;
     float coupledGravitationalWork = 0.0f;
+    std::unordered_map<ContactConstraint*, float> coupledWorkByContact;
 
     Island() : canSleep(false) {}
 
@@ -127,6 +128,7 @@ struct Island {
         jointBatches.clear();
         canSleep = false;
         coupledGravitationalWork = 0.0f;
+        coupledWorkByContact.clear();
     }
 };
 
