@@ -8,6 +8,43 @@
 #include "gear-joint.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+namespace {
+
+constexpr float kChainResidualEps = 1e-4f;
+constexpr float kChainRestitutionMin = 1.0f - 1e-6f;
+
+float computeContactVn(ContactConstraint* c) {
+    SolverData& sA = *static_cast<SolverData*>(c->context.a);
+    SolverData& sB = *static_cast<SolverData*>(c->context.b);
+    Vec2 vrA(-sA.w * c->rA.y, sA.w * c->rA.x);
+    Vec2 vrB(-sB.w * c->rB.y, sB.w * c->rB.x);
+    Vec2 relVel = (sB.v + vrB) - (sA.v + vrA);
+    return relVel.dot(c->normal);
+}
+
+bool isChainEligible(ContactConstraint* c, float vn) {
+    if (c->restitution < kChainRestitutionMin) {
+        return false;
+    }
+    SolverData& sA = *static_cast<SolverData*>(c->context.a);
+    SolverData& sB = *static_cast<SolverData*>(c->context.b);
+    if (sA.im <= 0.0f || sB.im <= 0.0f) {
+        return false;
+    }
+    if (!std::isfinite(vn)) {
+        return false;
+    }
+    if (c->depth < 0.0f && vn >= -kChainResidualEps) {
+        return false;
+    }
+    return true;
+}
+
+} // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
     int bodyCount = bodiesList.size();
@@ -128,7 +165,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 2. DFS partitioning
     std::vector<Island> islands;
-    
+    lastChainResidual = ChainResidualStats();
+
     // 2.1 Pre-initialize solver data for all bodies to avoid race conditions 
     // when multiple islands share a static body.
     for (int i = 0; i < bodyCount; ++i) {
@@ -225,6 +263,16 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             }
 #endif
         }
+
+        ChainResidualStats agg;
+        for (const Island& isl : islands) {
+            agg.pathCount += isl.chainPathCount;
+            agg.eligibleContactCount += isl.chainEligibleContactCount;
+            if (isl.chainMaxApproachingVn > agg.maxApproachingVn) {
+                agg.maxApproachingVn = isl.chainMaxApproachingVn;
+            }
+        }
+        lastChainResidual = agg;
 
         // --- Global Position Integration (SIMD) ---
         _doIntegratePositionsSIMD(dt);
@@ -371,6 +419,87 @@ void World::_colorIsland(Island& island) {
     }
 }
 
+void World::_characterizeIslandChainResidual(Island& island) {
+    island.chainPathCount = 0;
+    island.chainEligibleContactCount = 0;
+    island.chainMaxApproachingVn = 0.0f;
+
+    if (island.contacts.empty()) {
+        return;
+    }
+
+    std::unordered_map<Body*, std::vector<Body*>> adj;
+
+    for (ContactConstraint* c : island.contacts) {
+        float vn = computeContactVn(c);
+        if (!isChainEligible(c, vn)) {
+            continue;
+        }
+
+        island.chainEligibleContactCount++;
+        if (vn < -kChainResidualEps) {
+            float mag = std::abs(vn);
+            if (mag > island.chainMaxApproachingVn) {
+                island.chainMaxApproachingVn = mag;
+            }
+        }
+
+        adj[c->a].push_back(c->b);
+        adj[c->b].push_back(c->a);
+    }
+
+    std::unordered_set<Body*> visited;
+    for (const auto& entry : adj) {
+        Body* start = entry.first;
+        if (visited.count(start) != 0) {
+            continue;
+        }
+
+        std::vector<Body*> component;
+        std::vector<Body*> stack;
+        stack.push_back(start);
+        visited.insert(start);
+
+        while (!stack.empty()) {
+            Body* b = stack.back();
+            stack.pop_back();
+            component.push_back(b);
+            for (Body* nb : adj[b]) {
+                if (visited.insert(nb).second) {
+                    stack.push_back(nb);
+                }
+            }
+        }
+
+        std::unordered_map<Body*, int> degree;
+        for (Body* b : component) {
+            degree[b] = 0;
+        }
+        for (Body* b : component) {
+            for (Body* nb : adj[b]) {
+                if (degree.find(nb) != degree.end()) {
+                    degree[b]++;
+                }
+            }
+        }
+
+        int edgeCount = 0;
+        bool isBranch = false;
+        for (const auto& degEntry : degree) {
+            int d = degEntry.second;
+            edgeCount += d;
+            if (d > 2) {
+                isBranch = true;
+            }
+        }
+        edgeCount /= 2;
+
+        if (edgeCount >= 2 && !isBranch) {
+            island.chainPathCount++;
+        }
+    }
+}
+
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
@@ -512,6 +641,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
         }
     }
 
+    _characterizeIslandChainResidual(island);
     // Chain-restitution pass may hook here after PGS (attempt 3+).
 
     // Sync velocities back
