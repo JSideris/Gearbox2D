@@ -313,6 +313,20 @@ float incomingEdgeApproachingVn(Island& island, Body* a, Body* b) {
     return 0.0f;
 }
 
+bool isFrictionDominatedEdge(ContactConstraint* c) {
+    return c->staticFriction > kChainResidualEps || c->kineticFriction > kChainResidualEps;
+}
+
+bool orderedComponentHasFriction(Island& island, const std::vector<Body*>& ordered) {
+    for (size_t i = 0; i + 1 < ordered.size(); ++i) {
+        ContactConstraint* c = findEligibleContact(island, ordered[i], ordered[i + 1]);
+        if (c && isFrictionDominatedEdge(c)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool applyEqualMassNewtonMap(
     std::vector<SolverData>& solverBodies,
     const std::vector<Body*>& ordered,
@@ -410,6 +424,13 @@ void applyElasticMapToPathComponents(
         ContactConstraint* applyEdge =
             findEligibleContact(island, applyOrdered[0], applyOrdered[1]);
         if (!applyEdge || applyEdge->depth < 0.0f) {
+            continue;
+        }
+
+        if (applyEdge->restitution < kChainRestitutionMin) {
+            continue;
+        }
+        if (isFrictionDominatedEdge(applyEdge) || orderedComponentHasFriction(island, ordered)) {
             continue;
         }
 

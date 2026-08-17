@@ -534,3 +534,108 @@ TEST(ChainResidual, MappedCradleKeepsFiniteRodLength) {
 
 	EXPECT_TRUE(sawApply);
 }
+
+TEST(ChainResidual, FrictionDominatedPathSkipped) {
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	const float radius = 0.4f;
+	const float spacing = radius * 2.01f;
+	const int count = 3;
+
+	world.createBody(1, createBoxOptions(-spacing, 0.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(0.0f, 0.0f, 0.0f, true));
+	world.createBody(3, createBoxOptions(spacing, 0.0f, 0.0f, true));
+
+	for (int i = 0; i < count; ++i) {
+		float x = (i - 1) * spacing;
+		int ballId = 10 + i;
+		int anchorId = 100 + i;
+		world.createBody(anchorId, createBoxOptions(x, 0.0f, 0.0f, true));
+		emscripten_val ballOpts = createCircleOptions(x, 1.2f, 1.0f);
+		ballOpts.properties["sFriction"] = 1.0f;
+		ballOpts.properties["kFriction"] = 1.0f;
+		world.createBody(ballId, ballOpts);
+		world.createDistanceJoint(200 + i, anchorId, ballId, 0.0f, 0.0f, 0.0f, 0.0f, 1.2f);
+	}
+
+	Body* driver = world.getBody(10);
+	ASSERT_NE(driver, nullptr);
+	driver->setVelocityX(-4.0f);
+
+	for (int i = 0; i < 120; ++i) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		EXPECT_EQ(stats.appliedPathCount, 0);
+		EXPECT_TRUE(std::isfinite(driver->getX()));
+		EXPECT_TRUE(std::isfinite(driver->getY()));
+	}
+}
+
+TEST(ChainResidual, BranchedGraphNotApplied) {
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	const float radius = 0.4f;
+	const float spacing = radius * 2.0f;
+	const float overlap = 0.02f;
+
+	// T hub: center contacts left, right, and stem — no map on degree>2 components.
+	world.createBody(10, createCircleOptions(0.0f, 1.2f, 1.0f));
+	world.createBody(11, createCircleOptions(-spacing + overlap, 1.2f, 1.0f));
+	world.createBody(12, createCircleOptions(spacing - overlap, 1.2f, 1.0f));
+	world.createBody(13, createCircleOptions(0.0f, 1.2f - spacing + overlap, 1.0f));
+
+	for (int i = 0; i < 5; ++i) {
+		world.step();
+	}
+
+	Body* driver = world.getBody(13);
+	ASSERT_NE(driver, nullptr);
+	driver->setVelocityY(4.0f);
+
+	for (int i = 0; i < 120; ++i) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		EXPECT_EQ(stats.appliedPathCount, 0);
+		EXPECT_TRUE(std::isfinite(world.getBody(10)->getX()));
+		EXPECT_TRUE(std::isfinite(world.getBody(11)->getY()));
+	}
+}
+
+TEST(ChainResidual, LowRestitutionLineNeverApplies) {
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	const float radius = 0.4f;
+	const float spacing = radius * 2.01f;
+	const int count = 3;
+
+	world.createBody(1, createBoxOptions(-spacing, 0.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(0.0f, 0.0f, 0.0f, true));
+	world.createBody(3, createBoxOptions(spacing, 0.0f, 0.0f, true));
+
+	for (int i = 0; i < count; ++i) {
+		float x = (i - 1) * spacing;
+		int ballId = 10 + i;
+		int anchorId = 100 + i;
+		world.createBody(anchorId, createBoxOptions(x, 0.0f, 0.0f, true));
+		emscripten_val ballOpts = createCircleOptions(x, 1.2f, 1.0f);
+		ballOpts.properties["restitution"] = 0.2f;
+		world.createBody(ballId, ballOpts);
+		world.createDistanceJoint(200 + i, anchorId, ballId, 0.0f, 0.0f, 0.0f, 0.0f, 1.2f);
+	}
+
+	Body* driver = world.getBody(10);
+	ASSERT_NE(driver, nullptr);
+	driver->setVelocityX(-4.0f);
+
+	for (int i = 0; i < 120; ++i) {
+		world.step();
+		EXPECT_EQ(world.getLastChainResidual().appliedPathCount, 0);
+		EXPECT_TRUE(std::isfinite(driver->getX()));
+	}
+}
