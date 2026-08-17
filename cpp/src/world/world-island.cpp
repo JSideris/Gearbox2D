@@ -442,6 +442,21 @@ void World::_applyIslandCoupledLaunchTax(Island& island, float dt) {
     }
 }
 
+void World::_applyIslandCoupledPostSolveTax(Island& island, float dt) {
+    if (island.contacts.empty() || island.joints.empty()) {
+        return;
+    }
+    if (!islandHasGravity(island)) {
+        return;
+    }
+    if (island.coupledWorkByContact.empty()) {
+        return;
+    }
+    if (dt < 1e-8f) {
+        return;
+    }
+}
+
 void World::_colorIsland(Island& island) {
     island.contactBatches.clear();
     island.jointBatches.clear();
@@ -661,6 +676,8 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
             }
         }
     }
+
+    _applyIslandCoupledPostSolveTax(island, dt);
     
     // Sync velocities back
     for (Body* b : island.bodies) {

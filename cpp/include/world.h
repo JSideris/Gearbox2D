@@ -191,6 +191,7 @@ private:
     void _colorIsland(Island& island);
     void _estimateIslandCoupledPe(Island& island, float dt);
     void _applyIslandCoupledLaunchTax(Island& island, float dt);
+    void _applyIslandCoupledPostSolveTax(Island& island, float dt);
     void _solveIslandVelocity(Island& island, float dt, int substepIndex);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 
