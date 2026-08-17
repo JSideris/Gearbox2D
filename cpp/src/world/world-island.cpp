@@ -99,6 +99,20 @@ bool isPathComponent(
     return edgeCount >= 2;
 }
 
+bool isPairComponent(
+    const std::vector<Body*>& component,
+    const std::unordered_map<Body*, std::vector<Body*>>& adj) {
+    if (component.size() != 2) {
+        return false;
+    }
+    for (Body* b : component) {
+        if (adj.at(b).size() != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void walkOrderedPath(
     const std::unordered_map<Body*, std::vector<Body*>>& adj,
     const std::vector<Body*>& component,
@@ -177,6 +191,244 @@ int countAndVisitPathComponents(
     }
 
     return pathCount;
+}
+
+ContactConstraint* findEligibleContact(Island& island, Body* a, Body* b) {
+    for (ContactConstraint* c : island.contacts) {
+        if ((c->a == a && c->b == b) || (c->a == b && c->b == a)) {
+            float vn = computeContactVn(c);
+            if (isChainEligible(c, vn)) {
+                return c;
+            }
+        }
+    }
+    return nullptr;
+}
+
+float endpointApproachingSignal(ContactConstraint* c, Body* endpoint) {
+    if (!c) {
+        return 0.0f;
+    }
+    float vn = computeContactVn(c);
+    if (vn < -kChainResidualEps) {
+        return std::abs(vn);
+    }
+    return 0.0f;
+}
+
+bool bodiesEqualMass(
+    const std::vector<Body*>& ordered,
+    const std::vector<SolverData>& solverBodies) {
+    float refIm = 0.0f;
+    for (Body* b : ordered) {
+        float im = solverBodies[b->worldIndex].im;
+        if (im <= 0.0f) {
+            return false;
+        }
+        if (refIm == 0.0f) {
+            refIm = im;
+        } else {
+            float ratio = im / refIm;
+            if (ratio < 0.999999f || ratio > 1.000001f) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool orientPathIncoming(
+    Island& island,
+    std::vector<Body*>& ordered,
+    const std::vector<SolverData>& solverBodies,
+    Vec2& n_chain) {
+    if (ordered.size() < 2) {
+        return false;
+    }
+
+    ContactConstraint* firstEdge = findEligibleContact(island, ordered[0], ordered[1]);
+    if (!firstEdge) {
+        return false;
+    }
+
+    n_chain = firstEdge->normal;
+    if (firstEdge->a != ordered[0]) {
+        n_chain.x = -n_chain.x;
+        n_chain.y = -n_chain.y;
+    }
+
+    Body* end0 = ordered.front();
+    Body* end1 = ordered.back();
+    ContactConstraint* edge0 = findEligibleContact(island, ordered[0], ordered[1]);
+    ContactConstraint* edge1 = findEligibleContact(island, ordered[ordered.size() - 2], ordered[ordered.size() - 1]);
+
+    float signal0 = endpointApproachingSignal(edge0, end0);
+    float signal1 = endpointApproachingSignal(edge1, end1);
+    float u0 = std::abs(solverBodies[end0->worldIndex].v.dot(n_chain));
+    float u1 = std::abs(solverBodies[end1->worldIndex].v.dot(n_chain));
+    signal0 = std::max(signal0, u0);
+    signal1 = std::max(signal1, u1);
+
+    if (signal0 < kChainResidualEps && signal1 < kChainResidualEps) {
+        return false;
+    }
+
+    if (signal1 > signal0) {
+        std::reverse(ordered.begin(), ordered.end());
+        n_chain.x = -n_chain.x;
+        n_chain.y = -n_chain.y;
+    }
+
+    return true;
+}
+
+float maxPathApproachingVn(Island& island, const std::vector<Body*>& ordered) {
+    float maxVn = 0.0f;
+    for (size_t i = 0; i + 1 < ordered.size(); ++i) {
+        ContactConstraint* c = findEligibleContact(island, ordered[i], ordered[i + 1]);
+        if (!c) {
+            continue;
+        }
+        float vn = computeContactVn(c);
+        if (vn < -kChainResidualEps) {
+            float mag = std::abs(vn);
+            if (mag > maxVn) {
+                maxVn = mag;
+            }
+        }
+    }
+    return maxVn;
+}
+
+float incomingEdgeApproachingVn(Island& island, Body* a, Body* b) {
+    ContactConstraint* c = findEligibleContact(island, a, b);
+    if (!c) {
+        return 0.0f;
+    }
+    float vn = computeContactVn(c);
+    if (vn < -kChainResidualEps) {
+        return std::abs(vn);
+    }
+    return 0.0f;
+}
+
+bool applyEqualMassNewtonMap(
+    std::vector<SolverData>& solverBodies,
+    const std::vector<Body*>& ordered,
+    Vec2 n_chain) {
+    const size_t n = ordered.size();
+    if (n < 2) {
+        return false;
+    }
+
+    float uSum = 0.0f;
+    std::vector<float> uOld(n);
+    for (size_t i = 0; i < n; ++i) {
+        SolverData& sd = solverBodies[ordered[i]->worldIndex];
+        uOld[i] = sd.v.dot(n_chain);
+        if (!std::isfinite(uOld[i])) {
+            return false;
+        }
+        uSum += uOld[i];
+    }
+
+    std::vector<float> uNew(n, 0.0f);
+    uNew[n - 1] = uSum;
+    if (!std::isfinite(uNew[n - 1])) {
+        return false;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        SolverData& sd = solverBodies[ordered[i]->worldIndex];
+        if (!std::isfinite(sd.v.x) || !std::isfinite(sd.v.y)) {
+            return false;
+        }
+        sd.v.x = sd.v.x - n_chain.x * uOld[i] + n_chain.x * uNew[i];
+        sd.v.y = sd.v.y - n_chain.y * uOld[i] + n_chain.y * uNew[i];
+    }
+
+    return true;
+}
+
+void applyElasticMapToPathComponents(
+    std::vector<SolverData>& solverBodies,
+    Island& island,
+    const std::unordered_map<Body*, std::vector<Body*>>& adj,
+    int& visitedPathCount,
+    int& appliedPathCount) {
+    std::unordered_set<Body*> visited;
+
+    for (const auto& entry : adj) {
+        Body* start = entry.first;
+        if (visited.count(start) != 0) {
+            continue;
+        }
+
+        std::vector<Body*> component;
+        std::vector<Body*> stack;
+        stack.push_back(start);
+        visited.insert(start);
+
+        while (!stack.empty()) {
+            Body* b = stack.back();
+            stack.pop_back();
+            component.push_back(b);
+            for (Body* nb : adj.at(b)) {
+                if (visited.insert(nb).second) {
+                    stack.push_back(nb);
+                }
+            }
+        }
+
+        bool isPath = isPathComponent(component, adj);
+        bool isPair = isPairComponent(component, adj);
+        if (!isPath && !isPair) {
+            continue;
+        }
+
+        std::vector<Body*> ordered;
+        walkOrderedPath(adj, component, ordered);
+        if (ordered.size() != component.size() || ordered.size() < 2) {
+            continue;
+        }
+
+        visitedPathCount++;
+
+        if (!bodiesEqualMass(ordered, solverBodies)) {
+            continue;
+        }
+
+        Vec2 n_chain;
+        if (!orientPathIncoming(island, ordered, solverBodies, n_chain)) {
+            continue;
+        }
+
+        // Sequential cradle transfer: incoming pair only (not full-path lumping).
+        std::vector<Body*> applyOrdered = {ordered[0], ordered[1]};
+
+        ContactConstraint* applyEdge =
+            findEligibleContact(island, applyOrdered[0], applyOrdered[1]);
+        if (!applyEdge || applyEdge->depth < 0.0f) {
+            continue;
+        }
+
+        float maxVn = incomingEdgeApproachingVn(island, applyOrdered[0], applyOrdered[1]);
+        float incomingU = std::abs(solverBodies[applyOrdered.front()->worldIndex].v.dot(n_chain));
+        float neighborU = 0.0f;
+        if (applyOrdered.size() > 1) {
+            neighborU = std::abs(solverBodies[applyOrdered[1]->worldIndex].v.dot(n_chain));
+        }
+        bool hasApproach = maxVn > kChainResidualEps;
+        bool incomingDominant =
+            incomingU > kChainResidualEps && incomingU > neighborU + kChainResidualEps;
+        if (!hasApproach && !incomingDominant) {
+            continue;
+        }
+
+        if (applyEqualMassNewtonMap(solverBodies, applyOrdered, n_chain)) {
+            appliedPathCount++;
+        }
+    }
 }
 
 } // namespace
@@ -578,9 +830,7 @@ void World::_applyIslandChainRestitution(Island& island) {
     island.chainPassVisitedPathCount = 0;
     island.chainPassAppliedPathCount = 0;
 
-    if (island.contacts.empty() ||
-        island.chainPathCount == 0 ||
-        island.chainEligibleContactCount < 2) {
+    if (island.contacts.empty() || island.chainEligibleContactCount < 1) {
         return;
     }
 
@@ -592,8 +842,13 @@ void World::_applyIslandChainRestitution(Island& island) {
         return;
     }
 
-    // Phase 4 elastic map hooks here; no solverBodies writes in this slice.
-    island.chainPassVisitedPathCount = countAndVisitPathComponents(adj, true);
+    // Phase 4 elastic map: equal-mass Newton transfer along eligible paths.
+    applyElasticMapToPathComponents(
+        solverBodies,
+        island,
+        adj,
+        island.chainPassVisitedPathCount,
+        island.chainPassAppliedPathCount);
 }
 
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
