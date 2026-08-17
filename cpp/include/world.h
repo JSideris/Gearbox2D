@@ -205,6 +205,7 @@ private:
     void _colorIsland(Island& island);
     void _characterizeIslandChainResidual(Island& island);
     void _applyIslandChainRestitution(Island& island);
+    void _reprojectIslandJointsAfterChainMap(Island& island);
     void _solveIslandVelocity(Island& island, float dt, int substepIndex);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 

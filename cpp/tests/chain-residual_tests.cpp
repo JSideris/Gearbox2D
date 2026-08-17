@@ -446,3 +446,91 @@ TEST(ChainResidual, CradleStyleFiveBallMapEngages) {
 
 	EXPECT_TRUE(sawApply);
 }
+
+TEST(ChainResidual, FloorBounceStillNoApplyAfterJointReproject) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	emscripten_val floorOptions = createBoxOptions(0.0f, 10.0f, 0.0f, true);
+	floorOptions.properties["restitution"] = 1.0f;
+	world.createBody(1, floorOptions);
+
+	emscripten_val ballOptions = createBoxOptions(0.0f, 0.0f, 1.0f);
+	ballOptions.properties["shape"] = (int)ObjectShape::CIRCLE;
+	ballOptions.properties["radius"] = 0.5f;
+	ballOptions.properties["restitution"] = 1.0f;
+	ballOptions.properties["sFriction"] = 0.0f;
+	ballOptions.properties["kFriction"] = 0.0f;
+	ballOptions.properties["linearDamping"] = 0.0f;
+	ballOptions.properties["angularDamping"] = 0.0f;
+	ballOptions.properties["canSleep"] = false;
+	world.createBody(2, ballOptions);
+
+	Body* ball = world.getBody(2);
+	ASSERT_NE(ball, nullptr);
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		EXPECT_TRUE(std::isfinite(ball->getX()));
+		EXPECT_TRUE(std::isfinite(ball->getY()));
+		EXPECT_EQ(stats.pathCount, 0);
+		EXPECT_EQ(stats.visitedPathCount, 0);
+		EXPECT_EQ(stats.appliedPathCount, 0);
+	}
+}
+
+TEST(ChainResidual, MappedCradleKeepsFiniteRodLength) {
+	const int count = 5;
+	const float radius = 0.4f;
+	const float startY = -2.0f;
+	const float length = 4.0f;
+	const float spacing = radius * 2.01f;
+
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	Body* anchors[count] = {nullptr};
+	Body* balls[count] = {nullptr};
+
+	for (int i = 0; i < count; ++i) {
+		float x = (i - (count - 1) / 2.0f) * spacing;
+		int anchorId = 100 + i;
+		int ballId = 200 + i;
+
+		world.createBody(anchorId, createBoxOptions(x, startY, 0.0f, true));
+		anchors[i] = world.getBody(anchorId);
+
+		float ballX = (i == 0) ? x - 3.0f : x;
+		float ballY = (i == 0) ? startY + std::sqrt(length * length - 9.0f) : startY + length;
+
+		emscripten_val ballOpts = createCircleOptions(ballX, ballY, 1.0f);
+		ballOpts.properties["radius"] = radius;
+		world.createBody(ballId, ballOpts);
+		balls[i] = world.getBody(ballId);
+		world.createDistanceJoint(300 + i, anchorId, ballId, 0.0f, 0.0f, 0.0f, 0.0f, length);
+	}
+
+	bool sawApply = false;
+	for (int step = 0; step < 120; ++step) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		if (stats.appliedPathCount >= 1) {
+			sawApply = true;
+		}
+		for (int i = 0; i < count; ++i) {
+			ASSERT_NE(anchors[i], nullptr);
+			ASSERT_NE(balls[i], nullptr);
+			float dx = balls[i]->getX() - anchors[i]->getX();
+			float dy = balls[i]->getY() - anchors[i]->getY();
+			float dist = std::sqrt(dx * dx + dy * dy);
+			EXPECT_NEAR(dist, length, 0.05f);
+			EXPECT_TRUE(std::isfinite(balls[i]->getX()));
+			EXPECT_TRUE(std::isfinite(balls[i]->getY()));
+		}
+	}
+
+	EXPECT_TRUE(sawApply);
+}

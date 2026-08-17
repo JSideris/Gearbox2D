@@ -16,6 +16,7 @@ namespace {
 
 constexpr float kChainResidualEps = 1e-4f;
 constexpr float kChainRestitutionMin = 1.0f - 1e-6f;
+constexpr int kChainJointReprojectIters = 2;
 
 float computeContactVn(ContactConstraint* c) {
     SolverData& sA = *static_cast<SolverData*>(c->context.a);
@@ -427,6 +428,39 @@ void applyElasticMapToPathComponents(
 
         if (applyEqualMassNewtonMap(solverBodies, applyOrdered, n_chain)) {
             appliedPathCount++;
+        }
+    }
+}
+
+void solveIslandDistanceJointBatches(const Island& island) {
+    for (const auto& batch : island.jointBatches) {
+        for (size_t i = 0; i < batch.size(); ) {
+            if (i + 3 < batch.size()) {
+                Joint* j0 = batch[i];
+                Joint* j1 = batch[i + 1];
+                Joint* j2 = batch[i + 2];
+                Joint* j3 = batch[i + 3];
+
+                if (j0->getType() == JointType::DISTANCE &&
+                    j1->getType() == JointType::DISTANCE &&
+                    j2->getType() == JointType::DISTANCE &&
+                    j3->getType() == JointType::DISTANCE) {
+                    DistanceJoint* djs[4] = {
+                        static_cast<DistanceJoint*>(j0),
+                        static_cast<DistanceJoint*>(j1),
+                        static_cast<DistanceJoint*>(j2),
+                        static_cast<DistanceJoint*>(j3)
+                    };
+                    DistanceJoint::solveFastSIMD(djs);
+                    i += 4;
+                    continue;
+                }
+            }
+
+            if (batch[i]->getType() == JointType::DISTANCE) {
+                batch[i]->solveFast();
+            }
+            i++;
         }
     }
 }
@@ -851,6 +885,16 @@ void World::_applyIslandChainRestitution(Island& island) {
         island.chainPassAppliedPathCount);
 }
 
+void World::_reprojectIslandJointsAfterChainMap(Island& island) {
+    if (island.joints.empty() || island.chainPassAppliedPathCount == 0) {
+        return;
+    }
+
+    for (int iter = 0; iter < kChainJointReprojectIters; ++iter) {
+        solveIslandDistanceJointBatches(island);
+    }
+}
+
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
@@ -994,6 +1038,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
 
     _characterizeIslandChainResidual(island);
     _applyIslandChainRestitution(island);
+    _reprojectIslandJointsAfterChainMap(island);
 
     // Sync velocities back
     for (Body* b : island.bodies) {
