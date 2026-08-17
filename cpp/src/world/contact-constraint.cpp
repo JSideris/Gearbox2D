@@ -36,6 +36,8 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
 
     if (shouldBounce) {
+        // Speculative (depth < 0): expectedDisplacement = 0 (Component A only).
+        // Real overlap (depth > 0): §2.3 d_eff for position-correction work.
         if (depth > 0.0f) {
             float depthAfterVelocity = std::max(0.0f, (depth - PENETRATION_SLOP) - vBounce * dt);
             int n = a->world.getPositionIterations();
@@ -187,6 +189,8 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
 
     // Component B: Kinematic Energy Balancing
+    // Speculative (depth < 0): expectedDisp = 0 (Component A only).
+    // Real overlap (depth > 0): §2.3 d_eff for position-correction work.
     int posIter = world.getPositionIterations();
     float posIterFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)posIter);
     V128 cumCorrFactor = v128_splat_f32(posIterFactor);

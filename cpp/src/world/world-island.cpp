@@ -71,6 +71,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         contactConstraints.push_back(c);
     }
     
+    // KRB split: contact/joint bias is computed here before island DFS.
+    // Coupled contact+joint PE audit (whitepaper §6) must run after islands exist.
     // 1.5 SIMD preSolve for contacts
     int contactCount = contactConstraints.size();
     int contactVectorizedCount = (contactCount / 4) * 4;

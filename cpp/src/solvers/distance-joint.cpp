@@ -49,7 +49,8 @@ void DistanceJoint::preSolve(float dt) {
     // Component A: Force Velocity Compensation
     float forceVn = (bodyB->getForceVelocity() - bodyA->getForceVelocity()).dot(normal);
     
-    // Component B: Energy Audit for the correction work
+    // Attempt-1 bidirectional Component B (frozen for iterate attempt 2).
+    // Audits joint stretch along rod; does not cover coupled contact+joint PE (§6).
     float v_bias_ideal = BAUMGARTE_FACTOR * C / dt;
     float expectedDisplacement = v_bias_ideal * dt; 
     float accVn = forceVn / dt;
@@ -168,7 +169,8 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
 
     V128 forceVn = v128_dot_f32(v128_sub_f32(forceVX_B, forceVX_A), v128_sub_f32(forceVY_B, forceVY_A), normalX, normalY);
 
-    // Component B: Energy Audit for the correction work
+    // Attempt-1 bidirectional Component B (frozen for iterate attempt 2).
+    // Audits joint stretch along rod; does not cover coupled contact+joint PE (§6).
     V128 expectedDisplacement = v128_mul_f32(v_bias_ideal, dt_v);
     V128 accVn = v128_div_f32(forceVn, dt_v);
     V128 workTerm = v128_mul_f32(v128_splat_f32(2.0f), v128_mul_f32(accVn, expectedDisplacement));
