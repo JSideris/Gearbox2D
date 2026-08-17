@@ -8,6 +8,78 @@
 #include "gear-joint.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
+
+namespace {
+
+bool islandHasGravity(const Island& island) {
+    for (Body* b : island.bodies) {
+        if (b->getInverseMass() > 0.0f) {
+            Vec2 forceVel = b->getForceVelocity();
+            if (forceVel.magnitudeSquared() > 1e-16f) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+float computeCoupledPairWork(DistanceJoint* dj, ContactConstraint* c, float dt) {
+    if (dt < 1e-8f) {
+        return 0.0f;
+    }
+
+    Body* bodyA = dj->bodyA;
+    Body* bodyB = dj->bodyB;
+    float imA = bodyA->getInverseMass();
+    float imB = bodyB->getInverseMass();
+
+    Body* dyn = nullptr;
+    if (imA > 0.0f && imB == 0.0f) {
+        dyn = bodyA;
+    } else if (imB > 0.0f && imA == 0.0f) {
+        dyn = bodyB;
+    } else {
+        return 0.0f;
+    }
+
+    if (c->a != dyn && c->b != dyn) {
+        return 0.0f;
+    }
+    if (c->depth < 0.0f) {
+        return 0.0f;
+    }
+    if (c->depth > 0.0f && c->bias == 0.0f) {
+        return 0.0f;
+    }
+    if (!(c->depth > 0.0f && c->bias != 0.0f)) {
+        return 0.0f;
+    }
+
+    Vec2 rA = dj->getLocalAnchorA().rotate(bodyA->getRotation());
+    Vec2 rB = dj->getLocalAnchorB().rotate(bodyB->getRotation());
+    Vec2 d = (bodyB->getPosition() + rB) - (bodyA->getPosition() + rA);
+    float dMag = d.magnitude();
+    if (dMag < 1e-4f) {
+        return 0.0f;
+    }
+    Vec2 nRod = d * (1.0f / dMag);
+
+    const float eps = 1e-8f;
+    float vLaunchRel = -c->bias;
+    Body* other = (c->a == dyn) ? c->b : c->a;
+    Vec2 nOnDyn = (c->b == dyn) ? c->normal : Vec2(-c->normal.x, -c->normal.y);
+    float imDyn = dyn->getInverseMass();
+    float imOther = other->getInverseMass();
+    float share = imDyn / std::max(imDyn + imOther, eps);
+    Vec2 vDyn = nOnDyn * (share * vLaunchRel);
+    Vec2 vTan = vDyn - nRod * vDyn.dot(nRod);
+    Vec2 delta = vTan * dt;
+    Vec2 acc = dyn->getForceVelocity() * (1.0f / dt);
+    return 2.0f * acc.dot(delta);
+}
+
+} // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
     int bodyCount = bodiesList.size();
@@ -205,6 +277,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             _colorIsland(currentIsland);
             _estimateIslandCoupledPe(currentIsland, dt);
             lastCoupledGravitationalWork += currentIsland.coupledGravitationalWork;
+            _applyIslandCoupledLaunchTax(currentIsland, dt);
             islands.push_back(std::move(currentIsland));
         }
     }
@@ -302,22 +375,11 @@ void World::_estimateIslandCoupledPe(Island& island, float dt) {
         return;
     }
 
-    bool hasGravity = false;
-    for (Body* b : island.bodies) {
-        if (b->getInverseMass() > 0.0f) {
-            Vec2 forceVel = b->getForceVelocity();
-            if (forceVel.magnitudeSquared() > 1e-16f) {
-                hasGravity = true;
-                break;
-            }
-        }
-    }
-    if (!hasGravity) {
+    if (!islandHasGravity(island)) {
         return;
     }
 
     float work = 0.0f;
-    const float eps = 1e-8f;
 
     for (Joint* j : island.joints) {
         DistanceJoint* dj = dynamic_cast<DistanceJoint*>(j);
@@ -325,58 +387,55 @@ void World::_estimateIslandCoupledPe(Island& island, float dt) {
             continue;
         }
 
-        Body* bodyA = dj->bodyA;
-        Body* bodyB = dj->bodyB;
-        float imA = bodyA->getInverseMass();
-        float imB = bodyB->getInverseMass();
-
-        Body* dyn = nullptr;
-        if (imA > 0.0f && imB == 0.0f) {
-            dyn = bodyA;
-        } else if (imB > 0.0f && imA == 0.0f) {
-            dyn = bodyB;
-        } else {
-            continue;
-        }
-
-        Vec2 rA = dj->getLocalAnchorA().rotate(bodyA->getRotation());
-        Vec2 rB = dj->getLocalAnchorB().rotate(bodyB->getRotation());
-        Vec2 d = (bodyB->getPosition() + rB) - (bodyA->getPosition() + rA);
-        float dMag = d.magnitude();
-        if (dMag < 1e-4f) {
-            continue;
-        }
-        Vec2 nRod = d * (1.0f / dMag);
-
         for (ContactConstraint* c : island.contacts) {
-            if (c->a != dyn && c->b != dyn) {
-                continue;
-            }
-            if (c->depth < 0.0f) {
-                continue;
-            }
-            if (c->depth > 0.0f && c->bias == 0.0f) {
-                continue;
-            }
-            if (!(c->depth > 0.0f && c->bias != 0.0f)) {
-                continue;
-            }
-
-            float vLaunchRel = -c->bias;
-            Body* other = (c->a == dyn) ? c->b : c->a;
-            Vec2 nOnDyn = (c->b == dyn) ? c->normal : Vec2(-c->normal.x, -c->normal.y);
-            float imDyn = dyn->getInverseMass();
-            float imOther = other->getInverseMass();
-            float share = imDyn / std::max(imDyn + imOther, eps);
-            Vec2 vDyn = nOnDyn * (share * vLaunchRel);
-            Vec2 vTan = vDyn - nRod * vDyn.dot(nRod);
-            Vec2 delta = vTan * dt;
-            Vec2 acc = dyn->getForceVelocity() * (1.0f / dt);
-            work += 2.0f * acc.dot(delta);
+            work += computeCoupledPairWork(dj, c, dt);
         }
     }
 
     island.coupledGravitationalWork = work;
+}
+
+void World::_applyIslandCoupledLaunchTax(Island& island, float dt) {
+    if (island.contacts.empty() || island.joints.empty()) {
+        return;
+    }
+    if (!islandHasGravity(island)) {
+        return;
+    }
+    if (dt < 1e-8f) {
+        return;
+    }
+
+    std::unordered_map<ContactConstraint*, float> workByContact;
+
+    for (Joint* j : island.joints) {
+        DistanceJoint* dj = dynamic_cast<DistanceJoint*>(j);
+        if (!dj) {
+            continue;
+        }
+
+        for (ContactConstraint* c : island.contacts) {
+            float pairWork = computeCoupledPairWork(dj, c, dt);
+            if (pairWork != 0.0f) {
+                workByContact[c] += pairWork;
+            }
+        }
+    }
+
+    for (const auto& entry : workByContact) {
+        ContactConstraint* c = entry.first;
+        float Wc = entry.second;
+        if (c->depth <= 0.0f || c->bias == 0.0f || Wc == 0.0f) {
+            continue;
+        }
+
+        float vLaunchSq = c->bias * c->bias;
+        float vAdjSq = std::max(0.0f, vLaunchSq + Wc);
+        float newBias = -std::sqrt(vAdjSq);
+        if (std::isfinite(newBias)) {
+            c->bias = newBias;
+        }
+    }
 }
 
 void World::_colorIsland(Island& island) {

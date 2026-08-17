@@ -128,3 +128,61 @@ TEST(KrbCoupledEstimate, HungHorizontalBounce) {
 
 	EXPECT_NE(observed, 0.0f);
 }
+
+TEST(KrbCoupledEstimate, LaunchTaxDoesNotTouchStack) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 5.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(0.0f, 3.5f, 1.0f));
+	world.createBody(3, createBoxOptions(0.0f, 2.0f, 1.0f));
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+	}
+
+	Body* lower = world.getBody(2);
+	Body* upper = world.getBody(3);
+	ASSERT_NE(lower, nullptr);
+	ASSERT_NE(upper, nullptr);
+
+	EXPECT_TRUE(std::isfinite(lower->getPosition().x));
+	EXPECT_TRUE(std::isfinite(lower->getPosition().y));
+	EXPECT_TRUE(std::isfinite(upper->getPosition().x));
+	EXPECT_TRUE(std::isfinite(upper->getPosition().y));
+	EXPECT_TRUE(std::isfinite(lower->getVelocity().x));
+	EXPECT_TRUE(std::isfinite(lower->getVelocity().y));
+	EXPECT_TRUE(std::isfinite(upper->getVelocity().x));
+	EXPECT_TRUE(std::isfinite(upper->getVelocity().y));
+
+	float work = world.getLastCoupledGravitationalWork();
+	EXPECT_TRUE(std::isfinite(work));
+	EXPECT_NEAR(work, 0.0f, 1e-6f);
+}
+
+TEST(KrbCoupledEstimate, LaunchTaxDoesNotTouchSpeculative) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 0.0f, 0.0f, true));
+	world.createBody(2, createCircleOptions(0.0f, 2.0f, 1.0f));
+	world.createDistanceJoint(10, 1, 2, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
+
+	world.createBody(3, createCircleOptions(5.0f, 2.0f, 1.0f));
+
+	for (int i = 0; i < 30; ++i) {
+		world.step();
+	}
+
+	Body* neighbor = world.getBody(3);
+	ASSERT_NE(neighbor, nullptr);
+	EXPECT_TRUE(std::isfinite(neighbor->getPosition().x));
+	EXPECT_TRUE(std::isfinite(neighbor->getPosition().y));
+	EXPECT_NEAR(neighbor->getVelocity().x, 0.0f, 0.1f);
+
+	float work = world.getLastCoupledGravitationalWork();
+	EXPECT_TRUE(std::isfinite(work));
+	EXPECT_NEAR(work, 0.0f, 1e-6f);
+}
