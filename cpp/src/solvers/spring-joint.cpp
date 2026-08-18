@@ -354,14 +354,15 @@ void SpringJoint::solveFastSIMD(SpringJoint** joints) {
     V128 lambda = v128_mul_f32(
         v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(mass, v128_add_f32(v128_add_f32(Cdot, bias), v128_mul_f32(gamma, impulse)))),
         slipScale);
+    V128 maxLambda = v128_splat_f32(MAX_POSITION_CORRECTION);
+    V128 isSpring = v128_gt_f32(frequencyHz, zero_v);
+    // Match scalar order: clampSoftSpringLambda, then arm-spin scale, then impulse budget.
+    V128 clamped = v128_min_f32(maxLambda, v128_max_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), lambda));
+    lambda = v128_select(isSpring, clamped, lambda);
     V128 maxBias = v128_div_f32(v128_splat_f32(MAX_POSITION_CORRECTION), dt_v);
     V128 armSpin = v128_abs_f32(wB);
     V128 lambdaArmScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_div_f32(armSpin, maxBias)));
-    V128 maxLambda = v128_splat_f32(MAX_POSITION_CORRECTION);
-    V128 isSpring = v128_gt_f32(frequencyHz, zero_v);
     lambda = v128_mul_f32(lambda, v128_select(isSpring, lambdaArmScale, v128_splat_f32(1.0f)));
-    V128 clamped = v128_min_f32(maxLambda, v128_max_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), lambda));
-    lambda = v128_select(isSpring, clamped, lambda);
     V128 budgeted = v128_sub_f32(maxLambda, impulse);
     V128 negBudgeted = v128_sub_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), impulse);
     lambda = v128_select(isSpring, v128_min_f32(budgeted, v128_max_f32(negBudgeted, lambda)), lambda);

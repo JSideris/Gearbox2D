@@ -131,11 +131,17 @@ void GearJoint::solveFastSIMD(GearJoint** joints) {
     // lambda = -mass * Cdot * slipScale
     V128 lambda = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(v128_mul_f32(mass, Cdot), slipScale));
     V128 maxOmegaStep = v128_splat_f32(0.5f * MAX_POSITION_CORRECTION / std::max(joints[0]->_dt, 1e-6f));
+    V128 zero_v = v128_splat_f32(0.0f);
     V128 maxFromWheel = v128_div_f32(maxOmegaStep, iID);
     V128 maxFromEngine = v128_div_f32(maxOmegaStep, v128_mul_f32(ratio, iIB));
-    V128 maxLambda = v128_min_f32(maxFromWheel, maxFromEngine);
-    V128 negMaxLambda = v128_mul_f32(maxLambda, v128_splat_f32(-1.0f));
-    lambda = v128_min_f32(maxLambda, v128_max_f32(negMaxLambda, lambda));
+    V128 wheelValid = v128_gt_f32(iID, zero_v);
+    V128 engineValid = v128_and(v128_gt_f32(iIB, zero_v), v128_ne_f32(ratio, zero_v));
+    V128 negMaxFromWheel = v128_neg_f32(maxFromWheel);
+    V128 negMaxFromEngine = v128_neg_f32(maxFromEngine);
+    V128 clampedWheel = v128_min_f32(maxFromWheel, v128_max_f32(negMaxFromWheel, lambda));
+    lambda = v128_select(wheelValid, clampedWheel, lambda);
+    V128 clampedEngine = v128_min_f32(maxFromEngine, v128_max_f32(negMaxFromEngine, lambda));
+    lambda = v128_select(engineValid, clampedEngine, lambda);
 
     // Apply updates
     V128 ratioLambda = v128_mul_f32(ratio, lambda);
