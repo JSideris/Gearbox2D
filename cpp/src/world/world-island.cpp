@@ -1792,8 +1792,29 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
         }
     }
 
+    bool islandHasHingeOrGear = false;
+    for (Joint* j : island.joints) {
+        if (j && (j->getType() == JointType::HINGE || j->getType() == JointType::GEAR)) {
+            islandHasHingeOrGear = true;
+            break;
+        }
+    }
+
     for (int iter = 0; iter < velocityIterations; ++iter) {
-        if (islandHasOverlappingContact(island) || islandHasSpringJoint) {
+        const bool iterOverlapping = islandHasOverlappingContact(island);
+        const bool skipDistanceSolveFast = !overlapping && !islandHasSpringJoint;
+        const bool contactFreeMechanical =
+            !overlapping && island.contacts.empty();
+        const bool runHingeFast =
+            islandHasHingeOrGear &&
+            (iterOverlapping || contactFreeMechanical);
+        const bool runGearFast =
+            islandHasHingeOrGear &&
+            (islandHasSpringJoint || contactFreeMechanical);
+        const bool enterJointLoop =
+            iterOverlapping || islandHasSpringJoint ||
+            (islandHasHingeOrGear && !overlapping);
+        if (enterJointLoop) {
         for (int springPass = 0; springPass < 2; ++springPass) {
         for (const auto& batch : island.jointBatches) {
             for (size_t i = 0; i < batch.size(); ) {
@@ -1828,7 +1849,9 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                             static_cast<DistanceJoint*>(j2),
                             static_cast<DistanceJoint*>(j3)
                         };
-                        DistanceJoint::solveFastSIMD(djs);
+                        if (!skipDistanceSolveFast) {
+                            DistanceJoint::solveFastSIMD(djs);
+                        }
                         i += 4;
                         continue;
                     }
@@ -1852,13 +1875,15 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                         j1->getType() == JointType::HINGE &&
                         j2->getType() == JointType::HINGE &&
                         j3->getType() == JointType::HINGE) {
-                        HingeJoint* hjs[4] = {
-                            static_cast<HingeJoint*>(j0),
-                            static_cast<HingeJoint*>(j1),
-                            static_cast<HingeJoint*>(j2),
-                            static_cast<HingeJoint*>(j3)
-                        };
-                        HingeJoint::solveFastSIMD(hjs);
+                        if (runHingeFast) {
+                            HingeJoint* hjs[4] = {
+                                static_cast<HingeJoint*>(j0),
+                                static_cast<HingeJoint*>(j1),
+                                static_cast<HingeJoint*>(j2),
+                                static_cast<HingeJoint*>(j3)
+                            };
+                            HingeJoint::solveFastSIMD(hjs);
+                        }
                         i += 4;
                         continue;
                     }
@@ -1867,13 +1892,15 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                         j1->getType() == JointType::GEAR &&
                         j2->getType() == JointType::GEAR &&
                         j3->getType() == JointType::GEAR) {
-                        GearJoint* gjs[4] = {
-                            static_cast<GearJoint*>(j0),
-                            static_cast<GearJoint*>(j1),
-                            static_cast<GearJoint*>(j2),
-                            static_cast<GearJoint*>(j3)
-                        };
-                        GearJoint::solveFastSIMD(gjs);
+                        if (runGearFast) {
+                            GearJoint* gjs[4] = {
+                                static_cast<GearJoint*>(j0),
+                                static_cast<GearJoint*>(j1),
+                                static_cast<GearJoint*>(j2),
+                                static_cast<GearJoint*>(j3)
+                            };
+                            GearJoint::solveFastSIMD(gjs);
+                        }
                         i += 4;
                         continue;
                     }
@@ -1884,14 +1911,28 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                     i++;
                     continue;
                 }
+                if (skipDistanceSolveFast && joint->getType() == JointType::DISTANCE) {
+                    i++;
+                    continue;
+                }
+                if (!runHingeFast && joint->getType() == JointType::HINGE) {
+                    i++;
+                    continue;
+                }
+                if (!runGearFast && joint->getType() == JointType::GEAR) {
+                    i++;
+                    continue;
+                }
                 joint->solveFast();
                 i++;
             }
         }
         }
-        solveIslandContacts();
+        if (iterOverlapping || islandHasSpringJoint) {
+            solveIslandContacts();
         }
-        if (!islandHasOverlappingContact(island)) {
+        }
+        if (!iterOverlapping) {
             solveIslandContacts();
             for (Joint* j : island.joints) {
                 if (j && j->getType() == JointType::DISTANCE) {
@@ -1935,9 +1976,6 @@ void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
                     if (!j || j->getType() == JointType::SPRING) {
                         continue;
                     }
-                    if (j->getType() == JointType::GEAR && !islandHasSpringJoint) {
-                        continue;
-                    }
                     j->solvePosition();
                 }
             }
@@ -1959,7 +1997,8 @@ void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
                     if (!j) {
                         continue;
                     }
-                    if (j->getType() == JointType::GEAR && !islandHasSpringJoint) {
+                    if (j->getType() == JointType::GEAR && !islandHasSpringJoint &&
+                        islandHasOverlappingContact(island)) {
                         continue;
                     }
                     j->solvePosition();

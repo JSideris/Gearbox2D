@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
+#include <vector>
 #include "world.h"
 #include "body.h"
 #include "fixture.h"
 #include "hinge-joint.h"
 #include "gear-joint.h"
+#include "constants.h"
 
 class GearJointTest : public ::testing::Test {
 protected:
@@ -18,6 +20,7 @@ protected:
         options.properties["width"] = 1.0f;
         options.properties["height"] = 1.0f;
         options.properties["mass"] = 1.0f;
+        options.properties["maskBits"] = 0;
     }
 };
 
@@ -138,5 +141,97 @@ TEST_F(GearJointTest, UpdateRatioAtRuntime) {
     
     // w2 should be approximately -0.5 * w1
     EXPECT_NEAR(obj2->getAngularVelocity(), -0.5f * obj1->getAngularVelocity(), 0.1f);
+}
+
+TEST_F(GearJointTest, GearPhaseConstraintHolds) {
+    int idStatic = 1, id1 = 2, id2 = 3;
+    int hinge1Id = 101, hinge2Id = 102, gearId = 200;
+
+    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    world.createBody(idStatic, options);
+
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    options.properties["x"] = 1.0f;
+    world.createBody(id1, options);
+
+    options.properties["x"] = -1.0f;
+    world.createBody(id2, options);
+
+    world.createHingeJoint(hinge1Id, idStatic, id1, 1.0f, 0.0f, 0.0f, 0.0f);
+    world.createHingeJoint(hinge2Id, idStatic, id2, -1.0f, 0.0f, 0.0f, 0.0f);
+    world.createGearJoint(gearId, hinge1Id, hinge2Id, 2.0f);
+
+    Body* obj1 = world.getBody(id1);
+    Body* obj2 = world.getBody(id2);
+    obj1->setAngularVelocity(1.0f);
+
+    for (int i = 0; i < 300; ++i) {
+        world.step();
+    }
+
+    const float C = 2.0f * obj1->getRotation() + obj2->getRotation();
+    EXPECT_NEAR(C, 0.0f, PENETRATION_SLOP);
+}
+
+TEST_F(GearJointTest, GearTrainFiveGears) {
+    constexpr int kNumGears = 5;
+    constexpr float kStartX = 2.0f;
+    constexpr float kY = 0.0f;
+    constexpr float kSpacing = 1.5f;
+
+    int idStatic = 1;
+    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    options.properties["maskBits"] = 0;
+    world.createBody(idStatic, options);
+
+    std::vector<int> gearIds;
+    std::vector<int> hingeIds;
+    gearIds.reserve(kNumGears);
+    hingeIds.reserve(kNumGears);
+
+    for (int i = 0; i < kNumGears; ++i) {
+        const float size = (i % 2 == 0) ? 1.0f : 0.5f;
+        const float x = kStartX + static_cast<float>(i) * kSpacing;
+        const int gearId = 10 + i;
+        const int hingeId = 100 + i;
+
+        options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+        options.properties["x"] = x;
+        options.properties["y"] = kY;
+        options.properties["mass"] = size;
+        options.properties["shape"] = static_cast<int>(ObjectShape::CIRCLE);
+        options.properties["radius"] = size;
+        options.properties["maskBits"] = 0;
+        world.createBody(gearId, options);
+
+        world.createHingeJoint(hingeId, idStatic, gearId, x, kY, 0.0f, 0.0f);
+        gearIds.push_back(gearId);
+        hingeIds.push_back(hingeId);
+    }
+
+    std::vector<float> ratios;
+    for (int i = 1; i < kNumGears; ++i) {
+        const float prevSize = ((i - 1) % 2 == 0) ? 1.0f : 0.5f;
+        const float currSize = (i % 2 == 0) ? 1.0f : 0.5f;
+        const float ratio = prevSize / currSize;
+        ratios.push_back(ratio);
+        world.createGearJoint(200 + i, hingeIds[i - 1], hingeIds[i], ratio);
+    }
+
+    world.getBody(gearIds[0])->setAngularVelocity(1.0f);
+
+    for (int i = 0; i < 60; ++i) {
+        world.step();
+    }
+
+    for (int i = 0; i < kNumGears; ++i) {
+        EXPECT_GT(std::abs(world.getBody(gearIds[i])->getAngularVelocity()), 0.0f);
+    }
+
+    for (int i = 0; i < kNumGears - 1; ++i) {
+        Body* a = world.getBody(gearIds[i]);
+        Body* b = world.getBody(gearIds[i + 1]);
+        EXPECT_NEAR(b->getAngularVelocity(), -ratios[i] * a->getAngularVelocity(), 0.1f);
+    }
 }
 
