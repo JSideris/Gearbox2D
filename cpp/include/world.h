@@ -106,14 +106,6 @@ struct WarmStartData {
     int count = 0;
 };
 
-struct ChainResidualStats {
-    int pathCount = 0;
-    int eligibleContactCount = 0;
-    float maxApproachingVn = 0.0f;
-    int visitedPathCount = 0;
-    int appliedPathCount = 0;
-};
-
 struct Island {
     std::vector<Body*> bodies;
     std::vector<ContactConstraint*> contacts;
@@ -123,11 +115,6 @@ struct Island {
     std::vector<std::vector<Joint*>> jointBatches;
 
     bool canSleep;
-    int chainPathCount = 0;
-    int chainEligibleContactCount = 0;
-    float chainMaxApproachingVn = 0.0f;
-    int chainPassVisitedPathCount = 0;
-    int chainPassAppliedPathCount = 0;
 
     Island() : canSleep(false) {}
 
@@ -138,11 +125,6 @@ struct Island {
         contactBatches.clear();
         jointBatches.clear();
         canSleep = false;
-        chainPathCount = 0;
-        chainEligibleContactCount = 0;
-        chainMaxApproachingVn = 0.0f;
-        chainPassVisitedPathCount = 0;
-        chainPassAppliedPathCount = 0;
     }
 };
 
@@ -175,7 +157,6 @@ private:
     int positionIterations = 3;
     int velocitySubSteps = 1;
     float speculativeMargin = 0.01f; // Default speculative margin
-    ChainResidualStats lastChainResidual;
     int nextFixtureId = 1;
 
 #ifdef GEARBOX_MT
@@ -203,9 +184,6 @@ private:
 
     void _buildAndProcessIslands(float dt, int substepIndex);
     void _colorIsland(Island& island);
-    void _characterizeIslandChainResidual(Island& island);
-    void _applyIslandChainRestitution(Island& island);
-    void _reprojectIslandJointsAfterChainMap(Island& island);
     void _solveIslandVelocity(Island& island, float dt, int substepIndex);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 
@@ -254,7 +232,6 @@ public:
     void setHasFriction(bool value);
     void setGravity(float x, float y);
     Vec2 getGravity() const { return gravity; }
-    ChainResidualStats getLastChainResidual() const { return lastChainResidual; }
 
     std::vector<int> queryBodiesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
     std::vector<int> queryFixturesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
