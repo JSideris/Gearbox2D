@@ -1189,6 +1189,9 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
 
     // 2.2 Vectorized SpringJoints
+    for (SpringJoint* sj : springJoints) {
+        sj->setWeakenOnContactIsland(false);
+    }
     int sjCount = springJoints.size();
     int sjVectorizedCount = (sjCount / 4) * 4;
     for (int i = 0; i < sjVectorizedCount; i += 4) {
@@ -1751,9 +1754,13 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
     }
     
     // Prepare joints
+    const bool overlapping = islandHasOverlappingContact(island);
     for (Joint* j : island.joints) {
         j->context.a = &getSolverBody(j->bodyA);
         j->context.b = &getSolverBody(j->bodyB);
+        if (SpringJoint* spring = dynamic_cast<SpringJoint*>(j)) {
+            spring->setWeakenOnContactIsland(overlapping);
+        }
         GearJoint* gear = dynamic_cast<GearJoint*>(j);
         if (gear) {
             gear->context.a = &getSolverBody(gear->joint1->bodyA);

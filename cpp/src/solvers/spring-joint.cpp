@@ -14,6 +14,16 @@ float clampSoftSpringLambda(float lambda, float frequencyHz) {
 	return std::max(-MAX_POSITION_CORRECTION, std::min(MAX_POSITION_CORRECTION, lambda));
 }
 
+float clampSoftSpringImpulse(float impulse, float lambda) {
+	if (impulse + lambda > MAX_POSITION_CORRECTION) {
+		return MAX_POSITION_CORRECTION - impulse;
+	}
+	if (impulse + lambda < -MAX_POSITION_CORRECTION) {
+		return -MAX_POSITION_CORRECTION - impulse;
+	}
+	return lambda;
+}
+
 } // namespace
 
 SpringJoint::SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio)
@@ -231,7 +241,16 @@ void SpringJoint::solve() {
     float Cdot = (vB + vrB - (vA + vrA)).dot(normal);
     float lambda;
     if (frequencyHz > 0.0f) {
-        lambda = -mass * (Cdot + bias + gamma * impulse);
+        if (weakenOnContactIsland) {
+            const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
+            lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
+            const float armSpin = std::abs(wB);
+            const float maxBias = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
+            lambda *= 1.0f / (1.0f + armSpin / maxBias);
+            lambda = clampSoftSpringImpulse(impulse, lambda);
+        } else {
+            lambda = -mass * (Cdot + bias + gamma * impulse);
+        }
     } else {
         const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
         lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
@@ -253,7 +272,16 @@ void SpringJoint::solveFast() {
     float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
     float lambda;
     if (frequencyHz > 0.0f) {
-        lambda = -mass * (Cdot + bias + gamma * impulse);
+        if (weakenOnContactIsland) {
+            const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
+            lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
+            const float armSpin = std::abs(sB.w);
+            const float maxBias = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
+            lambda *= 1.0f / (1.0f + armSpin / maxBias);
+            lambda = clampSoftSpringImpulse(impulse, lambda);
+        } else {
+            lambda = -mass * (Cdot + bias + gamma * impulse);
+        }
     } else {
         const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
         lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
@@ -324,14 +352,31 @@ void SpringJoint::solveFastSIMD(SpringJoint** joints) {
     V128 Cdot = v128_dot_f32(relVx, relVy, normalX, normalY);
     V128 dt_v = v128_splat_f32(joints[0]->_dt);
     V128 isSpring = v128_gt_f32(frequencyHz, zero_v);
+    V128 weakenMask = v128_make_mask_f32(
+        joints[0]->weakenOnContactIsland, joints[1]->weakenOnContactIsland,
+        joints[2]->weakenOnContactIsland, joints[3]->weakenOnContactIsland);
     V128 raw = v128_mul_f32(
         v128_splat_f32(-1.0f),
         v128_mul_f32(mass, v128_add_f32(v128_add_f32(Cdot, bias), v128_mul_f32(gamma, impulse))));
     V128 slipScale = v128_div_f32(
         v128_splat_f32(1.0f),
         v128_add_f32(v128_splat_f32(1.0f), v128_mul_f32(v128_abs_f32(Cdot), dt_v)));
-    V128 rigidLambda = v128_mul_f32(raw, slipScale);
-    V128 lambda = v128_select(isSpring, raw, rigidLambda);
+    V128 isolatedLambda = v128_select(isSpring, raw, v128_mul_f32(raw, slipScale));
+
+    V128 weakenLambda = v128_mul_f32(raw, slipScale);
+    V128 maxLambda = v128_splat_f32(MAX_POSITION_CORRECTION);
+    V128 clamped = v128_min_f32(maxLambda, v128_max_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), weakenLambda));
+    weakenLambda = v128_select(isSpring, clamped, weakenLambda);
+    V128 maxBias = v128_div_f32(v128_splat_f32(MAX_POSITION_CORRECTION), dt_v);
+    V128 armSpin = v128_abs_f32(wB);
+    V128 lambdaArmScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_div_f32(armSpin, maxBias)));
+    weakenLambda = v128_mul_f32(weakenLambda, v128_select(isSpring, lambdaArmScale, v128_splat_f32(1.0f)));
+    V128 budgeted = v128_sub_f32(maxLambda, impulse);
+    V128 negBudgeted = v128_sub_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), impulse);
+    weakenLambda = v128_select(isSpring, v128_min_f32(budgeted, v128_max_f32(negBudgeted, weakenLambda)), weakenLambda);
+
+    V128 weakenSpring = v128_and(weakenMask, isSpring);
+    V128 lambda = v128_select(weakenSpring, weakenLambda, isolatedLambda);
 
     // Apply impulse
     V128 px = v128_mul_f32(normalX, lambda);
