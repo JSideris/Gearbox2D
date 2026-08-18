@@ -188,6 +188,7 @@ private:
 
     std::vector<SolverData> solverBodies;
     std::vector<uint8_t> solverBodyActive;
+    std::vector<float> pendulumPeakMechE;
 private:
 
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> currentPairs;
@@ -207,9 +208,10 @@ private:
     void _buildAndProcessIslands(float dt, int substepIndex);
     void _colorIsland(Island& island);
     void _characterizeIslandChainResidual(Island& island);
-    void _applyIslandChainRestitution(Island& island);
+    void _applyIslandChainRestitution(Island& island, const std::vector<Vec2>& prePgsV);
+    void _applyWorldPendulumPackChainMap(const std::vector<Vec2>& prePgsV);
     void _reprojectIslandJointsAfterChainMap(Island& island);
-    void _solveIslandVelocity(Island& island, float dt, int substepIndex);
+    void _solveIslandVelocity(Island& island, float dt, int substepIndex, std::vector<Vec2>& prePgsAll);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 
 public:
@@ -233,6 +235,18 @@ public:
     int getPositionIterations() const { return positionIterations; }
     void setSpeculativeMargin(float margin) { speculativeMargin = std::max(0.0f, margin); }
     float getSpeculativeMargin() const { return speculativeMargin; }
+    float getPendulumPeakMechE(int idx) const {
+        if (idx < 0 || static_cast<size_t>(idx) >= pendulumPeakMechE.size()) {
+            return 0.0f;
+        }
+        return pendulumPeakMechE[idx];
+    }
+    void setPendulumPeakMechE(int idx, float energy) {
+        if (idx < 0 || static_cast<size_t>(idx) >= pendulumPeakMechE.size()) {
+            return;
+        }
+        pendulumPeakMechE[idx] = energy;
+    }
 
     int createBody(int id, emscripten_val options);
     int createFixture(int bodyId, int fixtureId, emscripten_val options, bool recomputeMass = true);

@@ -182,10 +182,88 @@ bool orderedComponentHasFriction(Island& island, const std::vector<Body*>& order
     return false;
 }
 
+Vec2 prePgsVelocity(const std::vector<Vec2>& prePgsV, Body* body, const SolverData& current) {
+    if (body->worldIndex >= 0 && static_cast<size_t>(body->worldIndex) < prePgsV.size()) {
+        return prePgsV[body->worldIndex];
+    }
+    return current.v;
+}
+
+bool bodyHasDistanceJoint(Body* body);
+float circleRadius(Body* body);
+
+float prePgsSpeed(const std::vector<Vec2>& prePgsV, Body* body) {
+    if (!body || body->worldIndex < 0 || static_cast<size_t>(body->worldIndex) >= prePgsV.size()) {
+        return 0.0f;
+    }
+    const Vec2& v = prePgsV[body->worldIndex];
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+void zeroPackContactImpulses(Island& island, const std::vector<Body*>& pack) {
+    std::unordered_set<Body*> inPack(pack.begin(), pack.end());
+    for (ContactConstraint* c : island.contacts) {
+        if (!c || inPack.count(c->a) == 0 || inPack.count(c->b) == 0) {
+            continue;
+        }
+        c->normalImpulse = 0.0f;
+        c->frictionImpulse = 0.0f;
+    }
+}
+
+bool hasFasterPendulumOutsider(
+    const std::vector<Body*>& worldBodies,
+    const std::vector<SolverData>& solverBodies,
+    const std::vector<Vec2>& prePgsV,
+    const std::vector<Body*>& pack,
+    Body* incoming) {
+    if (!incoming || incoming->worldIndex < 0 ||
+        static_cast<size_t>(incoming->worldIndex) >= solverBodies.size()) {
+        return false;
+    }
+    float refIm = solverBodies[incoming->worldIndex].im;
+    if (refIm <= 0.0f) {
+        return false;
+    }
+    float refR = circleRadius(incoming);
+    float inSpeed = prePgsSpeed(prePgsV, incoming);
+    std::unordered_set<Body*> inPack(pack.begin(), pack.end());
+    for (Body* cand : worldBodies) {
+        if (!cand || cand == incoming || cand->type == ObjectType::FIXED_OBJECT) {
+            continue;
+        }
+        if (inPack.count(cand) != 0) {
+            continue;
+        }
+        if (!bodyHasDistanceJoint(cand)) {
+            continue;
+        }
+        if (cand->worldIndex < 0 || static_cast<size_t>(cand->worldIndex) >= solverBodies.size()) {
+            continue;
+        }
+        float im = solverBodies[cand->worldIndex].im;
+        if (im <= 0.0f) {
+            continue;
+        }
+        float ratio = im / refIm;
+        if (ratio < 0.999999f || ratio > 1.000001f) {
+            continue;
+        }
+        float r = circleRadius(cand);
+        if (r > 0.0f && refR > 0.0f && std::abs(r - refR) > 0.25f * std::max(refR, r)) {
+            continue;
+        }
+        if (prePgsSpeed(prePgsV, cand) > inSpeed + kChainResidualEps) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool orientPathIncoming(
     Island& island,
     std::vector<Body*>& ordered,
-    const std::vector<SolverData>& solverBodies,
+    const std::vector<Vec2>& prePgsV,
     Vec2& n_chain) {
     if (ordered.size() < 2) {
         return false;
@@ -207,8 +285,14 @@ bool orientPathIncoming(
 
     float signal0 = endpointApproachingSignal(edge0);
     float signal1 = endpointApproachingSignal(edge1);
-    float u0 = std::abs(solverBodies[ordered.front()->worldIndex].v.dot(n_chain));
-    float u1 = std::abs(solverBodies[ordered.back()->worldIndex].v.dot(n_chain));
+    float u0 = 0.0f;
+    float u1 = 0.0f;
+    if (ordered.front()->worldIndex >= 0 && static_cast<size_t>(ordered.front()->worldIndex) < prePgsV.size()) {
+        u0 = std::abs(prePgsV[ordered.front()->worldIndex].dot(n_chain));
+    }
+    if (ordered.back()->worldIndex >= 0 && static_cast<size_t>(ordered.back()->worldIndex) < prePgsV.size()) {
+        u1 = std::abs(prePgsV[ordered.back()->worldIndex].dot(n_chain));
+    }
     signal0 = std::max(signal0, u0);
     signal1 = std::max(signal1, u1);
 
@@ -237,8 +321,268 @@ float incomingEdgeApproachingVn(Island& island, Body* a, Body* b) {
     return 0.0f;
 }
 
+bool bodyHasDistanceJoint(Body* body) {
+    for (Joint* joint : body->joints) {
+        if (joint->getType() == JointType::DISTANCE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool allBodiesHaveDistanceJoints(const std::vector<Body*>& ordered) {
+    if (ordered.empty()) {
+        return false;
+    }
+    for (Body* b : ordered) {
+        if (!bodyHasDistanceJoint(b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+float circleRadius(Body* body) {
+    if (!body) {
+        return 0.0f;
+    }
+    for (Fixture* f : body->fixtures) {
+        if (f && f->shape == ObjectShape::CIRCLE) {
+            float r = f->getRadius();
+            if (r > 0.0f) {
+                return r;
+            }
+        }
+    }
+    return 0.0f;
+}
+
+int reprojectDistanceJointsForBodies(
+    const std::vector<Body*>& bodies,
+    std::vector<SolverData>& solverBodies);
+
+Vec2 pendulumTangent(Body* body, Vec2 n_chain) {
+    if (!body) {
+        return n_chain;
+    }
+    for (Joint* joint : body->joints) {
+        if (joint->getType() != JointType::DISTANCE) {
+            continue;
+        }
+        Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
+        if (!other) {
+            continue;
+        }
+        Vec2 localThis = (joint->bodyA == body) ? joint->getLocalAnchorA() : joint->getLocalAnchorB();
+        Vec2 localOther = (joint->bodyA == body) ? joint->getLocalAnchorB() : joint->getLocalAnchorA();
+        Vec2 pThis = body->getPosition() + localThis.rotate(body->getRotation());
+        Vec2 pOther = other->getPosition() + localOther.rotate(other->getRotation());
+        Vec2 rod = pThis - pOther;
+        float rodMag = rod.magnitude();
+        if (rodMag <= kChainJointReprojectMinDist) {
+            continue;
+        }
+        Vec2 tangent(-rod.y / rodMag, rod.x / rodMag);
+        if (tangent.dot(n_chain) < 0.0f) {
+            tangent.x = -tangent.x;
+            tangent.y = -tangent.y;
+        }
+        return tangent;
+    }
+    return n_chain;
+}
+
+float pendulumHeightAboveRest(Body* body) {
+    if (!body) {
+        return 0.0f;
+    }
+    Vec2 g = body->world.getGravity();
+    float gMag = g.magnitude();
+    if (gMag <= kChainResidualEps) {
+        return 0.0f;
+    }
+    Vec2 gHat = g / gMag;
+    for (Joint* joint : body->joints) {
+        if (joint->getType() != JointType::DISTANCE) {
+            continue;
+        }
+        Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
+        if (!other || other->type != ObjectType::FIXED_OBJECT) {
+            continue;
+        }
+        DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);
+        Vec2 rod = body->getPosition() - other->getPosition();
+        float alongG = rod.dot(gHat);
+        float h = distanceJoint->getLength() - alongG;
+        if (h < 0.0f) {
+            h = 0.0f;
+        }
+        return h;
+    }
+    return 0.0f;
+}
+
+void snapPendulumVelocityToTangent(Body* body, SolverData& s) {
+    if (!body || s.im <= 0.0f) {
+        return;
+    }
+    Vec2 t = pendulumTangent(body, s.v);
+    float u = s.v.x * t.x + s.v.y * t.y;
+    if (!std::isfinite(u)) {
+        return;
+    }
+    s.v.x = t.x * u;
+    s.v.y = t.y * u;
+    s.w = 0.0f;
+}
+
+bool extendPendulumPack(
+    const std::vector<Body*>& worldBodies,
+    const std::vector<SolverData>& solverBodies,
+    const std::vector<Vec2>& prePgsV,
+    std::vector<Body*>& ordered,
+    Vec2 n_chain) {
+    if (ordered.size() < 2 || !allBodiesHaveDistanceJoints(ordered)) {
+        return false;
+    }
+
+    Body* seed = ordered[0];
+    if (seed->worldIndex < 0 || static_cast<size_t>(seed->worldIndex) >= solverBodies.size()) {
+        return false;
+    }
+    float refIm = solverBodies[seed->worldIndex].im;
+    if (refIm <= 0.0f) {
+        return false;
+    }
+
+    float nMag = n_chain.magnitude();
+    if (nMag <= kChainResidualEps) {
+        return false;
+    }
+    Vec2 origin = ordered[0]->getPosition();
+    float spacing = (ordered[1]->getPosition() - origin).magnitude();
+    if (spacing < 1e-3f) {
+        return false;
+    }
+
+    float refR = circleRadius(seed);
+    if (refR <= 0.0f) {
+        refR = 0.5f * spacing;
+    }
+    float walkStep = std::max(spacing, refR * 2.0f);
+    float maxGap = walkStep * 0.5f;
+
+    auto massOk = [&](Body* b) {
+        if (b->worldIndex < 0 || static_cast<size_t>(b->worldIndex) >= solverBodies.size()) {
+            return false;
+        }
+        float im = solverBodies[b->worldIndex].im;
+        if (im <= 0.0f) {
+            return false;
+        }
+        float ratio = im / refIm;
+        return ratio >= 0.999999f && ratio <= 1.000001f;
+    };
+
+    auto radiusOk = [&](Body* b) {
+        float r = circleRadius(b);
+        if (r <= 0.0f) {
+            return true;
+        }
+        return std::abs(r - refR) <= 0.25f * std::max(refR, r);
+    };
+
+    auto isPendulumSibling = [&](Body* cand) {
+        if (!cand || cand->type == ObjectType::FIXED_OBJECT) {
+            return false;
+        }
+        return bodyHasDistanceJoint(cand) && massOk(cand) && radiusOk(cand);
+    };
+
+    const float maxDy = std::max(spacing, refR * 2.0f);
+    std::vector<Body*> row;
+    std::unordered_set<Body*> seen;
+    for (Body* b : ordered) {
+        if (b && seen.insert(b).second) {
+            row.push_back(b);
+        }
+    }
+    float yRef = ordered[1]->getY();
+    for (Body* cand : worldBodies) {
+        if (!cand || seen.count(cand) != 0 || !isPendulumSibling(cand)) {
+            continue;
+        }
+        if (std::abs(cand->getY() - yRef) > maxDy) {
+            continue;
+        }
+        seen.insert(cand);
+        row.push_back(cand);
+    }
+    if (row.size() <= ordered.size()) {
+        return false;
+    }
+
+    std::sort(row.begin(), row.end(), [](Body* a, Body* b) {
+        return a->getX() < b->getX();
+    });
+
+    int start = -1;
+    int end = -1;
+    std::unordered_set<Body*> seedSet(ordered.begin(), ordered.end());
+    for (int i = 0; i < static_cast<int>(row.size()); ++i) {
+        if (seedSet.count(row[i]) != 0) {
+            if (start < 0) {
+                start = i;
+            }
+            end = i;
+        }
+    }
+    if (start < 0) {
+        return false;
+    }
+
+    while (end + 1 < static_cast<int>(row.size())) {
+        float dx = row[end + 1]->getX() - row[end]->getX();
+        if (dx <= kChainResidualEps || dx > walkStep + maxGap) {
+            break;
+        }
+        if (std::abs(row[end + 1]->getY() - yRef) > maxDy) {
+            break;
+        }
+        end++;
+    }
+    while (start - 1 >= 0) {
+        float dx = row[start]->getX() - row[start - 1]->getX();
+        if (dx <= kChainResidualEps || dx > walkStep + maxGap) {
+            break;
+        }
+        if (std::abs(row[start - 1]->getY() - yRef) > maxDy) {
+            break;
+        }
+        start--;
+    }
+
+    std::vector<Body*> pack;
+    pack.reserve(static_cast<size_t>(end - start + 1));
+    for (int i = start; i <= end; ++i) {
+        pack.push_back(row[i]);
+    }
+    if (pack.size() <= ordered.size()) {
+        return false;
+    }
+    if (pack.front() != ordered.front() && pack.back() == ordered.front()) {
+        std::reverse(pack.begin(), pack.end());
+    }
+    if (pack.front() != ordered.front()) {
+        return false;
+    }
+    ordered.swap(pack);
+    return true;
+}
+
 bool applyEnergyBoundedIncomingPair(
     std::vector<SolverData>& solverBodies,
+    const std::vector<Vec2>& prePgsV,
     Body* incoming,
     Body* outgoing,
     Vec2 n_chain) {
@@ -248,8 +592,10 @@ bool applyEnergyBoundedIncomingPair(
         return false;
     }
 
-    float u0 = s0.v.dot(n_chain);
-    float u1 = s1.v.dot(n_chain);
+    Vec2 v0Pre = prePgsVelocity(prePgsV, incoming, s0);
+    Vec2 v1Pre = prePgsVelocity(prePgsV, outgoing, s1);
+    float u0 = v0Pre.dot(n_chain);
+    float u1 = v1Pre.dot(n_chain);
     if (!std::isfinite(u0) || !std::isfinite(u1) || !std::isfinite(s0.v.x) || !std::isfinite(s0.v.y) ||
         !std::isfinite(s1.v.x) || !std::isfinite(s1.v.y)) {
         return false;
@@ -272,20 +618,138 @@ bool applyEnergyBoundedIncomingPair(
         return false;
     }
 
-    s0.v.x = s0.v.x - n_chain.x * u0 + n_chain.x * u0n;
-    s0.v.y = s0.v.y - n_chain.y * u0 + n_chain.y * u0n;
-    s1.v.x = s1.v.x - n_chain.x * u1 + n_chain.x * u1n;
-    s1.v.y = s1.v.y - n_chain.y * u1 + n_chain.y * u1n;
+    float u0Now = s0.v.dot(n_chain);
+    float u1Now = s1.v.dot(n_chain);
+    s0.v.x = s0.v.x - n_chain.x * u0Now + n_chain.x * u0n;
+    s0.v.y = s0.v.y - n_chain.y * u0Now + n_chain.y * u0n;
+    s1.v.x = s1.v.x - n_chain.x * u1Now + n_chain.x * u1n;
+    s1.v.y = s1.v.y - n_chain.y * u1Now + n_chain.y * u1n;
+    return true;
+}
+
+bool applyEnergyBoundedFarEndPath(
+    std::vector<SolverData>& solverBodies,
+    const std::vector<Vec2>& prePgsV,
+    const std::vector<Body*>& ordered,
+    Vec2 n_chain) {
+    if (ordered.size() < 3) {
+        return false;
+    }
+
+    float nMag = n_chain.magnitude();
+    if (nMag <= kChainResidualEps) {
+        return false;
+    }
+    n_chain = n_chain / nMag;
+
+    const bool useTangent = allBodiesHaveDistanceJoints(ordered);
+    std::vector<SolverData*> bodies;
+    std::vector<Vec2> axis;
+    std::vector<Vec2> vPre;
+    std::vector<float> u;
+    std::vector<float> uNow;
+    std::vector<float> mass;
+    bodies.reserve(ordered.size());
+    axis.reserve(ordered.size());
+    vPre.reserve(ordered.size());
+    u.reserve(ordered.size());
+    uNow.reserve(ordered.size());
+    mass.reserve(ordered.size());
+
+    float incomingKe = 0.0f;
+    bool first = true;
+    for (Body* b : ordered) {
+        SolverData& s = solverBodies[b->worldIndex];
+        if (s.im <= 0.0f) {
+            return false;
+        }
+        Vec2 ai = useTangent ? pendulumTangent(b, n_chain) : n_chain;
+        Vec2 vP = prePgsVelocity(prePgsV, b, s);
+        float ui = vP.dot(ai);
+        float uiNow = s.v.dot(ai);
+        if (!std::isfinite(ui) || !std::isfinite(uiNow) || !std::isfinite(s.v.x) || !std::isfinite(s.v.y)) {
+            return false;
+        }
+        float m = 1.0f / s.im;
+        if (first) {
+            incomingKe = 0.5f * m * (vP.x * vP.x + vP.y * vP.y);
+            if (useTangent) {
+                float gMag = b->world.getGravity().magnitude();
+                incomingKe += m * gMag * pendulumHeightAboveRest(b);
+                float peak = b->world.getPendulumPeakMechE(b->worldIndex);
+                if (peak > incomingKe) {
+                    incomingKe = peak;
+                }
+            }
+            first = false;
+        }
+        bodies.push_back(&s);
+        axis.push_back(ai);
+        vPre.push_back(vP);
+        u.push_back(ui);
+        uNow.push_back(uiNow);
+        mass.push_back(m);
+    }
+
+    const size_t n = ordered.size();
+    std::vector<float> un(n, 0.0f);
+    un[0] = 0.0f;
+    un[n - 1] = u[0];
+    if (useTangent && incomingKe > 0.0f && mass[n - 1] > 0.0f) {
+        float sign = (u[0] >= 0.0f) ? 1.0f : -1.0f;
+        if (std::abs(u[0]) <= kChainResidualEps) {
+            sign = (axis[n - 1].dot(n_chain) >= 0.0f) ? 1.0f : -1.0f;
+        }
+        un[n - 1] = sign * std::sqrt(2.0f * incomingKe / mass[n - 1]);
+    }
+
+    float keMapped = 0.5f * mass[n - 1] * un[n - 1] * un[n - 1];
+    if (keMapped > incomingKe * (1.0f + 1e-8f) && keMapped > incomingKe) {
+        un[n - 1] = std::copysign(std::sqrt(2.0f * incomingKe / mass[n - 1]), un[n - 1]);
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        if (!std::isfinite(un[i])) {
+            return false;
+        }
+        SolverData& s = *bodies[i];
+        if (useTangent) {
+            if (i == n - 1) {
+                s.v.x = axis[i].x * un[i];
+                s.v.y = axis[i].y * un[i];
+            } else {
+                s.v.x = 0.0f;
+                s.v.y = 0.0f;
+            }
+            s.w = 0.0f;
+        } else {
+            s.v.x = s.v.x - axis[i].x * uNow[i] + axis[i].x * un[i];
+            s.v.y = s.v.y - axis[i].y * uNow[i] + axis[i].y * un[i];
+        }
+    }
+    if (useTangent) {
+        for (size_t i = 0; i + 1 < n; ++i) {
+            ordered[i]->world.setPendulumPeakMechE(ordered[i]->worldIndex, 0.0f);
+        }
+        ordered.back()->world.setPendulumPeakMechE(ordered.back()->worldIndex, incomingKe);
+    }
     return true;
 }
 
 void applyElasticMapToPathComponents(
     std::vector<SolverData>& solverBodies,
+    const std::vector<Vec2>& prePgsV,
     Island& island,
+    const std::vector<Body*>& worldBodies,
+    bool applyExtendedPacks,
     int& visitedPathCount,
-    int& appliedPathCount) {
+    int& appliedPathCount,
+    int& reprojectedJointCount) {
     std::unordered_map<Body*, std::vector<Body*>> adj;
     for (ContactConstraint* c : island.contacts) {
+        if (c->context.a == nullptr || c->context.b == nullptr) {
+            continue;
+        }
         float vn = computeContactVn(c);
         if (!isChainEligible(c, vn)) {
             continue;
@@ -339,13 +803,14 @@ void applyElasticMapToPathComponents(
         }
 
         Vec2 n_chain;
-        if (!orientPathIncoming(island, ordered, solverBodies, n_chain)) {
+        if (!orientPathIncoming(island, ordered, prePgsV, n_chain)) {
             continue;
         }
 
         Body* incoming = ordered[0];
-        Body* outgoing = ordered[1];
-        ContactConstraint* applyEdge = findEligibleContact(island, incoming, outgoing);
+        Body* neighbor = ordered[1];
+        Body* far = ordered.back();
+        ContactConstraint* applyEdge = findEligibleContact(island, incoming, neighbor);
         if (!applyEdge || applyEdge->depth < 0.0f) {
             continue;
         }
@@ -353,17 +818,76 @@ void applyElasticMapToPathComponents(
             continue;
         }
 
-        float maxVn = incomingEdgeApproachingVn(island, incoming, outgoing);
-        float incomingU = std::abs(solverBodies[incoming->worldIndex].v.dot(n_chain));
-        float neighborU = std::abs(solverBodies[outgoing->worldIndex].v.dot(n_chain));
+        float maxVn = incomingEdgeApproachingVn(island, incoming, neighbor);
+        float incomingU = 0.0f;
+        float neighborU = 0.0f;
+        if (incoming->worldIndex >= 0 && static_cast<size_t>(incoming->worldIndex) < prePgsV.size()) {
+            incomingU = std::abs(prePgsV[incoming->worldIndex].dot(n_chain));
+        }
+        if (neighbor->worldIndex >= 0 && static_cast<size_t>(neighbor->worldIndex) < prePgsV.size()) {
+            neighborU = std::abs(prePgsV[neighbor->worldIndex].dot(n_chain));
+        }
+        const bool allDJ = allBodiesHaveDistanceJoints(ordered);
+        if (allDJ) {
+            incomingU = prePgsSpeed(prePgsV, incoming);
+            neighborU = prePgsSpeed(prePgsV, neighbor);
+        }
         bool hasApproach = maxVn > kChainResidualEps;
         bool incomingDominant =
             incomingU > kChainResidualEps && incomingU > neighborU + kChainResidualEps;
-        if (!hasApproach && !incomingDominant) {
+        if (allDJ || applyExtendedPacks) {
+            if (!incomingDominant) {
+                continue;
+            }
+        } else if (!hasApproach && !incomingDominant) {
             continue;
         }
 
-        if (applyEnergyBoundedIncomingPair(solverBodies, incoming, outgoing, n_chain)) {
+        std::vector<Body*> pack = ordered;
+        if (allDJ) {
+            extendPendulumPack(worldBodies, solverBodies, prePgsV, pack, n_chain);
+        }
+
+        auto farAlreadyCarries = [&](const std::vector<Body*>& mapped) {
+            if (mapped.size() < 2) {
+                return false;
+            }
+            float inSpeed = prePgsSpeed(prePgsV, mapped.front());
+            float farSpeed = prePgsSpeed(prePgsV, mapped.back());
+            return farSpeed > inSpeed * 1.25f + 0.5f;
+        };
+
+        bool applied = false;
+        if (applyExtendedPacks) {
+            if (pack.size() < 3) {
+                continue;
+            }
+            if (farAlreadyCarries(pack) ||
+                hasFasterPendulumOutsider(worldBodies, solverBodies, prePgsV, pack, pack.front())) {
+                continue;
+            }
+            applied = applyEnergyBoundedFarEndPath(solverBodies, prePgsV, pack, n_chain);
+            if (applied) {
+                zeroPackContactImpulses(island, pack);
+            }
+        } else {
+            if (allDJ) {
+                continue;
+            }
+            if (ordered.size() == 2) {
+                applied = applyEnergyBoundedIncomingPair(solverBodies, prePgsV, incoming, neighbor, n_chain);
+            } else {
+                ContactConstraint* farEdge = findEligibleContact(island, ordered[ordered.size() - 2], far);
+                if (!farEdge || farEdge->depth < 0.0f) {
+                    continue;
+                }
+                if (farAlreadyCarries(ordered)) {
+                    continue;
+                }
+                applied = applyEnergyBoundedFarEndPath(solverBodies, prePgsV, ordered, n_chain);
+            }
+        }
+        if (applied) {
             appliedPathCount++;
         }
     }
@@ -475,6 +999,85 @@ bool applyDistanceJointCdotOnly(DistanceJoint* joint, std::vector<SolverData>& s
     return true;
 }
 
+int reprojectDistanceJointsForBodies(
+    const std::vector<Body*>& bodies,
+    std::vector<SolverData>& solverBodies) {
+    std::unordered_set<DistanceJoint*> joints;
+    std::unordered_set<Body*> involved;
+    for (Body* b : bodies) {
+        if (!b) {
+            continue;
+        }
+        involved.insert(b);
+        for (Joint* joint : b->joints) {
+            if (joint->getType() != JointType::DISTANCE) {
+                continue;
+            }
+            DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);
+            joints.insert(distanceJoint);
+            involved.insert(distanceJoint->bodyA);
+            involved.insert(distanceJoint->bodyB);
+        }
+    }
+    if (joints.empty()) {
+        return 0;
+    }
+
+    std::vector<BodyVelocitySnapshot> snapshot;
+    float keBefore = 0.0f;
+    for (Body* b : involved) {
+        if (!b || b->worldIndex < 0 || static_cast<size_t>(b->worldIndex) >= solverBodies.size()) {
+            continue;
+        }
+        const SolverData& s = solverBodies[b->worldIndex];
+        if (s.im <= 0.0f) {
+            continue;
+        }
+        BodyVelocitySnapshot entry;
+        entry.worldIndex = b->worldIndex;
+        entry.v = s.v;
+        entry.w = s.w;
+        snapshot.push_back(entry);
+        float m = 1.0f / s.im;
+        keBefore += 0.5f * m * (s.v.x * s.v.x + s.v.y * s.v.y);
+        if (s.iI > 0.0f) {
+            float I = 1.0f / s.iI;
+            keBefore += 0.5f * I * s.w * s.w;
+        }
+    }
+
+    for (int iter = 0; iter < kChainJointReprojectIters; ++iter) {
+        for (DistanceJoint* joint : joints) {
+            applyDistanceJointCdotOnly(joint, solverBodies);
+        }
+    }
+
+    float keAfter = 0.0f;
+    for (const BodyVelocitySnapshot& entry : snapshot) {
+        const SolverData& s = solverBodies[entry.worldIndex];
+        float m = 1.0f / s.im;
+        keAfter += 0.5f * m * (s.v.x * s.v.x + s.v.y * s.v.y);
+        if (s.iI > 0.0f) {
+            float I = 1.0f / s.iI;
+            keAfter += 0.5f * I * s.w * s.w;
+        }
+    }
+    if (keAfter > keBefore * (1.0f + 1e-8f) && keAfter > keBefore) {
+        restoreIslandVelocities(snapshot, solverBodies);
+        return 0;
+    }
+    return static_cast<int>(joints.size());
+}
+
+bool islandHasOverlappingContact(const Island& island) {
+    for (ContactConstraint* c : island.contacts) {
+        if (c && c->depth >= 0.0f) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
@@ -559,14 +1162,30 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 2. Pre-solve all joints globally so they can modify body velocities for warm-starting
     
-    // 2.1 Vectorized DistanceJoints
-    int djCount = distanceJoints.size();
-    int djVectorizedCount = (djCount / 4) * 4;
-    for (int i = 0; i < djVectorizedCount; i += 4) {
-        DistanceJoint::preSolveSIMD(&distanceJoints[i], dt);
+    // 2.1 DistanceJoints: skip preSolve (Baumgarte warm-start) for isolated pendulums
+    std::unordered_set<Body*> overlappingBodies;
+    for (ContactConstraint& c : contactConstraints) {
+        if (c.depth < 0.0f) {
+            continue;
+        }
+        if (c.a) {
+            overlappingBodies.insert(c.a);
+        }
+        if (c.b) {
+            overlappingBodies.insert(c.b);
+        }
     }
-    for (int i = djVectorizedCount; i < djCount; ++i) {
-        distanceJoints[i]->preSolve(dt);
+    int djCount = distanceJoints.size();
+    for (int i = 0; i < djCount; ++i) {
+        DistanceJoint* joint = distanceJoints[i];
+        bool aHit = joint->bodyA && joint->bodyA->type != ObjectType::FIXED_OBJECT &&
+            overlappingBodies.count(joint->bodyA) != 0;
+        bool bHit = joint->bodyB && joint->bodyB->type != ObjectType::FIXED_OBJECT &&
+            overlappingBodies.count(joint->bodyB) != 0;
+        if (!aHit && !bHit) {
+            continue;
+        }
+        joint->preSolve(dt);
     }
 
     // 2.2 Vectorized SpringJoints
@@ -603,6 +1222,32 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     for (int i = 0; i < bodyCount; ++i) {
         solverBodies[i] = bodiesList[i]->getSolverData();
         solverBodyActive[i] = 1; // Mark as initialized
+    }
+    if (pendulumPeakMechE.size() < solverBodies.size()) {
+        pendulumPeakMechE.resize(solverBodies.size(), 0.0f);
+    }
+    for (int i = 0; i < bodyCount; ++i) {
+        Body* b = bodiesList[i];
+        if (!b || b->type == ObjectType::FIXED_OBJECT || !bodyHasDistanceJoint(b)) {
+            continue;
+        }
+        SolverData& s = solverBodies[i];
+        if (s.im <= 0.0f) {
+            continue;
+        }
+        float m = 1.0f / s.im;
+        float ke = 0.5f * m * (s.v.x * s.v.x + s.v.y * s.v.y);
+        float pe = m * b->world.getGravity().magnitude() * pendulumHeightAboveRest(b);
+        float e = ke + pe;
+        int idx = b->worldIndex;
+        if (idx >= 0 && static_cast<size_t>(idx) < pendulumPeakMechE.size() && e > pendulumPeakMechE[idx]) {
+            pendulumPeakMechE[idx] = e;
+        }
+    }
+
+    std::vector<Vec2> prePgsAll(solverBodies.size());
+    for (int i = 0; i < bodyCount; ++i) {
+        prePgsAll[i] = solverBodies[i].v;
     }
 
     for (int i = 0; i < bodyCount; ++i) {
@@ -679,18 +1324,18 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     if (!islands.empty()) {
         // --- Velocity Pass ---
         if (islands.size() == 1) {
-            _solveIslandVelocity(islands[0], dt, substepIndex);
+            _solveIslandVelocity(islands[0], dt, substepIndex, prePgsAll);
         } else {
 #ifdef GEARBOX_MT
             for (auto& isl : islands) {
-                threadPool->enqueue([this, &isl, dt, substepIndex]() {
-                    this->_solveIslandVelocity(isl, dt, substepIndex);
+                threadPool->enqueue([this, &isl, dt, substepIndex, &prePgsAll]() {
+                    this->_solveIslandVelocity(isl, dt, substepIndex, prePgsAll);
                 });
             }
             threadPool->wait();
 #else
             for (auto& isl : islands) {
-                _solveIslandVelocity(isl, dt, substepIndex);
+                _solveIslandVelocity(isl, dt, substepIndex, prePgsAll);
             }
 #endif
         }
@@ -707,6 +1352,42 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             agg.reprojectedJointCount += isl.chainPassReprojectedJointCount;
         }
         lastChainResidual = agg;
+        _applyWorldPendulumPackChainMap(prePgsAll);
+        {
+            std::unordered_set<Body*> contacted;
+            for (ContactConstraint& c : contactConstraints) {
+                if (!c.inIsland || c.depth < 0.0f) {
+                    continue;
+                }
+                if (c.a) {
+                    contacted.insert(c.a);
+                }
+                if (c.b) {
+                    contacted.insert(c.b);
+                }
+            }
+            int snapped = 0;
+            for (Body* b : bodiesList) {
+                if (!b || b->type == ObjectType::FIXED_OBJECT || contacted.count(b) != 0) {
+                    continue;
+                }
+                if (b->worldIndex < 0 || static_cast<size_t>(b->worldIndex) >= solverBodies.size()) {
+                    continue;
+                }
+                if (!bodyHasDistanceJoint(b)) {
+                    continue;
+                }
+                snapPendulumVelocityToTangent(b, solverBodies[b->worldIndex]);
+                snapped++;
+            }
+            lastChainResidual.reprojectedJointCount += snapped;
+        }
+        for (Body* b : bodiesList) {
+            if (b && b->type != ObjectType::FIXED_OBJECT &&
+                b->worldIndex >= 0 && static_cast<size_t>(b->worldIndex) < solverBodies.size()) {
+                b->setSolverData(solverBodies[b->worldIndex]);
+            }
+        }
 
         // --- Global Position Integration (SIMD) ---
         _doIntegratePositionsSIMD(dt);
@@ -934,9 +1615,10 @@ void World::_characterizeIslandChainResidual(Island& island) {
     }
 }
 
-void World::_applyIslandChainRestitution(Island& island) {
+void World::_applyIslandChainRestitution(Island& island, const std::vector<Vec2>& prePgsV) {
     island.chainPassVisitedPathCount = 0;
     island.chainPassAppliedPathCount = 0;
+    island.chainPassReprojectedJointCount = 0;
 
     if (island.contacts.empty() || island.chainEligibleContactCount < 1) {
         return;
@@ -944,9 +1626,46 @@ void World::_applyIslandChainRestitution(Island& island) {
 
     applyElasticMapToPathComponents(
         solverBodies,
+        prePgsV,
         island,
+        bodiesList,
+        false,
         island.chainPassVisitedPathCount,
-        island.chainPassAppliedPathCount);
+        island.chainPassAppliedPathCount,
+        island.chainPassReprojectedJointCount);
+}
+
+void World::_applyWorldPendulumPackChainMap(const std::vector<Vec2>& prePgsV) {
+    if (contactConstraints.empty()) {
+        return;
+    }
+
+    Island packIsland;
+    packIsland.contacts.reserve(contactConstraints.size());
+    for (ContactConstraint& c : contactConstraints) {
+        if (!c.inIsland || c.context.a == nullptr || c.context.b == nullptr) {
+            continue;
+        }
+        packIsland.contacts.push_back(&c);
+    }
+    if (packIsland.contacts.empty()) {
+        return;
+    }
+
+    int visited = 0;
+    int applied = 0;
+    int reprojected = 0;
+    applyElasticMapToPathComponents(
+        solverBodies,
+        prePgsV,
+        packIsland,
+        bodiesList,
+        true,
+        visited,
+        applied,
+        reprojected);
+    lastChainResidual.appliedPathCount += applied;
+    lastChainResidual.reprojectedJointCount += reprojected;
 }
 
 void World::_reprojectIslandJointsAfterChainMap(Island& island) {
@@ -981,7 +1700,7 @@ void World::_reprojectIslandJointsAfterChainMap(Island& island) {
     island.chainPassReprojectedJointCount = static_cast<int>(touched.size());
 }
 
-void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
+void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std::vector<Vec2>& prePgsAll) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
         return a->id.key < b->id.key;
@@ -1002,7 +1721,15 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
         c->context.a = &getSolverBody(c->a);
         c->context.b = &getSolverBody(c->b);
     }
-    
+
+    std::vector<Vec2> prePgsV(solverBodies.size());
+    for (Body* b : island.bodies) {
+        prePgsV[b->worldIndex] = solverBodies[b->worldIndex].v;
+        if (b->worldIndex >= 0 && static_cast<size_t>(b->worldIndex) < prePgsAll.size()) {
+            prePgsAll[b->worldIndex] = solverBodies[b->worldIndex].v;
+        }
+    }
+
     // Apply warm starting impulses
     for (ContactConstraint* c : island.contacts) {
         SolverData& sA = *static_cast<SolverData*>(c->context.a);
@@ -1035,7 +1762,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
             gear->context.d = &getSolverBody(gear->joint2->bodyB);
         }
     }
-    
+
     // Velocity Iterations
     for (int iter = 0; iter < velocityIterations; ++iter) {
         for (const auto& batch : island.contactBatches) {
@@ -1048,6 +1775,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
                 batch[i]->solveFast();
             }
         }
+        if (islandHasOverlappingContact(island)) {
         for (const auto& batch : island.jointBatches) {
             for (size_t i = 0; i < batch.size(); ) {
                 if (i + 3 < batch.size()) {
@@ -1120,10 +1848,17 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
                 i++;
             }
         }
+        } else {
+            for (Joint* j : island.joints) {
+                if (j && j->getType() == JointType::DISTANCE) {
+                    applyDistanceJointCdotOnly(static_cast<DistanceJoint*>(j), solverBodies);
+                }
+            }
+        }
     }
 
     _characterizeIslandChainResidual(island);
-    _applyIslandChainRestitution(island);
+    _applyIslandChainRestitution(island, prePgsV);
     _reprojectIslandJointsAfterChainMap(island);
 
     // Sync velocities back
@@ -1135,10 +1870,13 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
 }
 
 void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
-    // Position Iterations
+    const int jointPositionIters = islandHasOverlappingContact(island) ? positionIterations : 1;
     for (int p = 0; p < positionIterations; ++p) {
         for (const auto& batch : island.contactBatches) {
             for (ContactConstraint* c : batch) c->solvePosition();
+        }
+        if (p >= jointPositionIters) {
+            continue;
         }
         for (const auto& batch : island.jointBatches) {
             for (Joint* j : batch) j->solvePosition();

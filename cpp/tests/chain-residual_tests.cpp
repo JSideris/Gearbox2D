@@ -3,6 +3,7 @@
 #include "body.h"
 #include "fixture.h"
 #include <cmath>
+#include <algorithm>
 
 static emscripten_val createBoxOptions(float x, float y, float mass, bool fixed = false) {
 	emscripten_val options;
@@ -387,6 +388,92 @@ TEST(ChainResidual, MappedCradleKeepsFiniteRodLength) {
 	}
 
 	EXPECT_TRUE(sawApply);
+}
+
+TEST(ChainResidual, CradleFarEndReceivesIncomingSpeed) {
+	const int count = 5;
+	const float radius = 0.4f;
+	const float startY = -2.0f;
+	const float length = 4.0f;
+	const float spacing = radius * 2.01f;
+
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	Body* balls[count] = {nullptr};
+
+	for (int i = 0; i < count; ++i) {
+		float x = (i - (count - 1) / 2.0f) * spacing;
+		int anchorId = 100 + i;
+		int ballId = 200 + i;
+
+		world.createBody(anchorId, createBoxOptions(x, startY, 0.0f, true));
+
+		float ballX = (i == 0) ? x - 3.0f : x;
+		float ballY = (i == 0) ? startY + std::sqrt(length * length - 9.0f) : startY + length;
+
+		emscripten_val ballOpts = createCircleOptions(ballX, ballY, 1.0f);
+		ballOpts.properties["radius"] = radius;
+		world.createBody(ballId, ballOpts);
+		balls[i] = world.getBody(ballId);
+		world.createDistanceJoint(300 + i, anchorId, ballId, 0.0f, 0.0f, 0.0f, 0.0f, length);
+	}
+
+	auto speed = [](Body* b) {
+		float vx = b->getVelocityX();
+		float vy = b->getVelocityY();
+		return std::sqrt(vx * vx + vy * vy);
+	};
+
+	const float restingY = startY + length;
+	const float releaseHeight = restingY - (startY + std::sqrt(length * length - 9.0f));
+	float peakOuterHeight = releaseHeight;
+	float latePeak = -1e30f;
+	bool checked = false;
+	int applyFrames = 0;
+	for (int step = 0; step < 600; ++step) {
+		float incomingBefore = speed(balls[0]);
+		world.step();
+		for (int i = 0; i < count; ++i) {
+			ASSERT_NE(balls[i], nullptr);
+			EXPECT_TRUE(std::isfinite(balls[i]->getX()));
+		}
+		if (world.getLastChainResidual().appliedPathCount >= 1) {
+			applyFrames++;
+		}
+		float h0 = restingY - balls[0]->getY();
+		float hFar = restingY - balls[count - 1]->getY();
+		float h = std::max(h0, hFar);
+		peakOuterHeight = std::max(peakOuterHeight, h);
+		if (step >= 480) {
+			latePeak = std::max(latePeak, h);
+		}
+		if (!checked && world.getLastChainResidual().appliedPathCount >= 1) {
+			float farSpeed = speed(balls[count - 1]);
+			float incomingSpeed = speed(balls[0]);
+			float midSpeed = 0.0f;
+			for (int i = 1; i < count - 1; ++i) {
+				midSpeed = std::max(midSpeed, speed(balls[i]));
+			}
+			EXPECT_GT(farSpeed, midSpeed + 0.5f)
+				<< "s=[" << speed(balls[0]) << ", " << speed(balls[1]) << ", "
+				<< speed(balls[2]) << ", " << speed(balls[3]) << ", " << speed(balls[4]) << "]";
+			EXPECT_GT(farSpeed, incomingSpeed);
+			EXPECT_GE(farSpeed, incomingBefore * 0.85f)
+				<< "far=" << farSpeed << " incomingBefore=" << incomingBefore;
+			EXPECT_LE(farSpeed, incomingBefore * 1.25f + 0.5f)
+				<< "far=" << farSpeed << " incomingBefore=" << incomingBefore;
+			checked = true;
+		}
+	}
+
+	EXPECT_TRUE(checked);
+	EXPECT_GE(applyFrames, 2) << "applyFrames=" << applyFrames;
+	EXPECT_LT(peakOuterHeight, releaseHeight + 0.20f)
+		<< "peakOuterHeight=" << peakOuterHeight << " releaseHeight=" << releaseHeight;
+	EXPECT_LT(peakOuterHeight - latePeak, 0.05f)
+		<< "decay=" << (peakOuterHeight - latePeak) << " latePeak=" << latePeak;
 }
 
 TEST(ChainResidual, CradleReprojectDoesNotIncreaseIslandKe) {
