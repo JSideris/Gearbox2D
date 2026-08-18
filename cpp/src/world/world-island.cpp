@@ -12,6 +12,11 @@
 #include <unordered_set>
 #include <vector>
 
+// World island façade (stable compile path).
+// Domain package: cpp/src/world/island/ (not more world-* siblings).
+// Nested .cpp files are separate TUs via Makefile glob; do not #include implementation files.
+// Planned modules: chain-map, solve, build, plus island-internal.h (Phase 2+).
+
 namespace {
 
 constexpr float kChainResidualEps = 1e-4f;
