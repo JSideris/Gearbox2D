@@ -3,6 +3,7 @@
 #include "body.h"
 #include "fixture.h"
 #include "distance-joint.h"
+#include <cmath>
 
 class DistanceJointTest : public ::testing::Test {
 protected:
@@ -130,5 +131,67 @@ TEST_F(DistanceJointTest, SetLengthAtRuntime) {
     
     for (int i = 0; i < 60; ++i) world.step();
     EXPECT_NEAR(objB->getPosition().magnitude(), 3.0f, 0.05f);
+}
+
+TEST_F(DistanceJointTest, IsolatedLengthErrorCorrectsWithBias) {
+    world.setGravity(0.0f, 0.0f);
+
+    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    world.createBody(1, options);
+
+    options.properties["x"] = 5.0f;
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    world.createBody(2, options);
+
+    const float length = 3.0f;
+    world.createDistanceJoint(100, 1, 2, 0.0f, 0.0f, 0.0f, 0.0f, length);
+
+    Body* objB = world.getBody(2);
+    float initialError = std::abs(objB->getPosition().magnitude() - length);
+    EXPECT_GT(initialError, 1.5f);
+
+    for (int i = 0; i < 8; ++i) {
+        world.step();
+    }
+
+    float finalError = std::abs(objB->getPosition().magnitude() - length);
+    EXPECT_LT(finalError, initialError * 0.5f);
+    EXPECT_LT(finalError, 0.55f);
+}
+
+TEST_F(DistanceJointTest, ChainMidBodyNotTangentSnapped) {
+    world.setGravity(0.0f, 0.0f);
+
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    options.properties["x"] = 0.0f;
+    options.properties["y"] = 0.0f;
+    world.createBody(1, options);
+
+    options.properties["x"] = 2.0f;
+    world.createBody(2, options);
+
+    options.properties["x"] = 4.0f;
+    world.createBody(3, options);
+
+    world.createDistanceJoint(100, 1, 2, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
+    world.createDistanceJoint(101, 2, 3, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
+
+    Body* mid = world.getBody(2);
+    mid->setVelocity(Vec2(3.0f, 0.0f));
+    mid->setAngularVelocity(1.0f);
+
+    world.step();
+
+    EXPECT_NE(mid->getAngularVelocity(), 0.0f);
+
+    Vec2 pMid = mid->getPosition();
+    Vec2 pLeft = world.getBody(1)->getPosition();
+    Vec2 rod = pMid - pLeft;
+    float rodMag = rod.magnitude();
+    EXPECT_GT(rodMag, 1e-4f);
+    Vec2 tangent(-rod.y / rodMag, rod.x / rodMag);
+    Vec2 v = mid->getVelocity();
+    float vPerp = std::abs(v.x * tangent.y - v.y * tangent.x);
+    EXPECT_GT(vPerp, 0.1f);
 }
 

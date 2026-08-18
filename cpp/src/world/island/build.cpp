@@ -14,6 +14,24 @@
 
 #include "island-internal.h"
 
+static bool bodyOnlyHasDistanceJointsToFixed(Body* body) {
+    if (!body) {
+        return false;
+    }
+    bool hasDistance = false;
+    for (Joint* joint : body->joints) {
+        if (joint->getType() != JointType::DISTANCE) {
+            continue;
+        }
+        hasDistance = true;
+        Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
+        if (!other || other->type != ObjectType::FIXED_OBJECT) {
+            return false;
+        }
+    }
+    return hasDistance;
+}
+
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
     int bodyCount = bodiesList.size();
     std::vector<bool> visited(bodyCount, false);
@@ -96,30 +114,10 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 2. Pre-solve all joints globally so they can modify body velocities for warm-starting
     
-    // 2.1 DistanceJoints: skip preSolve (Baumgarte warm-start) for isolated pendulums
-    std::unordered_set<Body*> overlappingBodies;
-    for (ContactConstraint& c : contactConstraints) {
-        if (c.depth < 0.0f) {
-            continue;
-        }
-        if (c.a) {
-            overlappingBodies.insert(c.a);
-        }
-        if (c.b) {
-            overlappingBodies.insert(c.b);
-        }
-    }
+    // 2.1 DistanceJoints
     int djCount = distanceJoints.size();
     for (int i = 0; i < djCount; ++i) {
-        DistanceJoint* joint = distanceJoints[i];
-        bool aHit = joint->bodyA && joint->bodyA->type != ObjectType::FIXED_OBJECT &&
-            overlappingBodies.count(joint->bodyA) != 0;
-        bool bHit = joint->bodyB && joint->bodyB->type != ObjectType::FIXED_OBJECT &&
-            overlappingBodies.count(joint->bodyB) != 0;
-        if (!aHit && !bHit) {
-            continue;
-        }
-        joint->preSolve(dt);
+        distanceJoints[i]->preSolve(dt);
     }
 
     // 2.2 Vectorized SpringJoints
@@ -311,7 +309,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
                 if (b->worldIndex < 0 || static_cast<size_t>(b->worldIndex) >= solverBodies.size()) {
                     continue;
                 }
-                if (!bodyHasDistanceJoint(b)) {
+                if (!bodyOnlyHasDistanceJointsToFixed(b)) {
                     continue;
                 }
                 snapPendulumVelocityToTangent(b, solverBodies[b->worldIndex]);

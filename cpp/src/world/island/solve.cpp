@@ -185,9 +185,16 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
         }
     }
 
+    bool islandHasDistanceJoint = false;
+    for (Joint* j : island.joints) {
+        if (j && j->getType() == JointType::DISTANCE) {
+            islandHasDistanceJoint = true;
+            break;
+        }
+    }
+
     for (int iter = 0; iter < velocityIterations; ++iter) {
         const bool iterOverlapping = islandHasOverlappingContact(island);
-        const bool skipDistanceSolveFast = !overlapping && !islandHasSpringJoint;
         const bool contactFreeMechanical =
             !overlapping && island.contacts.empty();
         const bool runHingeFast =
@@ -198,7 +205,8 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
             (islandHasSpringJoint || contactFreeMechanical);
         const bool enterJointLoop =
             iterOverlapping || islandHasSpringJoint ||
-            (islandHasHingeOrGear && !overlapping);
+            (islandHasHingeOrGear && !overlapping) ||
+            islandHasDistanceJoint;
         if (enterJointLoop) {
         for (int springPass = 0; springPass < 2; ++springPass) {
         for (const auto& batch : island.jointBatches) {
@@ -234,9 +242,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                             static_cast<DistanceJoint*>(j2),
                             static_cast<DistanceJoint*>(j3)
                         };
-                        if (!skipDistanceSolveFast) {
-                            DistanceJoint::solveFastSIMD(djs);
-                        }
+                        DistanceJoint::solveFastSIMD(djs);
                         i += 4;
                         continue;
                     }
@@ -296,10 +302,6 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                     i++;
                     continue;
                 }
-                if (skipDistanceSolveFast && joint->getType() == JointType::DISTANCE) {
-                    i++;
-                    continue;
-                }
                 if (!runHingeFast && joint->getType() == JointType::HINGE) {
                     i++;
                     continue;
@@ -319,11 +321,6 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
         }
         if (!iterOverlapping) {
             solveIslandContacts();
-            for (Joint* j : island.joints) {
-                if (j && j->getType() == JointType::DISTANCE) {
-                    applyDistanceJointCdotOnly(static_cast<DistanceJoint*>(j), solverBodies);
-                }
-            }
         }
     }
 
