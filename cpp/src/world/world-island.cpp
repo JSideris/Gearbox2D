@@ -1786,7 +1786,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
     }
 
     for (int iter = 0; iter < velocityIterations; ++iter) {
-        if (islandHasOverlappingContact(island)) {
+        if (islandHasOverlappingContact(island) || islandHasSpringJoint) {
         for (int springPass = 0; springPass < 2; ++springPass) {
         for (const auto& batch : island.jointBatches) {
             for (size_t i = 0; i < batch.size(); ) {

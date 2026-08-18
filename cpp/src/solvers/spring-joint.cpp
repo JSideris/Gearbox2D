@@ -14,16 +14,6 @@ float clampSoftSpringLambda(float lambda, float frequencyHz) {
 	return std::max(-MAX_POSITION_CORRECTION, std::min(MAX_POSITION_CORRECTION, lambda));
 }
 
-float clampSoftSpringImpulse(float impulse, float lambda) {
-	if (impulse + lambda > MAX_POSITION_CORRECTION) {
-		return MAX_POSITION_CORRECTION - impulse;
-	}
-	if (impulse + lambda < -MAX_POSITION_CORRECTION) {
-		return -MAX_POSITION_CORRECTION - impulse;
-	}
-	return lambda;
-}
-
 } // namespace
 
 SpringJoint::SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio)
@@ -49,10 +39,6 @@ void SpringJoint::preSolve(float dt) {
     lastNormal = normal;
     hasLastNormal = true;
 
-    if (frequencyHz > 0.0f) {
-        impulse = std::max(-MAX_POSITION_CORRECTION, std::min(MAX_POSITION_CORRECTION, impulse));
-    }
-
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     float rnA = rA.cross(normal), rnB = rB.cross(normal);
@@ -69,8 +55,6 @@ void SpringJoint::preSolve(float dt) {
         if (std::abs(bias) > maxBias) {
             bias = (bias > 0.0f) ? maxBias : -maxBias;
         }
-        const float armSpin = std::abs(bodyB->getAngularVelocity());
-        bias *= 1.0f / (1.0f + armSpin / maxBias);
         mass = k + gamma;
         mass = (mass > 0.0f) ? 1.0f / mass : 0.0f;
     } else {
@@ -252,13 +236,12 @@ void SpringJoint::solve() {
     float wA = bodyA->getAngularVelocity(), wB = bodyB->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     float Cdot = (vB + vrB - (vA + vrA)).dot(normal);
-    const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
-    float lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
+    float lambda;
     if (frequencyHz > 0.0f) {
-        const float armSpin = std::abs(wB);
-        const float maxBias = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
-        lambda *= 1.0f / (1.0f + armSpin / maxBias);
-        lambda = clampSoftSpringImpulse(impulse, lambda);
+        lambda = -mass * (Cdot + bias + gamma * impulse);
+    } else {
+        const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
+        lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
     }
     impulse += lambda;
     Vec2 p = normal * lambda;
@@ -275,13 +258,12 @@ void SpringJoint::solveFast() {
     Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
     Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
     float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
-    const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
-    float lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
+    float lambda;
     if (frequencyHz > 0.0f) {
-        const float armSpin = std::abs(sB.w);
-        const float maxBias = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
-        lambda *= 1.0f / (1.0f + armSpin / maxBias);
-        lambda = clampSoftSpringImpulse(impulse, lambda);
+        lambda = -mass * (Cdot + bias + gamma * impulse);
+    } else {
+        const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
+        lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
     }
     impulse += lambda;
     Vec2 p = normal * lambda;
