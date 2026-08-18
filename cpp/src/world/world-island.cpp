@@ -12,17 +12,14 @@
 #include <unordered_set>
 #include <vector>
 
+#include "island/island-internal.h"
+
 // World island façade (stable compile path).
 // Domain package: cpp/src/world/island/ (not more world-* siblings).
 // Nested .cpp files are separate TUs via Makefile glob; do not #include implementation files.
 // Planned modules: chain-map, solve, build, plus island-internal.h (Phase 2+).
 
 namespace {
-
-constexpr float kChainResidualEps = 1e-4f;
-constexpr float kChainRestitutionMin = 1.0f - 1e-6f;
-constexpr int kChainJointReprojectIters = 2;
-constexpr float kChainJointReprojectMinDist = 1e-4f;
 
 float computeContactVn(ContactConstraint* c) {
     SolverData& sA = *static_cast<SolverData*>(c->context.a);
@@ -194,7 +191,6 @@ Vec2 prePgsVelocity(const std::vector<Vec2>& prePgsV, Body* body, const SolverDa
     return current.v;
 }
 
-bool bodyHasDistanceJoint(Body* body);
 float circleRadius(Body* body);
 
 float prePgsSpeed(const std::vector<Vec2>& prePgsV, Body* body) {
@@ -326,15 +322,6 @@ float incomingEdgeApproachingVn(Island& island, Body* a, Body* b) {
     return 0.0f;
 }
 
-bool bodyHasDistanceJoint(Body* body) {
-    for (Joint* joint : body->joints) {
-        if (joint->getType() == JointType::DISTANCE) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool allBodiesHaveDistanceJoints(const std::vector<Body*>& ordered) {
     if (ordered.empty()) {
         return false;
@@ -395,50 +382,6 @@ Vec2 pendulumTangent(Body* body, Vec2 n_chain) {
         return tangent;
     }
     return n_chain;
-}
-
-float pendulumHeightAboveRest(Body* body) {
-    if (!body) {
-        return 0.0f;
-    }
-    Vec2 g = body->world.getGravity();
-    float gMag = g.magnitude();
-    if (gMag <= kChainResidualEps) {
-        return 0.0f;
-    }
-    Vec2 gHat = g / gMag;
-    for (Joint* joint : body->joints) {
-        if (joint->getType() != JointType::DISTANCE) {
-            continue;
-        }
-        Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
-        if (!other || other->type != ObjectType::FIXED_OBJECT) {
-            continue;
-        }
-        DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);
-        Vec2 rod = body->getPosition() - other->getPosition();
-        float alongG = rod.dot(gHat);
-        float h = distanceJoint->getLength() - alongG;
-        if (h < 0.0f) {
-            h = 0.0f;
-        }
-        return h;
-    }
-    return 0.0f;
-}
-
-void snapPendulumVelocityToTangent(Body* body, SolverData& s) {
-    if (!body || s.im <= 0.0f) {
-        return;
-    }
-    Vec2 t = pendulumTangent(body, s.v);
-    float u = s.v.x * t.x + s.v.y * t.y;
-    if (!std::isfinite(u)) {
-        return;
-    }
-    s.v.x = t.x * u;
-    s.v.y = t.y * u;
-    s.w = 0.0f;
 }
 
 bool extendPendulumPack(
@@ -950,60 +893,6 @@ void restoreIslandVelocities(
     }
 }
 
-bool applyDistanceJointCdotOnly(DistanceJoint* joint, std::vector<SolverData>& solverBodies) {
-    Body* bodyA = joint->bodyA;
-    Body* bodyB = joint->bodyB;
-    SolverData& sA = solverBodies[bodyA->worldIndex];
-    SolverData& sB = solverBodies[bodyB->worldIndex];
-    if (sA.im <= 0.0f && sB.im <= 0.0f) {
-        return false;
-    }
-
-    Vec2 rA = joint->getLocalAnchorA().rotate(bodyA->getRotation());
-    Vec2 rB = joint->getLocalAnchorB().rotate(bodyB->getRotation());
-    Vec2 pA = bodyA->getPosition();
-    Vec2 pB = bodyB->getPosition();
-    Vec2 d = (pB + rB) - (pA + rA);
-    float dMag = d.magnitude();
-    if (dMag <= kChainJointReprojectMinDist) {
-        return false;
-    }
-
-    Vec2 n = d / dMag;
-    float rnA = rA.cross(n);
-    float rnB = rB.cross(n);
-    float k = sA.im + sB.im + sA.iI * rnA * rnA + sB.iI * rnB * rnB;
-    if (k <= 0.0f) {
-        return false;
-    }
-    float mass = 1.0f / k;
-
-    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
-    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
-    float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(n);
-    if (!std::isfinite(Cdot)) {
-        return false;
-    }
-
-    float lambda = -mass * Cdot;
-    if (!std::isfinite(lambda)) {
-        return false;
-    }
-
-    Vec2 p = n * lambda;
-    if (sA.im > 0.0f) {
-        sA.v.x -= p.x * sA.im;
-        sA.v.y -= p.y * sA.im;
-        sA.w -= rA.cross(p) * sA.iI;
-    }
-    if (sB.im > 0.0f) {
-        sB.v.x += p.x * sB.im;
-        sB.v.y += p.y * sB.im;
-        sB.w += rB.cross(p) * sB.iI;
-    }
-    return true;
-}
-
 int reprojectDistanceJointsForBodies(
     const std::vector<Body*>& bodies,
     std::vector<SolverData>& solverBodies) {
@@ -1074,6 +963,115 @@ int reprojectDistanceJointsForBodies(
     return static_cast<int>(joints.size());
 }
 
+} // namespace
+
+bool bodyHasDistanceJoint(Body* body) {
+    for (Joint* joint : body->joints) {
+        if (joint->getType() == JointType::DISTANCE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+float pendulumHeightAboveRest(Body* body) {
+    if (!body) {
+        return 0.0f;
+    }
+    Vec2 g = body->world.getGravity();
+    float gMag = g.magnitude();
+    if (gMag <= kChainResidualEps) {
+        return 0.0f;
+    }
+    Vec2 gHat = g / gMag;
+    for (Joint* joint : body->joints) {
+        if (joint->getType() != JointType::DISTANCE) {
+            continue;
+        }
+        Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
+        if (!other || other->type != ObjectType::FIXED_OBJECT) {
+            continue;
+        }
+        DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);
+        Vec2 rod = body->getPosition() - other->getPosition();
+        float alongG = rod.dot(gHat);
+        float h = distanceJoint->getLength() - alongG;
+        if (h < 0.0f) {
+            h = 0.0f;
+        }
+        return h;
+    }
+    return 0.0f;
+}
+
+void snapPendulumVelocityToTangent(Body* body, SolverData& s) {
+    if (!body || s.im <= 0.0f) {
+        return;
+    }
+    Vec2 t = pendulumTangent(body, s.v);
+    float u = s.v.x * t.x + s.v.y * t.y;
+    if (!std::isfinite(u)) {
+        return;
+    }
+    s.v.x = t.x * u;
+    s.v.y = t.y * u;
+    s.w = 0.0f;
+}
+
+bool applyDistanceJointCdotOnly(DistanceJoint* joint, std::vector<SolverData>& solverBodies) {
+    Body* bodyA = joint->bodyA;
+    Body* bodyB = joint->bodyB;
+    SolverData& sA = solverBodies[bodyA->worldIndex];
+    SolverData& sB = solverBodies[bodyB->worldIndex];
+    if (sA.im <= 0.0f && sB.im <= 0.0f) {
+        return false;
+    }
+
+    Vec2 rA = joint->getLocalAnchorA().rotate(bodyA->getRotation());
+    Vec2 rB = joint->getLocalAnchorB().rotate(bodyB->getRotation());
+    Vec2 pA = bodyA->getPosition();
+    Vec2 pB = bodyB->getPosition();
+    Vec2 d = (pB + rB) - (pA + rA);
+    float dMag = d.magnitude();
+    if (dMag <= kChainJointReprojectMinDist) {
+        return false;
+    }
+
+    Vec2 n = d / dMag;
+    float rnA = rA.cross(n);
+    float rnB = rB.cross(n);
+    float k = sA.im + sB.im + sA.iI * rnA * rnA + sB.iI * rnB * rnB;
+    if (k <= 0.0f) {
+        return false;
+    }
+    float mass = 1.0f / k;
+
+    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+    float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(n);
+    if (!std::isfinite(Cdot)) {
+        return false;
+    }
+
+    float lambda = -mass * Cdot;
+    if (!std::isfinite(lambda)) {
+        return false;
+    }
+
+    Vec2 p = n * lambda;
+    if (sA.im > 0.0f) {
+        sA.v.x -= p.x * sA.im;
+        sA.v.y -= p.y * sA.im;
+        sA.w -= rA.cross(p) * sA.iI;
+    }
+    if (sB.im > 0.0f) {
+        sB.v.x += p.x * sB.im;
+        sB.v.y += p.y * sB.im;
+        sB.w += rB.cross(p) * sB.iI;
+    }
+    return true;
+}
+
 bool islandHasOverlappingContact(const Island& island) {
     for (ContactConstraint* c : island.contacts) {
         if (c && c->depth >= 0.0f) {
@@ -1082,8 +1080,6 @@ bool islandHasOverlappingContact(const Island& island) {
     }
     return false;
 }
-
-} // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
     int bodyCount = bodiesList.size();
