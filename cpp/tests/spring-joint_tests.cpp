@@ -4,6 +4,8 @@
 #include "body.h"
 #include "fixture.h"
 #include "debug.h"
+#include "constants.h"
+#include <cmath>
 
 class SpringJointTest : public ::testing::Test {
 protected:
@@ -17,6 +19,20 @@ protected:
         options.properties["shape"] = 1; // Circle
         options.properties["radius"] = 0.5f;
         return options;
+    }
+
+    void setupTwoBodySpring(float x1, float x2) {
+        world.setGravity(0.0f, 0.0f);
+        world.setTimeStep(1.0f / 60.0f);
+        world.createBody(1, createOptions(x1, 0));
+        world.createBody(2, createOptions(x2, 0));
+        world.createSpringJoint(1, 1, 2, 0, 0, 0, 0, 2.0f, 5.0f, 0.7f);
+    }
+
+    static float centerDistance(Body* a, Body* b) {
+        float dx = b->getX() - a->getX();
+        float dy = b->getY() - a->getY();
+        return std::sqrt(dx * dx + dy * dy);
     }
 };
 
@@ -97,6 +113,56 @@ TEST_F(SpringJointTest, Damping) {
     float velMoreDamped = world.getBody(2)->getVelocity().magnitude();
     
     EXPECT_LT(velMoreDamped, velDamped);
+}
+
+TEST_F(SpringJointTest, StretchImpulseExceedsPositionCorrectionCap) {
+    setupTwoBodySpring(0.0f, 4.0f);
+
+    world.step();
+
+    Body* obj1 = world.getBody(1);
+    Body* obj2 = world.getBody(2);
+
+    EXPECT_GT(obj1->getVelocity().x, MAX_POSITION_CORRECTION);
+    EXPECT_LT(obj2->getVelocity().x, -MAX_POSITION_CORRECTION);
+    EXPECT_GT(obj1->getVelocity().x - obj2->getVelocity().x, 2.0f * MAX_POSITION_CORRECTION);
+}
+
+TEST_F(SpringJointTest, StretchSettlesNearRestLength) {
+    setupTwoBodySpring(0.0f, 4.0f);
+
+    for (int i = 0; i < 60; ++i) {
+        world.step();
+    }
+
+    Body* obj1 = world.getBody(1);
+    Body* obj2 = world.getBody(2);
+    EXPECT_NEAR(centerDistance(obj1, obj2), 2.0f, 0.25f);
+}
+
+TEST_F(SpringJointTest, CompressImpulseExceedsPositionCorrectionCap) {
+    setupTwoBodySpring(0.0f, 1.0f);
+
+    world.step();
+
+    Body* obj1 = world.getBody(1);
+    Body* obj2 = world.getBody(2);
+
+    EXPECT_LT(obj1->getVelocity().x, -MAX_POSITION_CORRECTION);
+    EXPECT_GT(obj2->getVelocity().x, MAX_POSITION_CORRECTION);
+    EXPECT_GT(obj2->getVelocity().x - obj1->getVelocity().x, 2.0f * MAX_POSITION_CORRECTION);
+}
+
+TEST_F(SpringJointTest, CompressSettlesNearRestLength) {
+    setupTwoBodySpring(0.0f, 1.0f);
+
+    for (int i = 0; i < 60; ++i) {
+        world.step();
+    }
+
+    Body* obj1 = world.getBody(1);
+    Body* obj2 = world.getBody(2);
+    EXPECT_NEAR(centerDistance(obj1, obj2), 2.0f, 0.25f);
 }
 
 // TODO: get this test case working again or rewrite it.
