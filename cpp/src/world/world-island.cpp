@@ -58,8 +58,20 @@ float pendulumHeightAboveRest(Body* body) {
     return 0.0f;
 }
 bool applyDistanceJointCdotOnly(DistanceJoint* joint, std::vector<SolverData>& solverBodies) {
+    if (!joint) {
+        return false;
+    }
     Body* bodyA = joint->bodyA;
     Body* bodyB = joint->bodyB;
+    if (!bodyA || !bodyB) {
+        return false;
+    }
+    if (bodyA->worldIndex < 0 || static_cast<size_t>(bodyA->worldIndex) >= solverBodies.size()) {
+        return false;
+    }
+    if (bodyB->worldIndex < 0 || static_cast<size_t>(bodyB->worldIndex) >= solverBodies.size()) {
+        return false;
+    }
     SolverData& sA = solverBodies[bodyA->worldIndex];
     SolverData& sB = solverBodies[bodyB->worldIndex];
     if (sA.im <= 0.0f && sB.im <= 0.0f) {

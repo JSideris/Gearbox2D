@@ -195,3 +195,44 @@ TEST_F(DistanceJointTest, ChainMidBodyNotTangentSnapped) {
     EXPECT_GT(vPerp, 0.1f);
 }
 
+TEST_F(DistanceJointTest, MixedOverlapChainStaysFinite) {
+    world.setGravity(0.0f, -10.0f);
+    world.setTimeStep(1.0f / 60.0f);
+
+    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    options.properties["shape"] = static_cast<int>(ObjectShape::CIRCLE);
+    options.properties["radius"] = 0.5f;
+    options.properties["canSleep"] = false;
+
+    // Bottom pair overlaps (center distance 0.9 < 2 * radius).
+    options.properties["x"] = 0.0f;
+    options.properties["y"] = 0.0f;
+    world.createBody(1, options);
+
+    options.properties["x"] = 0.9f;
+    options.properties["y"] = 0.0f;
+    world.createBody(2, options);
+
+    // Top link is separated from the contacted pair.
+    options.properties["x"] = 0.45f;
+    options.properties["y"] = 2.0f;
+    world.createBody(3, options);
+
+    const float linkDist = 1.0f;
+    world.createDistanceJoint(100, 1, 2, 0.0f, 0.0f, 0.0f, 0.0f, linkDist);
+    world.createDistanceJoint(101, 2, 3, 0.0f, 0.0f, 0.0f, 0.0f, linkDist);
+
+    for (int i = 0; i < 90; ++i) {
+        world.step();
+        for (int id : {1, 2, 3}) {
+            Body* body = world.getBody(id);
+            ASSERT_NE(body, nullptr);
+            EXPECT_TRUE(std::isfinite(body->getX()));
+            EXPECT_TRUE(std::isfinite(body->getY()));
+            EXPECT_TRUE(std::isfinite(body->getVelocityX()));
+            EXPECT_TRUE(std::isfinite(body->getVelocityY()));
+            EXPECT_TRUE(std::isfinite(body->getAngularVelocity()));
+        }
+    }
+}
+

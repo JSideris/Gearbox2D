@@ -5,7 +5,18 @@
 #include <cmath>
 
 DistanceJoint::DistanceJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length)
-    : Joint(id, a, b), localAnchorA(anchorA), localAnchorB(anchorB), length(length), impulse(0.0f) {}
+    : Joint(id, a, b),
+      localAnchorA(anchorA),
+      localAnchorB(anchorB),
+      length(length),
+      impulse(0.0f),
+      normal(),
+      rA(),
+      rB(),
+      mass(0.0f),
+      bias(0.0f),
+      _dt(0.0f),
+      lastNormal() {}
 
 void DistanceJoint::preSolve(float dt) {
     _dt = dt;
