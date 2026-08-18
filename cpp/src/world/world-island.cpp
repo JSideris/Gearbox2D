@@ -44,6 +44,329 @@ bool isChainEligible(ContactConstraint* c, float vn) {
     return true;
 }
 
+bool isPathComponent(
+    const std::vector<Body*>& component,
+    const std::unordered_map<Body*, std::vector<Body*>>& adj) {
+    std::unordered_map<Body*, int> degree;
+    for (Body* b : component) {
+        degree[b] = 0;
+    }
+    for (Body* b : component) {
+        for (Body* nb : adj.at(b)) {
+            if (degree.find(nb) != degree.end()) {
+                degree[b]++;
+            }
+        }
+    }
+
+    int edgeCount = 0;
+    for (const auto& degEntry : degree) {
+        int d = degEntry.second;
+        edgeCount += d;
+        if (d > 2) {
+            return false;
+        }
+    }
+    edgeCount /= 2;
+    return edgeCount >= 2;
+}
+
+bool isPairComponent(
+    const std::vector<Body*>& component,
+    const std::unordered_map<Body*, std::vector<Body*>>& adj) {
+    if (component.size() != 2) {
+        return false;
+    }
+    for (Body* b : component) {
+        if (adj.at(b).size() != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void walkOrderedPath(
+    const std::unordered_map<Body*, std::vector<Body*>>& adj,
+    const std::vector<Body*>& component,
+    std::vector<Body*>& ordered) {
+    ordered.clear();
+    if (component.empty()) {
+        return;
+    }
+
+    Body* start = component[0];
+    for (Body* b : component) {
+        if (adj.at(b).size() == 1) {
+            start = b;
+            break;
+        }
+    }
+
+    ordered.push_back(start);
+    Body* prev = nullptr;
+    Body* cur = start;
+    while (ordered.size() < component.size()) {
+        Body* next = nullptr;
+        for (Body* nb : adj.at(cur)) {
+            if (nb != prev) {
+                next = nb;
+                break;
+            }
+        }
+        if (!next) {
+            break;
+        }
+        ordered.push_back(next);
+        prev = cur;
+        cur = next;
+    }
+}
+
+ContactConstraint* findEligibleContact(Island& island, Body* a, Body* b) {
+    for (ContactConstraint* c : island.contacts) {
+        if ((c->a == a && c->b == b) || (c->a == b && c->b == a)) {
+            float vn = computeContactVn(c);
+            if (isChainEligible(c, vn)) {
+                return c;
+            }
+        }
+    }
+    return nullptr;
+}
+
+float endpointApproachingSignal(ContactConstraint* c) {
+    if (!c) {
+        return 0.0f;
+    }
+    float vn = computeContactVn(c);
+    if (vn < -kChainResidualEps) {
+        return std::abs(vn);
+    }
+    return 0.0f;
+}
+
+bool bodiesEqualMass(
+    const std::vector<Body*>& ordered,
+    const std::vector<SolverData>& solverBodies) {
+    float refIm = 0.0f;
+    for (Body* b : ordered) {
+        float im = solverBodies[b->worldIndex].im;
+        if (im <= 0.0f) {
+            return false;
+        }
+        if (refIm == 0.0f) {
+            refIm = im;
+        } else {
+            float ratio = im / refIm;
+            if (ratio < 0.999999f || ratio > 1.000001f) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool isFrictionDominatedEdge(ContactConstraint* c) {
+    return c->staticFriction > kChainResidualEps || c->kineticFriction > kChainResidualEps;
+}
+
+bool orderedComponentHasFriction(Island& island, const std::vector<Body*>& ordered) {
+    for (size_t i = 0; i + 1 < ordered.size(); ++i) {
+        ContactConstraint* c = findEligibleContact(island, ordered[i], ordered[i + 1]);
+        if (c && isFrictionDominatedEdge(c)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool orientPathIncoming(
+    Island& island,
+    std::vector<Body*>& ordered,
+    const std::vector<SolverData>& solverBodies,
+    Vec2& n_chain) {
+    if (ordered.size() < 2) {
+        return false;
+    }
+
+    ContactConstraint* firstEdge = findEligibleContact(island, ordered[0], ordered[1]);
+    if (!firstEdge) {
+        return false;
+    }
+
+    n_chain = firstEdge->normal;
+    if (firstEdge->a != ordered[0]) {
+        n_chain.x = -n_chain.x;
+        n_chain.y = -n_chain.y;
+    }
+
+    ContactConstraint* edge0 = findEligibleContact(island, ordered[0], ordered[1]);
+    ContactConstraint* edge1 = findEligibleContact(island, ordered[ordered.size() - 2], ordered[ordered.size() - 1]);
+
+    float signal0 = endpointApproachingSignal(edge0);
+    float signal1 = endpointApproachingSignal(edge1);
+    float u0 = std::abs(solverBodies[ordered.front()->worldIndex].v.dot(n_chain));
+    float u1 = std::abs(solverBodies[ordered.back()->worldIndex].v.dot(n_chain));
+    signal0 = std::max(signal0, u0);
+    signal1 = std::max(signal1, u1);
+
+    if (signal0 < kChainResidualEps && signal1 < kChainResidualEps) {
+        return false;
+    }
+
+    if (signal1 > signal0) {
+        std::reverse(ordered.begin(), ordered.end());
+        n_chain.x = -n_chain.x;
+        n_chain.y = -n_chain.y;
+    }
+
+    return true;
+}
+
+float incomingEdgeApproachingVn(Island& island, Body* a, Body* b) {
+    ContactConstraint* c = findEligibleContact(island, a, b);
+    if (!c) {
+        return 0.0f;
+    }
+    float vn = computeContactVn(c);
+    if (vn < -kChainResidualEps) {
+        return std::abs(vn);
+    }
+    return 0.0f;
+}
+
+bool applyEnergyBoundedIncomingPair(
+    std::vector<SolverData>& solverBodies,
+    Body* incoming,
+    Body* outgoing,
+    Vec2 n_chain) {
+    SolverData& s0 = solverBodies[incoming->worldIndex];
+    SolverData& s1 = solverBodies[outgoing->worldIndex];
+    if (s0.im <= 0.0f || s1.im <= 0.0f) {
+        return false;
+    }
+
+    float u0 = s0.v.dot(n_chain);
+    float u1 = s1.v.dot(n_chain);
+    if (!std::isfinite(u0) || !std::isfinite(u1) || !std::isfinite(s0.v.x) || !std::isfinite(s0.v.y) ||
+        !std::isfinite(s1.v.x) || !std::isfinite(s1.v.y)) {
+        return false;
+    }
+
+    float m0 = 1.0f / s0.im;
+    float m1 = 1.0f / s1.im;
+    float keBefore = 0.5f * (m0 * u0 * u0 + m1 * u1 * u1);
+    float u0n = 0.0f;
+    float u1n = u0 + u1;
+    float keAfter = 0.5f * (m0 * u0n * u0n + m1 * u1n * u1n);
+
+    if (keAfter > keBefore * (1.0f + 1e-8f) && keAfter > keBefore) {
+        float mag = std::sqrt(u0 * u0 + u1 * u1);
+        u1n = std::copysign(mag, u0 + u1);
+        u0n = 0.0f;
+    }
+
+    if (!std::isfinite(u0n) || !std::isfinite(u1n)) {
+        return false;
+    }
+
+    s0.v.x = s0.v.x - n_chain.x * u0 + n_chain.x * u0n;
+    s0.v.y = s0.v.y - n_chain.y * u0 + n_chain.y * u0n;
+    s1.v.x = s1.v.x - n_chain.x * u1 + n_chain.x * u1n;
+    s1.v.y = s1.v.y - n_chain.y * u1 + n_chain.y * u1n;
+    return true;
+}
+
+void applyElasticMapToPathComponents(
+    std::vector<SolverData>& solverBodies,
+    Island& island,
+    int& visitedPathCount,
+    int& appliedPathCount) {
+    std::unordered_map<Body*, std::vector<Body*>> adj;
+    for (ContactConstraint* c : island.contacts) {
+        float vn = computeContactVn(c);
+        if (!isChainEligible(c, vn)) {
+            continue;
+        }
+        adj[c->a].push_back(c->b);
+        adj[c->b].push_back(c->a);
+    }
+
+    std::unordered_set<Body*> visited;
+    for (const auto& entry : adj) {
+        Body* start = entry.first;
+        if (visited.count(start) != 0) {
+            continue;
+        }
+
+        std::vector<Body*> component;
+        std::vector<Body*> stack;
+        stack.push_back(start);
+        visited.insert(start);
+
+        while (!stack.empty()) {
+            Body* b = stack.back();
+            stack.pop_back();
+            component.push_back(b);
+            for (Body* nb : adj.at(b)) {
+                if (visited.insert(nb).second) {
+                    stack.push_back(nb);
+                }
+            }
+        }
+
+        bool isPath = isPathComponent(component, adj);
+        bool isPair = isPairComponent(component, adj);
+        if (!isPath && !isPair) {
+            continue;
+        }
+
+        std::vector<Body*> ordered;
+        walkOrderedPath(adj, component, ordered);
+        if (ordered.size() != component.size() || ordered.size() < 2) {
+            continue;
+        }
+
+        visitedPathCount++;
+
+        if (!bodiesEqualMass(ordered, solverBodies)) {
+            continue;
+        }
+        if (orderedComponentHasFriction(island, ordered)) {
+            continue;
+        }
+
+        Vec2 n_chain;
+        if (!orientPathIncoming(island, ordered, solverBodies, n_chain)) {
+            continue;
+        }
+
+        Body* incoming = ordered[0];
+        Body* outgoing = ordered[1];
+        ContactConstraint* applyEdge = findEligibleContact(island, incoming, outgoing);
+        if (!applyEdge || applyEdge->depth < 0.0f) {
+            continue;
+        }
+        if (isFrictionDominatedEdge(applyEdge) || applyEdge->restitution < kChainRestitutionMin) {
+            continue;
+        }
+
+        float maxVn = incomingEdgeApproachingVn(island, incoming, outgoing);
+        float incomingU = std::abs(solverBodies[incoming->worldIndex].v.dot(n_chain));
+        float neighborU = std::abs(solverBodies[outgoing->worldIndex].v.dot(n_chain));
+        bool hasApproach = maxVn > kChainResidualEps;
+        bool incomingDominant =
+            incomingU > kChainResidualEps && incomingU > neighborU + kChainResidualEps;
+        if (!hasApproach && !incomingDominant) {
+            continue;
+        }
+
+        if (applyEnergyBoundedIncomingPair(solverBodies, incoming, outgoing, n_chain)) {
+            appliedPathCount++;
+        }
+    }
+}
+
 } // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
@@ -271,6 +594,8 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             if (isl.chainMaxApproachingVn > agg.maxApproachingVn) {
                 agg.maxApproachingVn = isl.chainMaxApproachingVn;
             }
+            agg.visitedPathCount += isl.chainPassVisitedPathCount;
+            agg.appliedPathCount += isl.chainPassAppliedPathCount;
         }
         lastChainResidual = agg;
 
@@ -500,6 +825,21 @@ void World::_characterizeIslandChainResidual(Island& island) {
     }
 }
 
+void World::_applyIslandChainRestitution(Island& island) {
+    island.chainPassVisitedPathCount = 0;
+    island.chainPassAppliedPathCount = 0;
+
+    if (island.contacts.empty() || island.chainEligibleContactCount < 1) {
+        return;
+    }
+
+    applyElasticMapToPathComponents(
+        solverBodies,
+        island,
+        island.chainPassVisitedPathCount,
+        island.chainPassAppliedPathCount);
+}
+
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
@@ -642,7 +982,8 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     }
 
     _characterizeIslandChainResidual(island);
-    // Chain-restitution apply pass deferred to later phases.
+    _applyIslandChainRestitution(island);
+    // Joint reproject after map deferred to a later phase.
 
     // Sync velocities back
     for (Body* b : island.bodies) {

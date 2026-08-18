@@ -110,6 +110,8 @@ struct ChainResidualStats {
     int pathCount = 0;
     int eligibleContactCount = 0;
     float maxApproachingVn = 0.0f;
+    int visitedPathCount = 0;
+    int appliedPathCount = 0;
 };
 
 struct Island {
@@ -124,6 +126,8 @@ struct Island {
     int chainPathCount = 0;
     int chainEligibleContactCount = 0;
     float chainMaxApproachingVn = 0.0f;
+    int chainPassVisitedPathCount = 0;
+    int chainPassAppliedPathCount = 0;
 
     Island() : canSleep(false) {}
 
@@ -137,6 +141,8 @@ struct Island {
         chainPathCount = 0;
         chainEligibleContactCount = 0;
         chainMaxApproachingVn = 0.0f;
+        chainPassVisitedPathCount = 0;
+        chainPassAppliedPathCount = 0;
     }
 };
 
@@ -198,6 +204,7 @@ private:
     void _buildAndProcessIslands(float dt, int substepIndex);
     void _colorIsland(Island& island);
     void _characterizeIslandChainResidual(Island& island);
+    void _applyIslandChainRestitution(Island& island);
     void _solveIslandVelocity(Island& island, float dt, int substepIndex);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 

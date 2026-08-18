@@ -143,3 +143,141 @@ TEST(ChainResidual, IdleE1ChainCanReportPath) {
 
 	EXPECT_TRUE(sawSignal);
 }
+
+TEST(ChainResidual, FloorBounceStillNoApply) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	emscripten_val floorOptions = createBoxOptions(0.0f, 10.0f, 0.0f, true);
+	floorOptions.properties["restitution"] = 1.0f;
+	world.createBody(1, floorOptions);
+
+	emscripten_val ballOptions = createBoxOptions(0.0f, 0.0f, 1.0f);
+	ballOptions.properties["shape"] = (int)ObjectShape::CIRCLE;
+	ballOptions.properties["radius"] = 0.5f;
+	ballOptions.properties["restitution"] = 1.0f;
+	ballOptions.properties["sFriction"] = 0.0f;
+	ballOptions.properties["kFriction"] = 0.0f;
+	ballOptions.properties["linearDamping"] = 0.0f;
+	ballOptions.properties["angularDamping"] = 0.0f;
+	ballOptions.properties["canSleep"] = false;
+	world.createBody(2, ballOptions);
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		EXPECT_EQ(stats.pathCount, 0);
+		EXPECT_EQ(stats.appliedPathCount, 0);
+	}
+}
+
+TEST(ChainResidual, RestingStackStillNoApply) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 5.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(0.0f, 3.5f, 1.0f));
+	world.createBody(3, createBoxOptions(0.0f, 2.0f, 1.0f));
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+	}
+
+	ChainResidualStats stats = world.getLastChainResidual();
+	EXPECT_EQ(stats.appliedPathCount, 0);
+	EXPECT_EQ(stats.pathCount, 0);
+}
+
+TEST(ChainResidual, UnequalMassPathSkipped) {
+	World world;
+	world.setGravity(0.0f, 0.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	const float radius = 0.5f;
+	emscripten_val a = createCircleOptions(0.0f, 0.0f, 1.0f);
+	a.properties["radius"] = radius;
+	emscripten_val b = createCircleOptions(0.99f, 0.0f, 2.0f);
+	b.properties["radius"] = radius;
+	emscripten_val c = createCircleOptions(1.98f, 0.0f, 1.0f);
+	c.properties["radius"] = radius;
+	world.createBody(1, a);
+	world.createBody(2, b);
+	world.createBody(3, c);
+
+	Body* driver = world.getBody(1);
+	ASSERT_NE(driver, nullptr);
+	driver->setVelocityX(4.0f);
+
+	int maxVisited = 0;
+	for (int i = 0; i < 30; ++i) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		maxVisited = std::max(maxVisited, stats.visitedPathCount);
+		EXPECT_EQ(stats.appliedPathCount, 0);
+		EXPECT_TRUE(std::isfinite(driver->getVelocityX()));
+	}
+
+	EXPECT_GE(maxVisited, 0);
+}
+
+TEST(ChainResidual, TwoBallEqualMassPairAppliesOnImpact) {
+	World world;
+	world.setGravity(0.0f, 0.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	emscripten_val a = createCircleOptions(0.0f, 0.0f, 1.0f);
+	emscripten_val b = createCircleOptions(0.95f, 0.0f, 1.0f);
+	world.createBody(1, a);
+	world.createBody(2, b);
+
+	Body* driver = world.getBody(1);
+	Body* target = world.getBody(2);
+	ASSERT_NE(driver, nullptr);
+	ASSERT_NE(target, nullptr);
+	driver->setVelocityX(4.0f);
+
+	bool applied = false;
+	for (int i = 0; i < 30; ++i) {
+		world.step();
+		EXPECT_TRUE(std::isfinite(driver->getVelocityX()));
+		EXPECT_TRUE(std::isfinite(target->getVelocityX()));
+		if (world.getLastChainResidual().appliedPathCount >= 1) {
+			applied = true;
+		}
+	}
+
+	EXPECT_TRUE(applied);
+}
+
+TEST(ChainResidual, MappedSubspaceKeDoesNotIncrease) {
+	World world;
+	world.setGravity(0.0f, 0.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	emscripten_val a = createCircleOptions(0.0f, 0.0f, 1.0f);
+	emscripten_val b = createCircleOptions(0.95f, 0.0f, 1.0f);
+	world.createBody(1, a);
+	world.createBody(2, b);
+
+	Body* bodyA = world.getBody(1);
+	Body* bodyB = world.getBody(2);
+	ASSERT_NE(bodyA, nullptr);
+	ASSERT_NE(bodyB, nullptr);
+	bodyA->setVelocityX(3.0f);
+	bodyB->setVelocityX(1.0f);
+
+	auto keN = [&]() {
+		float u0 = bodyA->getVelocityX();
+		float u1 = bodyB->getVelocityX();
+		return 0.5f * (u0 * u0 + u1 * u1);
+	};
+
+	float keBefore = keN();
+	world.step();
+	float keAfter = keN();
+
+	EXPECT_TRUE(std::isfinite(keAfter));
+	EXPECT_LE(keAfter, keBefore + 1e-3f);
+}
