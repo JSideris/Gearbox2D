@@ -472,6 +472,7 @@ TEST(MotorcycleIsland, CauseIsolationRanking) {
 	::testing::Test::RecordProperty("throttle_full_pen", throttleFullPen);
 
 	EXPECT_LE(idleControlPen, PENETRATION_SLOP);
-	EXPECT_GT(idleFullPen, PENETRATION_SLOP);
-	EXPECT_GT(throttleFullPen, idleFullPen + 1.0f);
+	EXPECT_LE(idleSpringPen, PENETRATION_SLOP);
+	EXPECT_LE(idleFullPen, PENETRATION_SLOP);
+	EXPECT_LE(throttleFullPen, PENETRATION_SLOP);
 }

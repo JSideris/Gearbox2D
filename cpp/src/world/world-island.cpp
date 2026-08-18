@@ -1764,18 +1764,30 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
     }
 
     // Velocity Iterations
-    for (int iter = 0; iter < velocityIterations; ++iter) {
+    auto solveIslandContacts = [&]() {
         for (const auto& batch : island.contactBatches) {
             size_t i = 0;
             for (; i + 3 < batch.size(); i += 4) {
-                ContactConstraint* b[4] = {batch[i], batch[i+1], batch[i+2], batch[i+3]};
+                ContactConstraint* b[4] = {batch[i], batch[i + 1], batch[i + 2], batch[i + 3]};
                 ContactConstraint::solveFastSIMD(b);
             }
             for (; i < batch.size(); ++i) {
                 batch[i]->solveFast();
             }
         }
+    };
+
+    bool islandHasSpringJoint = false;
+    for (Joint* j : island.joints) {
+        if (j && j->getType() == JointType::SPRING) {
+            islandHasSpringJoint = true;
+            break;
+        }
+    }
+
+    for (int iter = 0; iter < velocityIterations; ++iter) {
         if (islandHasOverlappingContact(island)) {
+        for (int springPass = 0; springPass < 2; ++springPass) {
         for (const auto& batch : island.jointBatches) {
             for (size_t i = 0; i < batch.size(); ) {
                 if (i + 3 < batch.size()) {
@@ -1783,6 +1795,21 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                     Joint* j1 = batch[i+1];
                     Joint* j2 = batch[i+2];
                     Joint* j3 = batch[i+3];
+
+                    if (springPass == 0 && j0->getType() == JointType::SPRING &&
+                        j1->getType() == JointType::SPRING &&
+                        j2->getType() == JointType::SPRING &&
+                        j3->getType() == JointType::SPRING) {
+                        i += 4;
+                        continue;
+                    }
+                    if (springPass == 1 && (j0->getType() != JointType::SPRING ||
+                        j1->getType() != JointType::SPRING ||
+                        j2->getType() != JointType::SPRING ||
+                        j3->getType() != JointType::SPRING)) {
+                        i += 4;
+                        continue;
+                    }
 
                     if (j0->getType() == JointType::DISTANCE &&
                         j1->getType() == JointType::DISTANCE &&
@@ -1844,11 +1871,21 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
                         continue;
                     }
                 }
-                batch[i]->solveFast();
+                Joint* joint = batch[i];
+                if ((springPass == 0 && joint->getType() == JointType::SPRING) ||
+                    (springPass == 1 && joint->getType() != JointType::SPRING)) {
+                    i++;
+                    continue;
+                }
+                joint->solveFast();
                 i++;
             }
         }
-        } else {
+        }
+        solveIslandContacts();
+        }
+        if (!islandHasOverlappingContact(island)) {
+            solveIslandContacts();
             for (Joint* j : island.joints) {
                 if (j && j->getType() == JointType::DISTANCE) {
                     applyDistanceJointCdotOnly(static_cast<DistanceJoint*>(j), solverBodies);
@@ -1871,6 +1908,13 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
 
 void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
     const int jointPositionIters = islandHasOverlappingContact(island) ? positionIterations : 1;
+    bool islandHasSpringJoint = false;
+    for (Joint* j : island.joints) {
+        if (j && j->getType() == JointType::SPRING) {
+            islandHasSpringJoint = true;
+            break;
+        }
+    }
     for (int p = 0; p < positionIterations; ++p) {
         for (const auto& batch : island.contactBatches) {
             for (ContactConstraint* c : batch) c->solvePosition();
@@ -1878,8 +1922,42 @@ void World::_solveIslandPosition(Island& island, float dt, int substepIndex) {
         if (p >= jointPositionIters) {
             continue;
         }
-        for (const auto& batch : island.jointBatches) {
-            for (Joint* j : batch) j->solvePosition();
+        if (islandHasOverlappingContact(island) && islandHasSpringJoint) {
+            for (const auto& batch : island.jointBatches) {
+                for (Joint* j : batch) {
+                    if (!j || j->getType() == JointType::SPRING) {
+                        continue;
+                    }
+                    if (j->getType() == JointType::GEAR && !islandHasSpringJoint) {
+                        continue;
+                    }
+                    j->solvePosition();
+                }
+            }
+            for (const auto& batch : island.jointBatches) {
+                for (Joint* j : batch) {
+                    if (j && j->getType() == JointType::SPRING) {
+                        j->solvePosition();
+                    }
+                }
+            }
+            for (const auto& batch : island.contactBatches) {
+                for (ContactConstraint* c : batch) {
+                    c->solvePosition();
+                }
+            }
+        } else {
+            for (const auto& batch : island.jointBatches) {
+                for (Joint* j : batch) {
+                    if (!j) {
+                        continue;
+                    }
+                    if (j->getType() == JointType::GEAR && !islandHasSpringJoint) {
+                        continue;
+                    }
+                    j->solvePosition();
+                }
+            }
         }
     }
 

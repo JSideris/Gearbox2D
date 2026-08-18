@@ -1,8 +1,30 @@
 #include "spring-joint.h"
 #include "body.h"
 #include "world.h"
+#include "constants.h"
 #include "simd-math.h"
 #include <cmath>
+
+namespace {
+
+float clampSoftSpringLambda(float lambda, float frequencyHz) {
+	if (frequencyHz <= 0.0f) {
+		return lambda;
+	}
+	return std::max(-MAX_POSITION_CORRECTION, std::min(MAX_POSITION_CORRECTION, lambda));
+}
+
+float clampSoftSpringImpulse(float impulse, float lambda) {
+	if (impulse + lambda > MAX_POSITION_CORRECTION) {
+		return MAX_POSITION_CORRECTION - impulse;
+	}
+	if (impulse + lambda < -MAX_POSITION_CORRECTION) {
+		return -MAX_POSITION_CORRECTION - impulse;
+	}
+	return lambda;
+}
+
+} // namespace
 
 SpringJoint::SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio)
     : Joint(id, a, b), localAnchorA(anchorA), localAnchorB(anchorB), length(length), frequencyHz(frequencyHz), dampingRatio(dampingRatio), impulse(0.0f), mass(0.0f), bias(0.0f), gamma(0.0f) {}
@@ -27,6 +49,10 @@ void SpringJoint::preSolve(float dt) {
     lastNormal = normal;
     hasLastNormal = true;
 
+    if (frequencyHz > 0.0f) {
+        impulse = std::max(-MAX_POSITION_CORRECTION, std::min(MAX_POSITION_CORRECTION, impulse));
+    }
+
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     float rnA = rA.cross(normal), rnB = rB.cross(normal);
@@ -39,6 +65,12 @@ void SpringJoint::preSolve(float dt) {
         gamma = dt * (d_coeff + dt * k_coeff);
         gamma = (gamma > 0.0f) ? 1.0f / gamma : 0.0f;
         bias = (dMag - length) * dt * k_coeff * gamma;
+        const float maxBias = MAX_POSITION_CORRECTION / std::max(dt, 1e-6f);
+        if (std::abs(bias) > maxBias) {
+            bias = (bias > 0.0f) ? maxBias : -maxBias;
+        }
+        const float armSpin = std::abs(bodyB->getAngularVelocity());
+        bias *= 1.0f / (1.0f + armSpin / maxBias);
         mass = k + gamma;
         mass = (mass > 0.0f) ? 1.0f / mass : 0.0f;
     } else {
@@ -154,6 +186,16 @@ void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
     gamma = v128_select(v128_gt_f32(gamma, zero_v), v128_div_f32(one_v, gamma), zero_v);
     
     V128 bias = v128_mul_f32(v128_sub_f32(dMag, length), v128_mul_f32(dt_v, v128_mul_f32(k_coeff, gamma)));
+    V128 maxBias = v128_div_f32(v128_splat_f32(MAX_POSITION_CORRECTION), dt_v);
+    V128 negMaxBias = v128_mul_f32(maxBias, v128_splat_f32(-1.0f));
+    bias = v128_select(isSpring, v128_min_f32(maxBias, v128_max_f32(negMaxBias, bias)), bias);
+    V128 wB = gather_body_fdata(idxB, BODY_FDATA_RS);
+    V128 armSpin = v128_abs_f32(wB);
+    V128 biasArmScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_div_f32(armSpin, maxBias)));
+    bias = v128_mul_f32(bias, v128_select(isSpring, biasArmScale, v128_splat_f32(1.0f)));
+    V128 maxImpulse = v128_splat_f32(MAX_POSITION_CORRECTION);
+    V128 negMaxImpulse = v128_mul_f32(maxImpulse, v128_splat_f32(-1.0f));
+    impulse = v128_select(isSpring, v128_min_f32(maxImpulse, v128_max_f32(negMaxImpulse, impulse)), impulse);
     V128 mass_spring = v128_add_f32(k, gamma);
     mass_spring = v128_select(v128_gt_f32(mass_spring, zero_v), v128_div_f32(one_v, mass_spring), zero_v);
 
@@ -210,7 +252,14 @@ void SpringJoint::solve() {
     float wA = bodyA->getAngularVelocity(), wB = bodyB->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     float Cdot = (vB + vrB - (vA + vrA)).dot(normal);
-    float lambda = -mass * (Cdot + bias + gamma * impulse);
+    const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
+    float lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
+    if (frequencyHz > 0.0f) {
+        const float armSpin = std::abs(wB);
+        const float maxBias = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
+        lambda *= 1.0f / (1.0f + armSpin / maxBias);
+        lambda = clampSoftSpringImpulse(impulse, lambda);
+    }
     impulse += lambda;
     Vec2 p = normal * lambda;
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
@@ -226,7 +275,14 @@ void SpringJoint::solveFast() {
     Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
     Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
     float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
-    float lambda = -mass * (Cdot + bias + gamma * impulse);
+    const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
+    float lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
+    if (frequencyHz > 0.0f) {
+        const float armSpin = std::abs(sB.w);
+        const float maxBias = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
+        lambda *= 1.0f / (1.0f + armSpin / maxBias);
+        lambda = clampSoftSpringImpulse(impulse, lambda);
+    }
     impulse += lambda;
     Vec2 p = normal * lambda;
 
@@ -275,6 +331,10 @@ void SpringJoint::solveFastSIMD(SpringJoint** joints) {
     V128 iIA = v128_make_f32(sA[0]->iI, sA[1]->iI, sA[2]->iI, sA[3]->iI);
     V128 imB = v128_make_f32(sB[0]->im, sB[1]->im, sB[2]->im, sB[3]->im);
     V128 iIB = v128_make_f32(sB[0]->iI, sB[1]->iI, sB[2]->iI, sB[3]->iI);
+    V128 zero_v = v128_splat_f32(0.0f);
+    V128 frequencyHz = v128_make_f32(
+        joints[0]->frequencyHz, joints[1]->frequencyHz,
+        joints[2]->frequencyHz, joints[3]->frequencyHz);
 
     // Relative velocity at anchors
     V128 vrAx = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(wA, rAy));
@@ -287,9 +347,24 @@ void SpringJoint::solveFastSIMD(SpringJoint** joints) {
 
     // Cdot = relV.dot(normal)
     V128 Cdot = v128_dot_f32(relVx, relVy, normalX, normalY);
+    V128 dt_v = v128_splat_f32(joints[0]->_dt);
+    V128 slipScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_mul_f32(v128_abs_f32(Cdot), dt_v)));
 
-    // lambda = -mass * (Cdot + bias + gamma * impulse)
-    V128 lambda = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(mass, v128_add_f32(v128_add_f32(Cdot, bias), v128_mul_f32(gamma, impulse))));
+    // lambda = -mass * (Cdot + bias + gamma * impulse) * slipScale
+    V128 lambda = v128_mul_f32(
+        v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(mass, v128_add_f32(v128_add_f32(Cdot, bias), v128_mul_f32(gamma, impulse)))),
+        slipScale);
+    V128 maxBias = v128_div_f32(v128_splat_f32(MAX_POSITION_CORRECTION), dt_v);
+    V128 armSpin = v128_abs_f32(wB);
+    V128 lambdaArmScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_div_f32(armSpin, maxBias)));
+    V128 maxLambda = v128_splat_f32(MAX_POSITION_CORRECTION);
+    V128 isSpring = v128_gt_f32(frequencyHz, zero_v);
+    lambda = v128_mul_f32(lambda, v128_select(isSpring, lambdaArmScale, v128_splat_f32(1.0f)));
+    V128 clamped = v128_min_f32(maxLambda, v128_max_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), lambda));
+    lambda = v128_select(isSpring, clamped, lambda);
+    V128 budgeted = v128_sub_f32(maxLambda, impulse);
+    V128 negBudgeted = v128_sub_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), impulse);
+    lambda = v128_select(isSpring, v128_min_f32(budgeted, v128_max_f32(negBudgeted, lambda)), lambda);
 
     // Apply impulse
     V128 px = v128_mul_f32(normalX, lambda);
@@ -345,12 +420,11 @@ void SpringJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->forceWakeUp
 Vec2 SpringJoint::getLocalAnchorB() const { return localAnchorB; }
 
 void SpringJoint::solvePosition() {
-    // For SpringJoint, we only apply position correction if it's stiff (frequencyHz > 0)
-    // or if we want to prevent extreme stretching. 
-    // Here we'll use a logic similar to DistanceJoint but only if frequencyHz > 0.
-    if (frequencyHz <= 0.0f) return;
+	// Soft springs (frequencyHz > 0) are modeled in velocity space via bias/gamma.
+	// Position correction here fights wheel–terrain contacts in resting islands.
+	if (frequencyHz > 0.0f) return;
 
-    float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
+	float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     if (imA + imB == 0.0f) return;
 
@@ -370,15 +444,13 @@ void SpringJoint::solvePosition() {
     }
 
     float C = dMag - length;
-    float slop = 0.008f;
-    float baumgarte = 0.2f;
-    float maxCorrection = 2.0f;
 
-    float correction = C * baumgarte;
-    if (std::abs(correction) > maxCorrection) {
-        correction = (correction > 0) ? maxCorrection : -maxCorrection;
+    if (std::abs(C) < PENETRATION_SLOP) return;
+
+    float correction = C * BAUMGARTE_FACTOR;
+    if (std::abs(correction) > MAX_POSITION_CORRECTION) {
+        correction = (correction > 0) ? MAX_POSITION_CORRECTION : -MAX_POSITION_CORRECTION;
     }
-    if (std::abs(correction) < slop) return;
 
     float rnA = rA_curr.cross(normal_curr);
     float rnB = rB_curr.cross(normal_curr);

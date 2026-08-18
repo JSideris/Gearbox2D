@@ -1,8 +1,31 @@
 #include "gear-joint.h"
 #include "body.h"
 #include "hinge-joint.h"
+#include "world.h"
+#include "constants.h"
 #include "simd-math.h"
 #include <cmath>
+
+namespace {
+
+float clampGearLambda(float lambda, float ratio, float iIB, float iID, float dt) {
+	const float maxOmegaStep = 0.5f * MAX_POSITION_CORRECTION / std::max(dt, 1e-6f);
+	if (iID > 0.0f) {
+		const float maxFromWheel = maxOmegaStep / iID;
+		lambda = std::max(-maxFromWheel, std::min(maxFromWheel, lambda));
+	}
+	if (iIB > 0.0f && ratio != 0.0f) {
+		const float maxFromEngine = maxOmegaStep / (ratio * iIB);
+		lambda = std::max(-maxFromEngine, std::min(maxFromEngine, lambda));
+	}
+	return lambda;
+}
+
+float gearSlipScale(float cdot, float dt) {
+	return 1.0f / (1.0f + 4.0f * std::abs(cdot) * dt);
+}
+
+} // namespace
 
 GearJoint::GearJoint(int id, HingeJoint* joint1, HingeJoint* joint2, float ratio)
     : Joint(id, joint1->bodyB, joint2->bodyB), joint1(joint1), joint2(joint2), ratio(ratio), impulse(0.0f) {}
@@ -22,6 +45,9 @@ void GearJoint::preSolve(float dt) {
     float k = ratio * ratio * (iIA + iIB) + (iIC + iID);
     mass = (k > 0.0f) ? 1.0f / k : 0.0f;
 
+    const float maxImpulse = 75.0f * _dt;
+    impulse = std::max(-maxImpulse, std::min(maxImpulse, impulse));
+
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - ratio * impulse * iIA);
     bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + ratio * impulse * iIB);
     bodyC->setAngularVelocityInternal(bodyC->getAngularVelocity() - impulse * iIC);
@@ -39,15 +65,17 @@ void GearJoint::solve() {
     float wC = bodyC->getAngularVelocity();
     float wD = bodyD->getAngularVelocity();
 
-    // Constraint: ratio * (wB - wA) + (wD - wC) = 0
+    float iIB = bodyB->getInverseInertia();
+    float iID = bodyD->getInverseInertia();
     float Cdot = ratio * (wB - wA) + (wD - wC);
-    float lambda = -mass * Cdot;
+    float slipScale = gearSlipScale(Cdot, _dt);
+    float lambda = clampGearLambda(-mass * Cdot * slipScale, ratio, iIB, iID, _dt);
     impulse += lambda;
 
     bodyA->setAngularVelocityInternal(wA - ratio * lambda * bodyA->getInverseInertia());
-    bodyB->setAngularVelocityInternal(wB + ratio * lambda * bodyB->getInverseInertia());
+    bodyB->setAngularVelocityInternal(wB + ratio * lambda * iIB);
     bodyC->setAngularVelocityInternal(wC - lambda * bodyC->getInverseInertia());
-    bodyD->setAngularVelocityInternal(wD + lambda * bodyD->getInverseInertia());
+    bodyD->setAngularVelocityInternal(wD + lambda * iID);
 }
 
 void GearJoint::solveFast() {
@@ -57,7 +85,8 @@ void GearJoint::solveFast() {
     SolverData& sD = *static_cast<SolverData*>(context.d);
 
     float Cdot = ratio * (sB.w - sA.w) + (sD.w - sC.w);
-    float lambda = -mass * Cdot;
+    float slipScale = gearSlipScale(Cdot, _dt);
+    float lambda = clampGearLambda(-mass * Cdot * slipScale, ratio, sB.iI, sD.iI, _dt);
     impulse += lambda;
 
     sA.w -= ratio * lambda * sA.iI;
@@ -96,9 +125,17 @@ void GearJoint::solveFastSIMD(GearJoint** joints) {
 
     // Cdot = ratio * (wB - wA) + (wD - wC)
     V128 Cdot = v128_add_f32(v128_mul_f32(ratio, v128_sub_f32(wB, wA)), v128_sub_f32(wD, wC));
+    V128 dt_v = v128_splat_f32(joints[0]->_dt);
+    V128 slipScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_mul_f32(v128_splat_f32(4.0f), v128_mul_f32(v128_abs_f32(Cdot), dt_v))));
 
-    // lambda = -mass * Cdot
-    V128 lambda = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(mass, Cdot));
+    // lambda = -mass * Cdot * slipScale
+    V128 lambda = v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(v128_mul_f32(mass, Cdot), slipScale));
+    V128 maxOmegaStep = v128_splat_f32(0.5f * MAX_POSITION_CORRECTION / std::max(joints[0]->_dt, 1e-6f));
+    V128 maxFromWheel = v128_div_f32(maxOmegaStep, iID);
+    V128 maxFromEngine = v128_div_f32(maxOmegaStep, v128_mul_f32(ratio, iIB));
+    V128 maxLambda = v128_min_f32(maxFromWheel, maxFromEngine);
+    V128 negMaxLambda = v128_mul_f32(maxLambda, v128_splat_f32(-1.0f));
+    lambda = v128_min_f32(maxLambda, v128_max_f32(negMaxLambda, lambda));
 
     // Apply updates
     V128 ratioLambda = v128_mul_f32(ratio, lambda);
@@ -136,4 +173,60 @@ bool GearJoint::isConnectedTo(Body* body) const {
     return joint1->bodyA == body || joint1->bodyB == body || joint2->bodyA == body || joint2->bodyB == body;
 }
 
-void GearJoint::solvePosition() {}
+void GearJoint::solvePosition() {
+    Body* bodyA = joint1->bodyA;
+    Body* bodyB = joint1->bodyB;
+    Body* bodyC = joint2->bodyA;
+    Body* bodyD = joint2->bodyB;
+
+    float thetaA = bodyA->getRotation();
+    float thetaB = bodyB->getRotation();
+    float thetaC = bodyC->getRotation();
+    float thetaD = bodyD->getRotation();
+
+    float C = ratio * (thetaB - thetaA) + (thetaD - thetaC);
+    if (std::abs(C) < PENETRATION_SLOP) {
+        return;
+    }
+
+    const float maxOmega = MAX_POSITION_CORRECTION / std::max(_dt, 1e-6f);
+    if (std::abs(bodyD->getAngularVelocity()) > maxOmega && std::abs(C) < 0.25f) {
+        return;
+    }
+
+    float correction = C * BAUMGARTE_FACTOR;
+    if (std::abs(correction) > MAX_POSITION_CORRECTION) {
+        correction = (correction > 0.0f) ? MAX_POSITION_CORRECTION : -MAX_POSITION_CORRECTION;
+    }
+
+    float iIA = bodyA->getInverseInertia();
+    float iIB = bodyB->getInverseInertia();
+    float iIC = bodyC->getInverseInertia();
+    float iID = bodyD->getInverseInertia();
+    float k = ratio * ratio * (iIA + iIB) + (iIC + iID);
+    if (k < 1e-6f) {
+        return;
+    }
+
+    float lambda = -correction / k;
+    if (iIA > 0.0f) {
+        int bIdx = bodyA->worldIndex;
+        bodyA->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] =
+            thetaA - ratio * lambda * iIA;
+    }
+    if (iIB > 0.0f) {
+        int bIdx = bodyB->worldIndex;
+        bodyB->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] =
+            thetaB + ratio * lambda * iIB;
+    }
+    if (iIC > 0.0f) {
+        int bIdx = bodyC->worldIndex;
+        bodyC->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] =
+            thetaC - lambda * iIC;
+    }
+    if (iID > 0.0f) {
+        int bIdx = bodyD->worldIndex;
+        bodyD->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_R)] =
+            thetaD + lambda * iID;
+    }
+}
