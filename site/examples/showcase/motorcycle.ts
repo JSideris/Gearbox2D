@@ -315,39 +315,6 @@ export const motorcycleExample = new Example({
 		const leanPower = 100.0;
 		const maxEngineSpeed = 100.0; // Higher top speed
 
-		// Stability Enhancement: Hard limits for suspension travel to prevent "flipping into chassis"
-		if (rearArm) {
-			let relAngle = rearArm.r - chassis.r;
-			while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-			while (relAngle < -Math.PI) relAngle += Math.PI * 2;
-
-			const min = -0.6;
-			const max = 0.6;
-			if (relAngle < min) {
-				rearArm.r = chassis.r + min;
-				if (rearArm.rs < chassis.rs) rearArm.rs = chassis.rs;
-			} else if (relAngle > max) {
-				rearArm.r = chassis.r + max;
-				if (rearArm.rs > chassis.rs) rearArm.rs = chassis.rs;
-			}
-		}
-
-		if (frontArm) {
-			let relAngle = frontArm.r - chassis.r;
-			while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-			while (relAngle < -Math.PI) relAngle += Math.PI * 2;
-
-			const min = -0.1;
-			const max = 0.8;
-			if (relAngle < min) {
-				frontArm.r = chassis.r + min;
-				if (frontArm.rs < chassis.rs) frontArm.rs = chassis.rs;
-			} else if (relAngle > max) {
-				frontArm.r = chassis.r + max;
-				if (frontArm.rs > chassis.rs) frontArm.rs = chassis.rs;
-			}
-		}
-
 		if (keys["KeyD"]) {
 			if (engine.rs < maxEngineSpeed) {
 				engine.applyAngularImpulse(-throttlePower * dt);
