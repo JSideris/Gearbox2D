@@ -173,13 +173,6 @@ void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
     V128 maxBias = v128_div_f32(v128_splat_f32(MAX_POSITION_CORRECTION), dt_v);
     V128 negMaxBias = v128_mul_f32(maxBias, v128_splat_f32(-1.0f));
     bias = v128_select(isSpring, v128_min_f32(maxBias, v128_max_f32(negMaxBias, bias)), bias);
-    V128 wB = gather_body_fdata(idxB, BODY_FDATA_RS);
-    V128 armSpin = v128_abs_f32(wB);
-    V128 biasArmScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_div_f32(armSpin, maxBias)));
-    bias = v128_mul_f32(bias, v128_select(isSpring, biasArmScale, v128_splat_f32(1.0f)));
-    V128 maxImpulse = v128_splat_f32(MAX_POSITION_CORRECTION);
-    V128 negMaxImpulse = v128_mul_f32(maxImpulse, v128_splat_f32(-1.0f));
-    impulse = v128_select(isSpring, v128_min_f32(maxImpulse, v128_max_f32(negMaxImpulse, impulse)), impulse);
     V128 mass_spring = v128_add_f32(k, gamma);
     mass_spring = v128_select(v128_gt_f32(mass_spring, zero_v), v128_div_f32(one_v, mass_spring), zero_v);
 
@@ -330,24 +323,15 @@ void SpringJoint::solveFastSIMD(SpringJoint** joints) {
     // Cdot = relV.dot(normal)
     V128 Cdot = v128_dot_f32(relVx, relVy, normalX, normalY);
     V128 dt_v = v128_splat_f32(joints[0]->_dt);
-    V128 slipScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_mul_f32(v128_abs_f32(Cdot), dt_v)));
-
-    // lambda = -mass * (Cdot + bias + gamma * impulse) * slipScale
-    V128 lambda = v128_mul_f32(
-        v128_mul_f32(v128_splat_f32(-1.0f), v128_mul_f32(mass, v128_add_f32(v128_add_f32(Cdot, bias), v128_mul_f32(gamma, impulse)))),
-        slipScale);
-    V128 maxLambda = v128_splat_f32(MAX_POSITION_CORRECTION);
     V128 isSpring = v128_gt_f32(frequencyHz, zero_v);
-    // Match scalar order: clampSoftSpringLambda, then arm-spin scale, then impulse budget.
-    V128 clamped = v128_min_f32(maxLambda, v128_max_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), lambda));
-    lambda = v128_select(isSpring, clamped, lambda);
-    V128 maxBias = v128_div_f32(v128_splat_f32(MAX_POSITION_CORRECTION), dt_v);
-    V128 armSpin = v128_abs_f32(wB);
-    V128 lambdaArmScale = v128_div_f32(v128_splat_f32(1.0f), v128_add_f32(v128_splat_f32(1.0f), v128_div_f32(armSpin, maxBias)));
-    lambda = v128_mul_f32(lambda, v128_select(isSpring, lambdaArmScale, v128_splat_f32(1.0f)));
-    V128 budgeted = v128_sub_f32(maxLambda, impulse);
-    V128 negBudgeted = v128_sub_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), impulse);
-    lambda = v128_select(isSpring, v128_min_f32(budgeted, v128_max_f32(negBudgeted, lambda)), lambda);
+    V128 raw = v128_mul_f32(
+        v128_splat_f32(-1.0f),
+        v128_mul_f32(mass, v128_add_f32(v128_add_f32(Cdot, bias), v128_mul_f32(gamma, impulse))));
+    V128 slipScale = v128_div_f32(
+        v128_splat_f32(1.0f),
+        v128_add_f32(v128_splat_f32(1.0f), v128_mul_f32(v128_abs_f32(Cdot), dt_v)));
+    V128 rigidLambda = v128_mul_f32(raw, slipScale);
+    V128 lambda = v128_select(isSpring, raw, rigidLambda);
 
     // Apply impulse
     V128 px = v128_mul_f32(normalX, lambda);
