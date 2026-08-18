@@ -115,6 +115,7 @@ TEST_F(SpringJointTest, Damping) {
     EXPECT_LT(velMoreDamped, velDamped);
 }
 
+// Keep vs strip inventory: .decomposer/bugs/20260818-105244-spring-keep-vs-strip.md
 TEST_F(SpringJointTest, StretchImpulseExceedsPositionCorrectionCap) {
     setupTwoBodySpring(0.0f, 4.0f);
 
