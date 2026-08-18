@@ -113,9 +113,18 @@ struct IdleIsland {
 	Joint* hingeArmWheel = nullptr;
 };
 
+struct IslandOptions {
+	bool includeEngine = false;
+	bool includeGear = false;
+	bool includeSpring = false;
+};
+
+constexpr IslandOptions kFullDrivetrain{true, true, true};
+
 struct DrivetrainIsland : IdleIsland {
 	Body* engine = nullptr;
 	Joint* hingeEngine = nullptr;
+	Joint* gearEngineWheel = nullptr;
 	Joint* rearSpring = nullptr;
 };
 
@@ -204,6 +213,35 @@ void assertFailFirstBounds(const RunResult& result) {
 	EXPECT_LE(result.maxHingeArmWheelLastWindow, PENETRATION_SLOP);
 }
 
+void recordIdleMetrics(const RunResult& result) {
+	::testing::Test::RecordProperty("max_pen_over_run", result.maxPenOverRun);
+	::testing::Test::RecordProperty("max_pen_last_window", result.maxPenLastWindow);
+	::testing::Test::RecordProperty("max_hinge_chassis_arm_last_window", result.maxHingeChassisArmLastWindow);
+	::testing::Test::RecordProperty("max_hinge_arm_wheel_last_window", result.maxHingeArmWheelLastWindow);
+	::testing::Test::RecordProperty("max_abs_omega_last_window", result.maxAbsOmegaLastWindow);
+}
+
+void recordThrottleMetrics(const RunResult& result) {
+	::testing::Test::RecordProperty("max_pen_over_run", result.maxPenOverRun);
+	::testing::Test::RecordProperty("max_pen_last_window", result.maxPenLastWindow);
+	::testing::Test::RecordProperty("max_pen_early", result.maxPenEarly);
+	::testing::Test::RecordProperty("max_abs_omega_last_window", result.maxAbsOmegaLastWindow);
+}
+
+void assertThrottlePenBounds(const RunResult& result) {
+	EXPECT_LE(result.maxPenLastWindow, PENETRATION_SLOP);
+	EXPECT_LE(result.maxPenLastWindow, result.maxPenEarly + PENETRATION_SLOP);
+}
+
+std::function<void(int)> makeThrottleCallback(Body* engine) {
+	const float dt = 1.0f / static_cast<float>(kStepsPerSecond);
+	return [engine, dt](int step) {
+		if (step >= 60 && step < 240) {
+			engine->applyAngularImpulse(-75.0f * dt);
+		}
+	};
+}
+
 IdleIsland buildIdleLandingIsland(World& world) {
 	configureWorld(world);
 
@@ -239,36 +277,46 @@ IdleIsland buildIdleLandingIsland(World& world) {
 	return island;
 }
 
-DrivetrainIsland buildDrivetrainIsland(World& world) {
+DrivetrainIsland buildDrivetrainIsland(World& world, IslandOptions opts = kFullDrivetrain) {
 	IdleIsland base = buildIdleLandingIsland(world);
 	DrivetrainIsland island;
 	static_cast<IdleIsland&>(island) = base;
 	island.world = base.world;
 
-	world.createBody(kIdEngine, createCircleBodyOptions(
-		kCx, kCy - 0.15f, 5.0f, 0.25f, 0, 0, 0.0f, 0.0f, 0.05f));
+	if (opts.includeEngine) {
+		world.createBody(kIdEngine, createCircleBodyOptions(
+			kCx, kCy - 0.15f, 5.0f, 0.25f, 0, 0, 0.0f, 0.0f, 0.05f));
+		world.createHingeJoint(kHingeEngine, kIdChassis, kIdEngine, 0.0f, -0.15f, 0.0f, 0.0f);
+		island.engine = world.getBody(kIdEngine);
+		island.hingeEngine = world.getJoint(kHingeEngine);
+	}
 
-	world.createHingeJoint(kHingeEngine, kIdChassis, kIdEngine, 0.0f, -0.15f, 0.0f, 0.0f);
-	world.createGearJoint(kGearEngineWheel, kHingeEngine, kHingeArmWheel, 2.0f);
+	if (opts.includeGear) {
+		if (!opts.includeEngine) {
+			ADD_FAILURE() << "includeGear requires includeEngine";
+		} else {
+			world.createGearJoint(kGearEngineWheel, kHingeEngine, kHingeArmWheel, 2.0f);
+			island.gearEngineWheel = world.getJoint(kGearEngineWheel);
+		}
+	}
 
-	const float springAnchorAx = -0.7f;
-	const float springAnchorAy = -0.2f;
-	const float springAnchorBx = -0.3f;
-	const float springAnchorBy = 0.0f;
-	Vec2 worldA = island.chassis->getPosition() +
-		Vec2(springAnchorAx, springAnchorAy).rotate(island.chassis->getRotation());
-	Vec2 worldB = island.rearArm->getPosition() +
-		Vec2(springAnchorBx, springAnchorBy).rotate(island.rearArm->getRotation());
-	const float springLength = (worldB - worldA).magnitude();
+	if (opts.includeSpring) {
+		const float springAnchorAx = -0.7f;
+		const float springAnchorAy = -0.2f;
+		const float springAnchorBx = -0.3f;
+		const float springAnchorBy = 0.0f;
+		Vec2 worldA = island.chassis->getPosition() +
+			Vec2(springAnchorAx, springAnchorAy).rotate(island.chassis->getRotation());
+		Vec2 worldB = island.rearArm->getPosition() +
+			Vec2(springAnchorBx, springAnchorBy).rotate(island.rearArm->getRotation());
+		const float springLength = (worldB - worldA).magnitude();
 
-	world.createSpringJoint(
-		kSpringChassisArm, kIdChassis, kIdRearArm,
-		springAnchorAx, springAnchorAy, springAnchorBx, springAnchorBy,
-		springLength, 25.0f, 0.8f);
-
-	island.engine = world.getBody(kIdEngine);
-	island.hingeEngine = world.getJoint(kHingeEngine);
-	island.rearSpring = world.getJoint(kSpringChassisArm);
+		world.createSpringJoint(
+			kSpringChassisArm, kIdChassis, kIdRearArm,
+			springAnchorAx, springAnchorAy, springAnchorBx, springAnchorBy,
+			springLength, 25.0f, 0.8f);
+		island.rearSpring = world.getJoint(kSpringChassisArm);
+	}
 
 	return island;
 }
@@ -282,12 +330,37 @@ TEST(MotorcycleIsland, IdleLandingPenetrationAndAnchorsBounded) {
 	RunResult result = runSimulation(world, island, kTotalSteps, nullptr);
 	assertContactOccurred(result);
 	assertFailFirstBounds(result);
+	recordIdleMetrics(result);
+}
 
-	RecordProperty("max_pen_over_run", result.maxPenOverRun);
-	RecordProperty("max_pen_last_window", result.maxPenLastWindow);
-	RecordProperty("max_hinge_chassis_arm_last_window", result.maxHingeChassisArmLastWindow);
-	RecordProperty("max_hinge_arm_wheel_last_window", result.maxHingeArmWheelLastWindow);
-	RecordProperty("max_abs_omega_last_window", result.maxAbsOmegaLastWindow);
+TEST(MotorcycleIsland, IdleEngineHingeOnlyPenetrationAndAnchorsBounded) {
+	World world;
+	DrivetrainIsland island = buildDrivetrainIsland(world, {true, false, false});
+
+	RunResult result = runSimulation(world, island, kTotalSteps, island.engine);
+	assertContactOccurred(result);
+	assertFailFirstBounds(result);
+	recordIdleMetrics(result);
+}
+
+TEST(MotorcycleIsland, IdleSpringOnlyPenetrationAndAnchorsBounded) {
+	World world;
+	DrivetrainIsland island = buildDrivetrainIsland(world, {false, false, true});
+
+	RunResult result = runSimulation(world, island, kTotalSteps, nullptr);
+	assertContactOccurred(result);
+	assertFailFirstBounds(result);
+	recordIdleMetrics(result);
+}
+
+TEST(MotorcycleIsland, IdleGearOnlyPenetrationAndAnchorsBounded) {
+	World world;
+	DrivetrainIsland island = buildDrivetrainIsland(world, {true, true, false});
+
+	RunResult result = runSimulation(world, island, kTotalSteps, island.engine);
+	assertContactOccurred(result);
+	assertFailFirstBounds(result);
+	recordIdleMetrics(result);
 }
 
 TEST(MotorcycleIsland, IdleDrivetrainPenetrationAndAnchorsBounded) {
@@ -297,31 +370,108 @@ TEST(MotorcycleIsland, IdleDrivetrainPenetrationAndAnchorsBounded) {
 	RunResult result = runSimulation(world, island, kTotalSteps, island.engine);
 	assertContactOccurred(result);
 	assertFailFirstBounds(result);
+	recordIdleMetrics(result);
+}
 
-	RecordProperty("max_pen_over_run", result.maxPenOverRun);
-	RecordProperty("max_pen_last_window", result.maxPenLastWindow);
-	RecordProperty("max_hinge_chassis_arm_last_window", result.maxHingeChassisArmLastWindow);
-	RecordProperty("max_hinge_arm_wheel_last_window", result.maxHingeArmWheelLastWindow);
-	RecordProperty("max_abs_omega_last_window", result.maxAbsOmegaLastWindow);
+TEST(MotorcycleIsland, ThrottleEngineHingeOnlyDoesNotProgressivelySink) {
+	World world;
+	DrivetrainIsland island = buildDrivetrainIsland(world, {true, false, false});
+
+	RunResult result = runSimulation(
+		world, island, kTotalSteps, island.engine, makeThrottleCallback(island.engine));
+	assertContactOccurred(result);
+	assertThrottlePenBounds(result);
+	recordThrottleMetrics(result);
+}
+
+TEST(MotorcycleIsland, ThrottleGearOnlyDoesNotProgressivelySink) {
+	World world;
+	DrivetrainIsland island = buildDrivetrainIsland(world, {true, true, false});
+
+	RunResult result = runSimulation(
+		world, island, kTotalSteps, island.engine, makeThrottleCallback(island.engine));
+	assertContactOccurred(result);
+	assertThrottlePenBounds(result);
+	recordThrottleMetrics(result);
+}
+
+TEST(MotorcycleIsland, ThrottleSpringAndEngineNoGearDoesNotProgressivelySink) {
+	World world;
+	DrivetrainIsland island = buildDrivetrainIsland(world, {true, false, true});
+
+	RunResult result = runSimulation(
+		world, island, kTotalSteps, island.engine, makeThrottleCallback(island.engine));
+	assertContactOccurred(result);
+	assertThrottlePenBounds(result);
+	recordThrottleMetrics(result);
 }
 
 TEST(MotorcycleIsland, ThrottleDoesNotProgressivelySink) {
 	World world;
 	DrivetrainIsland island = buildDrivetrainIsland(world);
-	const float dt = 1.0f / static_cast<float>(kStepsPerSecond);
 
-	RunResult result = runSimulation(world, island, kTotalSteps, island.engine, [&](int step) {
-		if (step >= 60 && step < 240) {
-			island.engine->applyAngularImpulse(-75.0f * dt);
-		}
-	});
-
+	RunResult result = runSimulation(
+		world, island, kTotalSteps, island.engine, makeThrottleCallback(island.engine));
 	assertContactOccurred(result);
-	EXPECT_LE(result.maxPenLastWindow, PENETRATION_SLOP);
-	EXPECT_LE(result.maxPenLastWindow, result.maxPenEarly + PENETRATION_SLOP);
+	assertThrottlePenBounds(result);
+	recordThrottleMetrics(result);
+}
 
-	RecordProperty("max_pen_over_run", result.maxPenOverRun);
-	RecordProperty("max_pen_last_window", result.maxPenLastWindow);
-	RecordProperty("max_pen_early", result.maxPenEarly);
-	RecordProperty("max_abs_omega_last_window", result.maxAbsOmegaLastWindow);
+TEST(MotorcycleIsland, CauseIsolationRanking) {
+	World controlWorld;
+	IdleIsland controlIsland = buildIdleLandingIsland(controlWorld);
+	RunResult controlResult = runSimulation(controlWorld, controlIsland, kTotalSteps, nullptr);
+
+	World springWorld;
+	DrivetrainIsland springIsland = buildDrivetrainIsland(springWorld, {false, false, true});
+	RunResult springResult = runSimulation(springWorld, springIsland, kTotalSteps, nullptr);
+
+	World gearWorld;
+	DrivetrainIsland gearIsland = buildDrivetrainIsland(gearWorld, {true, true, false});
+	RunResult gearResult = runSimulation(gearWorld, gearIsland, kTotalSteps, gearIsland.engine);
+
+	World fullIdleWorld;
+	DrivetrainIsland fullIdleIsland = buildDrivetrainIsland(fullIdleWorld);
+	RunResult fullIdleResult = runSimulation(
+		fullIdleWorld, fullIdleIsland, kTotalSteps, fullIdleIsland.engine);
+
+	World throttleGearWorld;
+	DrivetrainIsland throttleGearIsland = buildDrivetrainIsland(throttleGearWorld, {true, true, false});
+	RunResult throttleGearResult = runSimulation(
+		throttleGearWorld, throttleGearIsland, kTotalSteps, throttleGearIsland.engine,
+		makeThrottleCallback(throttleGearIsland.engine));
+
+	World throttleSpringEngineWorld;
+	DrivetrainIsland throttleSpringEngineIsland =
+		buildDrivetrainIsland(throttleSpringEngineWorld, {true, false, true});
+	RunResult throttleSpringEngineResult = runSimulation(
+		throttleSpringEngineWorld, throttleSpringEngineIsland, kTotalSteps,
+		throttleSpringEngineIsland.engine,
+		makeThrottleCallback(throttleSpringEngineIsland.engine));
+
+	World throttleFullWorld;
+	DrivetrainIsland throttleFullIsland = buildDrivetrainIsland(throttleFullWorld);
+	RunResult throttleFullResult = runSimulation(
+		throttleFullWorld, throttleFullIsland, kTotalSteps, throttleFullIsland.engine,
+		makeThrottleCallback(throttleFullIsland.engine));
+
+	const float idleControlPen = controlResult.maxPenLastWindow;
+	const float idleSpringPen = springResult.maxPenLastWindow;
+	const float idleGearPen = gearResult.maxPenLastWindow;
+	const float idleFullPen = fullIdleResult.maxPenLastWindow;
+	const float throttleGearPen = throttleGearResult.maxPenLastWindow;
+	const float throttleSpringEnginePen = throttleSpringEngineResult.maxPenLastWindow;
+	const float throttleFullPen = throttleFullResult.maxPenLastWindow;
+
+	::testing::Test::RecordProperty("idle_control_pen", idleControlPen);
+	::testing::Test::RecordProperty("idle_spring_pen", idleSpringPen);
+	::testing::Test::RecordProperty("idle_gear_pen", idleGearPen);
+	::testing::Test::RecordProperty("idle_full_pen", idleFullPen);
+	::testing::Test::RecordProperty("throttle_gear_pen", throttleGearPen);
+	::testing::Test::RecordProperty("throttle_spring_engine_pen", throttleSpringEnginePen);
+	::testing::Test::RecordProperty("throttle_full_pen", throttleFullPen);
+
+	EXPECT_LE(idleControlPen, PENETRATION_SLOP);
+	EXPECT_GT(idleFullPen, PENETRATION_SLOP);
+	EXPECT_GT(throttleFullPen, idleFullPen + 1.0f);
 }
