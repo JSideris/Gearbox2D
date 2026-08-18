@@ -7,6 +7,7 @@
 #include <filesystem>
 
 static const char* MEASURE_PATH = ".decomposer/iterate/20260817-0e55b7/measure.json";
+static const float kCradlePeakHeightDecayTol = 0.05f;
 
 static emscripten_val createBodyOptions(float x, float y, float mass = 1.0f) {
 	emscripten_val options;
@@ -39,7 +40,7 @@ static void writeMeasureJson(const char* path, float peak2s, float decay10s, flo
 	    << "}\n";
 }
 
-static void runCradle(float& peakHeight2s, float& peakHeightDecay10s) {
+static void runCradle(float& peakHeight2s, float& peakHeight8to10, float& peakHeightDecay10s) {
 	const int count = 5;
 	const float radius = 0.4f;
 	const float startY = -2.0f;
@@ -114,6 +115,7 @@ static void runCradle(float& peakHeight2s, float& peakHeightDecay10s) {
 	}
 
 	peakHeight2s = peak2s;
+	peakHeight8to10 = peak8to10;
 	peakHeightDecay10s = std::max(0.0f, peak2s - peak8to10);
 }
 
@@ -162,12 +164,16 @@ static float runBounceShortfall() {
 
 TEST(EnergyHarness, NewtonsCradleBenchmark) {
 	float peakHeight2s = 0.0f;
+	float peakHeight8to10 = 0.0f;
 	float peakHeightDecay10s = 0.0f;
-	runCradle(peakHeight2s, peakHeightDecay10s);
+	runCradle(peakHeight2s, peakHeight8to10, peakHeightDecay10s);
 
 	float restitutionShortfall = runBounceShortfall();
 
 	writeMeasureJson(MEASURE_PATH, peakHeight2s, peakHeightDecay10s, restitutionShortfall);
 
 	EXPECT_TRUE(std::filesystem::exists(MEASURE_PATH));
+	EXPECT_LT(peakHeightDecay10s, kCradlePeakHeightDecayTol);
+	EXPECT_LT(peakHeight8to10 - peakHeight2s, kCradlePeakHeightDecayTol);
+	EXPECT_LE(restitutionShortfall, 0.0f);
 }
