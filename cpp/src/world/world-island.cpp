@@ -16,6 +16,8 @@ namespace {
 
 constexpr float kChainResidualEps = 1e-4f;
 constexpr float kChainRestitutionMin = 1.0f - 1e-6f;
+constexpr int kChainJointReprojectIters = 2;
+constexpr float kChainJointReprojectMinDist = 1e-4f;
 
 float computeContactVn(ContactConstraint* c) {
     SolverData& sA = *static_cast<SolverData*>(c->context.a);
@@ -367,6 +369,112 @@ void applyElasticMapToPathComponents(
     }
 }
 
+struct BodyVelocitySnapshot {
+    int worldIndex = -1;
+    Vec2 v;
+    float w = 0.0f;
+};
+
+float computeIslandDynamicKe(const Island& island, const std::vector<SolverData>& solverBodies) {
+    float ke = 0.0f;
+    for (Body* b : island.bodies) {
+        const SolverData& s = solverBodies[b->worldIndex];
+        if (s.im <= 0.0f) {
+            continue;
+        }
+        float m = 1.0f / s.im;
+        ke += 0.5f * m * (s.v.x * s.v.x + s.v.y * s.v.y);
+        if (s.iI > 0.0f) {
+            float I = 1.0f / s.iI;
+            ke += 0.5f * I * s.w * s.w;
+        }
+    }
+    return ke;
+}
+
+std::vector<BodyVelocitySnapshot> snapshotIslandVelocities(
+    const Island& island,
+    const std::vector<SolverData>& solverBodies) {
+    std::vector<BodyVelocitySnapshot> snapshot;
+    snapshot.reserve(island.bodies.size());
+    for (Body* b : island.bodies) {
+        const SolverData& s = solverBodies[b->worldIndex];
+        if (s.im <= 0.0f) {
+            continue;
+        }
+        BodyVelocitySnapshot entry;
+        entry.worldIndex = b->worldIndex;
+        entry.v = s.v;
+        entry.w = s.w;
+        snapshot.push_back(entry);
+    }
+    return snapshot;
+}
+
+void restoreIslandVelocities(
+    const std::vector<BodyVelocitySnapshot>& snapshot,
+    std::vector<SolverData>& solverBodies) {
+    for (const BodyVelocitySnapshot& entry : snapshot) {
+        SolverData& s = solverBodies[entry.worldIndex];
+        s.v = entry.v;
+        s.w = entry.w;
+    }
+}
+
+bool applyDistanceJointCdotOnly(DistanceJoint* joint, std::vector<SolverData>& solverBodies) {
+    Body* bodyA = joint->bodyA;
+    Body* bodyB = joint->bodyB;
+    SolverData& sA = solverBodies[bodyA->worldIndex];
+    SolverData& sB = solverBodies[bodyB->worldIndex];
+    if (sA.im <= 0.0f && sB.im <= 0.0f) {
+        return false;
+    }
+
+    Vec2 rA = joint->getLocalAnchorA().rotate(bodyA->getRotation());
+    Vec2 rB = joint->getLocalAnchorB().rotate(bodyB->getRotation());
+    Vec2 pA = bodyA->getPosition();
+    Vec2 pB = bodyB->getPosition();
+    Vec2 d = (pB + rB) - (pA + rA);
+    float dMag = d.magnitude();
+    if (dMag <= kChainJointReprojectMinDist) {
+        return false;
+    }
+
+    Vec2 n = d / dMag;
+    float rnA = rA.cross(n);
+    float rnB = rB.cross(n);
+    float k = sA.im + sB.im + sA.iI * rnA * rnA + sB.iI * rnB * rnB;
+    if (k <= 0.0f) {
+        return false;
+    }
+    float mass = 1.0f / k;
+
+    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+    float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(n);
+    if (!std::isfinite(Cdot)) {
+        return false;
+    }
+
+    float lambda = -mass * Cdot;
+    if (!std::isfinite(lambda)) {
+        return false;
+    }
+
+    Vec2 p = n * lambda;
+    if (sA.im > 0.0f) {
+        sA.v.x -= p.x * sA.im;
+        sA.v.y -= p.y * sA.im;
+        sA.w -= rA.cross(p) * sA.iI;
+    }
+    if (sB.im > 0.0f) {
+        sB.v.x += p.x * sB.im;
+        sB.v.y += p.y * sB.im;
+        sB.w += rB.cross(p) * sB.iI;
+    }
+    return true;
+}
+
 } // namespace
 
 void World::_buildAndProcessIslands(float dt, int substepIndex) {
@@ -596,6 +704,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             }
             agg.visitedPathCount += isl.chainPassVisitedPathCount;
             agg.appliedPathCount += isl.chainPassAppliedPathCount;
+            agg.reprojectedJointCount += isl.chainPassReprojectedJointCount;
         }
         lastChainResidual = agg;
 
@@ -840,6 +949,38 @@ void World::_applyIslandChainRestitution(Island& island) {
         island.chainPassAppliedPathCount);
 }
 
+void World::_reprojectIslandJointsAfterChainMap(Island& island) {
+    island.chainPassReprojectedJointCount = 0;
+
+    if (island.joints.empty() || island.chainPassAppliedPathCount < 1) {
+        return;
+    }
+
+    std::vector<BodyVelocitySnapshot> snapshot = snapshotIslandVelocities(island, solverBodies);
+    float keBefore = computeIslandDynamicKe(island, solverBodies);
+    std::unordered_set<DistanceJoint*> touched;
+
+    for (int iter = 0; iter < kChainJointReprojectIters; ++iter) {
+        for (Joint* joint : island.joints) {
+            if (joint->getType() != JointType::DISTANCE) {
+                continue;
+            }
+            DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);
+            if (applyDistanceJointCdotOnly(distanceJoint, solverBodies)) {
+                touched.insert(distanceJoint);
+            }
+        }
+    }
+
+    float keAfter = computeIslandDynamicKe(island, solverBodies);
+    if (keAfter > keBefore * (1.0f + 1e-8f) && keAfter > keBefore) {
+        restoreIslandVelocities(snapshot, solverBodies);
+        return;
+    }
+
+    island.chainPassReprojectedJointCount = static_cast<int>(touched.size());
+}
+
 void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
     // 1. Sort constraints for deterministic solving
     std::sort(island.contacts.begin(), island.contacts.end(), [](ContactConstraint* a, ContactConstraint* b) {
@@ -983,7 +1124,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex) {
 
     _characterizeIslandChainResidual(island);
     _applyIslandChainRestitution(island);
-    // Joint reproject after map deferred to a later phase.
+    _reprojectIslandJointsAfterChainMap(island);
 
     // Sync velocities back
     for (Body* b : island.bodies) {

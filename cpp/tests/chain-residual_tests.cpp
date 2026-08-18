@@ -281,3 +281,165 @@ TEST(ChainResidual, MappedSubspaceKeDoesNotIncrease) {
 	EXPECT_TRUE(std::isfinite(keAfter));
 	EXPECT_LE(keAfter, keBefore + 1e-3f);
 }
+
+TEST(ChainResidual, FloorBounceStillNoApplyAfterJointReproject) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	emscripten_val floorOptions = createBoxOptions(0.0f, 10.0f, 0.0f, true);
+	floorOptions.properties["restitution"] = 1.0f;
+	world.createBody(1, floorOptions);
+
+	emscripten_val ballOptions = createBoxOptions(0.0f, 0.0f, 1.0f);
+	ballOptions.properties["shape"] = (int)ObjectShape::CIRCLE;
+	ballOptions.properties["radius"] = 0.5f;
+	ballOptions.properties["restitution"] = 1.0f;
+	ballOptions.properties["sFriction"] = 0.0f;
+	ballOptions.properties["kFriction"] = 0.0f;
+	ballOptions.properties["linearDamping"] = 0.0f;
+	ballOptions.properties["angularDamping"] = 0.0f;
+	ballOptions.properties["canSleep"] = false;
+	world.createBody(2, ballOptions);
+
+	Body* ball = world.getBody(2);
+	ASSERT_NE(ball, nullptr);
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		EXPECT_TRUE(std::isfinite(ball->getX()));
+		EXPECT_TRUE(std::isfinite(ball->getY()));
+		EXPECT_EQ(stats.pathCount, 0);
+		EXPECT_EQ(stats.appliedPathCount, 0);
+		EXPECT_EQ(stats.reprojectedJointCount, 0);
+	}
+}
+
+TEST(ChainResidual, RestingStackStillNoApplyAfterJointReproject) {
+	World world;
+	world.setGravity(0.0f, 10.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 5.0f, 0.0f, true));
+	world.createBody(2, createBoxOptions(0.0f, 3.5f, 1.0f));
+	world.createBody(3, createBoxOptions(0.0f, 2.0f, 1.0f));
+
+	for (int i = 0; i < 20; ++i) {
+		world.step();
+	}
+
+	ChainResidualStats stats = world.getLastChainResidual();
+	EXPECT_EQ(stats.appliedPathCount, 0);
+	EXPECT_EQ(stats.pathCount, 0);
+	EXPECT_EQ(stats.reprojectedJointCount, 0);
+}
+
+TEST(ChainResidual, MappedCradleKeepsFiniteRodLength) {
+	const int count = 5;
+	const float radius = 0.4f;
+	const float startY = -2.0f;
+	const float length = 4.0f;
+	const float spacing = radius * 2.01f;
+
+	World world;
+	world.setGravity(0.0f, 9.8f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	Body* anchors[count] = {nullptr};
+	Body* balls[count] = {nullptr};
+
+	for (int i = 0; i < count; ++i) {
+		float x = (i - (count - 1) / 2.0f) * spacing;
+		int anchorId = 100 + i;
+		int ballId = 200 + i;
+
+		world.createBody(anchorId, createBoxOptions(x, startY, 0.0f, true));
+		anchors[i] = world.getBody(anchorId);
+
+		float ballX = (i == 0) ? x - 3.0f : x;
+		float ballY = (i == 0) ? startY + std::sqrt(length * length - 9.0f) : startY + length;
+
+		emscripten_val ballOpts = createCircleOptions(ballX, ballY, 1.0f);
+		ballOpts.properties["radius"] = radius;
+		world.createBody(ballId, ballOpts);
+		balls[i] = world.getBody(ballId);
+		world.createDistanceJoint(300 + i, anchorId, ballId, 0.0f, 0.0f, 0.0f, 0.0f, length);
+	}
+
+	bool sawApply = false;
+	for (int step = 0; step < 120; ++step) {
+		world.step();
+		ChainResidualStats stats = world.getLastChainResidual();
+		if (stats.appliedPathCount >= 1) {
+			sawApply = true;
+		}
+		for (int i = 0; i < count; ++i) {
+			ASSERT_NE(anchors[i], nullptr);
+			ASSERT_NE(balls[i], nullptr);
+			float dx = balls[i]->getX() - anchors[i]->getX();
+			float dy = balls[i]->getY() - anchors[i]->getY();
+			float dist = std::sqrt(dx * dx + dy * dy);
+			EXPECT_NEAR(dist, length, 0.05f);
+			EXPECT_TRUE(std::isfinite(balls[i]->getX()));
+			EXPECT_TRUE(std::isfinite(balls[i]->getY()));
+		}
+	}
+
+	EXPECT_TRUE(sawApply);
+}
+
+TEST(ChainResidual, CradleReprojectDoesNotIncreaseIslandKe) {
+	World world;
+	world.setGravity(0.0f, 0.0f);
+	world.setTimeStep(1.0f / 60.0f);
+
+	world.createBody(1, createBoxOptions(0.0f, 0.0f, 0.0f, true));
+	world.createBody(2, createCircleOptions(0.0f, 2.0f, 1.0f));
+	world.createDistanceJoint(10, 1, 2, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
+
+	emscripten_val targetOpts = createCircleOptions(1.9f, 0.0f, 1.0f);
+	world.createBody(3, targetOpts);
+
+	Body* driver = world.getBody(2);
+	Body* target = world.getBody(3);
+	ASSERT_NE(driver, nullptr);
+	ASSERT_NE(target, nullptr);
+	driver->setVelocityX(4.0f);
+
+	auto dynamicKe = [&]() {
+		float ke = 0.0f;
+		for (Body* b : {driver, target}) {
+			float im = b->getInverseMass();
+			if (im <= 0.0f) {
+				continue;
+			}
+			float m = 1.0f / im;
+			float vx = b->getVelocityX();
+			float vy = b->getVelocityY();
+			float w = b->getAngularVelocity();
+			ke += 0.5f * m * (vx * vx + vy * vy);
+			float iI = b->getInverseInertia();
+			if (iI > 0.0f) {
+				ke += 0.5f * (1.0f / iI) * w * w;
+			}
+		}
+		return ke;
+	};
+
+	bool checked = false;
+	for (int i = 0; i < 60; ++i) {
+		float keBefore = dynamicKe();
+		world.step();
+		float keAfter = dynamicKe();
+		ChainResidualStats stats = world.getLastChainResidual();
+
+		EXPECT_TRUE(std::isfinite(keAfter));
+		if (stats.appliedPathCount >= 1) {
+			EXPECT_LE(keAfter, keBefore + 1e-3f);
+			checked = true;
+		}
+	}
+
+	EXPECT_TRUE(checked);
+}
