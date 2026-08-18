@@ -2,6 +2,7 @@
 #include "body.h"
 #include "fixture.h"
 #include "constants.h"
+#include "collision-solver.h"
 #include "hinge-joint.h"
 #include "distance-joint.h"
 #include "spring-joint.h"
@@ -10,9 +11,246 @@
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "island-internal.h"
+
+static float fixtureCircleRadius(Body* body) {
+    if (!body) {
+        return 0.0f;
+    }
+    for (Fixture* f : body->fixtures) {
+        if (f && f->shape == ObjectShape::CIRCLE) {
+            float r = f->getRadius();
+            if (r > 0.0f) {
+                return r;
+            }
+        }
+    }
+    return 0.0f;
+}
+
+static bool bodiesEqualInverseMass(Body* a, Body* b) {
+    if (!a || !b) {
+        return false;
+    }
+    float imA = a->getInverseMass();
+    float imB = b->getInverseMass();
+    if (imA <= 0.0f || imB <= 0.0f) {
+        return false;
+    }
+    float ratio = imA / imB;
+    return ratio >= 0.999999f && ratio <= 1.000001f;
+}
+
+static bool isPendulumSiblingSpacing(Body* ref, Body* cand, float walkStep, float maxGap, float maxDy) {
+    if (!ref || !cand || cand == ref || cand->type == ObjectType::FIXED_OBJECT) {
+        return false;
+    }
+    if (!bodyHasDistanceJoint(cand)) {
+        return false;
+    }
+    if (!bodiesEqualInverseMass(ref, cand)) {
+        return false;
+    }
+    if (std::abs(cand->getY() - ref->getY()) > maxDy) {
+        return false;
+    }
+    float dx = std::abs(cand->getX() - ref->getX());
+    return dx > kChainResidualEps && dx <= walkStep + maxGap;
+}
+
+static bool bodiesShareContactCount(
+    Body* a,
+    Body* b,
+    const std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual>& bodyContactCounts) {
+    if (!a || !b || a == b) {
+        return false;
+    }
+    std::pair<int, int> key = {a->id, b->id};
+    if (key.first > key.second) {
+        std::swap(key.first, key.second);
+    }
+    auto it = bodyContactCounts.find(key);
+    return it != bodyContactCounts.end() && it->second > 0;
+}
+
+static bool bodiesAreFloodNeighbors(
+    Body* a,
+    Body* b,
+    float walkStep,
+    float maxGap,
+    float maxDy,
+    const std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual>& bodyContactCounts) {
+    if (!a || !b || a == b) {
+        return false;
+    }
+    if (bodiesShareContactCount(a, b, bodyContactCounts)) {
+        return true;
+    }
+    return isPendulumSiblingSpacing(a, b, walkStep, maxGap, maxDy);
+}
+
+static std::pair<int, int> fixturePairKey(int a, int b) {
+    if (a > b) {
+        std::swap(a, b);
+    }
+    return {a, b};
+}
+
+static void expandSleepingImpactChain(
+    CollisionSolver& collisionSolver,
+    const std::vector<Fixture*>& fixturesList,
+    const std::vector<Body*>& bodiesList,
+    const std::unordered_map<std::pair<int, int>, int, PairHash, PairEqual>& bodyContactCounts,
+    float dt,
+    std::unordered_set<Body*>& floodSet) {
+    floodSet.clear();
+
+    std::vector<Body*> bfsStack;
+    for (const CollisionInfo& col : collisionSolver.collisions) {
+        Fixture* fA = fixturesList[col.indexA];
+        Fixture* fB = fixturesList[col.indexB];
+        if (!fA || !fB) {
+            continue;
+        }
+        if (fA->isSensor() || fB->isSensor()) {
+            continue;
+        }
+        Body* bA = fA->body;
+        Body* bB = fB->body;
+        if (!bA || !bB) {
+            continue;
+        }
+        if (bA->getInverseMass() + bB->getInverseMass() == 0) {
+            continue;
+        }
+
+        bool aDynamic = bA->type != ObjectType::FIXED_OBJECT;
+        bool bDynamic = bB->type != ObjectType::FIXED_OBJECT;
+        bool aAwake = aDynamic && !bA->isSleeping;
+        bool bAwake = bDynamic && !bB->isSleeping;
+        bool aSleep = aDynamic && bA->isSleeping;
+        bool bSleep = bDynamic && bB->isSleeping;
+        if (!((aAwake && bSleep) || (bAwake && aSleep))) {
+            continue;
+        }
+
+        for (Body* seed : {bA, bB}) {
+            if (!seed || seed->type == ObjectType::FIXED_OBJECT) {
+                continue;
+            }
+            if (floodSet.insert(seed).second) {
+                bfsStack.push_back(seed);
+            }
+        }
+    }
+
+    if (floodSet.empty()) {
+        return;
+    }
+
+    while (!bfsStack.empty()) {
+        Body* b = bfsStack.back();
+        bfsStack.pop_back();
+
+        for (Body* contact : bodiesList) {
+            if (!contact || contact == b || contact->type == ObjectType::FIXED_OBJECT) {
+                continue;
+            }
+            if (!bodiesShareContactCount(b, contact, bodyContactCounts)) {
+                continue;
+            }
+            if (floodSet.insert(contact).second) {
+                bfsStack.push_back(contact);
+            }
+        }
+
+        float refR = fixtureCircleRadius(b);
+        if (refR <= 0.0f) {
+            refR = 0.5f;
+        }
+        float spacing = refR * 2.0f;
+        float walkStep = std::max(spacing, refR * 2.0f);
+        float maxGap = walkStep * 0.5f;
+        float maxDy = std::max(spacing, refR * 2.0f);
+
+        for (Body* cand : bodiesList) {
+            if (!cand || floodSet.count(cand) != 0) {
+                continue;
+            }
+            if (!isPendulumSiblingSpacing(b, cand, walkStep, maxGap, maxDy)) {
+                continue;
+            }
+            float r = fixtureCircleRadius(cand);
+            if (r > 0.0f && refR > 0.0f) {
+                float ratio = r / refR;
+                if (ratio < 0.75f || ratio > 1.25f) {
+                    continue;
+                }
+            }
+            if (floodSet.insert(cand).second) {
+                bfsStack.push_back(cand);
+            }
+        }
+    }
+
+    for (Body* b : floodSet) {
+        if (b && b->isSleeping && b->type != ObjectType::FIXED_OBJECT) {
+            b->wakeUp();
+        }
+    }
+
+    std::unordered_set<std::pair<int, int>, PairHash, PairEqual> existingPairs;
+    for (const CollisionInfo& col : collisionSolver.collisions) {
+        existingPairs.insert(fixturePairKey(col.indexA, col.indexB));
+    }
+
+    std::vector<Body*> flooded;
+    flooded.reserve(floodSet.size());
+    for (Body* b : floodSet) {
+        flooded.push_back(b);
+    }
+
+    for (size_t i = 0; i < flooded.size(); ++i) {
+        Body* ba = flooded[i];
+        float refR = fixtureCircleRadius(ba);
+        if (refR <= 0.0f) {
+            refR = 0.5f;
+        }
+        float spacing = refR * 2.0f;
+        float walkStep = std::max(spacing, refR * 2.0f);
+        float maxGap = walkStep * 0.5f;
+        float maxDy = std::max(spacing, refR * 2.0f);
+
+        for (size_t j = i + 1; j < flooded.size(); ++j) {
+            Body* bb = flooded[j];
+            if (!bodiesAreFloodNeighbors(ba, bb, walkStep, maxGap, maxDy, bodyContactCounts)) {
+                continue;
+            }
+            for (Fixture* fA : ba->fixtures) {
+                if (!fA) {
+                    continue;
+                }
+                for (Fixture* fB : bb->fixtures) {
+                    if (!fB) {
+                        continue;
+                    }
+                    int idxA = fA->worldIndex;
+                    int idxB = fB->worldIndex;
+                    auto key = fixturePairKey(idxA, idxB);
+                    if (existingPairs.count(key) != 0) {
+                        continue;
+                    }
+                    if (collisionSolver.solve(idxA, idxB, dt)) {
+                        existingPairs.insert(key);
+                    }
+                }
+            }
+        }
+    }
+}
 
 static bool bodyOnlyHasDistanceJointsToFixed(Body* body) {
     if (!body) {
@@ -44,6 +282,10 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 1. Generate all contact constraints first, so we can follow them in DFS
     contactConstraints.clear();
+
+    std::unordered_set<Body*> sleepingImpactFlood;
+    expandSleepingImpactChain(collisionSolver, fixturesList, bodiesList, bodyContactCounts, dt, sleepingImpactFlood);
+
     for (auto& col : collisionSolver.collisions) {
         Fixture* fA = fixturesList[col.indexA];
         Fixture* fB = fixturesList[col.indexB];
@@ -219,6 +461,16 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
                     stack.push_back(other);
                 }
             }
+
+            for (Body* nb : sleepingImpactFlood) {
+                if (!nb || nb == b || nb->type == ObjectType::FIXED_OBJECT) {
+                    continue;
+                }
+                if (!visited[nb->worldIndex]) {
+                    visited[nb->worldIndex] = true;
+                    stack.push_back(nb);
+                }
+            }
             
             // Follow joints
             for (Joint* j : b->joints) {
@@ -321,6 +573,19 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             if (b && b->type != ObjectType::FIXED_OBJECT &&
                 b->worldIndex >= 0 && static_cast<size_t>(b->worldIndex) < solverBodies.size()) {
                 b->setSolverData(solverBodies[b->worldIndex]);
+            }
+        }
+
+        for (Body* b : bodiesList) {
+            if (!b || b->type == ObjectType::FIXED_OBJECT || !b->isSleeping) {
+                continue;
+            }
+            float vx = b->getVelocityX();
+            float vy = b->getVelocityY();
+            float w = b->getAngularVelocity();
+            if (std::abs(vx) > kChainResidualEps || std::abs(vy) > kChainResidualEps ||
+                std::abs(w) > kChainResidualEps) {
+                b->wakeUp();
             }
         }
 
