@@ -6,7 +6,38 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+
+float computeConeNormalCap(const ContactConstraint& contact, float imA, float imB) {
+	float mSupport = 0.0f;
+	if (imA > 0.0f) {
+		mSupport = std::max(mSupport, 1.0f / imA);
+	}
+	if (imB > 0.0f) {
+		mSupport = std::max(mSupport, 1.0f / imB);
+	}
+	if (mSupport <= 0.0f) {
+		return 0.0f;
+	}
+	const float dt = contact.a->world.getTimeStep();
+	const float gN = std::abs(contact.a->world.getGravity().dot(contact.normal));
+	return mSupport * gN * dt;
+}
+
+float coneNormalForFriction(const ContactConstraint& contact, float normalImpulse, float frictionNormalBase, float coneCap) {
+	const bool bothDynamic = contact.a->getInverseMass() > 0.0f && contact.b->getInverseMass() > 0.0f;
+	if (!bothDynamic || contact.staticFriction >= 1.0f) {
+		return normalImpulse;
+	}
+	const float jammedN = std::max(0.0f, normalImpulse - frictionNormalBase);
+	const float jammedCap = coneCap + frictionNormalBase;
+	return frictionNormalBase + std::min(jammedN, jammedCap);
+}
+
+} // namespace
+
 void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
+	frictionNormalBase = normalImpulse;
     rA = point - a->getPosition();
     rB = point - b->getPosition();
     float imA = a->getInverseMass(), imB = b->getInverseMass();
@@ -90,6 +121,9 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
 
 void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
 #if HWY_TARGET != HWY_SCALAR
+    for (int i = 0; i < 4; ++i) {
+        batch[i]->frictionNormalBase = batch[i]->normalImpulse;
+    }
     V128 dt_v = v128_splat_f32(dt);
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
@@ -365,8 +399,20 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
         V128 vt = v128_dot_f32(relVelX_f, relVelY_f, tangentX, tangentY);
         V128 dLambdaT = v128_mul_f32(v128_neg_f32(vt), tMass);
 
-        V128 maxStaticFric = v128_mul_f32(staticFric, normalImpulse);
-        V128 maxKineticFric = v128_mul_f32(kineticFric, normalImpulse);
+        const World& world = batch[0]->a->world;
+        alignas(16) float imA_arr[4], imB_arr[4], normalImpulse_arr[4], coneNormal_arr[4];
+        v128_store_f32(imA_arr, imA);
+        v128_store_f32(imB_arr, imB);
+        v128_store_f32(normalImpulse_arr, normalImpulse);
+        for (int lane = 0; lane < 4; ++lane) {
+            const float coneCap = computeConeNormalCap(*batch[lane], imA_arr[lane], imB_arr[lane]);
+            coneNormal_arr[lane] = coneNormalForFriction(
+                *batch[lane], normalImpulse_arr[lane], batch[lane]->frictionNormalBase, coneCap);
+        }
+        V128 coneNormal = v128_load_f32(coneNormal_arr);
+
+        V128 maxStaticFric = v128_mul_f32(staticFric, coneNormal);
+        V128 maxKineticFric = v128_mul_f32(kineticFric, coneNormal);
         V128 oldImpulseT = frictionImpulse;
         V128 newImpulseT = v128_add_f32(oldImpulseT, dLambdaT);
         
@@ -448,8 +494,10 @@ void ContactConstraint::solveFast() {
         float vt = relVel_new.dot(tangent);
         float dLambdaT = -vt * tangentMass;
 
-        float maxStaticFriction = staticFriction * normalImpulse;
-        float maxKineticFriction = kineticFriction * normalImpulse;
+        const float coneCap = computeConeNormalCap(*this, sA.im, sB.im);
+        const float coneNormal = coneNormalForFriction(*this, normalImpulse, frictionNormalBase, coneCap);
+        float maxStaticFriction = staticFriction * coneNormal;
+        float maxKineticFriction = kineticFriction * coneNormal;
         float oldImpulseT = frictionImpulse;
         float newImpulseT = oldImpulseT + dLambdaT;
         
@@ -498,8 +546,10 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
         float dLambdaT = -vt * tangentMass;
 
         if (std::isfinite(dLambdaT)) {
-            float maxStaticFriction = staticFriction * normalImpulse;
-            float maxKineticFriction = kineticFriction * normalImpulse;
+            const float coneCap = computeConeNormalCap(*this, imA, imB);
+            const float coneNormal = coneNormalForFriction(*this, normalImpulse, frictionNormalBase, coneCap);
+            float maxStaticFriction = staticFriction * coneNormal;
+            float maxKineticFriction = kineticFriction * coneNormal;
             float oldImpulseT = frictionImpulse;
             float newImpulseT = oldImpulseT + dLambdaT;
             if (std::abs(newImpulseT) > maxStaticFriction) frictionImpulse = std::max(-maxKineticFriction, std::min(maxKineticFriction, newImpulseT));
