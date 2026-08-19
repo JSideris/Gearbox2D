@@ -24,6 +24,10 @@ float clampSoftSpringImpulse(float impulse, float lambda) {
 	return lambda;
 }
 
+bool shouldWeakenSoftSpring(bool weakenOnContactIsland, float imA, float imB) {
+	return weakenOnContactIsland && imA > 0.0f && imB > 0.0f;
+}
+
 } // namespace
 
 SpringJoint::SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio)
@@ -240,8 +244,10 @@ void SpringJoint::solve() {
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     float Cdot = (vB + vrB - (vA + vrA)).dot(normal);
     float lambda;
+    const float imA = bodyA->getInverseMass();
+    const float imB = bodyB->getInverseMass();
     if (frequencyHz > 0.0f) {
-        if (weakenOnContactIsland) {
+        if (shouldWeakenSoftSpring(weakenOnContactIsland, imA, imB)) {
             const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
             lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
             const float armSpin = std::abs(wB);
@@ -257,7 +263,6 @@ void SpringJoint::solve() {
     }
     impulse += lambda;
     Vec2 p = normal * lambda;
-    float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     if (imA > 0.0f) { bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA); bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(p) * iIA); }
     if (imB > 0.0f) { bodyB->setVelocityInternal(bodyB->getVelocity() + p * imB); bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(p) * iIB); }
@@ -272,7 +277,7 @@ void SpringJoint::solveFast() {
     float Cdot = (sB.v + vrB - (sA.v + vrA)).dot(normal);
     float lambda;
     if (frequencyHz > 0.0f) {
-        if (weakenOnContactIsland) {
+        if (shouldWeakenSoftSpring(weakenOnContactIsland, sA.im, sB.im)) {
             const float slipScale = 1.0f / (1.0f + std::abs(Cdot) * _dt);
             lambda = clampSoftSpringLambda(-mass * (Cdot + bias + gamma * impulse) * slipScale, frequencyHz);
             const float armSpin = std::abs(sB.w);
@@ -375,7 +380,8 @@ void SpringJoint::solveFastSIMD(SpringJoint** joints) {
     V128 negBudgeted = v128_sub_f32(v128_mul_f32(maxLambda, v128_splat_f32(-1.0f)), impulse);
     weakenLambda = v128_select(isSpring, v128_min_f32(budgeted, v128_max_f32(negBudgeted, weakenLambda)), weakenLambda);
 
-    V128 weakenSpring = v128_and(weakenMask, isSpring);
+    V128 bothDynamic = v128_and(v128_gt_f32(imA, zero_v), v128_gt_f32(imB, zero_v));
+    V128 weakenSpring = v128_and(weakenMask, v128_and(isSpring, bothDynamic));
     V128 lambda = v128_select(weakenSpring, weakenLambda, isolatedLambda);
 
     // Apply impulse
