@@ -43,7 +43,7 @@ Fixture properties define the physical behavior of a body's shape.
 - `staticFriction`: Resistance to starting motion between two surfaces.
 - `kineticFriction`: Resistance to maintaining motion between two surfaces.
 
-Friction is typically set between `0.0` (perfectly slippery) and `1.0` (high friction). The actual friction between two colliding fixtures is calculated as the average of their respective friction values.
+Friction is typically set between `0.0` (perfectly slippery) and `1.0` (high friction). When two fixtures collide, each coefficient is mixed independently using the geometric mean of the two fixture values: mixed static friction is `sqrt(staticFriction_A × staticFriction_B)`, and mixed kinetic friction is `sqrt(kineticFriction_A × kineticFriction_B)`.
 
 ### Density
 `density`: Used for automatic mass and inertia calculations.
