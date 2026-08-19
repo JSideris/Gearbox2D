@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#define private public
 #include "world.h"
+#undef private
 #include "body.h"
 #include "fixture.h"
 #include "constants.h"
@@ -32,6 +34,12 @@ constexpr int kPullSteps = 60;
 constexpr float kNeighborGeoRadius = 1.2f;
 constexpr float kMinIsoMove = 0.05f;
 constexpr float kOrderOfMagRatio = 0.1f;
+
+// Frozen after Phase 2 measurement on HEAD (4dec47bb+).
+constexpr float kMinConeBudgetDelta = 0.05f;
+constexpr float kMinSpringCapDelta = 0.03f;
+constexpr float kSpringCapEpsilon = 0.01f;
+constexpr bool kSideNormalDominance = true; // |normal.x| > |normal.y| => side (lift is tangent)
 
 static const float kCrossNeighborPositions[4][2] = {
 	{-0.5f, kTargetY},
@@ -89,6 +97,35 @@ struct ExtractionResult {
 	int neighborsAtPullStart = 0;
 };
 
+struct ContactTotals {
+	int overlappingContactCount = 0;
+	int contactPointCount = 0;
+	float sumAbsNormalImpulse = 0.0f;
+	float sumAbsFrictionImpulse = 0.0f;
+	float sumConeBudget = 0.0f;
+	float floorSumAbsNormalImpulse = 0.0f;
+	float floorSumAbsFrictionImpulse = 0.0f;
+	float floorSumConeBudget = 0.0f;
+	float sideSumAbsNormalImpulse = 0.0f;
+	float sideSumAbsFrictionImpulse = 0.0f;
+	float sideSumConeBudget = 0.0f;
+};
+
+struct CouplingSnapshot {
+	float displacement = 0.0f;
+	int neighborsAtPullStart = 0;
+	float springImpulseProxy = 0.0f;
+	float springImpulseDuringPull = 0.0f;
+	ContactTotals contactsAtSettle;
+	ContactTotals contactsDuringPull;
+};
+
+static bool isSideContact(const ContactConstraint& contact) {
+	return kSideNormalDominance
+		? std::abs(contact.normal.x) > std::abs(contact.normal.y)
+		: std::abs(contact.normal.y) > std::abs(contact.normal.x);
+}
+
 static int countGeometricNeighbors(Body* target, const World& world, int neighborCount) {
 	int count = 0;
 	const float maxDistSq = kNeighborGeoRadius * kNeighborGeoRadius;
@@ -106,7 +143,53 @@ static int countGeometricNeighbors(Body* target, const World& world, int neighbo
 	return count;
 }
 
-static ExtractionResult runExtractionScene(int neighborCount, const float positions[][2]) {
+static ContactTotals snapshotContactTotals(World& world, int draggedBodyId) {
+	ContactTotals totals;
+	for (const ContactConstraint& contact : world.contactConstraints) {
+		if (!contact.a || !contact.b) {
+			continue;
+		}
+		if (contact.a->getId() != draggedBodyId && contact.b->getId() != draggedBodyId) {
+			continue;
+		}
+		if (contact.depth < 0.0f) {
+			continue;
+		}
+
+		++totals.overlappingContactCount;
+		++totals.contactPointCount;
+
+		const float absNormalImpulse = std::abs(contact.normalImpulse);
+		const float absFrictionImpulse = std::abs(contact.frictionImpulse);
+		const float coneBudget = contact.staticFriction * contact.normalImpulse;
+
+		totals.sumAbsNormalImpulse += absNormalImpulse;
+		totals.sumAbsFrictionImpulse += absFrictionImpulse;
+		totals.sumConeBudget += coneBudget;
+
+		if (isSideContact(contact)) {
+			totals.sideSumAbsNormalImpulse += absNormalImpulse;
+			totals.sideSumAbsFrictionImpulse += absFrictionImpulse;
+			totals.sideSumConeBudget += coneBudget;
+		} else {
+			totals.floorSumAbsNormalImpulse += absNormalImpulse;
+			totals.floorSumAbsFrictionImpulse += absFrictionImpulse;
+			totals.floorSumConeBudget += coneBudget;
+		}
+	}
+	return totals;
+}
+
+static float snapshotSpringImpulseProxy(World& world) {
+	Joint* joint = world.getJoint(kSpringId);
+	if (!joint) {
+		return 0.0f;
+	}
+	const float invDt = 1.0f / kDt;
+	return joint->getReactionForce(invDt).magnitude() / invDt;
+}
+
+static CouplingSnapshot runExtractionSceneWithSnapshot(int neighborCount, const float positions[][2]) {
 	World world;
 	world.setTimeStep(kDt);
 	world.setGravity(0.0f, kGravityY);
@@ -130,6 +213,7 @@ static ExtractionResult runExtractionScene(int neighborCount, const float positi
 
 	const int neighborsAtPullStart = countGeometricNeighbors(target, world, neighborCount);
 	const float y0 = target->getY();
+	const ContactTotals contactsAtSettle = snapshotContactTotals(world, kDraggedId);
 
 	world.createBody(kMouseId, makeMouseAnchorOptions(target->getX(), target->getY()));
 	world.createSpringJoint(
@@ -143,13 +227,31 @@ static ExtractionResult runExtractionScene(int neighborCount, const float positi
 	}
 	mouseAnchor->setY(mouseAnchor->getY() - kPullDelta);
 
+	ContactTotals contactsDuringPull;
+	float springImpulseDuringPull = 0.0f;
 	for (int step = 0; step < kPullSteps; ++step) {
 		world.step();
+		if (step == 0) {
+			contactsDuringPull = snapshotContactTotals(world, kDraggedId);
+			springImpulseDuringPull = snapshotSpringImpulseProxy(world);
+		}
 	}
 
+	CouplingSnapshot snapshot;
+	snapshot.displacement = y0 - target->getY();
+	snapshot.neighborsAtPullStart = neighborsAtPullStart;
+	snapshot.springImpulseProxy = snapshotSpringImpulseProxy(world);
+	snapshot.springImpulseDuringPull = springImpulseDuringPull;
+	snapshot.contactsAtSettle = contactsAtSettle;
+	snapshot.contactsDuringPull = contactsDuringPull;
+	return snapshot;
+}
+
+static ExtractionResult runExtractionScene(int neighborCount, const float positions[][2]) {
+	const CouplingSnapshot snapshot = runExtractionSceneWithSnapshot(neighborCount, positions);
 	ExtractionResult result;
-	result.displacement = y0 - target->getY();
-	result.neighborsAtPullStart = neighborsAtPullStart;
+	result.displacement = snapshot.displacement;
+	result.neighborsAtPullStart = snapshot.neighborsAtPullStart;
 	return result;
 }
 
@@ -171,6 +273,56 @@ TEST(RegressionPileExtractionTest, DefaultMuBodyExtractableFromFourNeighborPile)
 
 	EXPECT_LT(std::abs(fourNeighbors.displacement), std::abs(isolated.displacement))
 		<< "Packed neighbors should add some resistance versus isolated pull";
+
+	EXPECT_GT(std::abs(oneNeighbor.displacement), std::abs(fourNeighbors.displacement))
+		<< "One-neighbor pull should remain easier than four-neighbor pull";
+}
+
+TEST(RegressionPileExtractionTest, CouplingSplitOnFrozenCross4Y) {
+	const CouplingSnapshot isolated = runExtractionSceneWithSnapshot(0, kCrossNeighborPositions);
+	const CouplingSnapshot oneNeighbor = runExtractionSceneWithSnapshot(1, kOneNeighborPosition);
+	const CouplingSnapshot fourNeighbors = runExtractionSceneWithSnapshot(4, kCrossNeighborPositions);
+
+	EXPECT_GE(isolated.contactsAtSettle.overlappingContactCount, 1)
+		<< "Isolated body should rest on the floor with overlapping contact";
+
+	EXPECT_GT(fourNeighbors.contactsAtSettle.overlappingContactCount,
+		isolated.contactsAtSettle.overlappingContactCount)
+		<< "Four-neighbor pile should have more overlapping contacts than isolated at settle";
+
+	EXPECT_GE(fourNeighbors.neighborsAtPullStart, 4)
+		<< "Four-neighbor scene must retain four geometric neighbors at pull start";
+
+	EXPECT_GT(fourNeighbors.contactsAtSettle.sumConeBudget,
+		isolated.contactsAtSettle.sumConeBudget + kMinConeBudgetDelta)
+		<< "Total friction cone budget should grow materially with packed neighbors";
+
+	EXPECT_GT(fourNeighbors.contactsAtSettle.sideSumConeBudget,
+		isolated.contactsAtSettle.sideSumConeBudget)
+		<< "Packed neighbors should add side friction cone budget";
+
+	EXPECT_GT(isolated.springImpulseDuringPull, 0.0f);
+	EXPECT_GT(fourNeighbors.springImpulseDuringPull, 0.0f);
+	EXPECT_GT(oneNeighbor.springImpulseDuringPull, 0.0f);
+
+	EXPECT_GE(fourNeighbors.springImpulseDuringPull, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
+		<< "Packed case should hit the spring weaken cap on the first pull step";
+
+	EXPECT_GE(isolated.springImpulseDuringPull, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
+		<< "Isolated case also hits the cap on the first pull step when anchor jumps";
+
+	EXPECT_GT(isolated.springImpulseProxy, 0.0f);
+	EXPECT_GT(fourNeighbors.springImpulseProxy, 0.0f);
+
+	EXPECT_GE(fourNeighbors.springImpulseProxy, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
+		<< "Packed case should remain at the spring weaken cap after pull";
+
+	EXPECT_LT(isolated.springImpulseProxy, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
+		<< "Isolated case should relax below the spring weaken cap after extraction";
+
+	EXPECT_GT(fourNeighbors.springImpulseProxy,
+		isolated.springImpulseProxy + kMinSpringCapDelta)
+		<< "Packed spring impulse should exceed isolated after pull";
 
 	EXPECT_GT(std::abs(oneNeighbor.displacement), std::abs(fourNeighbors.displacement))
 		<< "One-neighbor pull should remain easier than four-neighbor pull";
