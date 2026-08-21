@@ -247,6 +247,64 @@
 				border: 1px solid rgba(255, 255, 255, 0.2);
 				box-shadow: 0 0 8px currentColor;
 			}
+
+			.capture-control {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				color: var(--text-muted);
+				font-family: var(--font-header);
+				font-size: 0.7rem;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				user-select: none;
+			}
+
+			.capture-control select {
+				background: rgba(15, 23, 42, 0.5);
+				color: var(--text-main);
+				border: 1px solid var(--border);
+				border-radius: 4px;
+				padding: 6px 8px;
+				font-family: inherit;
+				font-size: 0.75rem;
+			}
+
+			.capture-control input[type="checkbox"] {
+				accent-color: var(--accent-cyan);
+				margin: 0;
+			}
+
+			#export-button {
+				background-color: transparent;
+				color: var(--accent-cyan);
+				border: 1px solid var(--accent-cyan);
+				border-radius: 4px;
+				padding: 8px 16px;
+				cursor: pointer;
+				font-family: var(--font-header);
+				font-size: 0.8rem;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				display: flex;
+				align-items: center;
+				transition: var(--transition);
+			}
+
+			#export-button:hover:not(:disabled) {
+				background-color: var(--accent-cyan);
+				color: var(--bg-deep);
+				box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+			}
+
+			#export-button:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			#export-button i {
+				margin-right: 8px;
+			}
 		</style>
 	</head>
 	<body>
@@ -276,6 +334,21 @@
 					<h1 id="scenario-name">Loading benchmark...</h1>
 				</div>
 				<div class="header-right">
+					<label class="capture-control" title="Simulation seconds to log on the chart">
+						<span>Capture</span>
+						<select id="capture-seconds">
+							<option value="60">60 s</option>
+							<option value="600">600 s</option>
+						</select>
+					</label>
+					<label class="capture-control" title="Advance 10 simulation steps per frame">
+						<input type="checkbox" id="fast-forward" />
+						<span>Fast-forward</span>
+					</label>
+					<button id="export-button" title="Download logged series as CSV" disabled>
+						<i class="fas fa-download"></i>
+						<span class="button-text">Export</span>
+					</button>
 					<button id="reset-button" title="Reset current benchmark">
 						<i class="fas fa-redo-alt"></i>
 						<span class="button-text">Reset</span>
@@ -389,8 +462,14 @@
 			const sidebarToggle = document.getElementById("sidebar-toggle");
 			const resetButton = document.getElementById("reset-button");
 			const resetButtonMobile = document.getElementById("reset-button-mobile");
+			const exportButton = document.getElementById("export-button");
+			const captureSelect = document.getElementById("capture-seconds");
+			const fastForwardToggle = document.getElementById("fast-forward");
 			const engineNameEl = document.getElementById("engine-name");
 			const engineLegend = document.getElementById("engine-legend");
+			const SIM_DT = 1 / 60;
+			const SAMPLE_EVERY = 60;
+			const FAST_FORWARD_STEPS = 10;
 
 			class BenchmarkChart {
 				constructor(canvasId) {
@@ -420,7 +499,12 @@
 								x: {
 									type: "linear",
 									position: "bottom",
-									title: { display: true, text: "Time (s)", color: "#94a3b8", font: { size: 10 } },
+									title: {
+										display: true,
+										text: "Simulation time (s)",
+										color: "#94a3b8",
+										font: { size: 10 },
+									},
 									grid: { color: "rgba(255, 255, 255, 0.05)" },
 									ticks: { color: "#94a3b8", font: { size: 8 } },
 								},
@@ -477,8 +561,9 @@
 			let gearboxWorld = null;
 			let gearboxClone = null;
 			let currentScenarioKey = "large-stack";
-			let benchmarkStartTime = 0;
-			let lastChartUpdateTime = 0;
+			let captureSeconds = 60;
+			let fastForward = false;
+			let captureComplete = false;
 
 			function updateURL(replace = false) {
 				const activeTab = document.querySelector(".engine-tab.active");
@@ -486,6 +571,12 @@
 				const params = new URLSearchParams(window.location.search);
 				params.set("scenario", currentScenarioKey);
 				params.set("engine", engine);
+				params.set("capture", String(captureSeconds));
+				if (fastForward) {
+					params.set("ff", "1");
+				} else {
+					params.delete("ff");
+				}
 
 				if (engine === "all") {
 					params.set("enabled", enabledEngines.join(","));
@@ -514,10 +605,19 @@
 				const scenarioParam = params.get("scenario");
 				const engineParam = params.get("engine");
 				const enabledParam = params.get("enabled");
+				const captureParam = params.get("capture");
+				const ffParam = params.get("ff");
 
 				if (scenarioParam && scenarios[scenarioParam]) {
 					currentScenarioKey = scenarioParam;
 				}
+
+				if (captureParam === "60" || captureParam === "600") {
+					captureSeconds = Number(captureParam);
+					captureSelect.value = captureParam;
+				}
+				fastForward = ffParam === "1";
+				fastForwardToggle.checked = fastForward;
 
 				if (enabledParam) {
 					enabledEngines = enabledParam
@@ -692,6 +792,11 @@
 					canvas,
 					state: {},
 					stepTimes: [],
+					simSteps: 0,
+					samples: [],
+					escaped: false,
+					escapedAt: null,
+					logging: true,
 				};
 			}
 
@@ -790,8 +895,8 @@
 
 				syncSize();
 
-				benchmarkStartTime = performance.now();
-				lastChartUpdateTime = benchmarkStartTime;
+				captureComplete = false;
+				exportButton.disabled = true;
 
 				document.getElementById("status-text").textContent =
 					`Initializing ${selectedEngine === "all" ? "comparison" : selectedEngine}...`;
@@ -800,91 +905,144 @@
 					for (const engine of activeEngines) {
 						await engine.adapter.init();
 						engine.adapter.clear();
+						engine.simSteps = 0;
+						engine.samples = [];
+						engine.escaped = false;
+						engine.escapedAt = null;
+						engine.logging = true;
+						engine.state = {};
 						if (scenario) {
 							scenario.setup(engine.adapter);
 						}
 
-						// Add initial 0s point
 						const metricValue = scenario.getMetric(engine.adapter, engine.state);
-						benchmarkChart.addPoint(engine.type, 0, metricValue);
+						if (metricValue !== null) {
+							benchmarkChart.addPoint(engine.type, 0, metricValue);
+							engine.samples.push({ t: 0, y: metricValue });
+						}
 					}
 
 					benchmarkChart.render();
 					isRunning = true;
-					lastTime = performance.now();
 					fpsLastTime = performance.now();
 					frames = 0;
+					exportButton.disabled = false;
 
 					loop();
 					document.getElementById("status-text").textContent =
-						`Running ${currentScenarioKey} on ${selectedEngine === "all" ? "comparison" : selectedEngine}`;
+						`Running ${currentScenarioKey} · 0 / ${captureSeconds}s sim`;
 				} catch (e) {
 					console.error(e);
 					document.getElementById("status-text").textContent = `Error: ${e.message}`;
 				}
 			}
 
-			let lastTime = 0;
 			let fpsLastTime = 0;
 			let frames = 0;
+
+			function captureSteps() {
+				return Math.round(captureSeconds / SIM_DT);
+			}
+
+			function recordSample(engine, scenario) {
+				const metricValue = scenario.getMetric(engine.adapter, engine.state);
+				if (metricValue === null) {
+					engine.escaped = true;
+					engine.escapedAt = engine.simSteps * SIM_DT;
+					engine.logging = false;
+					return;
+				}
+				const t = engine.simSteps * SIM_DT;
+				benchmarkChart.addPoint(engine.type, t, metricValue);
+				engine.samples.push({ t, y: metricValue });
+			}
+
+			function updateEngineHud(engine, avgStepMicros) {
+				if (activeEngines.length === 1 || engine.type === "gearbox2d") {
+					document.getElementById("engine-name").querySelector("span").textContent =
+						`Engine: ${engine.type.toUpperCase()}`;
+					document.getElementById("avg-step-time").querySelector("span").textContent =
+						`Avg Step: ${avgStepMicros.toFixed(0)} μs`;
+					document.getElementById("bodies").querySelector("span").textContent =
+						`Bodies: ${engine.adapter.getBodyCount()}`;
+
+					const memoryEl = document.getElementById("memory");
+					if (engine.adapter.getMemoryUsage) {
+						const mem = engine.adapter.getMemoryUsage();
+						memoryEl.style.display = "flex";
+						memoryEl.querySelector("span").textContent =
+							mem < 1048576
+								? `Memory: ${(mem / 1024).toFixed(2)} KB`
+								: `Memory: ${(mem / 1048576).toFixed(2)} MB`;
+					} else {
+						memoryEl.style.display = "none";
+					}
+				}
+			}
 
 			function loop() {
 				if (!isRunning) return;
 
 				const now = performance.now();
 				const scenario = scenarios[currentScenarioKey];
+				const maxSteps = captureSteps();
+				const stepsThisFrame = fastForward && !captureComplete ? FAST_FORWARD_STEPS : 1;
+				let addedPoint = false;
+				let stillLogging = false;
 
 				for (const engine of activeEngines) {
 					const startTime = performance.now();
-					engine.adapter.step(1 / 60);
-					const endTime = performance.now();
+					let stepped = 0;
+					for (let s = 0; s < stepsThisFrame; s++) {
+						engine.adapter.step(SIM_DT);
+						engine.simSteps++;
+						stepped++;
 
-					const stepTimeMicros = (endTime - startTime) * 1000;
-					engine.stepTimes.push(stepTimeMicros);
-					if (engine.stepTimes.length > 60) engine.stepTimes.shift();
-
-					const avgStepMicros = engine.stepTimes.reduce((a, b) => a + b, 0) / engine.stepTimes.length;
-
-					// Update UI for the first engine (or specific one if not in all mode)
-					if (activeEngines.length === 1 || engine.type === "gearbox2d") {
-						document.getElementById("engine-name").querySelector("span").textContent =
-							`Engine: ${engine.type.toUpperCase()}`;
-						document.getElementById("avg-step-time").querySelector("span").textContent =
-							`Avg Step: ${avgStepMicros.toFixed(0)} μs`;
-						document.getElementById("bodies").querySelector("span").textContent =
-							`Bodies: ${engine.adapter.getBodyCount()}`;
-
-						const memoryEl = document.getElementById("memory");
-						if (engine.adapter.getMemoryUsage) {
-							const mem = engine.adapter.getMemoryUsage();
-							memoryEl.style.display = "flex";
-							memoryEl.querySelector("span").textContent =
-								mem < 1048576
-									? `Memory: ${(mem / 1024).toFixed(2)} KB`
-									: `Memory: ${(mem / 1048576).toFixed(2)} MB`;
-						} else {
-							memoryEl.style.display = "none";
-						}
-					}
-
-					// Update Scenario Metrics
-					if (scenario) {
-						engine.state.avgStepTime = avgStepMicros / 1000; // to ms
-						const metricValue = scenario.getMetric(engine.adapter, engine.state);
-
-						const timeSinceStart = (now - benchmarkStartTime) / 1000;
-
-						if (timeSinceStart <= 60 && now - lastChartUpdateTime >= 1000) {
-							benchmarkChart.addPoint(engine.type, timeSinceStart, metricValue);
-							if (engine === activeEngines[activeEngines.length - 1]) {
-								benchmarkChart.render();
-								lastChartUpdateTime = now;
+						if (engine.logging) {
+							if (engine.simSteps >= maxSteps) {
+								recordSample(engine, scenario);
+								engine.logging = false;
+								addedPoint = true;
+							} else if (engine.simSteps % SAMPLE_EVERY === 0) {
+								recordSample(engine, scenario);
+								addedPoint = true;
 							}
 						}
+
+						if (engine.escaped) {
+							break;
+						}
 					}
+					const endTime = performance.now();
+					const stepTimeMicros = stepped > 0 ? ((endTime - startTime) * 1000) / stepped : 0;
+					engine.stepTimes.push(stepTimeMicros);
+					if (engine.stepTimes.length > 60) engine.stepTimes.shift();
+					const avgStepMicros = engine.stepTimes.reduce((a, b) => a + b, 0) / engine.stepTimes.length;
+					engine.state.avgStepTime = avgStepMicros / 1000;
+
+					if (engine.logging) stillLogging = true;
+					updateEngineHud(engine, avgStepMicros);
 
 					const frame = engine.adapter.getDebugFrame();
 					engine.renderer.render(frame);
+				}
+
+				if (addedPoint) {
+					benchmarkChart.render();
+				}
+
+				const loggedT = Math.min(
+					captureSeconds,
+					Math.max(0, ...activeEngines.map((e) => e.simSteps * SIM_DT)),
+				);
+				if (!stillLogging && !captureComplete) {
+					captureComplete = true;
+					document.getElementById("status-text").textContent =
+						`Capture complete (${captureSeconds}s sim). Export CSV.`;
+				} else if (stillLogging) {
+					const ffNote = fastForward ? " · 10×" : "";
+					document.getElementById("status-text").textContent =
+						`Running ${currentScenarioKey} · ${loggedT.toFixed(0)} / ${captureSeconds}s sim${ffNote}`;
 				}
 
 				frames++;
@@ -897,6 +1055,34 @@
 				frameId = requestAnimationFrame(loop);
 			}
 
+			function exportCapture() {
+				const scenario = scenarios[currentScenarioKey];
+				if (!scenario || activeEngines.length === 0) return;
+
+				const lines = [
+					`# scenario=${currentScenarioKey} capture_s=${captureSeconds} dt=${SIM_DT} sample_every=${SAMPLE_EVERY}`,
+				];
+				for (const engine of activeEngines) {
+					if (engine.escaped) {
+						lines.push(`# engine=${engine.type} escaped_at_s=${engine.escapedAt}`);
+					}
+				}
+				lines.push("engine,t_s,e_over_e0");
+				for (const engine of activeEngines) {
+					for (const sample of engine.samples) {
+						lines.push(`${engine.type},${sample.t},${sample.y}`);
+					}
+				}
+
+				const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = `dataset-b-${currentScenarioKey}-${captureSeconds}s.csv`;
+				a.click();
+				URL.revokeObjectURL(url);
+			}
+
 			const handleReset = () => {
 				benchmarkChart.clear();
 				startBenchmark();
@@ -905,6 +1091,18 @@
 
 			resetButton.addEventListener("click", handleReset);
 			resetButtonMobile.addEventListener("click", handleReset);
+			exportButton.addEventListener("click", exportCapture);
+
+			captureSelect.addEventListener("change", () => {
+				captureSeconds = Number(captureSelect.value);
+				updateURL();
+				handleReset();
+			});
+
+			fastForwardToggle.addEventListener("change", () => {
+				fastForward = fastForwardToggle.checked;
+				updateURL(true);
+			});
 
 			sidebarToggle.addEventListener("click", () => {
 				sidebar.classList.toggle("collapsed");

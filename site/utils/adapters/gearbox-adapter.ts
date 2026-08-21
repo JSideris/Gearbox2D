@@ -164,6 +164,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			color: options.color,
 			linearDamping: options.linearDamping,
 			angularDamping: options.angularDamping,
+			canSleep: options.canSleep,
 		});
 		body.createFixture({
 			shape: this.gearboxInstance.shapes.BOX,
@@ -200,6 +201,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 			color: options.color,
 			linearDamping: options.linearDamping,
 			angularDamping: options.angularDamping,
+			canSleep: options.canSleep,
 		});
 		body.createFixture({
 			shape: this.gearboxInstance.shapes.CIRCLE,

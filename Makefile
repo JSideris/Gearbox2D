@@ -20,6 +20,12 @@ CXX = g++  # Native C++ compiler for tests
 TARGET = gearbox-module
 TEST_TARGET = runTests
 BENCH_TARGET = runBenchmarks
+ifeq ($(GEARBOX_DISABLE_KRB),1)
+LOG_ENERGY_BIN = logEnergy-nokrb
+else
+LOG_ENERGY_BIN = logEnergy
+endif
+LOG_ENERGY_SRC = studies/kinematic_restitution_balancing/log-energy.cpp
 
 # Source files
 SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/world/*.cpp) $(wildcard $(SRC_DIR)/world/island/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
@@ -36,6 +42,8 @@ ST_FLAGS =
 # Research-only ablation. Default is KRB on.
 #   make test GEARBOX_DISABLE_KRB=1
 #   make benchmark GEARBOX_DISABLE_KRB=1
+#   make log-energy
+#   make log-energy GEARBOX_DISABLE_KRB=1
 ifeq ($(GEARBOX_DISABLE_KRB),1)
 KRB_FLAGS = -DGEARBOX_DISABLE_KRB
 endif
@@ -71,8 +79,14 @@ $(BENCH_TARGET): $(SRC) $(BENCH_SRC)
 	$(CXX) $(BENCH_FLAGS) -o $(BENCH_TARGET) $(SRC) $(BENCH_SRC) -I$(INCLUDE_DIR)
 	./$(BENCH_TARGET)
 
+# Dataset A energy logger (does not run the gtest suite).
+log-energy: $(LOG_ENERGY_BIN)
+
+$(LOG_ENERGY_BIN): $(SRC) $(LOG_ENERGY_SRC)
+	$(CXX) $(GTEST_FLAGS) -o $(LOG_ENERGY_BIN) $(SRC) $(LOG_ENERGY_SRC) -I$(INCLUDE_DIR)
+
 # Clean up build files
 clean:
-	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(BENCH_TARGET)
+	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(BENCH_TARGET) logEnergy logEnergy-nokrb
 
-.PHONY: all clean wasm test benchmark
+.PHONY: all clean wasm test benchmark log-energy

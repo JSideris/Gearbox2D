@@ -1,0 +1,6 @@
+# scene=bounce-circle krb=off dt=0.0166667 seconds=600 sample_every=60 e0=340
+t_s,ke,pe,e_total,e_over_e0,peak_height
+0,0,340,340,1,0.85
+1,1422.22,-104.444,1317.78,3.87582,-0.261111
+2,3200,340,3540,10.4118,0.85
+# escaped_at_step=161 t_s=2.68333

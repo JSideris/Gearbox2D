@@ -156,22 +156,68 @@ float lambda = -mass * (relative_vn + bias);
 ---
 
 ## 6. Results
-The observations below are from the Gearbox2D implementation. We do not report a patched-Box2D result. An earlier Box2D v3 port used an older revision of the method; those energy-gain and CPU-overhead numbers are withdrawn.
+Three datasets. Figure 1 is a compile-time ablation of the Gearbox2D sequential-impulse solver: the default binary (KRB on) versus the same sources built with `-DGEARBOX_DISABLE_KRB`. Figure 2 places that KRB-on build next to unmodified Box2D-WASM, p2.js, and Matter.js. Dataset C is an $8\,\mathrm{h}$ headless continuation of the KRB-on cradle (and a contact-only enclosure check); it has no figure. We do not report a patched-Box2D result. An earlier Box2D v3 port used an older revision of the method; those energy-gain and CPU-overhead numbers are withdrawn.
 
-Long-horizon traces against unmodified Box2D, Matter, and p2 — and a KRB on/off ablation — are being collected with the project benchmark harness and will replace the qualitative notes here.
+Every scene runs for $600\,\mathrm{s}$ of simulation time at $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Mechanical energy is $E = E_k + E_p$. Dataset A includes rotational KE; Dataset B is translational only (the website adapters do not expose $\omega$). On the overlapping Gearbox traces the two agree to about $10^{-6}$ for the floor bounce. The reported ratio is $E/E_0$ relative to the known start-of-run energy.
 
-1.  **Stable collisions:** Elastic contacts at $e=1.0$ with no damping remain height-bounded over long runs. The usual SI per-frame energy gain does not appear.
-2.  **Zero-G jitter:** Joint chains at rest remain stationary regardless of solver iterations, as no spurious force drift must be corrected at the velocity level.
-3.  **Stiffness without damping:** High-frequency oscillations in stiff springs are preserved rather than numerically damped by force-integration drift.
+### 6.1 Ablation (Dataset A)
+Traces and the logger are in `data/*-{krb,nokrb}.csv` and `log-energy.cpp`.
+
+![Figure 1. KRB on/off energy ablation.](figures/fig-energy-ablation.png)
+
+**Figure 1.** Mechanical energy ratio over $600\,\mathrm{s}$. (a) Single elastic floor contact. (b) High-rate enclosure; KRB on is a 60 s windowed mean, KRB off is raw 1 Hz samples terminating at tunneling ($t = 2.7\,\mathrm{s}$). (c) Newton's cradle (coupled contacts and joints). Vector original: `figures/fig-energy-ablation.pdf`.
+
+| Scene | KRB | $E/E_0$ at $600\,\mathrm{s}$ | Windowed mean | Outcome |
+| :--- | :--- | ---: | :--- | :--- |
+| Floor bounce | on | $0.999$ | $1.000$ | bounded |
+| Floor bounce | off | $6.53$ | climbing | runaway |
+| High-pressure circle | on | — | $1.00$ | stayed in box |
+| High-pressure circle | off | — | — | escaped, step $161$ |
+| Newton's cradle | on | $1.07$ | $1.05$ after $t=300$ | bounded offset |
+| Newton's cradle | off | $1.79$ | climbing | secular gain |
+
+Contact-only scenes match §1. With KRB, the floor bounce stays at $E/E_0 = 1.000 \pm 0.001$ in every 60 s window and never exceeds its start height. Without KRB the same drop gains about $0.55\,E_0$ per minute and finishes at $E/E_0 = 6.53$, with the apex 50 length units above the release. The high-pressure enclosure is the same leak at a higher impact rate: KRB window means stay at $1.00$ for the full run; without KRB the body leaves the box after $2.7\,\mathrm{s}$ at $E/E_0 \approx 10$. Instantaneous 1 Hz samples of the on-curve swing between $0.67$ and $1.33$ because they alias the bounce; the windowed mean is the drift signal.
+
+The cradle is better with KRB but is not an invariant, which is the coupled-constraint gap in Section 7. Without KRB, $E/E_0$ climbs from $1.00$ to $1.79$ and outer-ball peak height from $1.35$ to $2.43$. With KRB, energy sits slightly low ($\sim 0.96$) for four minutes, steps to $\sim 1.07$ around $t = 240$–$300\,\mathrm{s}$, then plateaus or slightly decays ($1.072 \to 1.054$). That is a bounded offset, not the linear SI ramp. A headless $8\,\mathrm{h}$ continuation (Dataset C) stays in that band: after the step, $E/E_0 \in [1.034, 1.093]$ with mean $1.053$; the last hour matches the first hour after the step, and there are no further steps.
+
+Resting joint chains remain stationary with Component A enabled (no spurious force-drift correction at the velocity level). High-frequency spring modes are likewise not numerically damped by force-integration drift. Those two observations are qualitative and are not part of Figure 1.
+
+### 6.2 Stock engines (Dataset B)
+Figure 2 uses the same floor-bounce and cradle setups, logged from `site/benchmarks.html` at 1 Hz of simulation time. Gearbox2D is the default KRB-on WASM build. Box2D-WASM, p2.js, and Matter.js are unmodified. This is whole-engine behavior: iteration counts, split impulse, restitution thresholds, and default damping all differ. It is not an ablation of KRB inside those engines. Traces are in `data/dataset-b-*-600s.csv`.
+
+![Figure 2. Four-engine energy traces.](figures/fig-energy-engines.png)
+
+**Figure 2.** Mechanical energy ratio over $600\,\mathrm{s}$ on unmodified engines. (a) Elastic floor contact. (b) Newton's cradle. Vector original: `figures/fig-energy-engines.pdf`.
+
+| Scene | Engine | $E/E_0$ at $600\,\mathrm{s}$ | Outcome |
+| :--- | :--- | ---: | :--- |
+| Floor bounce | Gearbox2D (KRB on) | $0.999$ | bounded |
+| Floor bounce | Box2D-WASM | $6.61$ | runaway |
+| Floor bounce | p2.js | $0.376$ | slow loss |
+| Floor bounce | Matter.js | $\approx 0$ | dead by $t\approx 160\,\mathrm{s}$ |
+| Newton's cradle | Gearbox2D (KRB on) | $1.062$ | bounded offset |
+| Newton's cradle | Box2D-WASM | $0.221$ | stepped loss |
+| Newton's cradle | p2.js | $0.320$ | slow loss |
+| Newton's cradle | Matter.js | $\approx 0$ | dead by $t\approx 40\,\mathrm{s}$ |
+
+The floor bounce is the contact leak from §1 in a production SI engine. Box2D-WASM climbs to $E/E_0 = 6.61$, matching Gearbox with KRB off ($6.53$) to a few percent. Gearbox with KRB on stays at $1.000 \pm 0.001$ in every 60 s window, as in Figure 1a. p2.js and Matter.js fail the other way: they dissipate, Matter reaching rest by $t\approx 160\,\mathrm{s}$.
+
+The cradle is a different regime—elastic contacts plus joints—and the other engines lose energy rather than gain it. Matter is done by $t\approx 40\,\mathrm{s}$. Box2D-WASM falls in steps to $0.22$ (restitution velocity threshold plus Baumgarte on the rods). p2.js drains smoothly to $0.32$. Gearbox repeats Figure 1c: a $\sim 7\%$ step near four minutes, then a plateau. That is the empirical bound in Section 7, not a claim that the other engines share the SI gain of Figure 2a.
+
+Energy loss on the cradle is not only a smaller amplitude. Unmodified Box2D, p2, and Matter lose the single-ball transfer: two balls leave together, or the pack splits, and the outer-ball stroke drops. Gearbox keeps the one-at-a-time exchange for the full $600\,\mathrm{s}$. That is a qualitative observation; Figure 2b reports $E/E_0$.
+
+A high-pressure enclosure ($g = 400$) was logged with the same harness and omitted from Figure 2. Matter rests on the floor within a second; p2.js does so within about $90\,\mathrm{s}$; Box2D-WASM locks to a two-value limit cycle ($1.000$ / $0.828$ on alternate seconds) consistent with split impulse and a translation cap. That is a solver-survival test, not an energy comparison.
 
 ---
 
 ## 7. Known Limitations
 KRB is a per-constraint audit, not a coupled one. When resolving one constraint (for example a horizontal collision) forces a second constraint to do work against gravity (for example a pendulum rod lifting the body), the isolated PE/KE tax may miss the systemic change in potential energy.
 
-Newton's cradle is that coupled case: elastic contacts plus joints doing gravity work. In the Gearbox2D cradle we do not observe a practical leak over long runs (hours). That is an empirical bound for this scene, not a proof. We have not shown the same bound for arbitrary contact/joint graphs, and we do not claim a global energy invariant of the kind variational integrators provide [9].
+Newton's cradle is that coupled case. In Figure 1c and Figure 2b the KRB run shows a $\sim 7\%$ energy step near four minutes, then a plateau for the rest of the $600\,\mathrm{s}$ window—not a secular climb, and not a proof of a global invariant. Dataset C continues that KRB-on cradle to $8\,\mathrm{h}$ of simulation time ($dt = 1/60$, sampled every $10\,\mathrm{s}$; traces in `data/dataset-c/`). After the same four-minute step, $E/E_0$ stays in $[1.034, 1.093]$ (mean $1.053$) through $t = 28800\,\mathrm{s}$; the last-hour mean is $1.053$, identical to the hour after the step, and 60 s windowed means do not jump again. That is an empirical multi-hour bound for this scene, still not a global invariant, and still not shown for arbitrary contact/joint graphs.
 
-A coupled-constraint audit is future work. High-speed tunneling, long ill-conditioned chains, and other scenes that fail for reasons other than the two leaks in §1 are outside the claim.
+The same 600 s of unmodified Box2D, p2, and Matter (Figure 2b) dissipate rather than gain; that is a different failure mode and does not close the coupled-audit gap. A contact-only enclosure check in Dataset C stayed inside the box for $8\,\mathrm{h}$; 600 s windowed $E/E_0$ drifted $1.009 \to 0.977$ (slow loss, not the SI gain of Figure 1b). Variational integrators [9] remain a different claim.
+
+A coupled-constraint audit is future work. High-speed tunneling, long ill-conditioned chains, and other scenes that fail for reasons other than the two leaks in §1 are outside the claim. The no-KRB enclosure escape in Figure 1b is the SI leak at high impact rate, not a KRB failure.
 
 ---
 

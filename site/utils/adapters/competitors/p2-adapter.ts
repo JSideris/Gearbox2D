@@ -78,6 +78,7 @@ export class P2Adapter implements PhysicsEngineAdapter {
 			type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC,
 			damping: options.linearDamping !== undefined ? options.linearDamping : 0.1,
 			angularDamping: options.angularDamping !== undefined ? options.angularDamping : 0.1,
+			allowSleep: options.canSleep !== false,
 		});
 		body.addShape(new this.p2.Box({ width: w, height: h }));
 		this.world.addBody(body);
@@ -100,6 +101,7 @@ export class P2Adapter implements PhysicsEngineAdapter {
 			type: isStatic ? this.p2.Body.STATIC : this.p2.Body.DYNAMIC,
 			damping: options.linearDamping !== undefined ? options.linearDamping : 0.1,
 			angularDamping: options.angularDamping !== undefined ? options.angularDamping : 0.1,
+			allowSleep: options.canSleep !== false,
 		});
 		body.addShape(new this.p2.Circle({ radius }));
 		this.world.addBody(body);

@@ -3,8 +3,40 @@ import { PhysicsEngineAdapter } from "../utils/physics-protocol";
 export interface Scenario {
 	name: string;
 	setup(adapter: PhysicsEngineAdapter): void;
-	getMetric(adapter: PhysicsEngineAdapter, state: any): number;
+	/** Instantaneous sample. `null` means the series ended (e.g. escaped). */
+	getMetric(adapter: PhysicsEngineAdapter, state: any): number | null;
 	metricLabel: string;
+	/** Dataset B energy scenes: chart/export as E/E0 vs simulation time. */
+	tracksEnergy?: boolean;
+}
+
+const noDissipation = {
+	restitution: 1.0,
+	sFriction: 0,
+	kFriction: 0,
+	linearDamping: 0,
+	angularDamping: 0,
+	canSleep: false,
+};
+
+/** Translational E/E0. y increases downward; PE = m g (yRef - y). */
+function energyRatio(
+	adapter: PhysicsEngineAdapter,
+	ids: (string | number)[],
+	masses: number[],
+	g: number,
+	yRef: number,
+	e0: number,
+): number {
+	let energy = 0;
+	for (let i = 0; i < ids.length; i++) {
+		const vel = adapter.getVelocity(ids[i]);
+		const pos = adapter.getPosition(ids[i]);
+		const mass = masses[i];
+		energy += 0.5 * mass * (vel.x * vel.x + vel.y * vel.y);
+		energy += mass * g * (yRef - pos.y);
+	}
+	return e0 > 0 ? energy / e0 : 0;
 }
 
 export const LargeStackScenario: Scenario = {
@@ -52,9 +84,11 @@ export const HighDensityScenario: Scenario = {
 
 export const NewtonsCradleScenario: Scenario = {
 	name: "Newton's Cradle",
-	metricLabel: "Peak Height (2s)",
+	metricLabel: "Energy / E0",
+	tracksEnergy: true,
 	setup(adapter: PhysicsEngineAdapter) {
 		adapter.clear();
+		adapter.setGravity(0, 9.8);
 
 		const count = 5;
 		const radius = 0.4;
@@ -66,25 +100,17 @@ export const NewtonsCradleScenario: Scenario = {
 			const anchorId = `anchor-${i}`;
 			const ballId = `ball-${i}`;
 
-			// Create anchor (static body)
 			adapter.createBox(anchorId, x, startY, 0.2, 0.2, true, { color: "#555" });
 
-			// Create ball
-			// Offset the first ball to start the motion
 			const ballX = i === 0 ? x - 3 : x;
 			const ballY = i === 0 ? startY + Math.sqrt(length * length - 3 * 3) : startY + length;
 
 			adapter.createCircle(ballId, ballX, ballY, radius, false, {
+				...noDissipation,
 				color: i === 0 || i === count - 1 ? "#a855f7" : "#00f2ff",
-				restitution: 1.0,
 				mass: 1.0,
-				sFriction: 0,
-				kFriction: 0,
-				linearDamping: 0,
-				angularDamping: 0,
 			});
 
-			// Connect with distance joint
 			adapter.createDistanceJoint(`joint-${i}`, anchorId, ballId, {
 				length: length,
 				anchorA: { x: 0, y: 0 },
@@ -93,35 +119,19 @@ export const NewtonsCradleScenario: Scenario = {
 		}
 	},
 	getMetric(adapter, state) {
-		if (!state.heightHistory) state.heightHistory = [];
-		const now = performance.now();
-
-		const restingY = 2; // startY + length = -2 + 4 = 2
-		let frameMaxHeight = -Infinity;
-
-		// Track the outer balls
-		const ids = ["ball-0", "ball-4"];
-		for (const id of ids) {
-			const pos = adapter.getPosition(id);
-			// Height relative to resting position (higher is smaller y)
-			const height = restingY - pos.y;
-			if (height > frameMaxHeight) frameMaxHeight = height;
+		const g = 9.8;
+		const yRef = 2;
+		const ids = ["ball-0", "ball-1", "ball-2", "ball-3", "ball-4"];
+		const masses = [1, 1, 1, 1, 1];
+		if (state.initialEnergy === undefined) {
+			let e0 = 0;
+			for (let i = 0; i < ids.length; i++) {
+				const pos = adapter.getPosition(ids[i]);
+				e0 += masses[i] * g * (yRef - pos.y);
+			}
+			state.initialEnergy = e0;
 		}
-
-		state.heightHistory.push({ time: now, height: frameMaxHeight });
-
-		// Prune older than 2s (2000ms)
-		while (state.heightHistory.length > 0 && now - state.heightHistory[0].time > 2000) {
-			state.heightHistory.shift();
-		}
-
-		// Return max in history
-		let maxInWindow = -Infinity;
-		for (const entry of state.heightHistory) {
-			if (entry.height > maxInWindow) maxInWindow = entry.height;
-		}
-
-		return maxInWindow === -Infinity ? 0 : Math.max(0, maxInWindow);
+		return energyRatio(adapter, ids, masses, g, yRef, state.initialEnergy);
 	},
 };
 
@@ -221,6 +231,7 @@ export const ConservationOfEnergyScenario: Scenario = {
 export const HighPressureBouncyCircleScenario: Scenario = {
 	name: "High-Pressure Bouncy Circle",
 	metricLabel: "Energy / E0",
+	tracksEnergy: true,
 	setup(adapter: PhysicsEngineAdapter) {
 		adapter.clear();
 
@@ -231,15 +242,7 @@ export const HighPressureBouncyCircleScenario: Scenario = {
 		const innerHeight = 3;
 		const radius = 0.5;
 		const startY = -0.85;
-		const color = "#333";
-		const wallProps = {
-			color,
-			restitution: 1.0,
-			sFriction: 0,
-			kFriction: 0,
-			linearDamping: 0,
-			angularDamping: 0,
-		};
+		const wallProps = { ...noDissipation, color: "#333" };
 
 		adapter.setGravity(0, g);
 
@@ -249,12 +252,8 @@ export const HighPressureBouncyCircleScenario: Scenario = {
 		adapter.createBox("right", innerWidth / 2 + thickness / 2, 0, thickness, innerHeight, true, wallProps);
 
 		adapter.createCircle("bouncy-circle", 0, startY, radius, false, {
+			...noDissipation,
 			mass: 1.0,
-			restitution: 1.0,
-			sFriction: 0,
-			kFriction: 0,
-			linearDamping: 0,
-			angularDamping: 0,
 			color: "#00f2ff",
 		});
 	},
@@ -264,36 +263,47 @@ export const HighPressureBouncyCircleScenario: Scenario = {
 		const innerWidth = 10;
 		const innerHeight = 3;
 		const startY = -0.85;
-		const escapeMargin = 2;
+		const escapeMargin = 0.25;
 
 		if (state.initialEnergy === undefined) {
-			// y increases downward; height above y=0 is -y
 			state.initialEnergy = mass * g * -startY;
-			state.energyHistory = [];
 		}
 
 		const pos = adapter.getPosition("bouncy-circle");
 		if (Math.abs(pos.x) > innerWidth / 2 + escapeMargin || Math.abs(pos.y) > innerHeight / 2 + escapeMargin) {
-			state.energyHistory = [];
-			return 0;
+			return null;
 		}
 
-		const vel = adapter.getVelocity("bouncy-circle");
-		const ke = 0.5 * mass * (vel.x * vel.x + vel.y * vel.y);
-		const pe = mass * g * -pos.y;
-		const ratio = state.initialEnergy > 0 ? (ke + pe) / state.initialEnergy : 0;
+		return energyRatio(adapter, ["bouncy-circle"], [mass], g, 0, state.initialEnergy);
+	},
+};
 
-		const now = performance.now();
-		state.energyHistory.push({ time: now, ratio });
-		while (state.energyHistory.length > 0 && now - state.energyHistory[0].time > 2000) {
-			state.energyHistory.shift();
-		}
+export const FloorBounceScenario: Scenario = {
+	name: "Floor Bounce",
+	metricLabel: "Energy / E0",
+	tracksEnergy: true,
+	setup(adapter: PhysicsEngineAdapter) {
+		adapter.clear();
+		adapter.setGravity(0, 10);
 
-		let sum = 0;
-		for (const entry of state.energyHistory) {
-			sum += entry.ratio;
+		const floorY = 10;
+		const floorH = 1;
+		adapter.createBox("ground", 0, floorY, 20, floorH, true, { ...noDissipation, color: "#333" });
+		adapter.createCircle("ball", 0, 0, 0.5, false, {
+			...noDissipation,
+			mass: 1.0,
+			color: "#00f2ff",
+		});
+	},
+	getMetric(adapter, state) {
+		const g = 10;
+		const mass = 1.0;
+		const startY = 0;
+		const yContact = 10 - 0.5 - 0.5;
+		if (state.initialEnergy === undefined) {
+			state.initialEnergy = mass * g * (yContact - startY);
 		}
-		return state.energyHistory.length > 0 ? sum / state.energyHistory.length : 0;
+		return energyRatio(adapter, ["ball"], [mass], g, yContact, state.initialEnergy);
 	},
 };
 
@@ -436,9 +446,10 @@ export const RagdollScenario: Scenario = {
 export const scenarios: Record<string, Scenario> = {
 	"large-stack": LargeStackScenario,
 	"high-density": HighDensityScenario,
+	"floor-bounce": FloorBounceScenario,
 	"newtons-cradle": NewtonsCradleScenario,
-	"energy-conservation": ConservationOfEnergyScenario,
 	"bouncy-circle": HighPressureBouncyCircleScenario,
+	"energy-conservation": ConservationOfEnergyScenario,
 	"heavy-on-light": HeavyOnLightStackScenario,
 	ragdoll: RagdollScenario,
 };

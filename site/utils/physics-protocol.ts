@@ -75,6 +75,7 @@ export interface PhysicsEngineAdapter {
 			vx?: number;
 			vy?: number;
 			color?: string;
+			canSleep?: boolean;
 		},
 	): void;
 	createCircle(
@@ -93,6 +94,7 @@ export interface PhysicsEngineAdapter {
 			vx?: number;
 			vy?: number;
 			color?: string;
+			canSleep?: boolean;
 		},
 	): void;
 	createDistanceJoint(id: number | string, bodyAId: number | string, bodyBId: number | string, options?: any): void;

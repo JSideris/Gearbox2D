@@ -72,9 +72,13 @@ For **benchmarking and research only** (not a supported product build), you can 
 ```bash
 make test GEARBOX_DISABLE_KRB=1
 make benchmark GEARBOX_DISABLE_KRB=1
+make log-energy
+make log-energy GEARBOX_DISABLE_KRB=1
+./logEnergy --out studies/kinematic_restitution_balancing/data --seconds 600
+./logEnergy-nokrb --out studies/kinematic_restitution_balancing/data --seconds 600
 ```
 
-Default builds (`npm run build`, `make wasm`, `make test` without the flag) always ship with KRB enabled. The no-KRB binary skips KRB energy gtests; full test green is required on the default build only.
+`make log-energy` writes `logEnergy` (KRB on) or `logEnergy-nokrb` (flag set). It does not run the gtest suite. Default builds (`npm run build`, `make wasm`, `make test` without the flag) always ship with KRB enabled. The no-KRB test binary skips KRB energy gtests; full test green is required on the default build only.
 
 ## License
 

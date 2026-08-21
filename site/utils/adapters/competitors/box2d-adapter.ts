@@ -107,7 +107,9 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
 		bd.set_position(new this.box2d.b2Vec2(x, -y));
 		if (options.linearDamping !== undefined) bd.set_linearDamping(options.linearDamping);
 		if (options.angularDamping !== undefined) bd.set_angularDamping(options.angularDamping);
+		if (options.canSleep === false && bd.set_allowSleep) bd.set_allowSleep(false);
 		const body = this.world.CreateBody(bd);
+		if (options.canSleep === false && body.SetSleepingAllowed) body.SetSleepingAllowed(false);
 
 		if (options.vx !== undefined || options.vy !== undefined) {
 			body.SetLinearVelocity(new this.box2d.b2Vec2(options.vx || 0, -(options.vy || 0)));
@@ -134,7 +136,9 @@ export class Box2DAdapter implements PhysicsEngineAdapter {
 		bd.set_position(new this.box2d.b2Vec2(x, -y));
 		if (options.linearDamping !== undefined) bd.set_linearDamping(options.linearDamping);
 		if (options.angularDamping !== undefined) bd.set_angularDamping(options.angularDamping);
+		if (options.canSleep === false && bd.set_allowSleep) bd.set_allowSleep(false);
 		const body = this.world.CreateBody(bd);
+		if (options.canSleep === false && body.SetSleepingAllowed) body.SetSleepingAllowed(false);
 
 		if (options.vx !== undefined || options.vy !== undefined) {
 			body.SetLinearVelocity(new this.box2d.b2Vec2(options.vx || 0, -(options.vy || 0)));
