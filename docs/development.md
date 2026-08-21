@@ -85,6 +85,8 @@ npm run test:cpp
 npm run test:ts
 ```
 
+For a **research-only** native build with KRB disabled (algorithm ablation, not for release), see [Research builds (KRB ablation)](../readme.md#research-builds-krb-ablation).
+
 ## Troubleshooting
 
 - **Emscripten not found**: Ensure you have run `source ./emsdk_env.sh` in your current terminal session.

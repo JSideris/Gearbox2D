@@ -65,6 +65,17 @@ Gearbox2D is currently in **Beta**. It's performant and stable, and ready for pr
 
 We welcome contributions! If you want to build the engine from source or modify the C++ core, please follow the [Development & Contributing Guide](docs/development.md).
 
+## Research builds (KRB ablation)
+
+For **benchmarking and research only** (not a supported product build), you can compile a native binary with Kinematic Restitution Balancing (KRB) disabled:
+
+```bash
+make test GEARBOX_DISABLE_KRB=1
+make benchmark GEARBOX_DISABLE_KRB=1
+```
+
+Default builds (`npm run build`, `make wasm`, `make test` without the flag) always ship with KRB enabled. The no-KRB binary skips KRB energy gtests; full test green is required on the default build only.
+
 ## License
 
 ISC

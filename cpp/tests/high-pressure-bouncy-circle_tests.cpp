@@ -127,7 +127,9 @@ TEST(HighPressureBouncyCircle, WebsiteScenarioEnergyDoesNotRunAway) {
 
     const float earlyMean = static_cast<float>(earlySum / window);
     const float lateMean = static_cast<float>(lateSum / window);
+#ifndef GEARBOX_DISABLE_KRB
     EXPECT_NEAR(lateMean, earlyMean, 0.08f)
         << "secular energy drift: early E/E0=" << earlyMean << " late E/E0=" << lateMean;
     EXPECT_NEAR(lateMean, 1.0f, 0.2f) << "late-window mean E/E0=" << lateMean;
+#endif
 }

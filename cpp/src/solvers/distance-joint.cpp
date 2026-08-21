@@ -56,6 +56,7 @@ void DistanceJoint::preSolve(float dt) {
 
     float C = dMag - length;
     
+#ifndef GEARBOX_DISABLE_KRB
     // Kinematic Restitution Balancing (KRB) for Distance Joint
     // Component A: Force Velocity Compensation
     float forceVn = (bodyB->getForceVelocity() - bodyA->getForceVelocity()).dot(normal);
@@ -71,6 +72,9 @@ void DistanceJoint::preSolve(float dt) {
     float adjusted_v_bias_sq = std::max(0.0f, v_bias_sq - workTerm);
     float v_bias_actual = std::sqrt(adjusted_v_bias_sq);
     bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
+#else
+    bias = BAUMGARTE_FACTOR * C / dt;
+#endif
 
     Vec2 p = normal * impulse;
     bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
@@ -167,6 +171,7 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     V128 k = v128_add_f32(v128_add_f32(imA, imB), v128_add_f32(v128_mul_f32(v128_mul_f32(iIA, rnA), rnA), v128_mul_f32(v128_mul_f32(iIB, rnB), rnB)));
     V128 mass = v128_select(v128_gt_f32(k, zero_v), v128_div_f32(one_v, k), zero_v);
 
+#ifndef GEARBOX_DISABLE_KRB
     // KRB Bias calculation
     // Component A: Force Velocity Compensation
     V128 length = v128_make_f32(joints[0]->length, joints[1]->length, joints[2]->length, joints[3]->length);
@@ -195,6 +200,11 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
     V128 v_bias_actual_signed = v128_select(v_bias_ideal_gt_zero, v_bias_actual, v128_neg_f32(v_bias_actual));
     
     V128 bias = v128_sub_f32(v_bias_actual_signed, forceVn);
+#else
+    V128 length = v128_make_f32(joints[0]->length, joints[1]->length, joints[2]->length, joints[3]->length);
+    V128 C = v128_sub_f32(dMag, length);
+    V128 bias = v128_div_f32(v128_mul_f32(baumgarte_v, C), dt_v);
+#endif
 
     // Store back results
     alignas(64) float resNormalX[SIMD_LANE_COUNT], resNormalY[SIMD_LANE_COUNT], resImpulse[SIMD_LANE_COUNT], resMass[SIMD_LANE_COUNT], resBias[SIMD_LANE_COUNT], resRAx[SIMD_LANE_COUNT], resRAy[SIMD_LANE_COUNT], resRBx[SIMD_LANE_COUNT], resRBy[SIMD_LANE_COUNT];

@@ -33,8 +33,15 @@ COMMON_FLAGS = -O3 -msimd128 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s
 MT_FLAGS = -pthread -s PTHREAD_POOL_SIZE=4 -s ALLOW_MEMORY_GROWTH=1 -DGEARBOX_MT
 ST_FLAGS = 
 
-GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT
-BENCH_FLAGS = -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT -O3 -march=native -mfma
+# Research-only ablation. Default is KRB on.
+#   make test GEARBOX_DISABLE_KRB=1
+#   make benchmark GEARBOX_DISABLE_KRB=1
+ifeq ($(GEARBOX_DISABLE_KRB),1)
+KRB_FLAGS = -DGEARBOX_DISABLE_KRB
+endif
+
+GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT $(KRB_FLAGS)
+BENCH_FLAGS = -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT -O3 -march=native -mfma $(KRB_FLAGS)
 
 # Default target to build the project
 all: wasm
@@ -44,11 +51,11 @@ wasm: $(OUTPUT_JS_MT) $(OUTPUT_JS_ST)
 
 $(OUTPUT_JS_MT): $(SRC)
 	mkdir -p $(BUILD_DIR)
-	$(EMCC) $(COMMON_FLAGS) $(MT_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_MT)
+	$(EMCC) $(COMMON_FLAGS) $(KRB_FLAGS) $(MT_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_MT)
 
 $(OUTPUT_JS_ST): $(SRC)
 	mkdir -p $(BUILD_DIR)
-	$(EMCC) $(COMMON_FLAGS) $(ST_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_ST)
+	$(EMCC) $(COMMON_FLAGS) $(KRB_FLAGS) $(ST_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_ST)
 
 # Test build
 test: $(TEST_TARGET)

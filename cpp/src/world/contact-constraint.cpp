@@ -52,6 +52,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     Vec2 relVel = (b->getVelocity() + tangentialVelocityB) - (a->getVelocity() + tangentialVelocityA);
     float vn = relVel.dot(normal);
 
+#ifndef GEARBOX_DISABLE_KRB
     // Component A: Force Velocity Compensation
     float forceVn = (b->getForceVelocity() - a->getForceVelocity()).dot(normal);
     float relativeVn = vn - forceVn;
@@ -97,6 +98,31 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
             bias = 0.0f;
         }
     }
+#else
+    float relativeVn = vn;
+
+    if (depth < 0.0f) {
+        staticFriction = 0.0f;
+        kineticFriction = 0.0f;
+    }
+
+    bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
+
+    if (shouldBounce) {
+        float vFinal = restitution * std::max(0.0f, -relativeVn);
+        if (depth < 0.0f) {
+            bias = -std::max(vFinal, depth / dt);
+        } else {
+            bias = -vFinal;
+        }
+    } else {
+        if (depth < 0.0f) {
+            bias = -depth / dt;
+        } else {
+            bias = 0.0f;
+        }
+    }
+#endif
     
     tangent = Vec2(-normal.y, normal.x);
     float rtA = rA.x * tangent.y - rA.y * tangent.x;
@@ -204,6 +230,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 relVelY = v128_sub_f32(v128_add_f32(vBy, tangVelBy), v128_add_f32(vAy, tangVelAy));
     V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
 
+#ifndef GEARBOX_DISABLE_KRB
     // Component A: Force Velocity Compensation
     V128 forceVn = v128_dot_f32(v128_sub_f32(fvBx, fvAx), v128_sub_f32(fvBy, fvAy), normalX, normalY);
     V128 relativeVn = v128_sub_f32(vn, forceVn);
@@ -244,6 +271,29 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
     V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+#else
+    V128 relativeVn = vn;
+
+    // Speculative contact masks
+    V128 depth_lt_zero = v128_lt_f32(depth, zero_v);
+    staticFric = v128_select(depth_lt_zero, zero_v, staticFric);
+    kineticFric = v128_select(depth_lt_zero, zero_v, kineticFric);
+
+    // Bouncing condition
+    V128 enableRestitution_v = enableRestitution ? one_v : zero_v;
+    V128 restThresh_v = v128_splat_f32(-RESTITUTION_THRESHOLD);
+    V128 depth_over_dt = v128_div_f32(depth, dt_v);
+    V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
+    V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
+    V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
+
+    V128 vFinal = v128_mul_f32(restitution, v128_max_f32(zero_v, v128_neg_f32(relativeVn)));
+
+    // Bias calculation
+    V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
+    V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
+    V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+#endif
 
     // Tangent and tangent mass
     V128 tangentX = v128_neg_f32(normalY);

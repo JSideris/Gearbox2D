@@ -33,12 +33,16 @@ void HingeJoint::preSolve(float dt) {
     Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
     Vec2 C = (posB + rB) - (posA + rA);
     
+#ifndef GEARBOX_DISABLE_KRB
     // Kinematic Restitution Balancing (KRB) for Hinge Joint
     // Component A: Force Velocity Compensation
     Vec2 vB = C * (BAUMGARTE_FACTOR / dt);
     Vec2 forceVelDiff = bodyB->getForceVelocity() - bodyA->getForceVelocity();
     
     bias = vB - forceVelDiff;
+#else
+    bias = C * (BAUMGARTE_FACTOR / dt);
+#endif
     
     bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
     bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
