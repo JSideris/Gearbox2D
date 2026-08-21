@@ -28,7 +28,18 @@ pdflatex -interaction=nonstopmode krb.tex
 
 Output: `krb.pdf`.
 
-Phase 2 onward uses the **bibtex loop** below as the default build.
+Phase 2 onward uses the **bibtex loop** above as the default build.
+
+## Figures
+
+From `studies/kinematic_restitution_balancing/` (matplotlib required):
+
+```bash
+python3 plot-energy-ablation.py
+python3 plot-energy-engines.py
+```
+
+Writes `figures/fig-energy-ablation.{pdf,png}` and `figures/fig-energy-engines.{pdf,png}`. `krb.tex` includes the PDFs via `../figures/`.
 
 ## Artifacts
 

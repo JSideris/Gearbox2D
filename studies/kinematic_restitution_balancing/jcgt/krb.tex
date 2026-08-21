@@ -165,9 +165,45 @@ bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
 
 During the velocity solve, use the stored bias; Component~A's $-\mathrm{forceVn}$ is folded into \texttt{bias} so \texttt{relative\_vn} is not double-corrected each iteration.
 
+\section{Evaluation}
+\label{sec:evaluation}
+
+Figure~\ref{fig:ablation} is a compile-time ablation of the Gearbox2D sequential-impulse solver: default KRB on versus the same sources built with \texttt{-DGEARBOX\_DISABLE\_KRB}. Figure~\ref{fig:engines} places that KRB-on build next to unmodified Box2D-WASM, p2.js, and Matter.js. Dataset~B is whole-engine behavior (iteration counts, split impulse, restitution thresholds, and default damping differ); it is not an ablation of KRB inside those engines. Dataset~C, an $8\,\mathrm{h}$ KRB-on continuation of the cradle and a contact-only enclosure check, has no figure; traces are in \texttt{data/dataset-c/}. Numeric tables and limitations appear in later revisions.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\columnwidth]{../figures/fig-energy-ablation.pdf}
+  \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$ of simulation time. (a)~Single elastic floor contact. (b)~High-rate enclosure; KRB on is a $60\,\mathrm{s}$ windowed mean, KRB off is raw $1\,\mathrm{Hz}$ samples terminating at tunneling ($t = 2.7\,\mathrm{s}$). (c)~Newton's cradle (coupled contacts and joints). Vector original: \texttt{figures/fig-energy-ablation.pdf}.}
+  \label{fig:ablation}
+\end{figure}
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\columnwidth]{../figures/fig-energy-engines.pdf}
+  \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$ on unmodified engines. (a)~Elastic floor contact. (b)~Newton's cradle. Gearbox2D is the default KRB-on WASM build; Box2D-WASM, p2.js, and Matter.js are unmodified whole-engine traces, not an in-engine KRB ablation. Vector original: \texttt{figures/fig-energy-engines.pdf}.}
+  \label{fig:engines}
+\end{figure}
+
 \small
 \bibliographystyle{jcgt}
 \bibliography{krb}
+
+\section*{Index of Supplemental Materials}
+
+Paths are relative to the study tree \texttt{studies/kinematic\_restitution\_balancing/}.
+
+\begin{itemize}
+\item \texttt{KRB\_Whitepaper.md} --- source of truth for claims and numbers.
+\item \texttt{jcgt/krb.tex}, \texttt{jcgt/krb.bib}, \texttt{jcgt/build-notes.md} --- paper source, bibliography, TeX build notes.
+\item \texttt{figures/fig-energy-ablation.pdf} (and \texttt{.png}) --- Figure~\ref{fig:ablation} vector/raster.
+\item \texttt{figures/fig-energy-engines.pdf} (and \texttt{.png}) --- Figure~\ref{fig:engines} vector/raster.
+\item \texttt{plot-energy-ablation.py}, \texttt{plot-energy-engines.py} --- figure generators from committed CSVs.
+\item \texttt{data/README.md} --- recapture notes and column layouts.
+\item \texttt{data/floor-bounce-krb.csv}, \texttt{data/floor-bounce-nokrb.csv}, \texttt{data/bounce-circle-krb.csv}, \texttt{data/bounce-circle-nokrb.csv}, \texttt{data/cradle-krb.csv}, \texttt{data/cradle-nokrb.csv} --- Dataset~A ablation traces.
+\item \texttt{data/dataset-b-floor-bounce-600s.csv}, \texttt{data/dataset-b-newtons-cradle-600s.csv} --- Dataset~B whole-engine traces.
+\item \texttt{data/dataset-c/cradle-krb.csv}, \texttt{data/dataset-c/bounce-circle-krb.csv} --- Dataset~C $8\,\mathrm{h}$ traces (no figure).
+\item \texttt{log-energy.cpp} --- headless logger for Datasets~A and~C.
+\end{itemize}
 
 \section*{Author Contact Information}
 
