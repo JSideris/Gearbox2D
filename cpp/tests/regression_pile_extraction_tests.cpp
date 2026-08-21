@@ -4,12 +4,10 @@
 #undef private
 #include "body.h"
 #include "fixture.h"
-#include "constants.h"
 #include <cmath>
 
-// PILE_MOUSE_EXTRACTION_AC — frozen after red-on-HEAD 64b50ef
-// Report environment: gravity on, floor, default mu 0.2, BOX pile, 3 Hz mouse spring, pull world-up (-Y).
-// Hunt winner: cross4_Y (compact cross on floor); four-neighbor body stuck at ~0 while isolated moves ~2 m.
+// Sandbox-equivalent mouse extraction: gravity on, floor, default mu 0.2, BOX pile,
+// 3 Hz mouse spring, pull world-up (-Y). Packed neighbors may resist, but must not glue.
 
 namespace {
 
@@ -37,8 +35,6 @@ constexpr float kOrderOfMagRatio = 0.1f;
 
 // Frozen after Phase 2 measurement on HEAD (4dec47bb+).
 constexpr float kMinConeBudgetDelta = 0.05f;
-constexpr float kMinSpringCapDelta = 0.03f;
-constexpr float kSpringCapEpsilon = 0.01f;
 constexpr bool kSideNormalDominance = true; // |normal.x| > |normal.y| => side (lift is tangent)
 
 static const float kCrossNeighborPositions[4][2] = {
@@ -305,24 +301,8 @@ TEST(RegressionPileExtractionTest, CouplingSplitOnFrozenCross4Y) {
 	EXPECT_GT(fourNeighbors.springImpulseDuringPull, 0.0f);
 	EXPECT_GT(oneNeighbor.springImpulseDuringPull, 0.0f);
 
-	EXPECT_GE(fourNeighbors.springImpulseDuringPull, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
-		<< "Packed case should hit the spring weaken cap on the first pull step";
-
-	EXPECT_GE(isolated.springImpulseDuringPull, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
-		<< "Isolated case also hits the cap on the first pull step when anchor jumps";
-
 	EXPECT_GT(isolated.springImpulseProxy, 0.0f);
 	EXPECT_GT(fourNeighbors.springImpulseProxy, 0.0f);
-
-	EXPECT_GE(fourNeighbors.springImpulseProxy, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
-		<< "Packed case should remain at the spring weaken cap after pull";
-
-	EXPECT_LT(isolated.springImpulseProxy, MAX_POSITION_CORRECTION - kSpringCapEpsilon)
-		<< "Isolated case should relax below the spring weaken cap after extraction";
-
-	EXPECT_GT(fourNeighbors.springImpulseProxy,
-		isolated.springImpulseProxy + kMinSpringCapDelta)
-		<< "Packed spring impulse should exceed isolated after pull";
 
 	EXPECT_GT(std::abs(oneNeighbor.displacement), std::abs(fourNeighbors.displacement))
 		<< "One-neighbor pull should remain easier than four-neighbor pull";

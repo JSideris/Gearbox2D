@@ -39,8 +39,6 @@ public:
     void setLocalAnchorB(Vec2 b) override;
     Vec2 getLocalAnchorB() const override;
 
-    void setWeakenOnContactIsland(bool weaken) { weakenOnContactIsland = weaken; }
-
 private:
     float impulse;
     Vec2 normal;
@@ -51,7 +49,6 @@ private:
     float _dt;
     Vec2 lastNormal;
     bool hasLastNormal = false;
-    bool weakenOnContactIsland = false;
 };
 
 #endif

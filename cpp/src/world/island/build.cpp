@@ -363,9 +363,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
 
     // 2.2 Vectorized SpringJoints
-    for (SpringJoint* sj : springJoints) {
-        sj->setWeakenOnContactIsland(false);
-    }
     int sjCount = springJoints.size();
     int sjVectorizedCount = (sjCount / 4) * 4;
     for (int i = 0; i < sjVectorizedCount; i += 4) {

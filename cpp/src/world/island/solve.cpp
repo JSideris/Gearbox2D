@@ -143,9 +143,6 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
     for (Joint* j : island.joints) {
         j->context.a = &getSolverBody(j->bodyA);
         j->context.b = &getSolverBody(j->bodyB);
-        if (SpringJoint* spring = dynamic_cast<SpringJoint*>(j)) {
-            spring->setWeakenOnContactIsland(overlapping);
-        }
         GearJoint* gear = dynamic_cast<GearJoint*>(j);
         if (gear) {
             gear->context.a = &getSolverBody(gear->joint1->bodyA);
@@ -165,6 +162,40 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
             }
             for (; i < batch.size(); ++i) {
                 batch[i]->solveFast();
+            }
+        }
+    };
+
+    // Springs already ran before contacts; run them again so contacts-last PGS
+    // does not fully cancel mouse joints or spring-pairs in overlapping islands.
+    auto solveIslandSprings = [&]() {
+        for (const auto& batch : island.jointBatches) {
+            for (size_t i = 0; i < batch.size(); ) {
+                if (i + 3 < batch.size()) {
+                    Joint* j0 = batch[i];
+                    Joint* j1 = batch[i + 1];
+                    Joint* j2 = batch[i + 2];
+                    Joint* j3 = batch[i + 3];
+                    if (j0->getType() == JointType::SPRING &&
+                        j1->getType() == JointType::SPRING &&
+                        j2->getType() == JointType::SPRING &&
+                        j3->getType() == JointType::SPRING) {
+                        SpringJoint* sjs[4] = {
+                            static_cast<SpringJoint*>(j0),
+                            static_cast<SpringJoint*>(j1),
+                            static_cast<SpringJoint*>(j2),
+                            static_cast<SpringJoint*>(j3)
+                        };
+                        SpringJoint::solveFastSIMD(sjs);
+                        i += 4;
+                        continue;
+                    }
+                }
+                Joint* joint = batch[i];
+                if (joint && joint->getType() == JointType::SPRING) {
+                    joint->solveFast();
+                }
+                i++;
             }
         }
     };
@@ -317,10 +348,12 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
         }
         if (iterOverlapping || islandHasSpringJoint) {
             solveIslandContacts();
+            solveIslandSprings();
         }
         }
         if (!iterOverlapping) {
             solveIslandContacts();
+            solveIslandSprings();
         }
     }
 
