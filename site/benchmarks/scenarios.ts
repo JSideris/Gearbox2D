@@ -220,94 +220,80 @@ export const ConservationOfEnergyScenario: Scenario = {
 
 export const HighPressureBouncyCircleScenario: Scenario = {
 	name: "High-Pressure Bouncy Circle",
-	metricLabel: "Max Velocity (2s)",
+	metricLabel: "Energy / E0",
 	setup(adapter: PhysicsEngineAdapter) {
 		adapter.clear();
-		adapter.setGravity(0, 100);
 
-		const thickness = 100;
-		const width = 12;
-		const height = 10;
+		// Short chamber + strong gravity: ~5 slams/s at ~40 units/s, under Box2D's 2m/step cap.
+		const g = 400;
+		const thickness = 1;
+		const innerWidth = 10;
+		const innerHeight = 3;
+		const radius = 0.5;
+		const startY = -0.85;
 		const color = "#333";
+		const wallProps = {
+			color,
+			restitution: 1.0,
+			sFriction: 0,
+			kFriction: 0,
+			linearDamping: 0,
+			angularDamping: 0,
+		};
 
-		// Container (4 fixed boxes)
-		adapter.createBox("ground", 0, height / 2 + thickness / 2, width, thickness, true, {
-			color,
-			restitution: 1.0,
-			sFriction: 0,
-			kFriction: 0,
-			linearDamping: 0,
-			angularDamping: 0,
-		});
-		adapter.createBox("ceiling", 0, -height / 2 - thickness / 2, width, thickness, true, {
-			color,
-			restitution: 1.0,
-			sFriction: 0,
-			kFriction: 0,
-			linearDamping: 0,
-			angularDamping: 0,
-		});
-		adapter.createBox("left", -width / 2 - thickness / 2, 0, thickness, height, true, {
-			color,
-			restitution: 1.0,
-			sFriction: 0,
-			kFriction: 0,
-			linearDamping: 0,
-			angularDamping: 0,
-		});
-		adapter.createBox("right", width / 2 + thickness / 2, 0, thickness, height, true, {
-			color,
-			restitution: 1.0,
-			sFriction: 0,
-			kFriction: 0,
-			linearDamping: 0,
-			angularDamping: 0,
-		});
+		adapter.setGravity(0, g);
 
-		// Bouncy circle with initial downward push
-		adapter.createCircle("bouncy-circle", 0, 0, 0.5, false, {
+		adapter.createBox("ground", 0, innerHeight / 2 + thickness / 2, innerWidth, thickness, true, wallProps);
+		adapter.createBox("ceiling", 0, -innerHeight / 2 - thickness / 2, innerWidth, thickness, true, wallProps);
+		adapter.createBox("left", -innerWidth / 2 - thickness / 2, 0, thickness, innerHeight, true, wallProps);
+		adapter.createBox("right", innerWidth / 2 + thickness / 2, 0, thickness, innerHeight, true, wallProps);
+
+		adapter.createCircle("bouncy-circle", 0, startY, radius, false, {
+			mass: 1.0,
 			restitution: 1.0,
 			sFriction: 0,
 			kFriction: 0,
 			linearDamping: 0,
 			angularDamping: 0,
-			vx: 500,
-			vy: 2000, // Strong downward push
 			color: "#00f2ff",
 		});
 	},
 	getMetric(adapter, state) {
-		if (!state.velocityHistory) state.velocityHistory = [];
-		const now = performance.now();
+		const g = 400;
+		const mass = 1.0;
+		const innerWidth = 10;
+		const innerHeight = 3;
+		const startY = -0.85;
+		const escapeMargin = 2;
+
+		if (state.initialEnergy === undefined) {
+			// y increases downward; height above y=0 is -y
+			state.initialEnergy = mass * g * -startY;
+			state.energyHistory = [];
+		}
 
 		const pos = adapter.getPosition("bouncy-circle");
-		const width = 12;
-		const height = 10;
-		const margin = 2;
-
-		// If the circle escapes the enclosure, interpret max velocity as 0
-		if (Math.abs(pos.x) > width / 2 + margin || Math.abs(pos.y) > height / 2 + margin) {
-			state.velocityHistory = []; // Clear history if escaped
+		if (Math.abs(pos.x) > innerWidth / 2 + escapeMargin || Math.abs(pos.y) > innerHeight / 2 + escapeMargin) {
+			state.energyHistory = [];
 			return 0;
 		}
 
 		const vel = adapter.getVelocity("bouncy-circle");
-		const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+		const ke = 0.5 * mass * (vel.x * vel.x + vel.y * vel.y);
+		const pe = mass * g * -pos.y;
+		const ratio = state.initialEnergy > 0 ? (ke + pe) / state.initialEnergy : 0;
 
-		state.velocityHistory.push({ time: now, speed });
-
-		// Prune older than 2s (2000ms)
-		while (state.velocityHistory.length > 0 && now - state.velocityHistory[0].time > 2000) {
-			state.velocityHistory.shift();
+		const now = performance.now();
+		state.energyHistory.push({ time: now, ratio });
+		while (state.energyHistory.length > 0 && now - state.energyHistory[0].time > 2000) {
+			state.energyHistory.shift();
 		}
 
-		// Return max in history
-		let maxInWindow = -Infinity;
-		for (const entry of state.velocityHistory) {
-			if (entry.speed > maxInWindow) maxInWindow = entry.speed;
+		let sum = 0;
+		for (const entry of state.energyHistory) {
+			sum += entry.ratio;
 		}
-
-		return maxInWindow === -Infinity ? 0 : Math.max(0, maxInWindow);
+		return state.energyHistory.length > 0 ? sum / state.energyHistory.length : 0;
 	},
 };
 

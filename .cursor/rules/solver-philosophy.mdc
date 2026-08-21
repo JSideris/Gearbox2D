@@ -1,0 +1,8 @@
+---
+description: Gearbox2D solver fidelity — no scene hacks, KRB, general constraints
+alwaysApply: true
+---
+
+Follow `AGENTS.md` at the repo root.
+
+This engine is web realtime SI/PGS with KRB. Do not special-case the solver for a showcase. Do not reuse `MAX_POSITION_CORRECTION` as an impulse/force cap. Do not weaken or mute springs because an island has overlapping contacts. Mouse grab is a spring to a kinematic body. Failing motorcycle tests mean retune the bike or fix a real invariant — not cap all dynamic-dynamic springs. SIMD and scalar paths must stay equivalent. Tests must state invariants, not frozen hacks.
