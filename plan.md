@@ -223,7 +223,6 @@
 ## Known Issues
 - Spring joints can't be adjusted at runtime - see the commented-out spring test case.
 - Bullet through paper is somewhat unreliable. Also affects the high-energy bounce benchmark, which is broken for Gearbox2d.
-- Newton's cradle tests are showing some regression. After several bounces,
 - Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
 - 20-Segment-Chain jitters automatically.
 - Engine seems to have better performance in ST mode. Worth looking into this to re-evaluate whether MT is worth it.
