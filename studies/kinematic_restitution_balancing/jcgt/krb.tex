@@ -1,0 +1,41 @@
+\documentclass{jcgt}
+
+\setciteauthor{Joshua Sideris}
+\setcitetitle{Kinematic Restitution Balancing: A Low-Cost Analytical Fix for Energy Gain in Velocity-Level Impulse Solvers}
+
+\submitted{\today}
+
+\begin{document}
+
+\title{Kinematic Restitution Balancing (KRB)\\\large A Low-Cost Analytical Fix for Energy Gain in Velocity-Level Impulse Solvers}
+
+\author{Joshua Sideris\\Gearbox2D\\\href{https://gearbox2d.com}{https://gearbox2d.com}}
+
+\maketitle
+\thispagestyle{firstpagestyle}
+
+\begin{abstract}
+\small
+In discrete physics simulations using velocity-level impulse solvers (Sequential Impulse / Projected Gauss-Seidel), energy gain is a common numerical artifact. This paper introduces \textbf{Kinematic Restitution Balancing (KRB)}, a per-constraint correction for that leak in both unilateral constraints (collisions) and bilateral constraints (joints). By compensating for force-induced velocity drift (Component~A) and auditing potential-energy shifts during position correction (Component~B), KRB removes the two usual analytic energy sources inside a single-pass SI/PGS pipeline, without a second position pass. It does not claim a global energy invariant; later sections state the coupled-constraint gap that follows from the per-constraint audit.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+Technique, implementation, evaluation, and limitations are deferred to later revisions of this manuscript.
+
+\section*{Author Contact Information}
+
+\hspace{-2mm}\begin{tabular}{p{0.5\textwidth}p{0.5\textwidth}}
+Joshua Sideris \newline
+Gearbox2D \newline
+\href{https://gearbox2d.com}{https://gearbox2d.com} \newline
+\href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}
+&
+\end{tabular}
+
+\section*{Code and Data License}
+Supplemental source code and data referenced in later revisions of this article are distributed under the ISC License (Open Source, BSD-class); see \texttt{LICENSE} in the Gearbox2D repository (\href{https://github.com/JSideris/Gearbox2D}{https://github.com/JSideris/Gearbox2D}).
+
+\afterdoc
+
+\end{document}
