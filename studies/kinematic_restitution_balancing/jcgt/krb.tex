@@ -78,7 +78,9 @@ When velocity and position phases are decoupled, the kinematic bounce velocity $
 d_{\mathrm{eff}} = \max\bigl(0,\, d - (v_{\mathrm{launch}} \cdot \Delta t)\bigr).
 \label{eq:deff}
 \end{equation}
-Many engines clamp per-iteration position correction to $\Delta h_{\max}$ (e.g.\ \texttt{MAX\_POSITION\_CORRECTION}). The audit must match the work actually performed:
+Many engines clamp per-iteration position correction to $\Delta h_{\max}$.
+For example, Gearbox2D uses \texttt{MAX\_POSITION\_CORRECTION}.
+The audit must match the work actually performed:
 \begin{equation}
 \Delta h = \min(d_{\mathrm{eff}}, \Delta h_{\max}) \cdot \Gamma,
 \label{eq:deltah}
@@ -132,7 +134,8 @@ if (shouldBounce) {
     depthAfterVelocity = max(0, (depth - slop) - vBounce * dt)
     cumulativeFactor = 1 - pow(1 - beta, n)
     expectedDisplacement =
-      min(depthAfterVelocity, MAX_POSITION_CORRECTION) * cumulativeFactor
+      min(depthAfterVelocity, MAX_POSITION_CORRECTION) *
+      cumulativeFactor
   } else {
     expectedDisplacement = 0  // speculative: Component A only
   }
@@ -152,13 +155,15 @@ if (shouldBounce) {
 \label{sec:impl_joints}
 
 \begin{lstlisting}[caption={Distance-joint \texttt{preSolve} bias.},label={lst:joint},language=C++]
-float forceVn = (bodyB->forceVelocity - bodyA->forceVelocity).dot(normal);
+float forceVn =
+  (bodyB->forceVelocity - bodyA->forceVelocity).dot(normal);
 float v_bias_ideal = beta * C / dt;
 float expectedDisplacement = v_bias_ideal * dt;
 float accVn = forceVn / dt;
 float workTerm = 2.0f * accVn * expectedDisplacement;
 float v_bias_sq = v_bias_ideal * v_bias_ideal;
-float adjusted_v_bias_sq = max(0.0f, v_bias_sq - workTerm);
+float adjusted_v_bias_sq =
+  max(0.0f, v_bias_sq - workTerm);
 float v_bias_actual = sqrt(adjusted_v_bias_sq);
 bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
 \end{lstlisting}
@@ -184,7 +189,7 @@ Every scene runs for $600\,\mathrm{s}$ of simulation time at $dt = 1/60$, $e = 1
   \caption{Dataset~A ablation: $E/E_0$ at $600\,\mathrm{s}$ (compile-time KRB on/off).}
   \label{tab:dataset-a}
   \centering
-  \begin{tabular}{@{}lclrrl@{}}
+  \begin{tabular}{@{}lclll@{}}
     \hline
     Scene & KRB & $E/E_0$ & Win.\ mean & Outcome \\
     \hline
@@ -274,9 +279,14 @@ Paths are relative to the study tree \texttt{studies/kinematic\_restitution\_bal
 \item \texttt{figures/fig-energy-engines.pdf} (and \texttt{.png}) --- Figure~\ref{fig:engines} vector/raster.
 \item \texttt{plot-energy-ablation.py}, \texttt{plot-energy-engines.py} --- figure generators from committed CSVs.
 \item \texttt{data/README.md} --- recapture notes and column layouts.
-\item \texttt{data/floor-bounce-krb.csv}, \texttt{data/floor-bounce-nokrb.csv}, \texttt{data/bounce-circle-krb.csv}, \texttt{data/bounce-circle-nokrb.csv}, \texttt{data/cradle-krb.csv}, \texttt{data/cradle-nokrb.csv} --- Dataset~A ablation traces.
-\item \texttt{data/dataset-b-floor-bounce-600s.csv}, \texttt{data/dataset-b-newtons-cradle-600s.csv} --- Dataset~B whole-engine traces.
-\item \texttt{data/dataset-c/cradle-krb.csv}, \texttt{data/dataset-c/bounce-circle-krb.csv} --- Dataset~C $8\,\mathrm{h}$ traces (no figure).
+\item \texttt{data/floor-bounce-krb.csv}, \texttt{data/floor-bounce-nokrb.csv},\\
+  \texttt{data/bounce-circle-krb.csv}, \texttt{data/bounce-circle-nokrb.csv} --- Dataset~A floor/circle traces.
+\item \texttt{data/cradle-krb.csv},\\
+  \texttt{data/cradle-nokrb.csv} --- Dataset~A cradle traces.
+\item \texttt{data/dataset-b-floor-bounce-600s.csv} --- Dataset~B floor bounce.
+\item \texttt{data/dataset-b-newtons-cradle-600s.csv} --- Dataset~B cradle.
+\item \texttt{data/dataset-c/cradle-krb.csv} --- Dataset~C $8\,\mathrm{h}$ cradle (no figure).
+\item \texttt{data/dataset-c/bounce-circle-krb.csv} --- Dataset~C $8\,\mathrm{h}$ enclosure (no figure).
 \item \texttt{log-energy.cpp} --- headless logger for Datasets~A and~C.
 \end{itemize}
 
@@ -291,7 +301,7 @@ Gearbox2D \newline
 \end{tabular}
 
 \section*{Code and Data License}
-Supplemental source code and data referenced in later revisions of this article are distributed under the ISC License (Open Source, BSD-class); see \texttt{LICENSE} in the Gearbox2D repository (\href{https://github.com/JSideris/Gearbox2D}{https://github.com/JSideris/Gearbox2D}).
+Supplemental source code and data named in the Index of Supplemental Materials are distributed under the ISC License (Open Source, BSD-class); see \texttt{LICENSE} in the Gearbox2D repository (\href{https://github.com/JSideris/Gearbox2D}{https://github.com/JSideris/Gearbox2D}).
 
 \afterdoc
 
