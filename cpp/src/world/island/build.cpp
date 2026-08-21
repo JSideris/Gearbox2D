@@ -648,6 +648,6 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 5. Re-synchronize AABBs after position correction using SIMD
     if (positionIterations > 0) {
-        _syncFixturesSIMD();
+        _syncFixturesSIMD(dt);
     }
 }

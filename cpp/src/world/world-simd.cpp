@@ -185,7 +185,7 @@ void World::_doIntegratePositionsSIMD(float dt) {
     }
 }
 
-void World::_syncFixturesSIMD() {
+void World::_syncFixturesSIMD(float dt) {
     int fixtureCount = (int)fixturesList.size();
     if (fixtureCount == 0) return;
 
@@ -200,6 +200,7 @@ void World::_syncFixturesSIMD() {
     V128 one_vec = v128_splat_f32(1.0f);
     V128 pad_vec = v128_splat_f32(0.1f);
     V128 margin_ratio_vec = v128_splat_f32(0.05f);
+    V128 dt_v = v128_splat_f32(dt);
 
     for (int i = 0; i < fixtureCount; i += SIMD_LANE_COUNT) {
         V128 laneMask = v128_first_n(fixtureCount - i);
@@ -354,6 +355,24 @@ void World::_syncFixturesSIMD() {
         
         V128 margin = v128_mul_f32(size, margin_ratio_vec);
         V128 absRs = v128_abs_f32(brs_v);
+
+        // Lazy fat AABBs must still cover this step's travel. Otherwise speculative
+        // contacts never run because broadphase misses the pair (TC-15).
+        V128 stepX_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvx_v, v128_mul_f32(absRs, hy)), dt_v), zero_v);
+        V128 stepY_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvy_v, v128_mul_f32(absRs, hx)), dt_v), zero_v);
+        V128 stepX_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvx_v, v128_mul_f32(absRs, hy)), dt_v), zero_v);
+        V128 stepY_pos = v128_max_f32(v128_mul_f32(v128_add_f32(bvy_v, v128_mul_f32(absRs, hx)), dt_v), zero_v);
+        V128 enoughSlack = v128_and(
+            v128_and(
+                v128_ge_f32(v128_sub_f32(oldAx2, aabbMaxX), stepX_pos),
+                v128_ge_f32(v128_sub_f32(oldAy2, aabbMaxY), stepY_pos)
+            ),
+            v128_and(
+                v128_ge_f32(v128_sub_f32(aabbMinX, oldAx1), v128_neg_f32(stepX_neg)),
+                v128_ge_f32(v128_sub_f32(aabbMinY, oldAy1), v128_neg_f32(stepY_neg))
+            )
+        );
+        contains = v128_and(contains, enoughSlack);
         
         V128 paddingX_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvx_v, v128_mul_f32(absRs, hy)), pad_vec), zero_v);
         V128 paddingY_neg = v128_min_f32(v128_mul_f32(v128_sub_f32(bvy_v, v128_mul_f32(absRs, hx)), pad_vec), zero_v);

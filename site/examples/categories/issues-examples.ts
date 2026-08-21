@@ -593,7 +593,7 @@ export const issuesExamples = [
 		description: [
 			"**Test Case 15**: Regression test for anti-tunneling.",
 			"A fast bullet (radius 0.1) is fired at a thin wall (width 0.05) at high speed (vx: 50).",
-			"This test intentionally lacks `speculativeMargin`, leading to tunneling behavior.",
+			"Fat AABBs rebuild when leftover velocity padding is less than one step of travel, so speculative contacts still see the wall.",
 		].join("\n\n"),
 		onInit: (world) => {
 			world.setGravity(0, 0);

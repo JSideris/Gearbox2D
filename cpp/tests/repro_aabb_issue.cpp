@@ -69,3 +69,45 @@ TEST(ReproAabbIssue, MissingRotationalVelocity) {
     // Velocity at contact due to rotation = omega x r = 1 * (-0.95, 0).perp() = 1 * (0, -0.95) = (0, -0.95).
     EXPECT_NEAR(solver.collisions[0].relativeVelocity.y, -0.95f, 0.01f);
 }
+
+// TC-15: fat AABB leftover slack was smaller than one step of travel, so the
+// bullet's broadphase bounds stopped just short of a thin wall and speculative
+// contacts never ran.
+TEST(ReproAabbIssue, FastBulletDoesNotTunnelThinWall) {
+    World world;
+    world.setGravity(0.0f, 0.0f);
+    world.setTimeStep(1.0f / 60.0f);
+
+    emscripten_val wallOptions;
+    wallOptions.properties["x"] = 7.0f;
+    wallOptions.properties["y"] = 5.0f;
+    wallOptions.properties["type"] = (int)ObjectType::FIXED_OBJECT;
+    wallOptions.properties["shape"] = (int)ObjectShape::BOX;
+    wallOptions.properties["width"] = 0.05f;
+    wallOptions.properties["height"] = 4.0f;
+    world.createBody(1, wallOptions);
+
+    emscripten_val bulletOptions;
+    bulletOptions.properties["x"] = 1.0f;
+    bulletOptions.properties["y"] = 5.0f;
+    bulletOptions.properties["vx"] = 50.0f;
+    bulletOptions.properties["type"] = (int)ObjectType::DYNAMIC_OBJECT;
+    bulletOptions.properties["shape"] = (int)ObjectShape::CIRCLE;
+    bulletOptions.properties["radius"] = 0.1f;
+    bulletOptions.properties["mass"] = 1.0f;
+    bulletOptions.properties["canSleep"] = false;
+    bulletOptions.properties["linearDamping"] = 0.0f;
+    bulletOptions.properties["angularDamping"] = 0.0f;
+    int bulletIdx = world.createBody(2, bulletOptions);
+    Body* bullet = world.getBodyAtIndex(bulletIdx);
+    ASSERT_NE(bullet, nullptr);
+
+    const float wallRight = 7.0f + 0.025f;
+    for (int i = 0; i < 20; ++i) {
+        world.step();
+        EXPECT_LT(bullet->getX() - 0.1f, wallRight + 0.05f) << "tunneled on step " << i;
+    }
+
+    EXPECT_LT(bullet->getX(), wallRight);
+    EXPECT_LE(bullet->getVelocityX(), 0.0f);
+}

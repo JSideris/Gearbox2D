@@ -6,8 +6,8 @@ let mouseAnchor: any = null;
 let dragJoint: any = null;
 let canvas: HTMLCanvasElement | null = null;
 
-let startX = 2;
-let bulletSpeed = 40;
+const CAT_WALL = 0x1;
+const CAT_BALL = 0x2;
 
 const screenToWorld = (x: number, y: number) => {
 	return {
@@ -420,52 +420,98 @@ export const stressTestExamples = [
 		name: "Bullet Through Paper",
 		key: "bullet",
 		description: [
-			"Tests anti-tunneling by firing a fast-moving 'bullet' (small circle) through a thin 'paper' (static AABB).",
-			"This version uses `speculativeMargin` to ensure the collision is caught even at high speeds.",
+			"Tests anti-tunneling by firing many fast-moving balls at a tall, thin wall.",
+			"Balls vary in **size**, **speed**, and **angle**. `speculativeMargin` helps catch collisions even at high speeds.",
+			"Collision masks (`categoryBits` / `maskBits`) keep balls from colliding with each other — they only hit the wall. Each ball is removed after **5 seconds** or once it bounces out of bounds.",
 		].join("\n\n"),
 		onInit: (world) => {
 			world.clear();
 			world.setGravity(0, 0);
 			world.setSpeculativeMargin(0.5);
+			gearbox.debug.showAabbs = false;
 			nextId = 1;
 
-			// Thin Paper
+			const wallX = 8;
+			const wallY = 5;
+			const wallH = 9.5;
 			world
-				.createBody({ id: nextId++, x: 8, y: 5, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#ccc" })
+				.createBody({ id: nextId++, x: wallX, y: wallY, type: gearbox.bodyTypes.FIXED_OBJECT, color: "#ccc" })
 				.createFixture({
 					shape: gearbox.shapes.BOX,
-					width: 0.1,
-					height: 4,
+					width: 0.06,
+					height: wallH,
+					restitution: 0.85,
+					categoryBits: CAT_WALL,
+					maskBits: CAT_BALL,
 				});
 
-			// The Bullet
-			const bullet = world.createBody({
-				id: nextId++,
-				x: startX,
-				y: 5,
-				vx: bulletSpeed, // High velocity
-				mass: 0.1,
-				color: "#ffff44",
-			});
-			bullet.createFixture({
-				shape: gearbox.shapes.CIRCLE,
-				radius: 0.05,
-			});
-
-			(world as any).bulletId = bullet.id;
+			(world as any)._bulletAges = new Map<number, number>();
+			(world as any)._bulletSpawnAcc = 0;
+			(world as any)._bulletWall = { x: wallX, y: wallY, halfH: wallH / 2 };
 		},
 		onTick: (world, dt) => {
-			const bullet = world.getBodyById((world as any).bulletId);
-			if (bullet && bullet.x > 25) {
-				bullet.x = startX;
-				bullet.vx = bulletSpeed;
-				bullet.color = "#ff4444";
+			const ages: Map<number, number> = (world as any)._bulletAges;
+			const wall = (world as any)._bulletWall;
+			if (!ages || !wall) return;
+
+			(world as any)._bulletSpawnAcc += dt;
+			const spawnInterval = 0.035;
+			let spawned = 0;
+			while ((world as any)._bulletSpawnAcc >= spawnInterval && spawned < 8) {
+				(world as any)._bulletSpawnAcc -= spawnInterval;
+				spawned++;
+
+				const radius = 0.04 + Math.random() * 0.18;
+				const speed = 18 + Math.random() * 55;
+				const sx = 0.4 + Math.random() * 1.2;
+				const sy = 0.4 + Math.random() * 9.2;
+				const hitPad = radius + 0.05;
+				const targetY =
+					wall.y - wall.halfH + hitPad + Math.random() * Math.max(0.01, wall.halfH * 2 - hitPad * 2);
+				const dx = wall.x - sx;
+				const dy = targetY - sy;
+				const invLen = 1 / Math.hypot(dx, dy);
+				const colors = ["#ffff44", "#ff8844", "#44ffff", "#ff44ff", "#88ff44", "#ff5555"];
+
+				const body = world.createBody({
+					id: nextId++,
+					x: sx,
+					y: sy,
+					vx: dx * invLen * speed,
+					vy: dy * invLen * speed,
+					mass: Math.max(0.02, radius * radius * 8),
+					color: colors[Math.floor(Math.random() * colors.length)],
+					canSleep: false,
+					linearDamping: 0,
+					angularDamping: 0,
+				});
+				body.createFixture({
+					shape: gearbox.shapes.CIRCLE,
+					radius,
+					restitution: 0.7 + Math.random() * 0.25,
+					categoryBits: CAT_BALL,
+					maskBits: CAT_WALL,
+				});
+				ages.set(body.id, 0);
 			}
-			if (bullet && bullet.x < 0) {
-				bullet.x = startX;
-				bullet.vx = bulletSpeed;
-				bullet.color = "#44ff44";
+
+			const toRemove: number[] = [];
+			world.iterateBodies((obj) => {
+				if (obj.type !== gearbox.bodyTypes.DYNAMIC_OBJECT) return;
+				const age = (ages.get(obj.id) ?? 0) + dt;
+				ages.set(obj.id, age);
+				const outOfBounds = obj.x < -2 || obj.x > 14 || obj.y < -2 || obj.y > 12;
+				if (outOfBounds || age > 5) toRemove.push(obj.id);
+			});
+			for (const id of toRemove) {
+				ages.delete(id);
+				world.removeObject(id);
 			}
+		},
+		onCleanup: (world) => {
+			delete (world as any)._bulletAges;
+			delete (world as any)._bulletSpawnAcc;
+			delete (world as any)._bulletWall;
 		},
 	}),
 	new Example({
