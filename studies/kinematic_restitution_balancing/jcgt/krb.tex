@@ -16,12 +16,158 @@
 
 \begin{abstract}
 \small
-In discrete physics simulations using velocity-level impulse solvers (Sequential Impulse / Projected Gauss-Seidel), energy gain is a common numerical artifact. This paper introduces \textbf{Kinematic Restitution Balancing (KRB)}, a per-constraint correction for that leak in both unilateral constraints (collisions) and bilateral constraints (joints). By compensating for force-induced velocity drift (Component~A) and auditing potential-energy shifts during position correction (Component~B), KRB removes the two usual analytic energy sources inside a single-pass SI/PGS pipeline, without a second position pass. It does not claim a global energy invariant; later sections state the coupled-constraint gap that follows from the per-constraint audit.
+In discrete physics simulations using velocity-level impulse solvers (Sequential Impulse / Projected Gauss-Seidel), energy gain is a common numerical artifact. This paper introduces \textbf{Kinematic Restitution Balancing (KRB)}, a per-constraint correction for that leak in both unilateral constraints (collisions) and bilateral constraints (joints). By compensating for force-induced velocity drift (Component~A) and auditing potential-energy shifts during position correction (Component~B), KRB removes the two usual analytic energy sources inside a single-pass SI/PGS pipeline, without a second position pass. It does not claim a global energy invariant; evaluation and limitations sections state the coupled-constraint gap that follows from the per-constraint audit.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:introduction}
-Technique, implementation, evaluation, and limitations are deferred to later revisions of this manuscript.
+
+Velocity-level sequential-impulse (SI) solvers \cite{Catto2005} are the standard real-time rigid-body approach: constraints are solved after explicit force integration with a fixed iteration count. KRB is a drop-in \emph{preSolve} energy audit for that pipeline. It does not add solver passes, replace PGS, or switch to position-based dynamics.
+
+Two analytic sources inject artificial mechanical energy during constraint resolution.
+
+\paragraph{Force-integration drift.}
+With symplectic Euler integration, velocity is updated before the constraint solve:
+\begin{equation}
+v_{\mathrm{solver}} = v_t + a_{\mathrm{ext}} \cdot \Delta t.
+\label{eq:force_drift}
+\end{equation}
+Restitution and joint bias see $v_{\mathrm{solver}}$ instead of the true relative velocity $v_{\mathrm{impact}}$. For a perfect bounce ($e=1$), the launch velocity gains $a_{\mathrm{ext}} \cdot \Delta t$ extra speed per frame. For a joint at rest, the solver sees gravity-induced velocity and fights it every frame at the velocity level.
+
+\paragraph{Potential-energy shift from position correction.}
+Baumgarte stabilization \cite{Baumgarte1972} feeds constraint error back as a velocity bias $v_{\mathrm{bias}} = \beta C / \Delta t$, displacing bodies by $\Delta h$ to resolve penetration or joint drift. That displacement increases potential energy ($mgh$) without reducing kinetic energy. The added PE converts to KE on later frames, causing runaway energy growth.
+
+Split impulse and equivalent decoupled position passes \cite{Catto2014} keep position-correcting impulses off the physical velocity used for restitution, which removes the \emph{immediate} bounce-from-correction artifact. They do not tax the potential-energy work of the remaining displacement $\Delta h$. Nonlinear Gauss--Seidel (NGS) position solvers likewise omit that audit \cite{Catto2024}. Component~B closes that gap inside a single-pass SI profile. KRB is not a dual-pass temporal solver, variational integrator, or PBD/XPBD stack.
+
+KRB applies an analytic PE/KE balance to the \emph{expected} correction displacement $\Delta h$ at constraint setup, for contacts and distance joints. The audit is per-constraint; coupled graphs can still exhibit offsets when one constraint forces work on another (see evaluation and limitations).
+
+\section{Method}
+\label{sec:method}
+
+KRB performs two independent corrections during constraint \texttt{preSolve}.
+
+\subsection{Component A: Force velocity compensation}
+\label{sec:component_a}
+
+Store the velocity increment from external forces during integration ($v_{\mathrm{force}} = a_{\mathrm{ext}} \cdot \Delta t$ per body) and compute the true relative normal velocity:
+\begin{equation}
+v_{\mathrm{impact}} = v_{\mathrm{relative}} - (v_{\mathrm{force},B} - v_{\mathrm{force},A}).
+\label{eq:component_a}
+\end{equation}
+Component~A applies to all constraints whenever symplectic Euler integration is used, independent of the bias method.
+
+\subsection{Component B: Kinematic energy balancing}
+\label{sec:component_b}
+
+Adjust the launch or bias velocity to account for work done by external forces over the expected correction displacement $\Delta h$:
+\begin{equation}
+v_{\mathrm{surf}} = \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) \Delta h\bigr)},
+\label{eq:vsurf}
+\end{equation}
+\begin{equation}
+v_{\mathrm{final}} = e \cdot v_{\mathrm{surf}} = e \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) \Delta h\bigr)}.
+\label{eq:vfinal}
+\end{equation}
+For ground collisions ($\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n} < 0$), Component~B taxes launch velocity to pay for increased PE; for ceiling collisions ($\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n} > 0$), it credits velocity for work against external forces.
+
+\subsection{Effective displacement prediction}
+\label{sec:deff}
+
+When velocity and position phases are decoupled, the kinematic bounce velocity $v_{\mathrm{launch}}$ partially resolves penetration $d$ before the position solver runs:
+\begin{equation}
+d_{\mathrm{eff}} = \max\bigl(0,\, d - (v_{\mathrm{launch}} \cdot \Delta t)\bigr).
+\label{eq:deff}
+\end{equation}
+Many engines clamp per-iteration position correction to $\Delta h_{\max}$ (e.g.\ \texttt{MAX\_POSITION\_CORRECTION}). The audit must match the work actually performed:
+\begin{equation}
+\Delta h = \min(d_{\mathrm{eff}}, \Delta h_{\max}) \cdot \Gamma,
+\label{eq:deltah}
+\end{equation}
+where $\Gamma = 1 - (1 - \beta)^n$ for $n$ position iterations with Baumgarte factor $\beta$.
+
+\section{Constraint application}
+\label{sec:constraints}
+
+\subsection{Contacts and speculative gaps}
+\label{sec:contacts}
+
+For physical overlap ($d > 0$), both Component~A and Component~B are required.
+
+Speculative contacts are created before overlap ($d < 0$, a gap) to prevent tunneling. Because no position-correction work occurs yet, $\Delta h = 0$ and Component~B is omitted; Component~A remains critical so gravity-induced velocity is not treated as impact speed.
+
+Apply restitution bias only when restitution is enabled and either the corrected normal velocity exceeds a small threshold, or a speculative gap is closing faster than the gap width allows. Resting contacts must not receive an $e=1$ launch bias.
+
+\subsection{Distance joints and the zero-velocity paradox}
+\label{sec:joints}
+
+Distance joints target zero relative velocity along the rod. Omitting Component~B entirely leaks energy when Baumgarte stretch correction does work against gravity. Component~B must be applied, but capped so a resting joint is not paralyzed.
+
+Let $v_{\mathrm{bias}} = \beta C / \Delta t$ be the ideal correction velocity for constraint error $C$. The audited correction is
+\begin{equation}
+v_{\mathrm{bias\_actual}} = \sqrt{\max\bigl(0,\, v_{\mathrm{bias}}^2 - 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) (\beta C)\bigr)}.
+\label{eq:joint_bias}
+\end{equation}
+If kinetic energy cannot pay the PE tax, the joint retains a microscopic Baumgarte sag---bounded audit rather than infinite stiffness at rest. This paper's setup recipe covers contacts and \emph{distance} joints; other joint types are outside the listed implementation.
+
+\section{Implementation}
+\label{sec:implementation}
+
+KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop.
+
+\subsection{Contact setup}
+\label{sec:impl_contacts}
+
+\begin{lstlisting}[caption={Contact \texttt{preSolve} bias (Component A + B).},label={lst:contact}]
+// Component A: true impact normal velocity
+forceVn = dot(bodyB.forceVelocity - bodyA.forceVelocity, n)
+relativeVn = vn - forceVn
+
+vBounce = -e * relativeVn
+shouldBounce = enableRestitution &&
+  (relativeVn < -RESTITUTION_THRESHOLD ||
+   (depth < 0 && relativeVn < depth / dt))
+
+if (shouldBounce) {
+  if (depth > 0) {
+    depthAfterVelocity = max(0, (depth - slop) - vBounce * dt)
+    cumulativeFactor = 1 - pow(1 - beta, n)
+    expectedDisplacement =
+      min(depthAfterVelocity, MAX_POSITION_CORRECTION) * cumulativeFactor
+  } else {
+    expectedDisplacement = 0  // speculative: Component A only
+  }
+  accVn = forceVn / dt
+  workTerm = 2 * accVn * expectedDisplacement
+  vSurfSq = relativeVn * relativeVn + workTerm
+  vFinal = e * sqrt(max(0, vSurfSq))
+  bias = (depth < 0) ? -max(vFinal, depth / dt) : -vFinal
+} else if (depth < 0) {
+  bias = -depth / dt
+} else {
+  bias = 0
+}
+\end{lstlisting}
+
+\subsection{Distance-joint setup}
+\label{sec:impl_joints}
+
+\begin{lstlisting}[caption={Distance-joint \texttt{preSolve} bias.},label={lst:joint},language=C++]
+float forceVn = (bodyB->forceVelocity - bodyA->forceVelocity).dot(normal);
+float v_bias_ideal = beta * C / dt;
+float expectedDisplacement = v_bias_ideal * dt;
+float accVn = forceVn / dt;
+float workTerm = 2.0f * accVn * expectedDisplacement;
+float v_bias_sq = v_bias_ideal * v_bias_ideal;
+float adjusted_v_bias_sq = max(0.0f, v_bias_sq - workTerm);
+float v_bias_actual = sqrt(adjusted_v_bias_sq);
+bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn;
+\end{lstlisting}
+
+During the velocity solve, use the stored bias; Component~A's $-\mathrm{forceVn}$ is folded into \texttt{bias} so \texttt{relative\_vn} is not double-corrected each iteration.
+
+\small
+\bibliographystyle{jcgt}
+\bibliography{krb}
 
 \section*{Author Contact Information}
 

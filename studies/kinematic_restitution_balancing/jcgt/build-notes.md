@@ -28,6 +28,8 @@ pdflatex -interaction=nonstopmode krb.tex
 
 Output: `krb.pdf`.
 
+Phase 2 onward uses the **bibtex loop** below as the default build.
+
 ## Artifacts
 
 Do not commit `.aux`, `.log`, `.bbl`, `.blg`, or `.out` unless the template requires a checked-in `.bbl`.
