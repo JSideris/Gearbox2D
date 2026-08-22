@@ -69,10 +69,28 @@ Iterate run `20260821-a3c54c` attempt 1, Phase 1 (2026-08-21). Hybrid gates from
 
 **Verification (2026-08-21):** `pdflatex`+`bibtex` loop → `krb.pdf` (10 pp, no LaTeX errors). All Index of Supplemental Materials paths present. Four `krb.bib` keys cited and discussed. `EnergyHarness.NewtonsCradleBenchmark` passes. Full harness command also runs `make test -B`, which currently fails on four unrelated suites (`DistanceJointTest` ×2, `MotorcycleIsland` ×2); do not drop that step from the harness recipe.
 
-**Open (Phase 2+):** timing / analytic cost evidence for the “Low-Cost” title claim. No timing table, SoT edit, or KRB retune in this freeze.
+**Open (Phase 2+):** ~~timing / analytic cost evidence for the “Low-Cost” title claim~~ **done** — Dataset D captured (Phase 2), typeset in `tab:dataset-d` (Phase 3), claims guarded (Phase 4). Historical freeze text retained above.
 
 **Phase 2 captured (2026-08-21):** `data/timing/timing-summary-{krb,nokrb}.csv` and `log-timing.cpp` recapture in `data/README.md` § Dataset D. Phase 3 typesets the cost subsection/table in `krb.tex` / SoT.
 
 **Phase 3 typeset (2026-08-21):** Dataset D subsection and `tab:dataset-d` in `krb.tex`; mirrored in `KRB_Whitepaper.md` §6.3; supplemental index lists `data/timing/` and `log-timing.cpp`.
 
 **Phase 4 claim guard (2026-08-21):** Evaluation 600 s protocol scoped to Datasets A–C; Conclusion and SoT §8 state contacts and distance joints; TeX Evaluation lead-in aligned to four datasets.
+
+## Harness hygiene verification (`KRB_JCGT_HARNESS_HYGIENE`)
+
+Iterate run `20260821-a3c54c` attempt 1, Phase 5 (2026-08-21). Full harness command from `.decomposer/iterate/20260821-a3c54c/harness.json` executed verbatim (not shortened).
+
+**Step return codes:** `pdflatex`×3 = 0, `bibtex` = 0, `make test -B` = 2, `EnergyHarness.*` filter = 0, full `build_returncode` = 1.
+
+**Guards:** `latex_error_count` = 0 (`krb.pdf`, 11 pp). `build_returncode` = 1 — expected red from unrelated gtest suites; harness goal not retargeted.
+
+**Primaries (all 0):** `sot_tex_evaluation_mismatch_count` (TeX vs SoT: Four datasets; For Datasets A–C; contacts and distance joints; `tab:dataset-d` cells). `table_csv_terminal_mismatch_count` (floor bounce on `0.999` ↔ CSV `0.999228`; off `6.53` ↔ `6.53393`; cradle on `1.07` ↔ `1.06755`; Dataset B Box2D `6.61` ↔ `6.60555`; Dataset D means/ranges match timing CSVs). `supplemental_dangling_path_count` (all Index paths present, including `data/timing/timing-summary-{krb,nokrb}.csv` and `log-timing.cpp`). `bib_entry_undiscussed_count` (four `krb.bib` keys cited and discussed).
+
+**Two-sided target:** `dataset_a_floor_bounce_krb_e600s` = **0.999**; CSV terminal `0.999228` — no clamp, no solver retune.
+
+**`make test -B` failures (documented, not fixed):** `DistanceJointTest.DistanceIsMaintained`, `DistanceJointTest.ReactionForce`, `MotorcycleIsland.ThrottleDoesNotProgressivelySink`, `MotorcycleIsland.CauseIsolationRanking`.
+
+**Side-checks:** `EnergyHarness.NewtonsCradleBenchmark` PASS (also passed inside `make test` before the four-suite abort). `DatasetDCost.*` (4/4) PASS — BENCH_FLAGS, gitignore, timing CSV schema, README `-O3` note.
+
+**Hygiene:** `logTiming` / `logTiming-nokrb` not in git index; `.gitignore` entries present. No energy/timing CSV, `harness.json`, `cpp/src/`, Makefile, or `krb.bib` edits. Title remains **Low-Cost**; cradle ~7% plateau unchanged in Limitations.
