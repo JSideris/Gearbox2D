@@ -158,7 +158,7 @@ float lambda = -mass * (relative_vn + bias);
 ## 6. Results
 Four datasets. Figure 1 is a compile-time ablation of the Gearbox2D sequential-impulse solver: the default binary (KRB on) versus the same sources built with `-DGEARBOX_DISABLE_KRB`. Figure 2 places that KRB-on build next to unmodified Box2D-WASM, p2.js, and Matter.js. Dataset C is an $8\,\mathrm{h}$ headless continuation of the KRB-on cradle (and a contact-only enclosure check); it has no figure. Dataset D is a native KRB on/off wall-time ablation on the same binary (no energy figure); traces are in `data/timing/`. We do not report a patched-Box2D result. An earlier Box2D v3 port used an older revision of the method; those energy-gain and CPU-overhead numbers are withdrawn.
 
-Every scene runs for $600\,\mathrm{s}$ of simulation time at $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Mechanical energy is $E = E_k + E_p$. Dataset A includes rotational KE; Dataset B is translational only (the website adapters do not expose $\omega$). On the overlapping Gearbox traces the two agree to about $10^{-6}$ for the floor bounce. The reported ratio is $E/E_0$ relative to the known start-of-run energy.
+For Datasets A–C, every scene runs for $600\,\mathrm{s}$ of simulation time at $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Mechanical energy is $E = E_k + E_p$. Dataset A includes rotational KE; Dataset B is translational only (the website adapters do not expose $\omega$). On the overlapping Gearbox traces the two agree to about $10^{-6}$ for the floor bounce. The reported ratio is $E/E_0$ relative to the known start-of-run energy.
 
 ### 6.1 Ablation (Dataset A)
 Traces and the logger are in `data/*-{krb,nokrb}.csv` and `log-energy.cpp`.
@@ -236,7 +236,7 @@ A coupled-constraint audit is future work. High-speed tunneling, long ill-condit
 ---
 
 ## 8. Conclusion
-Kinematic Restitution Balancing is a drop-in correction for velocity-level sequential-impulse solvers [2]. Component A removes force-integration drift from restitution and joint bias; Component B taxes (or credits) the launch or bias velocity for the potential-energy work of the expected correction displacement $\Delta h$. Both apply to contacts and joints, at the cost of a few extra scalars per constraint setup (§6.3 / Dataset D table).
+Kinematic Restitution Balancing is a drop-in correction for velocity-level sequential-impulse solvers [2]. Component A removes force-integration drift from restitution and joint bias; Component B taxes (or credits) the launch or bias velocity for the potential-energy work of the expected correction displacement $\Delta h$. Both apply to contacts and distance joints, at the cost of a few extra scalars per constraint setup (§6.3 / Dataset D table).
 
 That is a narrower claim than a dual-pass solver or a reduced-coordinate formulation. Split impulse and NGS [3], [4], [8] still hide Baumgarte bounce by keeping position work off the physical velocity; KRB does not replace that machinery, and it does not match their convergence behavior. It cancels the two analytic leaks in §1 inside a single-pass SI profile, with the coupled-constraint gap in Section 7 left open.
 
