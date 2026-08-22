@@ -3,44 +3,44 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: krb.aux
 The style file: jcgt.bst
 Database file #1: krb.bib
-You've used 4 entries,
+You've used 10 entries,
             2873 wiz_defined-function locations,
-            640 strings with 5583 characters,
-and the built_in function-call counts, 1357 in all, are:
-= -- 125
-> -- 40
-< -- 4
-+ -- 16
-- -- 12
-* -- 85
-:= -- 213
-add.period$ -- 16
-call.type$ -- 4
-change.case$ -- 16
-chr.to.int$ -- 4
-cite$ -- 8
-duplicate$ -- 68
-empty$ -- 137
-format.name$ -- 16
-if$ -- 284
+            691 strings with 6939 characters,
+and the built_in function-call counts, 4135 in all, are:
+= -- 380
+> -- 189
+< -- 8
++ -- 67
+- -- 57
+* -- 326
+:= -- 635
+add.period$ -- 40
+call.type$ -- 10
+change.case$ -- 49
+chr.to.int$ -- 10
+cite$ -- 20
+duplicate$ -- 195
+empty$ -- 368
+format.name$ -- 67
+if$ -- 870
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 1
-newline$ -- 32
-num.names$ -- 16
-pop$ -- 38
+missing$ -- 6
+newline$ -- 68
+num.names$ -- 40
+pop$ -- 101
 preamble$ -- 1
-purify$ -- 12
+purify$ -- 39
 quote$ -- 0
-skip$ -- 52
+skip$ -- 146
 stack$ -- 0
-substring$ -- 24
-swap$ -- 9
-text.length$ -- 0
+substring$ -- 110
+swap$ -- 30
+text.length$ -- 2
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 44
+type$ -- 105
 warning$ -- 0
-while$ -- 14
+while$ -- 39
 width$ -- 0
-write$ -- 64
+write$ -- 155

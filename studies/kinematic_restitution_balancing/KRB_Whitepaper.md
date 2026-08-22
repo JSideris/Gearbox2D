@@ -56,14 +56,14 @@ Prior velocity-level practice either (a) accepts Baumgarte energy gain, (b) hide
 KRB performs an energy audit during constraint resolution via two independent corrections.
 
 ### 3.1 Component A: Force Velocity Compensation
-We track the velocity increment from external forces during integration ($v_{force} = a_{ext} \cdot \Delta t$) and compute the true relative velocity:
+With symplectic Euler, integration updates velocity before the constraint solve ($v_{solver} = v_t + a_{ext} \cdot \Delta t$), so restitution and joint bias see force-induced drift rather than the pre-force relative velocity. Track the per-body increment $v_{force} = a_{ext} \cdot \Delta t$ during integration and subtract it at setup to recover the true impact velocity before restitution or bias is applied:
 
 $$v_{impact} = v_{relative} - (v_{force,B} - v_{force,A})$$
 
 This correction applies to **all constraints** whenever Symplectic Euler integration is used, independent of the bias method. It calculates the constraint's corrective impulses relative to the force-induced velocity field.
 
 ### 3.2 Component B: Kinematic Energy Balancing
-We adjust the launch velocity to account for work done by external forces over the correction displacement $\Delta h$. We conceptually rewind the object to the surface to find the true surface velocity, and then apply the lossy restitution bounce:
+Baumgarte position correction displaces bodies by an expected distance $\Delta h$ along the constraint normal. External forces do work $W = m (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h$ over that displacement. To keep mechanical energy consistent, the launch or bias speed must reflect that work: using $\Delta(\tfrac12 m v^2) = W$ gives a surface speed $v_{surf}^2 = v_{impact}^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h$. When available kinetic energy cannot pay the tax, clamp with $\max(0,\cdot)$ and apply restitution:
 
 $$v_{surf} = \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) \Delta h)}$$
 
@@ -74,7 +74,7 @@ $$v_{final} = e \cdot v_{surf} = e \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{e
 The equation is symmetric: ground collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} < 0$) tax the launch velocity to pay for increased PE, while ceiling collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} > 0$) boost it to account for work done against external forces.
 
 ### 3.3 Effective Displacement Prediction
-In solvers that use split impulse or an equivalent decoupled position pass (Sequential Impulse followed by Position Iterations), the energy audit must account for the temporal separation between the velocity and position phases. Specifically, the kinematic bounce velocity $v_{launch}$ partially resolves the penetration $d$ during the subsequent integration step before the position solver operates:
+$\Delta h$ is the expected normal displacement used in the Component B work term—the portion the position solver will actually correct this step after launch motion and per-iteration caps. In solvers that use split impulse or an equivalent decoupled position pass (Sequential Impulse followed by Position Iterations), the energy audit must account for the temporal separation between the velocity and position phases. Specifically, the kinematic bounce velocity $v_{launch}$ partially resolves the penetration $d$ during the subsequent integration step before the position solver operates. The remaining overlap after that motion is the effective depth:
 
 $$d_{eff} = \max(0, d - (v_{launch} \cdot \Delta t))$$
 
@@ -82,7 +82,7 @@ Furthermore, many solvers clamp the position correction per iteration to $\Delta
 
 $$\Delta h = \min(d_{eff}, \Delta h_{max}) \cdot \Gamma$$
 
-Where $\Gamma$ is the cumulative correction factor ($1 - (1 - \beta)^n$) for $n$ iterations with Baumgarte factor $\beta$.
+Where $\Gamma = 1 - (1 - \beta)^n$ is the cumulative Baumgarte fraction applied over $n$ position iterations with factor $\beta$.
 
 ---
 
@@ -104,7 +104,7 @@ To keep the joint from injecting that leak, **Component B must be applied to joi
 
 $$v_{bias\_actual} = \sqrt{\max(0, v_{bias}^2 - 2 (\mathbf{a}_{ext} \cdot \mathbf{n}) (\beta C))}$$
 
-If the available kinetic energy cannot pay the potential energy tax, the joint allows a microscopic amount of "Baumgarte sag." That prefers a bounded energy audit over infinite stiffness at rest—which is physically accurate, as a resting pendulum requires tension and a tiny amount of stretch to hang.
+Equation above is the same PE/KE audit with expected stretch displacement $\beta C$ in place of contact $\Delta h$. If the available kinetic energy cannot pay the potential energy tax, the joint allows a microscopic amount of "Baumgarte sag." That prefers a bounded energy audit over infinite stiffness at rest—which is physically accurate, as a resting pendulum requires tension and a tiny amount of stretch to hang.
 
 ---
 

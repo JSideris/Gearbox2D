@@ -94,3 +94,7 @@ Iterate run `20260821-a3c54c` attempt 1, Phase 5 (2026-08-21). Full harness comm
 **Side-checks:** `EnergyHarness.NewtonsCradleBenchmark` PASS (also passed inside `make test` before the four-suite abort). `DatasetDCost.*` (4/4) PASS — BENCH_FLAGS, gitignore, timing CSV schema, README `-O3` note.
 
 **Hygiene:** `logTiming` / `logTiming-nokrb` not in git index; `.gitignore` entries present. No energy/timing CSV, `harness.json`, `cpp/src/`, Makefile, or `krb.bib` edits. Title remains **Low-Cost**; cradle ~7% plateau unchanged in Limitations.
+
+## Reviewer-card pass (`KRB_JCGT_REVIEWER_CARD`)
+
+Iterate run `20260822-c3b329` attempt 1 (2026-08-21). Compressed SoT §2 placement map, Component A/B derivations, extended `krb.bib`, Dataset B three-site fairness, and Limitations-only cradle-gap authority in `krb.tex` / SoT §3. Energy/cost numbers and harness command unchanged.
