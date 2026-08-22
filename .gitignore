@@ -17,6 +17,8 @@ runBenchmarks
 runTests
 logEnergy
 logEnergy-nokrb
+logTiming
+logTiming-nokrb
 cpp/build/
 
 # TypeScript/JavaScript

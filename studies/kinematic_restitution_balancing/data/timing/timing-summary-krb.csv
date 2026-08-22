@@ -1,0 +1,14 @@
+# krb=on dt=0.0166667 warmup_steps=100 timed_steps=1000 repeats=3 build=native_g++ product_note=WASM_shipped_numbers_are_native_ablation
+scene,krb,repeat,mean_ms,p95_ms,notes
+floor-bounce,on,0,0.0178004,0.032571,dataset-a-scene
+floor-bounce,on,1,0.00591312,0.010023,dataset-a-scene
+floor-bounce,on,2,0.00542974,0.007902,dataset-a-scene
+bounce-circle,on,0,0.0120177,0.014659,dataset-a-scene
+bounce-circle,on,1,0.0121532,0.014825,dataset-a-scene
+bounce-circle,on,2,0.0128089,0.019621,dataset-a-scene
+cradle,on,0,0.047414,0.073933,dataset-a-scene
+cradle,on,1,0.0483213,0.080395,dataset-a-scene
+cradle,on,2,0.0470528,0.074664,dataset-a-scene
+large-stack,on,0,0.378436,0.532729,not-dataset-a
+large-stack,on,1,0.380871,0.517148,not-dataset-a
+large-stack,on,2,0.371738,0.481582,not-dataset-a

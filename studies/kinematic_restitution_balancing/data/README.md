@@ -53,3 +53,44 @@ Results (2026-08-21, `./logEnergy`, ~14 min wall for the cradle, ~8 min for the 
 3. Set **Capture** to `600 s` and enable **Fast-forward**.
 4. Run **Floor Bounce** and **Newton's Cradle**. Wait until the status says capture complete.
 5. Click **Export** and replace the files above.
+
+# Dataset D — KRB cost / wall-time ablation (native)
+
+Compile-time KRB on vs `-DGEARBOX_DISABLE_KRB` on the **same native `g++` binary** (`make log-timing` uses `BENCH_FLAGS`: `-O3 -march=native -mfma -pthread -DGEARBOX_MT`). This is **not** a Gearbox-vs-Box2D comparison (Dataset B is whole-engine energy, not CPU ablation). Product ships WASM; these numbers are a native ablation a reviewer can recapture.
+
+```bash
+make log-timing
+./logTiming --out studies/kinematic_restitution_balancing/data/timing --scene paper+dense --repeats 3
+make log-timing GEARBOX_DISABLE_KRB=1
+./logTiming-nokrb --out studies/kinematic_restitution_balancing/data/timing --scene paper+dense --repeats 3
+```
+
+Outputs:
+
+```
+data/timing/timing-summary-krb.csv
+data/timing/timing-summary-nokrb.csv
+```
+
+Columns: `scene,krb,repeat,mean_ms,p95_ms,notes`. `#` header records `dt`, warmup/timed step counts, and build note.
+
+Scenes:
+
+- `floor-bounce`, `bounce-circle`, `cradle` — same geometry as Dataset A (`log-energy.cpp`), `dt = 1/60`, `e = 1`, sleep off.
+- `large-stack` — denser contact island (`not-dataset-a`); optional when paper scenes are inside timer jitter.
+
+Protocol: 100 warmup `world.step()` calls, then 1000 timed steps; mean and p95 per repeat (default 3 repeats).
+
+**Capture (2026-08-21, i9-9900KF, g++ 13.3.0, `BENCH_FLAGS`, `velocity_iterations=50`, `position_iterations=10`):** paper-scene on/off means overlap within run-to-run scatter (e.g. floor-bounce krb \(\approx 0.006\) ms vs nokrb \(\approx 0.005\) ms per step on steady repeats; cradle \(\approx 0.048\) ms). **Do not report a vanity % speedup** from these rows; Phase 3 should cite the analytic op-count below and state wall-time is indistinguishable on Dataset A scenes.
+
+## Analytic KRB extra work (checkable vs listings)
+
+Per dynamic body at integrate (`world-simd.cpp`): store `forceVelocity = a_ext * dt` (2 floats).
+
+Per contact `preSolve` when KRB is on (`contact-constraint.cpp`): `forceVn` dot, `relativeVn`, optional `d_eff` + `pow` for \(\Gamma\), `workTerm`, one `sqrt`, bias update — **no extra PGS / velocity / position iterations**.
+
+Per distance-joint `preSolve` (`distance-joint.cpp`): `forceVn`, `workTerm`, one `sqrt`, `-forceVn` folded into `bias` — **no extra iterations**.
+
+Whole-step timing may include hinge Component A (engine-only); the paper recipe lists contacts and distance joints only.
+
+**Zero extra solver passes.** KRB is a few scalars per constraint at `preSolve`, not a second position pass or coupled-island PE tax.

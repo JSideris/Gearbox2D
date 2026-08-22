@@ -22,10 +22,13 @@ TEST_TARGET = runTests
 BENCH_TARGET = runBenchmarks
 ifeq ($(GEARBOX_DISABLE_KRB),1)
 LOG_ENERGY_BIN = logEnergy-nokrb
+LOG_TIMING_BIN = logTiming-nokrb
 else
 LOG_ENERGY_BIN = logEnergy
+LOG_TIMING_BIN = logTiming
 endif
 LOG_ENERGY_SRC = studies/kinematic_restitution_balancing/log-energy.cpp
+LOG_TIMING_SRC = studies/kinematic_restitution_balancing/log-timing.cpp
 
 # Source files
 SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/world/*.cpp) $(wildcard $(SRC_DIR)/world/island/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
@@ -44,6 +47,8 @@ ST_FLAGS =
 #   make benchmark GEARBOX_DISABLE_KRB=1
 #   make log-energy
 #   make log-energy GEARBOX_DISABLE_KRB=1
+#   make log-timing
+#   make log-timing GEARBOX_DISABLE_KRB=1
 ifeq ($(GEARBOX_DISABLE_KRB),1)
 KRB_FLAGS = -DGEARBOX_DISABLE_KRB
 endif
@@ -85,8 +90,14 @@ log-energy: $(LOG_ENERGY_BIN)
 $(LOG_ENERGY_BIN): $(SRC) $(LOG_ENERGY_SRC)
 	$(CXX) $(GTEST_FLAGS) -o $(LOG_ENERGY_BIN) $(SRC) $(LOG_ENERGY_SRC) -I$(INCLUDE_DIR)
 
+# Dataset D KRB on/off wall-time logger (does not run the gtest suite).
+log-timing: $(LOG_TIMING_BIN)
+
+$(LOG_TIMING_BIN): $(SRC) $(LOG_TIMING_SRC)
+	$(CXX) $(BENCH_FLAGS) -o $(LOG_TIMING_BIN) $(SRC) $(LOG_TIMING_SRC) -I$(INCLUDE_DIR)
+
 # Clean up build files
 clean:
-	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(BENCH_TARGET) logEnergy logEnergy-nokrb
+	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(BENCH_TARGET) logEnergy logEnergy-nokrb logTiming logTiming-nokrb
 
-.PHONY: all clean wasm test benchmark log-energy
+.PHONY: all clean wasm test benchmark log-energy log-timing
