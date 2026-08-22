@@ -1,0 +1,10 @@
+# Manuscript author envelope (decomposer manuscript --envelope)
+# Missing keys are residuals, not review fails. Fill or delete unused fields.
+
+name: Joshua Sideris
+email: josh.sideris@gmail.com
+affiliation: Gear3Games
+# orcid: 0000-0000-0000-0000
+# conflicts: ""
+# funding: ""
+# ethics_notes: ""
