@@ -98,3 +98,14 @@ Iterate run `20260821-a3c54c` attempt 1, Phase 5 (2026-08-21). Full harness comm
 ## Reviewer-card pass (`KRB_JCGT_REVIEWER_CARD`)
 
 Iterate run `20260822-c3b329` attempt 1 (2026-08-21). Compressed SoT §2 placement map, Component A/B derivations, extended `krb.bib`, Dataset B three-site fairness, and Limitations-only cradle-gap authority in `krb.tex` / SoT §3. Energy/cost numbers and harness command unchanged.
+
+## Page budget heal (`KRB_JCGT_PAGE_BUDGET`)
+
+Manuscript run `20260822-200dcc` / chat `2598bfd1` (2026-08-22). Closed hole `h-residual-length`.
+
+- **Before:** 12 pp (at pack `max_pages` ceiling)
+- **After:** 11 pp (`krb.log`: `Output written on krb.pdf (11 pages, …)`)
+- Index compressed to seven grouped items; `KRB_Whitepaper.md` demoted to number mirror (not SoT)
+- Author affiliation aligned to envelope `Gear3Games`; contact + ISC license merged
+- Figures `0.80\columnwidth`; listings `\footnotesize`; Evaluation deduped
+- Energy/cost table numbers, harness command, and `cpp/` unchanged
