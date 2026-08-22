@@ -81,7 +81,7 @@ Scenes:
 
 Protocol: 100 warmup `world.step()` calls, then 1000 timed steps; mean and p95 per repeat (default 3 repeats).
 
-**Capture (2026-08-21, i9-9900KF, g++ 13.3.0, `BENCH_FLAGS`, `velocity_iterations=50`, `position_iterations=10`):** paper-scene on/off means overlap within run-to-run scatter (e.g. floor-bounce krb \(\approx 0.006\) ms vs nokrb \(\approx 0.005\) ms per step on steady repeats; cradle \(\approx 0.048\) ms). **Do not report a vanity % speedup** from these rows; Phase 3 should cite the analytic op-count below and state wall-time is indistinguishable on Dataset A scenes.
+**Capture (2026-08-21, i9-9900KF, g++ 13.3.0, `BENCH_FLAGS`, `velocity_iterations=50`, `position_iterations=10`):** floor-bounce and cradle on/off means overlap within run-to-run scatter (e.g. floor-bounce krb \(\approx 0.006\) ms vs nokrb \(\approx 0.005\) ms per step on steady repeats; cradle \(\approx 0.048\) ms). The high-pressure enclosure shows a larger on/off spread (\(\approx 0.012\) vs \(\approx 0.006\) ms/step) but both remain \(\ll 0.02\) ms/step. **Do not report a vanity % speedup** from these rows; Phase 3 cites the analytic op-count below and states wall-time is not a percent win on Dataset A scenes.
 
 ## Analytic KRB extra work (checkable vs listings)
 

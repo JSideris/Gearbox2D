@@ -72,3 +72,5 @@ Iterate run `20260821-a3c54c` attempt 1, Phase 1 (2026-08-21). Hybrid gates from
 **Open (Phase 2+):** timing / analytic cost evidence for the “Low-Cost” title claim. No timing table, SoT edit, or KRB retune in this freeze.
 
 **Phase 2 captured (2026-08-21):** `data/timing/timing-summary-{krb,nokrb}.csv` and `log-timing.cpp` recapture in `data/README.md` § Dataset D. Phase 3 typesets the cost subsection/table in `krb.tex` / SoT.
+
+**Phase 3 typeset (2026-08-21):** Dataset D subsection and `tab:dataset-d` in `krb.tex`; mirrored in `KRB_Whitepaper.md` §6.3; supplemental index lists `data/timing/` and `log-timing.cpp`.
