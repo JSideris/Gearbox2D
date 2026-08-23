@@ -171,3 +171,14 @@ Manuscript run `20260823-2c8d77` / Phase 4 narrow A/B-only hole in claim languag
 - **No new experiments:** no A-only/B-only flags, traces, or table rows; C01--C09 claim text unchanged.
 - **Rebuild:** `krb.pdf` 10 pp, 317819 bytes; `latex_error_count` 0.
 - **Still open:** `h-length-density` residual vs typical ~4 pp unchanged.
+
+## Session closeout (`KRB_JCGT_SESSION_CLOSEOUT`)
+
+Manuscript run `20260823-2c8d77` / Phase 5 rebuild, SoT verify, and residual record (2026-08-22). Closes Phases 1–4 hole work; records `h-length-density` residual honestly.
+
+- **HEAD:** `66486e0` (Phase 4 A/B-only narrow)
+- **Rebuild:** `pdflatex`+`bibtex` loop → `krb.pdf` **10 pp**, 317819 bytes (no-op vs HEAD); `latex_error_count` 0 (overfull hboxes only). Both `fig-energy-{ablation,engines}.pdf` and `CC-BY-ND.png` resolved.
+- **SoT verified (TeX authoritative):** A–B 600 s, C 8 h (`t = 28800`), D wall-time; Limitations C06 band `[1.034, 1.093]` mean `1.053`; C07 `600\,\mathrm{s}` windows `1.009 \to 0.977` (not README hourly); A/B analytic vs full on/off, cannot attribute Dataset A/D, future work; frozen table cells match CSV terminals at stated precision (`0.999`/`0.999228`, `6.53`/`6.53393`, `1.07`/`1.06755`, Box2D `6.61`/`6.60555`, `escaped_at_step=161`); supplemental index paths on disk; `KRB_Whitepaper.md` mirrors TeX (no contradiction fix required). `claims.json` C01–C09 unchanged.
+- **Closed this session:** `h-artifact-snapshot` (Phase 1), `h-c07-under-narrated` (Phase 3), `h-no-ab-only-ablation` (Phase 4). No 11-vs-4 hedge restored in TeX.
+- **Residual (human-owned / desk-reject risk):** `h-length-density` — **10 pp** vs pack `typical_pages: 4`; within `max_pages: 12`. Phase 2 partial close (11→10). Preferred ≤8 **not** met. **Not fully closed.** Recorded in `residuals.json`.
+- **Out of session (documented, not fixed):** unrelated `make test` reds (`KRB_JCGT_HARNESS_HYGIENE`); no Dataset C figure (by design); no A-only/B-only experiments.
