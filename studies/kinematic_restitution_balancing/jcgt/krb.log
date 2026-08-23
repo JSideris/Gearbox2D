@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  22 AUG 2026 17:09
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  22 AUG 2026 22:19
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -519,14 +519,14 @@ File: ../figures/fig-energy-ablation.pdf Graphic file (type pdf)
 Package pdftex.def Info: ../figures/fig-energy-ablation.pdf  used on input line
  187.
 (pdftex.def)             Requested size: 297.60114pt x 306.11105pt.
-<../figures/fig-energy-engines.pdf, id=165, 505.89pt x 390.25798pt>
+ [6 <../figures/fig-energy-ablation.pdf>]
+<../figures/fig-energy-engines.pdf, id=202, 505.89pt x 390.25798pt>
 File: ../figures/fig-energy-engines.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-engines.pdf>
 Package pdftex.def Info: ../figures/fig-energy-engines.pdf  used on input line 
 219.
 (pdftex.def)             Requested size: 297.60114pt x 229.58327pt.
- [6 <../figures/fig-energy-ablation.pdf>] [7 <../figures/fig-energy-engines.pdf
->]
+ [7 <../figures/fig-energy-engines.pdf>]
 Overfull \hbox (22.3684pt too wide) in paragraph at lines 258--261
 \OT1/ptm/m/n/10 KRB on ver-sus \OT1/pcr/m/n/10 -DGEARBOX[]DISABLE[]KRB \OT1/ptm
 /m/n/10 (\OT1/pcr/m/n/10 BENCH[]FLAGS\OT1/ptm/m/n/10 : \OT1/pcr/m/n/10 -O3 -mar
@@ -568,14 +568,14 @@ Overfull \hbox (7.27391pt too wide) in paragraph at lines 311--312
 /pcr/m/n/10 data/dataset-c/ \OT1/ptm/m/n/10 --- Dataset C. 
  []
 
-
+[10]
 Overfull \hbox (44.83516pt too wide) in paragraph at lines 317--318
 \OT1/ptm/m/n/10 and data are ISC-licensed; see \OT1/pcr/m/n/10 LICENSE \OT1/ptm
 /m/n/10 in the Gear-box2D repos-i-tory ([][]github.com/JSideris/Gearbox2D[][]).
  
  []
 
-[10]
+
 Underfull \hbox (badness 10000) in alignment at lines 319--319
 [][] [] []
  []
@@ -596,7 +596,7 @@ Package rerunfilecheck Info: File `krb.brf' has not changed.
 Here is how much of TeX's memory you used:
  14779 strings out of 476182
  233522 string characters out of 5795595
- 1979975 words of memory out of 5000000
+ 1980975 words of memory out of 5000000
  36460 multiletter control sequences out of 15000+600000
  592688 words of font info for 108 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
@@ -616,7 +616,7 @@ ve/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/share/texlive/texmf-dis
 t/fonts/type1/urw/helvetic/uhvro8a.pfb></usr/share/texlive/texmf-dist/fonts/typ
 e1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/ut
 mr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on krb.pdf (11 pages, 323983 bytes).
+Output written on krb.pdf (11 pages, 324211 bytes).
 PDF statistics:
  413 PDF objects out of 1000 (max. 8388607)
  336 compressed objects within 4 object streams

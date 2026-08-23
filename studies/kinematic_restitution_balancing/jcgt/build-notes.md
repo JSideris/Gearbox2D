@@ -109,3 +109,11 @@ Manuscript run `20260822-200dcc` / chat `2598bfd1` (2026-08-22). Closed hole `h-
 - Author affiliation aligned to envelope `Gear3Games`; contact + ISC license merged
 - Figures `0.80\columnwidth`; listings `\footnotesize`; Evaluation deduped
 - Energy/cost table numbers, harness command, and `cpp/` unchanged
+
+## Evaluation horizon (`KRB_JCGT_EVAL_HORIZON`)
+
+Manuscript run `20260823-2c8d77` / chat `74a43cdb` (2026-08-22). Closed hole `h-eval-ac-horizon`.
+
+- **Before:** Evaluation lead-in scoped 600 s protocol to Datasets A–C (Phase 4 claim guard).
+- **After:** Energy protocol is A–B at 600 s; Dataset C at 8 h ($t = 28800\,\mathrm{s}$); Dataset D remains wall-time only.
+- Frozen table cells, CSV terminals, C07 windowed drift ($1.009 \to 0.977$), and Limitations cradle band unchanged.

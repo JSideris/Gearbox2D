@@ -180,7 +180,7 @@ During the velocity solve, use the stored bias; Component~A's $-\mathrm{forceVn}
 
 Four datasets (Figure~\ref{fig:ablation}: compile-time KRB on/off; Figure~\ref{fig:engines}: whole-engine traces; Dataset~C: $8\,\mathrm{h}$ KRB-on in \texttt{data/dataset-c/}; Dataset~D: native wall-time in \texttt{data/timing/}). Not a patched-Box2D result.
 
-For Datasets~A--C, every scene runs for $600\,\mathrm{s}$ of simulation time at $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Mechanical energy is $E = E_k + E_p$. Dataset~A includes rotational KE; Dataset~B is translational only (the website adapters do not expose $\omega$). On the overlapping Gearbox traces the two agree to about $10^{-6}$ for the floor bounce. The reported ratio is $E/E_0$ relative to the known start-of-run energy.
+For Datasets~A and~B, every energy scene runs for $600\,\mathrm{s}$ of simulation time at $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Dataset~C uses the same $dt$, $e$, and dissipation settings for $8\,\mathrm{h}$ of simulation time ($t = 28800\,\mathrm{s}$; traces in \texttt{data/dataset-c/}). Mechanical energy is $E = E_k + E_p$. Dataset~A includes rotational KE; Dataset~B is translational only (the website adapters do not expose $\omega$). On the overlapping Gearbox traces the two agree to about $10^{-6}$ for the floor bounce. The reported ratio is $E/E_0$ relative to the known start-of-run energy.
 
 \begin{figure}[htb]
   \centering
