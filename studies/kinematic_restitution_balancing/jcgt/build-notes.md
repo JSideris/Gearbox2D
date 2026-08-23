@@ -228,3 +228,19 @@ Manuscript run `20260823-26fb84` / cycle-4 path-only hole close (2026-08-23). HE
 - **Closed:** `h-energy-metric-split` — Limitations Evaluation regime: Dataset A/C cradle includes rotational $E_k$; Dataset B cradle translational only; $1.07$ vs $1.062$ not equated.
 - **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase. **Not fully closed.**
 - **Frozen:** all table cells, C01–C07 claim meaning, CSV data rows, `cpp/`, `krb.bib`, listings, figures; no energy recapture.
+
+## Cycle-5 path close (`KRB_JCGT_CYCLE5_PATH`)
+
+Manuscript run `20260823-26fb84` / cycle-5 path-only hole close (2026-08-23). HEAD `6f65b6a` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 348694 bytes); abstract "cancels" two leaks; intro "To our knowledge"; no portability merge sentence; Dataset D caption without WASM / same-load cost hedge; Conclusion overclaims cradle compensation; C01–C07 regime not named explicitly; `claims.json` M02–M06 on Dataset A CSVs.
+- **After:** 10 pp (`krb.log` 350004 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `h-prior-art-sentence` — intro Bender-as-map, no "To our knowledge"; whitepaper §2.6 mirrored.
+- **Closed:** `h-regime-singularity` — Limitations: C01–C07 this regime only; whitepaper §7 mirrored.
+- **Closed:** `h-cradle-tone` — Conclusion: C06 bounded offset after early step, not full cradle compensation; abstract narrowed.
+- **Closed:** `h-c07-meter` — Conclusion: KRB-on not perfect meter; C07 slow loss not Dataset A KRB-off gain.
+- **Closed:** `h-portability` — Implementation merge-listings sentence after Integrate store.
+- **Closed:** `h-timing-wasm` — Dataset D caption: product WASM, native `g++` recapture; high-pressure row kept with same-load cost footnote (not overhead claim); whitepaper §6.3 mirrored.
+- **Partial:** `h-empirical-ab` — abstract narrowed; M02–M06 `claims.json` retargeted to `jcgt/krb.tex` + `contact-constraint.cpp` / `distance-joint.cpp`; M04 slop in claim text; no A-only/B-only traces.
+- **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase. **Not fully closed.** Recorded in `residuals.json`.
+- **Frozen:** all energy table cells (`0.999`/`6.53`/`1.07`/Box2D `6.61`/C06 band/C07 `1.009→0.977`/escape step `161`); Dataset D timing cells unchanged; C01–C07 claim meaning; CSV bytes; `cpp/`, `krb.bib`, harness, listings, figures.
