@@ -205,3 +205,14 @@ Manuscript run `20260823-26fb84` / cycle-1 path-only hole close (2026-08-23). HE
 - **Out of session:** `h-empirical-ab` (no A-only/B-only traces).
 - **Frozen:** all table cells, C01–C07 claim meaning, CSV data rows, `cpp/`, `krb.bib`, listings, figures; no energy recapture.
 - **Mirrors:** `KRB_Whitepaper.md` §6–7; `data/README.md` Dataset A/C deploy knobs.
+
+## Cycle-3 path close (`KRB_JCGT_CYCLE3_PATH`)
+
+Manuscript run `20260823-26fb84` / cycle-3 path-only hole close (2026-08-23). HEAD `f9d9b79` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 339291 bytes); Index preamble repo-root with mixed bases (bare `krb.bib`); `claims.json` M02–M06 evidence on Dataset A on/off CSVs.
+- **After:** 10 pp (`krb.log` 339320 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `h-supp-ptr` — Index preamble paper-root + repo-root `cpp/...`; item 1 `jcgt/krb.tex`, `jcgt/krb.bib`, `jcgt/build-notes.md`; all listed paths resolve on disk.
+- **Partial:** `h-empirical-ab` — M02–M06 `claims.json` evidence retargeted to `jcgt/krb.tex` + `contact-constraint.cpp` / `distance-joint.cpp`; TeX full on/off only unchanged; no A-only/B-only traces.
+- **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase. **Not fully closed.**
+- **Frozen:** all table cells, C01–C07 claim meaning, CSV data rows, `cpp/`, `krb.bib`, listings, figures; no energy recapture.

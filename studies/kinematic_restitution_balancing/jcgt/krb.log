@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  23 AUG 2026 02:56
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  23 AUG 2026 03:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -590,12 +590,6 @@ LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 2
  (/usr/share/texlive/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
 )
-Overfull \hbox (11.5951pt too wide) in paragraph at lines 288--289
-[]\OT1/pcr/m/n/10 studies/kinematic[]restitution[]balancing/jcgt/krb.tex\OT1/pt
-m/m/n/10 , \OT1/pcr/m/n/10 krb.bib\OT1/ptm/m/n/10 ,
- []
-
-
 Overfull \hbox (94.63466pt too wide) in paragraph at lines 290--291
 []\OT1/pcr/m/n/10 figures/fig-energy-*.pdf\OT1/ptm/m/n/10 , \OT1/pcr/m/n/10 plo
 t-energy-*.py \OT1/ptm/m/n/10 (in-clud-ing \OT1/pcr/m/n/10 plot-energy-dataset-
@@ -663,7 +657,7 @@ ve/texmf-dist/fonts/type1/urw/helvetic/uhvro8a.pfb></usr/share/texlive/texmf-di
 st/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/
 urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri
 8a.pfb>
-Output written on krb.pdf (10 pages, 339291 bytes).
+Output written on krb.pdf (10 pages, 339320 bytes).
 PDF statistics:
  389 PDF objects out of 1000 (max. 8388607)
  302 compressed objects within 4 object streams
