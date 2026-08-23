@@ -53,7 +53,7 @@ With symplectic Euler, integration updates velocity before the constraint solve 
 v_{\mathrm{impact}} = v_{\mathrm{relative}} - (v_{\mathrm{force},B} - v_{\mathrm{force},A}).
 \label{eq:component_a}
 \end{equation}
-Component~A applies to all constraints whenever symplectic Euler integration is used, independent of the bias method. In the implementation listing (Listing~\ref{lst:contact}), \texttt{relativeVn} is this corrected normal velocity after subtracting \texttt{forceVn}.
+Component~A applies at contact and distance-joint \texttt{preSolve} whenever symplectic Euler integration is used, independent of the bias method (other joint types are engine-only; Section~\ref{sec:limitations}). In the implementation listing (Listing~\ref{lst:contact}), \texttt{relativeVn} is this corrected normal velocity after subtracting \texttt{forceVn}.
 
 \subsection{Component B: Kinematic energy balancing}
 \label{sec:component_b}
@@ -118,7 +118,7 @@ KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity it
 \paragraph{Integrate store.}
 Per dynamic body at integrate (before the constraint solve): \texttt{forceVelocity = a\_ext * dt} (two floats), with $a_{\mathrm{ext}}$ from gravity and external force before linear damping; zero for sleeping or infinite-mass bodies (supplemental \texttt{cpp/src/world/world-simd.cpp}).
 
-Listings show Gearbox2D \texttt{preSolve} (penetration slop, \texttt{MAX\_POSITION\_CORRECTION}, cumulative $\Gamma$, and folding $-\mathrm{forceVn}$ into \texttt{bias}); a port \emph{merges} this audit into that engine's contact/joint setup rather than pasting the listing into another solver.
+Listings show Gearbox2D \texttt{preSolve} (penetration slop, \texttt{MAX\_POSITION\_CORRECTION}, cumulative $\Gamma$, and folding $-\mathrm{forceVn}$ into \texttt{bias}); a port \emph{merges} this audit into that engine's contact/joint setup rather than pasting the listing into another solver. The measured recipe: store \texttt{forceVelocity = a\_ext * dt} at symplectic-Euler integrate; apply Listings~\ref{lst:contact}--\ref{lst:joint} at contact and distance-joint \texttt{preSolve} with the Evaluation knobs (Section~\ref{sec:evaluation}).
 
 \subsection{Contact setup}
 \label{sec:impl_contacts}
@@ -249,7 +249,7 @@ Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-o
 \subsection{Cost (Dataset D)}
 \label{sec:dataset-d}
 
-Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta t$. Per contact \texttt{preSolve}: $\mathrm{forceVn}$ dot, optional $\Gamma$, \texttt{workTerm}, one \texttt{sqrt}, bias update. Per distance joint: same pattern with $-\mathrm{forceVn}$ folded into \texttt{bias}. Zero extra PGS, velocity, or position iterations.
+Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta t$; per contact or distance-joint \texttt{preSolve}: $\mathrm{forceVn}$ dot, optional $\Gamma$, \texttt{workTerm}, one \texttt{sqrt}, bias update ($-\mathrm{forceVn}$ folded into joint \texttt{bias}). Zero extra PGS, velocity, or position iterations. Table~\ref{tab:dataset-d} is native \texttt{g++} on/off wall-time (\texttt{make log-timing}), not shipped WASM or Gearbox-versus-Box2D CPU.
 
 \small
 \begin{table}[htb]
@@ -273,13 +273,13 @@ Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta 
 
 KRB is a per-constraint audit, not a coupled one; resolving one constraint can force work on another (e.g.\ horizontal collision lifting a pendulum rod).
 
-\textbf{Evaluation regime.} In scope: single-pass SI/PGS, symplectic Euler (Component~A not evaluated on other integrators), contacts and distance joints, $e = 1$, zero friction/damping, sleep off, and the Gearbox \texttt{World()}/\texttt{constants.h} knobs in Section~\ref{sec:evaluation}. Energy results in this paper are reported only for this regime; friction, $e < 1$, other $dt$, or different iteration counts are out of scope. Dataset~A/C cradle energy includes rotational $E_k$; Dataset~B cradle $E/E_0$ is translational only---not the same meter as Figure~\ref{fig:ablation}c ($1.07$) versus Table~\ref{tab:dataset-b} Gearbox ($1.062$). Shown limits: coupled cradle $\sim 7\%$ step then $E/E_0 \in [1.034, 1.093]$ (mean $1.053$) through $8\,\mathrm{h}$ (Figures~\ref{fig:ablation}c, \ref{fig:dataset-c}a); Dataset~C enclosure slow loss $1.009 \to 0.977$ (Figure~\ref{fig:dataset-c}b); speculative contacts omit Component~B; joint sqrt cap leaves resting sag; KRB-off enclosure escape (Figure~\ref{fig:ablation}b) is SI leak, not KRB failure; unmodified Box2D/p2/Matter (Figure~\ref{fig:engines}b) dissipate rather than gain. Out of scope: frictional or $e < 1$ games, hinges (engine-only), XPBD/TGS, global conservation. Variational integrators \cite{Hairer2006} are a different claim.
+\textbf{Evaluation regime.} In scope: single-pass SI/PGS, symplectic Euler (Component~A not evaluated on other integrators), contacts and distance joints, $e = 1$, zero friction/damping, sleep off, and the Gearbox \texttt{World()}/\texttt{constants.h} knobs in Section~\ref{sec:evaluation}. Energy results in this paper are reported only for this regime; friction, $e < 1$, other $dt$, or different iteration counts are out of scope. Dataset~A/C cradle energy includes rotational $E_k$; Dataset~B cradle $E/E_0$ is translational only---not the same meter as Figure~\ref{fig:ablation}c ($1.07$) versus Table~\ref{tab:dataset-b} Gearbox ($1.062$). Shown limits: coupled cradle $\sim 7\%$ step then $E/E_0 \in [1.034, 1.093]$ (mean $1.053$) through $8\,\mathrm{h}$ (Figures~\ref{fig:ablation}c, \ref{fig:dataset-c}a); Dataset~C enclosure slow loss $1.009 \to 0.977$ (Figure~\ref{fig:dataset-c}b; $\Delta \approx 0.032$ in windowed $E/E_0$); speculative contacts omit Component~B; joint sqrt cap leaves resting sag; KRB-off enclosure escape (Figure~\ref{fig:ablation}b) is SI leak, not KRB failure; unmodified Box2D/p2/Matter (Figure~\ref{fig:engines}b) dissipate rather than gain. Out of scope: frictional or $e < 1$ games, hinges (engine-only), XPBD/TGS, global conservation. Variational integrators \cite{Hairer2006} are a different claim.
 
 No A-only/B-only ablation; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Dataset~B is placement only (Section~\ref{sec:evaluation}). Coupled-constraint audit, tunneling, and ill-conditioned chains remain future work.
 
 \section{Conclusion}
 
-KRB is a drop-in \texttt{preSolve} audit for velocity-level SI solvers \cite{Catto2005}: Component~A compensates symplectic-Euler force drift at setup; Component~B taxes PE work of expected $\Delta h$, at a few scalars per constraint with zero extra PGS iterations (Table~\ref{tab:dataset-d}). Coupled cradle scenes show a bounded $E/E_0$ offset after an early step, not full cradle compensation. KRB-on is not a perfect energy meter: the Dataset~C enclosure drifts slowly ($1.009 \to 0.977$), i.e.\ loss not conservation and not the KRB-off SI gain of Dataset~A. The coupled-constraint gap in Section~\ref{sec:limitations} remains open.
+KRB is a \texttt{preSolve} audit for the contacts-and-distance-joints recipe in Section~\ref{sec:implementation} within velocity-level SI solvers \cite{Catto2005}: Component~A compensates symplectic-Euler force drift; Component~B taxes PE work of expected $\Delta h$, at a few scalars per constraint with zero extra PGS iterations; Table~\ref{tab:dataset-d} is native \texttt{g++} wall-time only (not shipped WASM or Gearbox-versus-Box2D CPU). Coupled cradle scenes show a bounded $E/E_0$ offset after an early step, not full cradle compensation. KRB-on is not a perfect energy meter: the Dataset~C enclosure drifts slowly ($1.009 \to 0.977$, drop of $0.032$ in windowed $E/E_0$, about $3\%$ of $E_0$ over $8\,\mathrm{h}$), i.e.\ loss not conservation and not the KRB-off SI gain of Dataset~A. The coupled-constraint gap in Section~\ref{sec:limitations} remains open.
 
 \small
 \bibliographystyle{jcgt}

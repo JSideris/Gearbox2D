@@ -254,3 +254,15 @@ Manuscript run `20260823-1e6d9e` / cycle-6 path-only hole close (2026-08-23). HE
 - **Closed:** `h-method-approx` — Method Component B states 1-D / relative / predicted-$\Delta h$ domain before `eq:vsurf`; whitepaper §3.2 mirrored; ties to `workTerm` listing.
 - **Partial:** `h-length-typical` — length-ack sentence deleted; claim ids stripped; Evaluation/Dataset D captions compressed; page count unchanged at 10 (not increased); still **10 pp** vs pack `typical_pages: 4`. **Not fully closed.** Recorded in `residuals.json`.
 - **Frozen:** all energy/timing table cells; cradle off `1.79` secular gain; Method equation algebra; listing semantics; cycle-5 WASM/same-load/merge-listings prose; no `cpp/`/CSV/`krb.bib`/harness edits.
+
+## Cycle-7 path close (`KRB_JCGT_CYCLE7_PATH`)
+
+Manuscript run `20260823-1e6d9e` / cycle-7 path-only hole close (2026-08-23). HEAD `82ca731` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 349686 bytes); C07 `1.009 \to 0.977` without explicit $\Delta$; Dataset D native `g++` scope in caption only; Component A “all constraints”; unqualified Conclusion drop-in; no measured recipe sentence.
+- **After:** 11 pp (`krb.log` 350774 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `C07-loss-quant` — Limitations $\Delta \approx 0.032$; Conclusion drop of $0.032$, about $3\%$ of $E_0$ over $8\,\mathrm{h}$; not README hourly $0.999 \to 0.982$.
+- **Closed:** `dataset-d-hedge` — Cost subsection body names native `g++` / `make log-timing`; Conclusion Table D hedge; caption unchanged.
+- **Closed:** `h-venue-method-stated` — measured recipe in Implementation (merge-listings paragraph); Component A scoped to contact/distance-joint `preSolve`; Conclusion scoped to Section~\ref{sec:implementation} recipe.
+- **Partial:** `h-length-typical` — **11 pp** vs pack `typical_pages: 4`; within `max_pages` 12; preferred $\le 10$ not met. **Not fully closed.**
+- **Frozen:** all energy/timing table cells (`0.999`/`6.53`/`1.07`/Box2D `6.61`/C06 band/C07 `1.009\to0.977`/escape step `161`/Dataset D cells); cradle off `1.79` secular gain; Method equation algebra; listing semantics; cycle-5/6 prose; no `cpp/`/CSV/`krb.bib`/harness edits.
