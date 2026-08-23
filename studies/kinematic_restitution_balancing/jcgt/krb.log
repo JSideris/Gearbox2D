@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  22 AUG 2026 23:19
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  23 AUG 2026 02:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -516,19 +516,33 @@ LaTeX Font Info:    Font shape `OT1/phv/m/n' will be
 LaTeX Font Info:    Font shape `OT1/phv/b/n' will be
 (Font)              scaled to size 8.99994pt on input line 141.
 [4]
-<../figures/fig-energy-dataset-c.pdf, id=119, 505.89pt x 361.35pt>
+Overfull \hbox (29.01611pt too wide) in paragraph at lines 161--162
+\OT1/ptm/m/n/10.95 Four datasets (Ta-ble [][]1[][]): A--B $\OT1/cmr/m/n/10.95 6
+00 s$\OT1/ptm/m/n/10.95 ; C KRB-on $\OT1/cmr/m/n/10.95 8 h$ \OT1/ptm/m/n/10.95 
+($\OML/cmm/m/it/10.95 t \OT1/cmr/m/n/10.95 = 28800 s$\OT1/ptm/m/n/10.95 ); D na
+-tive \OT1/pcr/m/n/10.95 world.step()
+ []
+
+
+Overfull \hbox (23.81476pt too wide) in paragraph at lines 161--162
+\OT1/ptm/m/n/10.95 Datasets A and C use stock \OT1/pcr/m/n/10.95 World() \OT1/p
+tm/m/n/10.95 plus \OT1/pcr/m/n/10.95 constants.h\OT1/ptm/m/n/10.95 : \OT1/pcr/m
+/n/10.95 velocity[]iterations$\OT1/cmr/m/n/10.95 =
+ []
+
+<../figures/fig-energy-dataset-c.pdf, id=117, 505.89pt x 361.35pt>
 File: ../figures/fig-energy-dataset-c.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-dataset-c.pdf>
 Package pdftex.def Info: ../figures/fig-energy-dataset-c.pdf  used on input lin
 e 185.
 (pdftex.def)             Requested size: 297.60114pt x 212.57712pt.
-<../figures/fig-energy-ablation.pdf, id=122, 505.89pt x 520.34402pt>
+<../figures/fig-energy-ablation.pdf, id=120, 505.89pt x 520.34402pt>
 File: ../figures/fig-energy-ablation.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-ablation.pdf>
 Package pdftex.def Info: ../figures/fig-energy-ablation.pdf  used on input line
  192.
 (pdftex.def)             Requested size: 297.60114pt x 306.11105pt.
-<../figures/fig-energy-engines.pdf, id=123, 505.89pt x 390.25798pt>
+<../figures/fig-energy-engines.pdf, id=121, 505.89pt x 390.25798pt>
 File: ../figures/fig-energy-engines.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-engines.pdf>
 Package pdftex.def Info: ../figures/fig-energy-engines.pdf  used on input line 
@@ -536,7 +550,7 @@ Package pdftex.def Info: ../figures/fig-energy-engines.pdf  used on input line
 (pdftex.def)             Requested size: 297.60114pt x 229.58327pt.
 LaTeX Font Info:    Trying to load font information for OMS+pcr on input line 2
 51.
- (/usr/share/texlive/texmf-dist/tex/latex/psnfss/omspcr.fd
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/omspcr.fd
 File: omspcr.fd 
 )
 LaTeX Font Info:    Font shape `OMS/pcr/m/n' in size <10> not available
@@ -554,11 +568,11 @@ hows a larger on/off
  []
 
 [5] [6 <../figures/fig-energy-dataset-c.pdf>] [7 <../figures/fig-energy-ablatio
-n.pdf>] [8 <../figures/fig-energy-engines.pdf>] (./krb.bbl (./krb.brf)
+n.pdf>] (./krb.bbl (./krb.brf)
 \tf@brf=\write3
 \openout3 = `krb.brf'.
 
-
+ [8 <../figures/fig-energy-engines.pdf>]
 Underfull \hbox (badness 3471) in paragraph at lines 36--36
 []\OT1/ptm/m/sc/10 Catto, E.  \OT1/ptm/m/n/10 Soft con-straints.  Pre-sented at
  the Game De-vel-op-ers Con-fer-ence,
@@ -572,39 +586,51 @@ Underfull \hbox (badness 1173) in paragraph at lines 36--36
 
 )
 LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 2
-94.
+88.
  (/usr/share/texlive/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-) [9]
-Overfull \hbox (94.63466pt too wide) in paragraph at lines 296--297
+)
+Overfull \hbox (11.5951pt too wide) in paragraph at lines 288--289
+[]\OT1/pcr/m/n/10 studies/kinematic[]restitution[]balancing/jcgt/krb.tex\OT1/pt
+m/m/n/10 , \OT1/pcr/m/n/10 krb.bib\OT1/ptm/m/n/10 ,
+ []
+
+
+Overfull \hbox (94.63466pt too wide) in paragraph at lines 290--291
 []\OT1/pcr/m/n/10 figures/fig-energy-*.pdf\OT1/ptm/m/n/10 , \OT1/pcr/m/n/10 plo
 t-energy-*.py \OT1/ptm/m/n/10 (in-clud-ing \OT1/pcr/m/n/10 plot-energy-dataset-
 c.py\OT1/ptm/m/n/10 ). 
  []
 
 
-Overfull \hbox (20.9151pt too wide) in paragraph at lines 297--298
+Overfull \hbox (20.9151pt too wide) in paragraph at lines 291--292
 []\OT1/pcr/m/n/10 data/README.md\OT1/ptm/m/n/10 , \OT1/pcr/m/n/10 data/*-krb,no
 krb.csv\OT1/ptm/m/n/10 , \OT1/pcr/m/n/10 data/dataset-b-*-600s.csv\OT1/ptm/m/n/
 10 ,
  []
 
+[9]
+Overfull \hbox (82.39508pt too wide) in paragraph at lines 293--294
+[]\OT1/pcr/m/n/10 cpp/src/solvers/distance-joint.cpp\OT1/ptm/m/n/10 , \OT1/pcr/
+m/n/10 cpp/src/world/contact-constraint.cpp\OT1/ptm/m/n/10 . 
+ []
 
-Overfull \hbox (44.83516pt too wide) in paragraph at lines 302--303
+
+Overfull \hbox (44.83516pt too wide) in paragraph at lines 297--298
 \OT1/ptm/m/n/10 and data are ISC-licensed; see \OT1/pcr/m/n/10 LICENSE \OT1/ptm
 /m/n/10 in the Gear-box2D repos-i-tory ([][]github.com/JSideris/Gearbox2D[][]).
  
  []
 
 
-Underfull \hbox (badness 10000) in alignment at lines 304--304
+Underfull \hbox (badness 10000) in alignment at lines 299--299
 [][] [] []
  []
 
-<CC-BY-ND.png, id=295, 97.0827pt x 33.9669pt>
+<CC-BY-ND.png, id=293, 97.0827pt x 33.9669pt>
 File: CC-BY-ND.png Graphic file (type png)
 <use CC-BY-ND.png>
-Package pdftex.def Info: CC-BY-ND.png  used on input line 304.
+Package pdftex.def Info: CC-BY-ND.png  used on input line 299.
 (pdftex.def)             Requested size: 71.13188pt x 24.8884pt.
 [10 <./CC-BY-ND.png>] (./krb.aux)
  ***********
@@ -612,7 +638,7 @@ LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package rerunfilecheck Info: File `krb.brf' has not changed.
-(rerunfilecheck)             Checksum: 7D2F290892F9D48735D21E4E1CA28D91;548.
+(rerunfilecheck)             Checksum: C40A105802603DFF430AA9220941127E;548.
  ) 
 Here is how much of TeX's memory you used:
  14760 strings out of 476182
@@ -621,7 +647,7 @@ Here is how much of TeX's memory you used:
  36457 multiletter control sequences out of 15000+600000
  592586 words of font info for 108 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 105i,13n,107p,1061b,1996s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 105i,13n,107p,1000b,1996s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/shar
 e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texl
@@ -637,10 +663,10 @@ ve/texmf-dist/fonts/type1/urw/helvetic/uhvro8a.pfb></usr/share/texlive/texmf-di
 st/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/
 urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri
 8a.pfb>
-Output written on krb.pdf (10 pages, 339136 bytes).
+Output written on krb.pdf (10 pages, 339291 bytes).
 PDF statistics:
- 392 PDF objects out of 1000 (max. 8388607)
- 305 compressed objects within 4 object streams
+ 389 PDF objects out of 1000 (max. 8388607)
+ 302 compressed objects within 4 object streams
  82 named destinations out of 1000 (max. 500000)
  21 words of extra memory for PDF output out of 10000 (max. 10000000)
 

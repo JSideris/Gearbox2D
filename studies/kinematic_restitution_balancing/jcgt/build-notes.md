@@ -193,3 +193,15 @@ Manuscript run `20260823-2c8d77` / cycle-4 path-only hole close (2026-08-22). HE
 - **Partial:** `h-length-density` — still 10 pp vs typical ~4; length ack added in Limitations; preferred ≤8 not met; within `max_pages` 12.
 - **Frozen:** all table cells, C01–C09 claim text, CSV bytes; no `cpp/` / harness / bib edits.
 - **New artifacts:** `plot-energy-dataset-c.py`, `figures/fig-energy-dataset-c.{pdf,png}`.
+
+## Cycle-1 scope close (`KRB_JCGT_CYCLE1_SCOPE`)
+
+Manuscript run `20260823-26fb84` / cycle-1 path-only hole close (2026-08-23). HEAD `8376c50` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 339136 bytes); energy protocol omitted `World()`/`constants.h` deploy knobs; Index paper-root only (no `distance-joint.cpp`); no explicit symplectic-Euler / non-causal Dataset B / venue regime blocks.
+- **After:** 10 pp (`krb.log` 339291 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `h-deploy-params` (Evaluation L161: `velocity_iterations=50`, `position_iterations` $n=10$, $\beta=0.2$, caps/slop/threshold for Datasets A/C); `h-supp-ptr` (Index: repo-root paths + `cpp/src/solvers/distance-joint.cpp`, `contact-constraint.cpp`); `h-integrator-scope` (Limitations regime: symplectic Euler only, no non-symplectic eval); `h-dataset-b` (`tab:dataset-b` caption + Limitations: placement not causal); `h-venue-regime` (Limitations **Evaluation regime** block: in/out/failure scope).
+- **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase; preferred ≤8 not met. **Not fully closed.**
+- **Out of session:** `h-empirical-ab` (no A-only/B-only traces).
+- **Frozen:** all table cells, C01–C07 claim meaning, CSV data rows, `cpp/`, `krb.bib`, listings, figures; no energy recapture.
+- **Mirrors:** `KRB_Whitepaper.md` §6–7; `data/README.md` Dataset A/C deploy knobs.

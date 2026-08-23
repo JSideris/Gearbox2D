@@ -62,25 +62,27 @@
 \newlabel{tab:protocol}{{1}{5}{Evaluation protocol and Dataset~C (KRB on, $8\,\mathrm {h}$ runs). C07 windowed $E/E_0$ is on $600\,\mathrm {s}$ windows of the $8\,\mathrm {h}$ trace, not a $600\,\mathrm {s}$ run. Dataset~D is ms/step native timing, not a Gearbox-versus-Box2D CPU comparison}{table.caption.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Cost (Dataset D)}{5}{subsection.5.1}\protected@file@percent }
 \newlabel{sec:dataset-d}{{5.1}{5}{Cost (Dataset D)}{subsection.5.1}{}}
+\citation{Hairer2006}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Dataset~C KRB-on continuation to $8\,\mathrm  {h}$ ($t = 28800\,\mathrm  {s}$): windowed $E/E_0$ means (cradle $60\,\mathrm  {s}$, enclosure $600\,\mathrm  {s}$); not an on/off ablation. Empirical scene bounds, not global invariants; enclosure shows slow loss, not the KRB-off SI gain of Figure~\ref {fig:ablation}b.}}{6}{figure.caption.5}\protected@file@percent }
 \newlabel{fig:dataset-c}{{1}{6}{Dataset~C KRB-on continuation to $8\,\mathrm {h}$ ($t = 28800\,\mathrm {s}$): windowed $E/E_0$ means (cradle $60\,\mathrm {s}$, enclosure $600\,\mathrm {s}$); not an on/off ablation. Empirical scene bounds, not global invariants; enclosure shows slow loss, not the KRB-off SI gain of Figure~\ref {fig:ablation}b}{figure.caption.5}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Dataset~A ablation: $E/E_0$ at $600\,\mathrm  {s}$ (compile-time KRB on/off).}}{6}{table.caption.7}\protected@file@percent }
 \newlabel{tab:dataset-a}{{2}{6}{Dataset~A ablation: $E/E_0$ at $600\,\mathrm {s}$ (compile-time KRB on/off)}{table.caption.7}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {6}Limitations}{6}{section.6}\protected@file@percent }
 \newlabel{sec:limitations}{{6}{6}{Limitations}{section.6}{}}
-\citation{Hairer2006}
+\@writefile{brf}{\backcite{Hairer2006}{{6}{6}{section.6}}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Mechanical energy ratio $E/E_0$ over $600\,\mathrm  {s}$. (a)~Elastic floor contact. (b)~High-rate enclosure; KRB on is a $60\,\mathrm  {s}$ windowed mean, KRB off raw $1\,\mathrm  {Hz}$ samples to tunneling ($t = 2.7\,\mathrm  {s}$). (c)~Newton's cradle.}}{7}{figure.caption.6}\protected@file@percent }
 \newlabel{fig:ablation}{{2}{7}{Mechanical energy ratio $E/E_0$ over $600\,\mathrm {s}$. (a)~Elastic floor contact. (b)~High-rate enclosure; KRB on is a $60\,\mathrm {s}$ windowed mean, KRB off raw $1\,\mathrm {Hz}$ samples to tunneling ($t = 2.7\,\mathrm {s}$). (c)~Newton's cradle}{figure.caption.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Dataset~B: $E/E_0$ at $600\,\mathrm  {s}$ on unmodified whole engines (not an in-engine KRB ablation; iteration counts, split impulse, and damping differ).}}{7}{table.caption.9}\protected@file@percent }
-\newlabel{tab:dataset-b}{{3}{7}{Dataset~B: $E/E_0$ at $600\,\mathrm {s}$ on unmodified whole engines (not an in-engine KRB ablation; iteration counts, split impulse, and damping differ)}{table.caption.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Dataset~B: $E/E_0$ at $600\,\mathrm  {s}$ on unmodified whole engines (cross-engine placement, not causal evidence that KRB explains Gearbox versus Box2D/p2/Matter; C01--C03 are the compile-time on/off ablation).}}{7}{table.caption.9}\protected@file@percent }
+\newlabel{tab:dataset-b}{{3}{7}{Dataset~B: $E/E_0$ at $600\,\mathrm {s}$ on unmodified whole engines (cross-engine placement, not causal evidence that KRB explains Gearbox versus Box2D/p2/Matter; C01--C03 are the compile-time on/off ablation)}{table.caption.9}{}}
 \citation{Catto2005}
+\bibstyle{jcgt}
+\bibdata{krb}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mechanical energy ratio $E/E_0$ over $600\,\mathrm  {s}$ on unmodified engines. (a)~Elastic floor contact. (b)~Newton's cradle. Gearbox2D is default KRB-on WASM; other engines are whole-engine traces, not in-engine KRB ablation.}}{8}{figure.caption.8}\protected@file@percent }
 \newlabel{fig:engines}{{3}{8}{Mechanical energy ratio $E/E_0$ over $600\,\mathrm {s}$ on unmodified engines. (a)~Elastic floor contact. (b)~Newton's cradle. Gearbox2D is default KRB-on WASM; other engines are whole-engine traces, not in-engine KRB ablation}{figure.caption.8}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Dataset~D: native KRB on/off wall-time per \texttt  {world.step()} (mean and repeat range, ms/step). Whole-step timings may include hinge Component~A (engine-only); Listings~\ref {lst:contact}--\ref {lst:joint} and the analytic op-count above cover contacts and distance joints only (wall-time is scene-dependent; high-pressure enclosure shows a larger on/off spread than floor/cradle). \texttt  {BENCH\_FLAGS}: \texttt  {-O3 -march=native -mfma -pthread -DGEARBOX\_MT}; $100$ warmup + $1000$ timed steps, three repeats (i9-9900KF, g++ 13.3.0, \texttt  {velocity\_iterations}$=50$, \texttt  {position\_iterations}$=10$). Compile-time ablation; not Box2D. Traces: \texttt  {data/timing/timing-summary-\{krb,nokrb\}.csv}.}}{8}{table.caption.10}\protected@file@percent }
 \newlabel{tab:dataset-d}{{4}{8}{Dataset~D: native KRB on/off wall-time per \texttt {world.step()} (mean and repeat range, ms/step). Whole-step timings may include hinge Component~A (engine-only); Listings~\ref {lst:contact}--\ref {lst:joint} and the analytic op-count above cover contacts and distance joints only (wall-time is scene-dependent; high-pressure enclosure shows a larger on/off spread than floor/cradle). \texttt {BENCH\_FLAGS}: \texttt {-O3 -march=native -mfma -pthread -DGEARBOX\_MT}; $100$ warmup + $1000$ timed steps, three repeats (i9-9900KF, g++ 13.3.0, \texttt {velocity\_iterations}$=50$, \texttt {position\_iterations}$=10$). Compile-time ablation; not Box2D. Traces: \texttt {data/timing/timing-summary-\{krb,nokrb\}.csv}}{table.caption.10}{}}
-\@writefile{brf}{\backcite{Hairer2006}{{8}{6}{section.6}}}
-\bibstyle{jcgt}
-\bibdata{krb}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{8}{section.7}\protected@file@percent }
+\@writefile{brf}{\backcite{Catto2005}{{8}{7}{section.7}}}
 \bibcite{Baumgarte1972}{{1}{1972}{{Baumgarte}}{{}}}
 \bibcite{Bender2014}{{2}{2014}{{Bender et~al.}}{{Bender, Erleben, and Trinkle}}}
 \bibcite{Catto2005}{{3}{2005}{{Catto}}{{}}}
@@ -91,6 +93,4 @@
 \bibcite{Macklin2016}{{8}{2016}{{Macklin et~al.}}{{Macklin, M\"{u}ller, and Chentanez}}}
 \bibcite{Muller2007}{{9}{2007}{{M\"{u}ller et~al.}}{{M\"{u}ller, Heidelberger, Hennix, and Ratcliff}}}
 \bibcite{PhysX2024}{{10}{2024}{{NVIDIA Corporation}}{{}}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{9}{section.7}\protected@file@percent }
-\@writefile{brf}{\backcite{Catto2005}{{9}{7}{section.7}}}
 \gdef \@abspage@last{10}

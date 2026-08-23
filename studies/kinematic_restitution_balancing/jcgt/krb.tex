@@ -158,7 +158,7 @@ During the velocity solve, $-\mathrm{forceVn}$ is folded into \texttt{bias} so \
 \section{Evaluation}
 \label{sec:evaluation}
 
-Four datasets (Table~\ref{tab:protocol}): Datasets~A--B run $600\,\mathrm{s}$; Dataset~C KRB-on continuation $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$); Dataset~D native \texttt{world.step()} wall-time only. Energy claims C01--C07: $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Components~A and~B are an analytic two-leak decomposition; the empirical switch is compile-time full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} only (no A-only or B-only traces in Datasets~A--D). C01--C03 therefore do not isolate which leak each component closed. $E = E_k + E_p$; Dataset~A includes rotational KE, Dataset~B translational only (Gearbox floor-bounce traces agree to $\sim 10^{-6}$). Reported ratio $E/E_0$. Instantaneous samples (1\,Hz for A--B; every $10\,\mathrm{s}$ for C) alias the bounce; $60\,\mathrm{s}$ windowed means are the drift signal (Figure~\ref{fig:ablation}b, Table~\ref{tab:dataset-a}, Section~\ref{sec:limitations}); C07 uses $600\,\mathrm{s}$ windows on the $8\,\mathrm{h}$ enclosure series.
+Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$; C KRB-on $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$); D native \texttt{world.step()} wall-time only. C01--C07: $dt = 1/60$, $e = 1$, zero friction/damping, sleep off. Datasets~A and~C use stock \texttt{World()} plus \texttt{constants.h}: \texttt{velocity\_iterations}$=50$, \texttt{position\_iterations}$n=10$, $\beta = 0.2$, \texttt{MAX\_POSITION\_CORRECTION}$=0.2$, slop $0.016$, restitution threshold $0.01$; Listing~\ref{lst:contact} $\Gamma$ uses that $n,\beta$. Dataset~B engines are unmodified whole-engine WASM traces (not those Gearbox knobs). Full KRB on/off only (no A-only/B-only traces); C01--C03 do not isolate which leak each component closed. $E = E_k + E_p$ (A rotational, B translational only). $E/E_0$; 1\,Hz (A--B) or $10\,\mathrm{s}$ (C) samples alias the bounce; $60\,\mathrm{s}$ windowed means are the drift signal; C07 uses $600\,\mathrm{s}$ windows on the enclosure series.
 
 \small
 \begin{table}[htb]
@@ -222,7 +222,7 @@ Four datasets (Table~\ref{tab:protocol}): Datasets~A--B run $600\,\mathrm{s}$; D
 
 \small
 \begin{table}[htb]
-  \caption{Dataset~B: $E/E_0$ at $600\,\mathrm{s}$ on unmodified whole engines (not an in-engine KRB ablation; iteration counts, split impulse, and damping differ).}
+  \caption{Dataset~B: $E/E_0$ at $600\,\mathrm{s}$ on unmodified whole engines (cross-engine placement, not causal evidence that KRB explains Gearbox versus Box2D/p2/Matter; C01--C03 are the compile-time on/off ablation).}
   \label{tab:dataset-b}
   \centering
   \begin{tabular}{@{}llrl@{}}
@@ -266,21 +266,15 @@ Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta 
 \section{Limitations}
 \label{sec:limitations}
 
-KRB is a per-constraint audit, not a coupled one. Resolving one constraint can force work on another (e.g.\ horizontal collision lifting a pendulum rod); the isolated PE/KE tax may miss systemic PE change.
+KRB is a per-constraint audit, not a coupled one; resolving one constraint can force work on another (e.g.\ horizontal collision lifting a pendulum rod).
 
-Evaluation is restricted to $e = 1$, zero friction/damping, sleep off (Section~\ref{sec:evaluation}); not a general frictional or $e < 1$ claim. No experimental Component A-only or Component B-only ablation was run; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Published traces therefore cannot attribute Dataset~A (or Dataset~D) residuals to Component~A versus~B; isolating the two leaks remains future work.
+\textbf{Evaluation regime.} In scope: single-pass SI/PGS, symplectic Euler (Component~A not evaluated on other integrators), contacts and distance joints, $e = 1$, zero friction/damping, sleep off, and the Gearbox \texttt{World()}/\texttt{constants.h} knobs in Section~\ref{sec:evaluation}. Shown limits: coupled cradle $\sim 7\%$ step then $E/E_0 \in [1.034, 1.093]$ (mean $1.053$) through $8\,\mathrm{h}$ (Figures~\ref{fig:ablation}c, \ref{fig:dataset-c}a); C07 slow loss $1.009 \to 0.977$ (Figure~\ref{fig:dataset-c}b); speculative contacts omit Component~B; joint sqrt cap leaves resting sag; KRB-off enclosure escape (Figure~\ref{fig:ablation}b) is SI leak, not KRB failure; unmodified Box2D/p2/Matter (Figure~\ref{fig:engines}b) dissipate rather than gain. Out of scope: frictional or $e < 1$ games, hinges (engine-only), XPBD/TGS, global conservation. Variational integrators \cite{Hairer2006} are a different claim.
 
-Newton's cradle is that coupled case. In Figure~\ref{fig:ablation}c and Figure~\ref{fig:engines}b the KRB run shows a $\sim 7\%$ step near four minutes, then a plateau---not secular climb, not a global invariant. Dataset~C (Figure~\ref{fig:dataset-c}a) continues KRB-on cradle to $8\,\mathrm{h}$ ($dt = 1/60$, sampled every $10\,\mathrm{s}$). After the step, $E/E_0$ stays in $[1.034, 1.093]$ (mean $1.053$) through $t = 28800\,\mathrm{s}$; $60\,\mathrm{s}$ windowed means do not jump again. Empirical multi-hour bound for this scene, not a global invariant.
-
-Dataset~C KRB-on enclosure (Figure~\ref{fig:dataset-c}b) stays in the box for $8\,\mathrm{h}$; $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.009 \to 0.977$ (slow loss, not the KRB-off SI gain of Figure~\ref{fig:ablation}b).
-
-Unmodified Box2D, p2, and Matter (Figure~\ref{fig:engines}b) dissipate rather than gain---a different failure mode. Variational integrators \cite{Hairer2006} remain a different claim.
-
-Coupled-constraint audit is future work. Tunneling, ill-conditioned chains, and scenes failing for other reasons are outside the claim. The no-KRB enclosure escape (Figure~\ref{fig:ablation}b) is SI leak at high impact rate, not KRB failure. This note is denser than typical JCGT articles ($\sim 4$ pages) but within the venue $12$-page ceiling.
+No A-only/B-only ablation; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Dataset~B is placement only (Section~\ref{sec:evaluation}). Coupled-constraint audit, tunneling, and ill-conditioned chains remain future work. This note exceeds typical JCGT length ($\sim 4$ pages) but stays within the $12$-page ceiling.
 
 \section{Conclusion}
 
-Kinematic Restitution Balancing is a drop-in \texttt{preSolve} audit for velocity-level SI solvers \cite{Catto2005}: Component~A compensates force-integration drift; Component~B taxes PE work of expected $\Delta h$, at a few scalars per constraint with zero extra PGS iterations (Table~\ref{tab:dataset-d}). The coupled-constraint gap in Section~\ref{sec:limitations} remains open.
+KRB is a drop-in \texttt{preSolve} audit for velocity-level SI solvers \cite{Catto2005}: Component~A compensates symplectic-Euler force drift; Component~B taxes PE work of expected $\Delta h$, at a few scalars per constraint with zero extra PGS iterations (Table~\ref{tab:dataset-d}). The coupled-constraint gap in Section~\ref{sec:limitations} remains open.
 
 \small
 \bibliographystyle{jcgt}
@@ -289,13 +283,14 @@ Kinematic Restitution Balancing is a drop-in \texttt{preSolve} audit for velocit
 \vspace{-6pt}
 \section*{Index of Supplemental Materials}
 \small
-Paths are relative to \texttt{studies/kinematic\_restitution\_balancing/}.
+Paths are relative to the Gearbox2D repository root unless noted.
 \begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
-\item \texttt{jcgt/krb.tex}, \texttt{krb.bib}, \texttt{build-notes.md}.
+\item \texttt{studies/kinematic\_restitution\_balancing/jcgt/krb.tex}, \texttt{krb.bib}, \texttt{build-notes.md}.
 \item \texttt{KRB\_Whitepaper.md} --- number mirror (not authoritative).
 \item \texttt{figures/fig-energy-*.pdf}, \texttt{plot-energy-*.py} (including \texttt{plot-energy-dataset-c.py}).
 \item \texttt{data/README.md}, \texttt{data/*-{krb,nokrb}.csv}, \texttt{data/dataset-b-*-600s.csv}, \texttt{data/dataset-c/}, \texttt{data/timing/}.
 \item \texttt{log-energy.cpp}, \texttt{log-timing.cpp}.
+\item \texttt{cpp/src/solvers/distance-joint.cpp}, \texttt{cpp/src/world/contact-constraint.cpp}.
 \end{itemize}
 
 \section*{Author Contact and License}

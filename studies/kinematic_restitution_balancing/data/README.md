@@ -1,6 +1,6 @@
 # Dataset A — KRB compile-time ablation
 
-Headless traces from `../log-energy.cpp`. Same scenes, same \(dt = 1/60\), \(e = 1\), no damping, sleep off. `krb` is the default binary; `nokrb` is `-DGEARBOX_DISABLE_KRB`.
+Headless traces from `../log-energy.cpp`. Same scenes, same \(dt = 1/60\), \(e = 1\), no damping, sleep off. Stock `World()` defaults: `velocity_iterations=50`, `position_iterations=10`; `constants.h`: `BAUMGARTE_FACTOR=0.2`, `MAX_POSITION_CORRECTION=0.2`, `PENETRATION_SLOP=0.016`, `RESTITUTION_THRESHOLD=0.01` (Listing 1 \(\Gamma\) uses that \(n,\beta\)). `krb` is the default binary; `nokrb` is `-DGEARBOX_DISABLE_KRB`.
 
 ```bash
 make log-energy
@@ -39,7 +39,7 @@ make log-energy
 	--scene cradle,bounce-circle --seconds 28800 --sample-every 600
 ```
 
-Columns match Dataset A. Sampled every \(10\,\mathrm{s}\) of simulation time. KRB on only.
+Columns match Dataset A. Sampled every \(10\,\mathrm{s}\) of simulation time. KRB on only. Same `World()`/`constants.h` deploy knobs as Dataset A (see above).
 
 Results (2026-08-21, `./logEnergy`, ~14 min wall for the cradle, ~8 min for the circle):
 
