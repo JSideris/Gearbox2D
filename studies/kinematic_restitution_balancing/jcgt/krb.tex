@@ -74,9 +74,9 @@ For ground collisions ($\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n} < 0$), Compon
 \subsection{Effective displacement prediction}
 \label{sec:deff}
 
-$\Delta h$ is the expected normal displacement used in the Component~B work term---not the full penetration depth, but the portion the position solver will actually correct this step after accounting for launch motion and per-iteration caps. When velocity and position phases are decoupled, the kinematic bounce velocity $v_{\mathrm{launch}}$ partially resolves penetration $d$ before the position solver runs. The remaining overlap after that motion is the effective depth
+$\Delta h$ is the expected normal displacement used in the Component~B work term---not the full penetration depth, but the portion the position solver will actually correct this step after accounting for launch motion and per-iteration caps. When velocity and position phases are decoupled, the kinematic bounce velocity $v_{\mathrm{launch}}$ (Listing~\ref{lst:contact}: $v_{\mathrm{Bounce}} = -e \cdot \mathrm{relativeVn}$) partially resolves overlap after penetration slop $s$ before the position solver runs. The remaining overlap after that motion is the effective depth
 \begin{equation}
-d_{\mathrm{eff}} = \max\bigl(0,\, d - (v_{\mathrm{launch}} \cdot \Delta t)\bigr).
+d_{\mathrm{eff}} = \max\bigl(0,\, (d - s) - (v_{\mathrm{launch}} \cdot \Delta t)\bigr).
 \label{eq:deff}
 \end{equation}
 Many engines clamp per-iteration correction (e.g.\ Gearbox2D \texttt{MAX\_POSITION\_CORRECTION}). The audit must match the work actually performed:
@@ -114,6 +114,9 @@ Equation~\eqref{eq:joint_bias} is the same PE/KE audit with expected stretch dis
 \label{sec:implementation}
 
 KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop.
+
+\paragraph{Integrate store.}
+Per dynamic body at integrate (before the constraint solve): \texttt{forceVelocity = a\_ext * dt} (two floats), with $a_{\mathrm{ext}}$ from gravity and external force before linear damping; zero for sleeping or infinite-mass bodies (supplemental \texttt{cpp/src/world/world-simd.cpp}).
 
 \subsection{Contact setup}
 \label{sec:impl_contacts}
@@ -268,7 +271,7 @@ Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta 
 
 KRB is a per-constraint audit, not a coupled one; resolving one constraint can force work on another (e.g.\ horizontal collision lifting a pendulum rod).
 
-\textbf{Evaluation regime.} In scope: single-pass SI/PGS, symplectic Euler (Component~A not evaluated on other integrators), contacts and distance joints, $e = 1$, zero friction/damping, sleep off, and the Gearbox \texttt{World()}/\texttt{constants.h} knobs in Section~\ref{sec:evaluation}. Shown limits: coupled cradle $\sim 7\%$ step then $E/E_0 \in [1.034, 1.093]$ (mean $1.053$) through $8\,\mathrm{h}$ (Figures~\ref{fig:ablation}c, \ref{fig:dataset-c}a); C07 slow loss $1.009 \to 0.977$ (Figure~\ref{fig:dataset-c}b); speculative contacts omit Component~B; joint sqrt cap leaves resting sag; KRB-off enclosure escape (Figure~\ref{fig:ablation}b) is SI leak, not KRB failure; unmodified Box2D/p2/Matter (Figure~\ref{fig:engines}b) dissipate rather than gain. Out of scope: frictional or $e < 1$ games, hinges (engine-only), XPBD/TGS, global conservation. Variational integrators \cite{Hairer2006} are a different claim.
+\textbf{Evaluation regime.} In scope: single-pass SI/PGS, symplectic Euler (Component~A not evaluated on other integrators), contacts and distance joints, $e = 1$, zero friction/damping, sleep off, and the Gearbox \texttt{World()}/\texttt{constants.h} knobs in Section~\ref{sec:evaluation}. Dataset~A/C cradle energy includes rotational $E_k$; Dataset~B cradle $E/E_0$ is translational only---not the same meter as Figure~\ref{fig:ablation}c ($1.07$) versus Table~\ref{tab:dataset-b} Gearbox ($1.062$). Shown limits: coupled cradle $\sim 7\%$ step then $E/E_0 \in [1.034, 1.093]$ (mean $1.053$) through $8\,\mathrm{h}$ (Figures~\ref{fig:ablation}c, \ref{fig:dataset-c}a); C07 slow loss $1.009 \to 0.977$ (Figure~\ref{fig:dataset-c}b); speculative contacts omit Component~B; joint sqrt cap leaves resting sag; KRB-off enclosure escape (Figure~\ref{fig:ablation}b) is SI leak, not KRB failure; unmodified Box2D/p2/Matter (Figure~\ref{fig:engines}b) dissipate rather than gain. Out of scope: frictional or $e < 1$ games, hinges (engine-only), XPBD/TGS, global conservation. Variational integrators \cite{Hairer2006} are a different claim.
 
 No A-only/B-only ablation; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Dataset~B is placement only (Section~\ref{sec:evaluation}). Coupled-constraint audit, tunneling, and ill-conditioned chains remain future work. This note exceeds typical JCGT length ($\sim 4$ pages) but stays within the $12$-page ceiling.
 

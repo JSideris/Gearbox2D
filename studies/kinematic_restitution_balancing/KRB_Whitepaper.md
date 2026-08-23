@@ -74,9 +74,9 @@ $$v_{final} = e \cdot v_{surf} = e \sqrt{\max(0, v_{impact}^2 + 2 (\mathbf{a}_{e
 The equation is symmetric: ground collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} < 0$) tax the launch velocity to pay for increased PE, while ceiling collisions ($\mathbf{a}_{ext} \cdot \mathbf{n} > 0$) boost it to account for work done against external forces.
 
 ### 3.3 Effective Displacement Prediction
-$\Delta h$ is the expected normal displacement used in the Component B work term—the portion the position solver will actually correct this step after launch motion and per-iteration caps. In solvers that use split impulse or an equivalent decoupled position pass (Sequential Impulse followed by Position Iterations), the energy audit must account for the temporal separation between the velocity and position phases. Specifically, the kinematic bounce velocity $v_{launch}$ partially resolves the penetration $d$ during the subsequent integration step before the position solver operates. The remaining overlap after that motion is the effective depth:
+$\Delta h$ is the expected normal displacement used in the Component B work term—the portion the position solver will actually correct this step after launch motion and per-iteration caps. In solvers that use split impulse or an equivalent decoupled position pass (Sequential Impulse followed by Position Iterations), the energy audit must account for the temporal separation between the velocity and position phases. Specifically, the kinematic bounce velocity $v_{launch}$ partially resolves overlap after penetration slop $s$ during the subsequent integration step before the position solver operates. The remaining overlap after that motion is the effective depth:
 
-$$d_{eff} = \max(0, d - (v_{launch} \cdot \Delta t))$$
+$$d_{eff} = \max(0, (d - s) - (v_{launch} \cdot \Delta t))$$
 
 Furthermore, many solvers clamp the position correction per iteration to $\Delta h_{max}$ (e.g., `0.2f`). To ensure the energy audit remains consistent with the physical work performed, the balancing term must respect these constraints:
 

@@ -216,3 +216,15 @@ Manuscript run `20260823-26fb84` / cycle-3 path-only hole close (2026-08-23). HE
 - **Partial:** `h-empirical-ab` — M02–M06 `claims.json` evidence retargeted to `jcgt/krb.tex` + `contact-constraint.cpp` / `distance-joint.cpp`; TeX full on/off only unchanged; no A-only/B-only traces.
 - **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase. **Not fully closed.**
 - **Frozen:** all table cells, C01–C07 claim meaning, CSV data rows, `cpp/`, `krb.bib`, listings, figures; no energy recapture.
+
+## Cycle-4 path close (`KRB_JCGT_CYCLE4_PATH`)
+
+Manuscript run `20260823-26fb84` / cycle-4 path-only hole close (2026-08-23). HEAD `d362d08` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 339320 bytes); `eq:deff` slop-free vs `lst:contact`; no integrate-store paragraph in Implementation; C05 cradle meter split not interpreted in Limitations.
+- **After:** 10 pp (`krb.log` 348694 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `h-slop-omission` — `eq:deff` uses $(d-s)-v_{\mathrm{launch}}\Delta t$; M04 narrowed in `claims.json`; whitepaper §3.3 mirrored.
+- **Closed:** `h-integrate-hook` — `\paragraph{Integrate store}` before `lst:contact`; supplemental `cpp/src/world/world-simd.cpp`; pre-damping / sleep / infinite-mass caveats.
+- **Closed:** `h-energy-metric-split` — Limitations Evaluation regime: Dataset A/C cradle includes rotational $E_k$; Dataset B cradle translational only; $1.07$ vs $1.062$ not equated.
+- **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase. **Not fully closed.**
+- **Frozen:** all table cells, C01–C07 claim meaning, CSV data rows, `cpp/`, `krb.bib`, listings, figures; no energy recapture.
