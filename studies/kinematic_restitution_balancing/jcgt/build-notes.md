@@ -181,4 +181,15 @@ Manuscript run `20260823-2c8d77` / Phase 5 rebuild, SoT verify, and residual rec
 - **SoT verified (TeX authoritative):** A–B 600 s, C 8 h (`t = 28800`), D wall-time; Limitations C06 band `[1.034, 1.093]` mean `1.053`; C07 `600\,\mathrm{s}` windows `1.009 \to 0.977` (not README hourly); A/B analytic vs full on/off, cannot attribute Dataset A/D, future work; frozen table cells match CSV terminals at stated precision (`0.999`/`0.999228`, `6.53`/`6.53393`, `1.07`/`1.06755`, Box2D `6.61`/`6.60555`, `escaped_at_step=161`); supplemental index paths on disk; `KRB_Whitepaper.md` mirrors TeX (no contradiction fix required). `claims.json` C01–C09 unchanged.
 - **Closed this session:** `h-artifact-snapshot` (Phase 1), `h-c07-under-narrated` (Phase 3), `h-no-ab-only-ablation` (Phase 4). No 11-vs-4 hedge restored in TeX.
 - **Residual (human-owned / desk-reject risk):** `h-length-density` — **10 pp** vs pack `typical_pages: 4`; within `max_pages: 12`. Phase 2 partial close (11→10). Preferred ≤8 **not** met. **Not fully closed.** Recorded in `residuals.json`.
-- **Out of session (documented, not fixed):** unrelated `make test` reds (`KRB_JCGT_HARNESS_HYGIENE`); no Dataset C figure (by design); no A-only/B-only experiments.
+- **Out of session (documented, not fixed):** unrelated `make test` reds (`KRB_JCGT_HARNESS_HYGIENE`); no A-only/B-only experiments.
+
+## Path heal (`KRB_JCGT_PATH_HEAL`)
+
+Manuscript run `20260823-2c8d77` / cycle-4 path-only hole close (2026-08-22). HEAD `cdc35ed` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 317819 bytes); no `lst:joint`; no Dataset C figure; Low-Cost title; abstract “removes”; hinge note in Dataset D body only.
+- **After:** 10 pp (`krb.log` 339136 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `h-distance-joint-listing` (`lst:joint` in body); `h-no-dataset-c-figure` (`fig-energy-dataset-c.pdf` from committed CSVs); `h-lowcost-title-scope` (title → per-constraint audit); `h-abstract-coupled` (audit/cancel + in-abstract coupled caveat); `h-hinge-footnote` (hinge in `tab:dataset-d` caption).
+- **Partial:** `h-length-density` — still 10 pp vs typical ~4; length ack added in Limitations; preferred ≤8 not met; within `max_pages` 12.
+- **Frozen:** all table cells, C01–C09 claim text, CSV bytes; no `cpp/` / harness / bib edits.
+- **New artifacts:** `plot-energy-dataset-c.py`, `figures/fig-energy-dataset-c.{pdf,png}`.

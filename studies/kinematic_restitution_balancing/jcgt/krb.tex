@@ -1,13 +1,13 @@
 \documentclass{jcgt}
 
 \setciteauthor{Joshua Sideris}
-\setcitetitle{Kinematic Restitution Balancing: A Low-Cost Analytical Fix for Energy Gain in Velocity-Level Impulse Solvers}
+\setcitetitle{Kinematic Restitution Balancing: A Per-Constraint Energy Audit for Velocity-Level Impulse Solvers}
 
 \submitted{\today}
 
 \begin{document}
 
-\title{Kinematic Restitution Balancing (KRB)\\\large A Low-Cost Analytical Fix for Energy Gain in Velocity-Level Impulse Solvers}
+\title{Kinematic Restitution Balancing (KRB)\\\large A Per-Constraint Energy Audit for Velocity-Level Impulse Solvers}
 
 \author{Joshua Sideris\\Gear3Games\\\href{https://gearbox2d.com}{https://gearbox2d.com}\\\href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}}
 
@@ -15,7 +15,7 @@
 
 \begin{abstract}
 \small
-In discrete physics simulations using velocity-level impulse solvers (Sequential Impulse / Projected Gauss-Seidel), energy gain is a common numerical artifact. This paper introduces \textbf{Kinematic Restitution Balancing (KRB)}, a per-constraint correction for that leak in both unilateral constraints (collisions) and bilateral constraints (joints). By compensating for force-induced velocity drift (Component~A) and auditing potential-energy shifts during position correction (Component~B), KRB removes the two usual analytic energy sources inside a single-pass SI/PGS pipeline, without a second position pass. It does not claim a global energy invariant; evaluation and limitations sections state the coupled-constraint gap that follows from the per-constraint audit.
+In discrete physics simulations using velocity-level impulse solvers (Sequential Impulse / Projected Gauss-Seidel), energy gain is a common numerical artifact. This paper introduces \textbf{Kinematic Restitution Balancing (KRB)}, a per-constraint correction for that leak in both unilateral constraints (collisions) and bilateral constraints (joints). By compensating for force-induced velocity drift (Component~A) and auditing potential-energy shifts during position correction (Component~B), KRB audits and cancels the two usual analytic SI energy leaks inside a single-pass SI/PGS pipeline, without a second position pass or extra PGS iterations. The per-constraint audit does not claim a global energy invariant; coupled constraints (e.g.\ Newton's cradle offsets) can still exchange systemic potential-energy work.
 \end{abstract}
 
 \section{Introduction}
@@ -143,7 +143,17 @@ if (shouldBounce) {
 \subsection{Distance-joint setup}
 \label{sec:impl_joints}
 
-Distance joints use the same audit with stretch displacement $\beta C$ (Equation~\ref{eq:joint_bias}): compute \texttt{forceVn}, ideal $v_{\mathrm{bias}} = \beta C / \Delta t$, \texttt{workTerm} $= 2 (\mathrm{forceVn}/\Delta t)(\beta C)$, then $v_{\mathrm{bias\_actual}} = \sqrt{\max(0, v_{\mathrm{bias}}^2 - \mathrm{workTerm})}$ and \texttt{bias} $= \pm v_{\mathrm{bias\_actual}} - \mathrm{forceVn}$ (full listing matches Listing~\ref{lst:contact} structure; see supplemental index). During the velocity solve, $-\mathrm{forceVn}$ is folded into \texttt{bias} so \texttt{relative\_vn} is not double-corrected.
+\begin{lstlisting}[caption={Distance-joint \texttt{preSolve} bias (Component A + B).},label={lst:joint}]
+forceVn = dot(bodyB.forceVelocity - bodyA.forceVelocity, n)
+v_bias_ideal = beta * C / dt
+expectedDisplacement = v_bias_ideal * dt
+workTerm = 2 * (forceVn / dt) * expectedDisplacement
+v_bias_sq = v_bias_ideal * v_bias_ideal
+v_bias_actual = sqrt(max(0, v_bias_sq - workTerm))
+bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn
+\end{lstlisting}
+
+During the velocity solve, $-\mathrm{forceVn}$ is folded into \texttt{bias} so \texttt{relative\_vn} is not double-corrected (see supplemental \texttt{distance-joint.cpp}).
 
 \section{Evaluation}
 \label{sec:evaluation}
@@ -172,6 +182,13 @@ Four datasets (Table~\ref{tab:protocol}): Datasets~A--B run $600\,\mathrm{s}$; D
 
 \begin{figure}[htb]
   \centering
+  \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-dataset-c.pdf}
+  \caption{Dataset~C KRB-on continuation to $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$): windowed $E/E_0$ means (cradle $60\,\mathrm{s}$, enclosure $600\,\mathrm{s}$); not an on/off ablation. Empirical scene bounds, not global invariants; enclosure shows slow loss, not the KRB-off SI gain of Figure~\ref{fig:ablation}b.}
+  \label{fig:dataset-c}
+\end{figure}
+
+\begin{figure}[htb]
+  \centering
   \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-ablation.pdf}
   \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$. (a)~Elastic floor contact. (b)~High-rate enclosure; KRB on is a $60\,\mathrm{s}$ windowed mean, KRB off raw $1\,\mathrm{Hz}$ samples to tunneling ($t = 2.7\,\mathrm{s}$). (c)~Newton's cradle.}
   \label{fig:ablation}
@@ -196,16 +213,12 @@ Four datasets (Table~\ref{tab:protocol}): Datasets~A--B run $600\,\mathrm{s}$; D
   \end{tabular}
 \end{table}
 
-The cradle is not an invariant (Section~\ref{sec:limitations}); long-horizon checks are in Table~\ref{tab:protocol}.
-
 \begin{figure}[htb]
   \centering
   \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-engines.pdf}
   \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$ on unmodified engines. (a)~Elastic floor contact. (b)~Newton's cradle. Gearbox2D is default KRB-on WASM; other engines are whole-engine traces, not in-engine KRB ablation.}
   \label{fig:engines}
 \end{figure}
-
-Dataset~B is whole-engine behavior (iteration counts, split impulse, damping differ); not an in-engine KRB ablation.
 
 \small
 \begin{table}[htb]
@@ -231,11 +244,11 @@ Dataset~B is whole-engine behavior (iteration counts, split impulse, damping dif
 \subsection{Cost (Dataset D)}
 \label{sec:dataset-d}
 
-Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta t$. Per contact \texttt{preSolve}: $\mathrm{forceVn}$ dot, optional $\Gamma$, \texttt{workTerm}, one \texttt{sqrt}, bias update. Per distance joint: same pattern with $-\mathrm{forceVn}$ folded into \texttt{bias}. Zero extra PGS, velocity, or position iterations. Whole-step timings below may include hinge Component~A (engine-only).
+Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta t$. Per contact \texttt{preSolve}: $\mathrm{forceVn}$ dot, optional $\Gamma$, \texttt{workTerm}, one \texttt{sqrt}, bias update. Per distance joint: same pattern with $-\mathrm{forceVn}$ folded into \texttt{bias}. Zero extra PGS, velocity, or position iterations.
 
 \small
 \begin{table}[htb]
-  \caption{Dataset~D: native KRB on/off wall-time per \texttt{world.step()} (mean and repeat range, ms/step). \texttt{BENCH\_FLAGS}: \texttt{-O3 -march=native -mfma -pthread -DGEARBOX\_MT}; $100$ warmup + $1000$ timed steps, three repeats (i9-9900KF, g++ 13.3.0, \texttt{velocity\_iterations}$=50$, \texttt{position\_iterations}$=10$). Compile-time ablation; not Box2D. Traces: \texttt{data/timing/timing-summary-\{krb,nokrb\}.csv}.}
+  \caption{Dataset~D: native KRB on/off wall-time per \texttt{world.step()} (mean and repeat range, ms/step). Whole-step timings may include hinge Component~A (engine-only); Listings~\ref{lst:contact}--\ref{lst:joint} and the analytic op-count above cover contacts and distance joints only (wall-time is scene-dependent; high-pressure enclosure shows a larger on/off spread than floor/cradle). \texttt{BENCH\_FLAGS}: \texttt{-O3 -march=native -mfma -pthread -DGEARBOX\_MT}; $100$ warmup + $1000$ timed steps, three repeats (i9-9900KF, g++ 13.3.0, \texttt{velocity\_iterations}$=50$, \texttt{position\_iterations}$=10$). Compile-time ablation; not Box2D. Traces: \texttt{data/timing/timing-summary-\{krb,nokrb\}.csv}.}
   \label{tab:dataset-d}
   \centering
   \begin{tabular}{@{}lrrl@{}}
@@ -257,19 +270,17 @@ KRB is a per-constraint audit, not a coupled one. Resolving one constraint can f
 
 Evaluation is restricted to $e = 1$, zero friction/damping, sleep off (Section~\ref{sec:evaluation}); not a general frictional or $e < 1$ claim. No experimental Component A-only or Component B-only ablation was run; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Published traces therefore cannot attribute Dataset~A (or Dataset~D) residuals to Component~A versus~B; isolating the two leaks remains future work.
 
-Newton's cradle is that coupled case. In Figure~\ref{fig:ablation}c and Figure~\ref{fig:engines}b the KRB run shows a $\sim 7\%$ step near four minutes, then a plateau---not secular climb, not a global invariant. Dataset~C continues KRB-on cradle to $8\,\mathrm{h}$ ($dt = 1/60$, sampled every $10\,\mathrm{s}$). After the step, $E/E_0$ stays in $[1.034, 1.093]$ (mean $1.053$) through $t = 28800\,\mathrm{s}$; $60\,\mathrm{s}$ windowed means do not jump again. Empirical multi-hour bound for this scene, not a global invariant.
+Newton's cradle is that coupled case. In Figure~\ref{fig:ablation}c and Figure~\ref{fig:engines}b the KRB run shows a $\sim 7\%$ step near four minutes, then a plateau---not secular climb, not a global invariant. Dataset~C (Figure~\ref{fig:dataset-c}a) continues KRB-on cradle to $8\,\mathrm{h}$ ($dt = 1/60$, sampled every $10\,\mathrm{s}$). After the step, $E/E_0$ stays in $[1.034, 1.093]$ (mean $1.053$) through $t = 28800\,\mathrm{s}$; $60\,\mathrm{s}$ windowed means do not jump again. Empirical multi-hour bound for this scene, not a global invariant.
 
-Dataset~C KRB-on enclosure stays in the box for $8\,\mathrm{h}$; $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.009 \to 0.977$ (slow loss, not the KRB-off SI gain of Figure~\ref{fig:ablation}b).
+Dataset~C KRB-on enclosure (Figure~\ref{fig:dataset-c}b) stays in the box for $8\,\mathrm{h}$; $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.009 \to 0.977$ (slow loss, not the KRB-off SI gain of Figure~\ref{fig:ablation}b).
 
 Unmodified Box2D, p2, and Matter (Figure~\ref{fig:engines}b) dissipate rather than gain---a different failure mode. Variational integrators \cite{Hairer2006} remain a different claim.
 
-Coupled-constraint audit is future work. Tunneling, ill-conditioned chains, and scenes failing for other reasons are outside the claim. The no-KRB enclosure escape (Figure~\ref{fig:ablation}b) is SI leak at high impact rate, not KRB failure.
+Coupled-constraint audit is future work. Tunneling, ill-conditioned chains, and scenes failing for other reasons are outside the claim. The no-KRB enclosure escape (Figure~\ref{fig:ablation}b) is SI leak at high impact rate, not KRB failure. This note is denser than typical JCGT articles ($\sim 4$ pages) but within the venue $12$-page ceiling.
 
 \section{Conclusion}
 
-Kinematic Restitution Balancing is a drop-in correction for velocity-level SI solvers \cite{Catto2005}. Component~A removes force-integration drift; Component~B taxes (or credits) launch/bias velocity for PE work of expected $\Delta h$. Both apply to contacts and distance joints at a few extra scalars per constraint (Table~\ref{tab:dataset-d}).
-
-Narrower than dual-pass or reduced-coordinate formulations. Split impulse and NGS \cite{Catto2014,Catto2024} hide Baumgarte bounce; KRB cancels the two analytic leaks in Section~\ref{sec:introduction} inside single-pass SI, with the coupled gap in Section~\ref{sec:limitations} open.
+Kinematic Restitution Balancing is a drop-in \texttt{preSolve} audit for velocity-level SI solvers \cite{Catto2005}: Component~A compensates force-integration drift; Component~B taxes PE work of expected $\Delta h$, at a few scalars per constraint with zero extra PGS iterations (Table~\ref{tab:dataset-d}). The coupled-constraint gap in Section~\ref{sec:limitations} remains open.
 
 \small
 \bibliographystyle{jcgt}
@@ -282,7 +293,7 @@ Paths are relative to \texttt{studies/kinematic\_restitution\_balancing/}.
 \begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
 \item \texttt{jcgt/krb.tex}, \texttt{krb.bib}, \texttt{build-notes.md}.
 \item \texttt{KRB\_Whitepaper.md} --- number mirror (not authoritative).
-\item \texttt{figures/fig-energy-*.pdf}, \texttt{plot-energy-*.py}.
+\item \texttt{figures/fig-energy-*.pdf}, \texttt{plot-energy-*.py} (including \texttt{plot-energy-dataset-c.py}).
 \item \texttt{data/README.md}, \texttt{data/*-{krb,nokrb}.csv}, \texttt{data/dataset-b-*-600s.csv}, \texttt{data/dataset-c/}, \texttt{data/timing/}.
 \item \texttt{log-energy.cpp}, \texttt{log-timing.cpp}.
 \end{itemize}
