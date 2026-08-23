@@ -148,7 +148,7 @@ Distance joints use the same audit with stretch displacement $\beta C$ (Equation
 \section{Evaluation}
 \label{sec:evaluation}
 
-Four datasets (Table~\ref{tab:protocol}): Datasets~A--B run $600\,\mathrm{s}$; Dataset~C KRB-on continuation $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$); Dataset~D native \texttt{world.step()} wall-time only. Energy claims C01--C07: $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Full KRB on/off is compile-time (\texttt{-DGEARBOX\_DISABLE\_KRB}); no isolated A-only or B-only traces. $E = E_k + E_p$; Dataset~A includes rotational KE, Dataset~B translational only (Gearbox floor-bounce traces agree to $\sim 10^{-6}$). Reported ratio $E/E_0$. Instantaneous samples (1\,Hz for A--B; every $10\,\mathrm{s}$ for C) alias the bounce; $60\,\mathrm{s}$ windowed means are the drift signal (Figure~\ref{fig:ablation}b, Table~\ref{tab:dataset-a}, Section~\ref{sec:limitations}); C07 uses $600\,\mathrm{s}$ windows on the $8\,\mathrm{h}$ enclosure series.
+Four datasets (Table~\ref{tab:protocol}): Datasets~A--B run $600\,\mathrm{s}$; Dataset~C KRB-on continuation $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$); Dataset~D native \texttt{world.step()} wall-time only. Energy claims C01--C07: $dt = 1/60$, $e = 1$, zero friction and damping, sleep disabled. Components~A and~B are an analytic two-leak decomposition; the empirical switch is compile-time full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} only (no A-only or B-only traces in Datasets~A--D). C01--C03 therefore do not isolate which leak each component closed. $E = E_k + E_p$; Dataset~A includes rotational KE, Dataset~B translational only (Gearbox floor-bounce traces agree to $\sim 10^{-6}$). Reported ratio $E/E_0$. Instantaneous samples (1\,Hz for A--B; every $10\,\mathrm{s}$ for C) alias the bounce; $60\,\mathrm{s}$ windowed means are the drift signal (Figure~\ref{fig:ablation}b, Table~\ref{tab:dataset-a}, Section~\ref{sec:limitations}); C07 uses $600\,\mathrm{s}$ windows on the $8\,\mathrm{h}$ enclosure series.
 
 \small
 \begin{table}[htb]
@@ -255,7 +255,7 @@ Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta 
 
 KRB is a per-constraint audit, not a coupled one. Resolving one constraint can force work on another (e.g.\ horizontal collision lifting a pendulum rod); the isolated PE/KE tax may miss systemic PE change.
 
-Evaluation is restricted to $e = 1$, zero friction/damping, sleep off (Section~\ref{sec:evaluation}); not a general frictional or $e < 1$ claim. No experimental A-only or B-only ablation; full KRB on/off is the measured switch.
+Evaluation is restricted to $e = 1$, zero friction/damping, sleep off (Section~\ref{sec:evaluation}); not a general frictional or $e < 1$ claim. No experimental Component A-only or Component B-only ablation was run; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Published traces therefore cannot attribute Dataset~A (or Dataset~D) residuals to Component~A versus~B; isolating the two leaks remains future work.
 
 Newton's cradle is that coupled case. In Figure~\ref{fig:ablation}c and Figure~\ref{fig:engines}b the KRB run shows a $\sim 7\%$ step near four minutes, then a plateau---not secular climb, not a global invariant. Dataset~C continues KRB-on cradle to $8\,\mathrm{h}$ ($dt = 1/60$, sampled every $10\,\mathrm{s}$). After the step, $E/E_0$ stays in $[1.034, 1.093]$ (mean $1.053$) through $t = 28800\,\mathrm{s}$; $60\,\mathrm{s}$ windowed means do not jump again. Empirical multi-hour bound for this scene, not a global invariant.
 

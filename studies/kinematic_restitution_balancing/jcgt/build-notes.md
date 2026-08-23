@@ -161,3 +161,13 @@ Manuscript run `20260823-2c8d77` / Phase 3 put C07 in Limitations taxonomy (2026
 - **After:** Limitations adds Dataset C KRB-on enclosure: in box for $8\,\mathrm{h}$; $600\,\mathrm{s}$ windowed $E/E_0$ $1.009 \to 0.977$ (slow loss, not KRB-off SI gain of Fig. 1b). C06 cradle paragraph unchanged. Not README hourly $0.999 \to 0.982$. Rebuild: `krb.pdf` 10 pp, 317458 bytes; `latex_error_count` 0.
 - **Frozen:** all table cells, C01–C09 claim text, both energy figures, no Dataset C figure.
 - **Still open:** `h-no-ab-only-ablation`; `h-length-density` residual vs typical ~4 pp unchanged.
+
+## A/B-only claim narrow (`KRB_JCGT_AB_ONLY_NARROW`)
+
+Manuscript run `20260823-2c8d77` / Phase 4 narrow A/B-only hole in claim language (2026-08-22). Closes hole `h-no-ab-only-ablation`.
+
+- **Before:** Evaluation L151 and Limitations L258 disclosed no A-only/B-only traces but did not name the deployer-diagnostic gap (HEAD `f88db09`).
+- **After:** Evaluation names analytic A/B vs empirical full on/off only; C01--C03 do not isolate which leak each component closed. Limitations states published traces cannot attribute Dataset A or D residuals to A vs B; isolating the two leaks remains future work. C06/C07 Limitations unchanged.
+- **No new experiments:** no A-only/B-only flags, traces, or table rows; C01--C09 claim text unchanged.
+- **Rebuild:** `krb.pdf` 10 pp, 317819 bytes; `latex_error_count` 0.
+- **Still open:** `h-length-density` residual vs typical ~4 pp unchanged.
