@@ -44,7 +44,7 @@ Columns match Dataset A. Sampled every \(10\,\mathrm{s}\) of simulation time. KR
 Results (2026-08-21, `./logEnergy`, ~14 min wall for the cradle, ~8 min for the circle):
 
 - **Cradle:** the \(\sim 7\%\) step at \(t \approx 240\)–\(300\,\mathrm{s}\) is the only step in \(8\,\mathrm{h}\). After that, \(E/E_0 \in [1.034, 1.093]\) (mean \(1.053\)); last-hour mean \(1.053\). End \(E/E_0 = 1.067\).
-- **Bounce circle:** stayed in the box. Instantaneous samples alias \(0.66\)–\(1.33\). Hourly windowed means go \(0.999 \to 0.982\) (about \(1.7\%\) loss over \(8\,\mathrm{h}\)).
+- **Bounce circle:** stayed in the box. Instantaneous samples alias \(0.66\)–\(1.33\). **Hourly** windowed means go \(0.999 \to 0.982\) (about \(1.7\%\) loss over \(8\,\mathrm{h}\)); the TeX paper reports **600 s** windows on the 8 h trace (\(1.009 \to 0.977\))—a different windowing convention, not a conflicting run length.
 
 # Recapture Dataset B
 

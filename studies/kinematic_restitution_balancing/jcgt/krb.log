@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  22 AUG 2026 22:19
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  22 AUG 2026 22:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -513,39 +513,45 @@ Overfull \hbox (0.60379pt too wide) in paragraph at lines 173--174
  []
 
 [5]
-<../figures/fig-energy-ablation.pdf, id=156, 505.89pt x 520.34402pt>
+Overfull \hbox (13.46855pt too wide) in paragraph at lines 183--184
+\OT1/ptm/m/n/10.95 the only em-pir-i-cal switch is compile-time full KRB ver-su
+s \OT1/pcr/m/n/10.95 -DGEARBOX[]DISABLE[]KRB
+ []
+
+<../figures/fig-energy-ablation.pdf, id=163, 505.89pt x 520.34402pt>
 File: ../figures/fig-energy-ablation.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-ablation.pdf>
 Package pdftex.def Info: ../figures/fig-energy-ablation.pdf  used on input line
- 187.
+ 207.
 (pdftex.def)             Requested size: 297.60114pt x 306.11105pt.
- [6 <../figures/fig-energy-ablation.pdf>]
-<../figures/fig-energy-engines.pdf, id=202, 505.89pt x 390.25798pt>
+<../figures/fig-energy-engines.pdf, id=171, 505.89pt x 390.25798pt>
 File: ../figures/fig-energy-engines.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-engines.pdf>
 Package pdftex.def Info: ../figures/fig-energy-engines.pdf  used on input line 
-219.
+237.
 (pdftex.def)             Requested size: 297.60114pt x 229.58327pt.
- [7 <../figures/fig-energy-engines.pdf>]
-Overfull \hbox (22.3684pt too wide) in paragraph at lines 258--261
+[6] [7 <../figures/fig-energy-ablation.pdf>]
+Overfull \hbox (22.3684pt too wide) in paragraph at lines 276--279
 \OT1/ptm/m/n/10 KRB on ver-sus \OT1/pcr/m/n/10 -DGEARBOX[]DISABLE[]KRB \OT1/ptm
 /m/n/10 (\OT1/pcr/m/n/10 BENCH[]FLAGS\OT1/ptm/m/n/10 : \OT1/pcr/m/n/10 -O3 -mar
 ch=native -mfma
  []
 
+[8 <../figures/fig-energy-engines.pdf>]
 LaTeX Font Info:    Trying to load font information for OMS+pcr on input line 2
-66.
+84.
+
 (/usr/share/texlive/texmf-dist/tex/latex/psnfss/omspcr.fd
 File: omspcr.fd 
 )
 LaTeX Font Info:    Font shape `OMS/pcr/m/n' in size <10> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 266.
- [8] (./krb.bbl
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 284.
+ [9] (./krb.bbl
 (./krb.brf)
 \tf@brf=\write3
 \openout3 = `krb.brf'.
 
- [9]
+
 Underfull \hbox (badness 3471) in paragraph at lines 36--36
 []\OT1/ptm/m/sc/10 Catto, E.  \OT1/ptm/m/n/10 Soft con-straints.  Pre-sented at
  the Game De-vel-op-ers Con-fer-ence,
@@ -557,33 +563,33 @@ Underfull \hbox (badness 1173) in paragraph at lines 36--36
 / box2d . org / files / ErinCatto _
  []
 
-)
+[10])
 LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 3
-07.
+27.
  (/usr/share/texlive/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
 )
-Overfull \hbox (7.27391pt too wide) in paragraph at lines 311--312
+Overfull \hbox (7.27391pt too wide) in paragraph at lines 331--332
 []\OT1/pcr/m/n/10 data/dataset-b-*-600s.csv \OT1/ptm/m/n/10 --- Dataset B; \OT1
 /pcr/m/n/10 data/dataset-c/ \OT1/ptm/m/n/10 --- Dataset C. 
  []
 
-[10]
-Overfull \hbox (44.83516pt too wide) in paragraph at lines 317--318
+
+Overfull \hbox (44.83516pt too wide) in paragraph at lines 337--338
 \OT1/ptm/m/n/10 and data are ISC-licensed; see \OT1/pcr/m/n/10 LICENSE \OT1/ptm
 /m/n/10 in the Gear-box2D repos-i-tory ([][]github.com/JSideris/Gearbox2D[][]).
  
  []
 
 
-Underfull \hbox (badness 10000) in alignment at lines 319--319
+Underfull \hbox (badness 10000) in alignment at lines 339--339
 [][] [] []
  []
 
-<CC-BY-ND.png, id=310, 97.0827pt x 33.9669pt>
+<CC-BY-ND.png, id=315, 97.0827pt x 33.9669pt>
 File: CC-BY-ND.png Graphic file (type png)
 <use CC-BY-ND.png>
-Package pdftex.def Info: CC-BY-ND.png  used on input line 319.
+Package pdftex.def Info: CC-BY-ND.png  used on input line 339.
 (pdftex.def)             Requested size: 71.13188pt x 24.8884pt.
 [11 <./CC-BY-ND.png>] (./krb.aux)
  ***********
@@ -591,14 +597,14 @@ LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package rerunfilecheck Info: File `krb.brf' has not changed.
-(rerunfilecheck)             Checksum: 05EE89A9353BD7188E786DD85C5FFAD9;714.
+(rerunfilecheck)             Checksum: BF3AD3583D1390B2E9A9F3601BC0A18F;717.
  ) 
 Here is how much of TeX's memory you used:
- 14779 strings out of 476182
- 233522 string characters out of 5795595
- 1980975 words of memory out of 5000000
- 36460 multiletter control sequences out of 15000+600000
- 592688 words of font info for 108 fonts, out of 8000000 for 9000
+ 14783 strings out of 476182
+ 233571 string characters out of 5795595
+ 1979975 words of memory out of 5000000
+ 36462 multiletter control sequences out of 15000+600000
+ 593203 words of font info for 110 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  105i,13n,107p,1195b,2098s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></us
@@ -616,10 +622,10 @@ ve/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/share/texlive/texmf-dis
 t/fonts/type1/urw/helvetic/uhvro8a.pfb></usr/share/texlive/texmf-dist/fonts/typ
 e1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/ut
 mr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on krb.pdf (11 pages, 324211 bytes).
+Output written on krb.pdf (11 pages, 327157 bytes).
 PDF statistics:
- 413 PDF objects out of 1000 (max. 8388607)
- 336 compressed objects within 4 object streams
- 97 named destinations out of 1000 (max. 500000)
+ 420 PDF objects out of 1000 (max. 8388607)
+ 343 compressed objects within 4 object streams
+ 98 named destinations out of 1000 (max. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

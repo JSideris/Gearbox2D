@@ -117,3 +117,18 @@ Manuscript run `20260823-2c8d77` / chat `74a43cdb` (2026-08-22). Closed hole `h-
 - **Before:** Evaluation lead-in scoped 600 s protocol to Datasets A–C (Phase 4 claim guard).
 - **After:** Energy protocol is A–B at 600 s; Dataset C at 8 h ($t = 28800\,\mathrm{s}$); Dataset D remains wall-time only.
 - Frozen table cells, CSV terminals, C07 windowed drift ($1.009 \to 0.977$), and Limitations cradle band unchanged.
+
+## Hole close (`KRB_JCGT_HOLE_CLOSE`)
+
+Manuscript run `20260823-2c8d77` / chat `8eb79bc3` (2026-08-22). Path-only close of remaining cycle-1/2 minor holes.
+
+- **`h-eval-ac-horizon`:** verified kept (`KRB_JCGT_EVAL_HORIZON`); opener names A–B 600 s and C 8 h before figures.
+- **`h-no-component-ablation`:** Evaluation states Components A/B are analytic; empirical switch is full KRB on/off only.
+- **`h-eval-protocol-narrow`:** C01–C07 scoped to $e=1$, zero friction/damping, sleep off; Limitations clause added.
+- **`h-window-protocol-mixed`:** protocol paragraph names instantaneous / 60 s / 600 s-on-8h / README hourly conventions.
+- **`h-c07-not-tabulated`:** `tab:protocol` cells freeze C07 $1.009 \to 0.977$ and C06 band.
+- **`h-qualitative-unfigured`:** resting-chain and cradle-transfer qualitative lines removed from Evaluation.
+- **`h-measurement-surface-split`:** `tab:protocol` discloses native `log-energy`, WASM benchmarks, and native `g++` timing.
+- **`h-length-density`:** honest 11 pp vs typical ~4 pp clause; within `max_pages` 12.
+
+Frozen A/B/D table cells, CSV bytes, `cpp/`, `harness.json`, and `krb.bib` unchanged. Rebuild: `krb.pdf` 11 pp (`krb.log`).
