@@ -259,6 +259,8 @@ Evaluation is restricted to $e = 1$, zero friction/damping, sleep off (Section~\
 
 Newton's cradle is that coupled case. In Figure~\ref{fig:ablation}c and Figure~\ref{fig:engines}b the KRB run shows a $\sim 7\%$ step near four minutes, then a plateau---not secular climb, not a global invariant. Dataset~C continues KRB-on cradle to $8\,\mathrm{h}$ ($dt = 1/60$, sampled every $10\,\mathrm{s}$). After the step, $E/E_0$ stays in $[1.034, 1.093]$ (mean $1.053$) through $t = 28800\,\mathrm{s}$; $60\,\mathrm{s}$ windowed means do not jump again. Empirical multi-hour bound for this scene, not a global invariant.
 
+Dataset~C KRB-on enclosure stays in the box for $8\,\mathrm{h}$; $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.009 \to 0.977$ (slow loss, not the KRB-off SI gain of Figure~\ref{fig:ablation}b).
+
 Unmodified Box2D, p2, and Matter (Figure~\ref{fig:engines}b) dissipate rather than gain---a different failure mode. Variational integrators \cite{Hairer2006} remain a different claim.
 
 Coupled-constraint audit is future work. Tunneling, ill-conditioned chains, and scenes failing for other reasons are outside the claim. The no-KRB enclosure escape (Figure~\ref{fig:ablation}b) is SI leak at high impact rate, not KRB failure.

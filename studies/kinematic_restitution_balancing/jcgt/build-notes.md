@@ -152,3 +152,12 @@ Manuscript run `20260823-2c8d77` / Phase 2 cut length before adding prose (2026-
 - **Frozen:** all table cells (A/B/D/protocol), both `\includegraphics`, Method equations, contact listing semantics (speculative $\Delta h=0$, joint sqrt cap, `-forceVn` fold)
 - **Residual:** 10 pp vs JCGT typical ~4 pp (`pack.json` `typical_pages: 4`); desk-reject length risk remains; preferred ≤8 not met — room for Phase 3 C07 Limitations sentence (~2 pp headroom under `max_pages` 12)
 - **Still open:** `h-c07-under-narrated`, `h-no-ab-only-ablation`; `h-length-density` partially closed (pages dropped, not ≤8)
+
+## C07 Limitations taxonomy (`KRB_JCGT_C07_LIMITATIONS`)
+
+Manuscript run `20260823-2c8d77` / Phase 3 put C07 in Limitations taxonomy (2026-08-22). Closes hole `h-c07-under-narrated`.
+
+- **Before:** Limitations on HEAD `05888fe` taxonomized C06 cradle band and Fig. 1b KRB-off escape; `1.009 \to 0.977` appeared only in `tab:protocol`, not `sec:limitations`.
+- **After:** Limitations adds Dataset C KRB-on enclosure: in box for $8\,\mathrm{h}$; $600\,\mathrm{s}$ windowed $E/E_0$ $1.009 \to 0.977$ (slow loss, not KRB-off SI gain of Fig. 1b). C06 cradle paragraph unchanged. Not README hourly $0.999 \to 0.982$. Rebuild: `krb.pdf` 10 pp, 317458 bytes; `latex_error_count` 0.
+- **Frozen:** all table cells, C01–C09 claim text, both energy figures, no Dataset C figure.
+- **Still open:** `h-no-ab-only-ablation`; `h-length-density` residual vs typical ~4 pp unchanged.
