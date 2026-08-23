@@ -141,3 +141,14 @@ Manuscript run `20260823-2c8d77` / Phase 1 restore buildable paper tree (2026-08
 - **Figures:** Regenerated from committed CSVs via `plot-energy-ablation.py` and `plot-energy-engines.py` (matplotlib via `.decomposer/sandbox/krb-plot-venv`; system `python3` lacks matplotlib).
 - **Build:** `pdflatex`+`bibtex` loop → `krb.pdf` 11 pp, 327165 bytes; `latex_error_count` 0 (overfull hboxes only).
 - **Not closed here:** `h-length-density`, `h-c07-under-narrated`, `h-no-ab-only-ablation`. Frozen numerics and `krb.tex` wording unchanged.
+
+## Length cut (`KRB_JCGT_LENGTH_CUT`)
+
+Manuscript run `20260823-2c8d77` / Phase 2 cut length before adding prose (2026-08-22). Partially addresses hole `h-length-density`; hedge close overridden.
+
+- **Before:** 11 pp (`krb.log` at HEAD `2593422`: 327165 bytes)
+- **After:** 10 pp (`krb.log`: 317119 bytes); `latex_error_count` 0
+- **Cuts:** Evaluation table/figure restatement removed (L231–233, L265–267); L269 11-vs-4 hedge removed; Dataset D prose folded into `tab:dataset-d` caption; joint listing float replaced with body sketch (contact listing inlined, `float=false`); intro placement map tightened; Limitations/Conclusion/index compressed
+- **Frozen:** all table cells (A/B/D/protocol), both `\includegraphics`, Method equations, contact listing semantics (speculative $\Delta h=0$, joint sqrt cap, `-forceVn` fold)
+- **Residual:** 10 pp vs JCGT typical ~4 pp (`pack.json` `typical_pages: 4`); desk-reject length risk remains; preferred ≤8 not met — room for Phase 3 C07 Limitations sentence (~2 pp headroom under `max_pages` 12)
+- **Still open:** `h-c07-under-narrated`, `h-no-ab-only-ablation`; `h-length-density` partially closed (pages dropped, not ≤8)

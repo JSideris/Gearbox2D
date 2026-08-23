@@ -210,10 +210,6 @@ The floor bounce is the contact leak from §1 in a production SI engine. Box2D-W
 
 The cradle is a different regime—elastic contacts plus joints—and the other engines lose energy rather than gain it. Matter is done by $t\approx 40\,\mathrm{s}$. Box2D-WASM falls in steps to $0.22$ (restitution velocity threshold plus Baumgarte on the rods). p2.js drains smoothly to $0.32$. Gearbox repeats Figure 1c: a $\sim 7\%$ step near four minutes, then a plateau. That is the empirical bound in Section 7, not a claim that the other engines share the SI gain of Figure 2a.
 
-This note reports a deployable technique with four datasets at eleven pages; JCGT shorts are typically near four pages, but this draft remains within the twelve-page venue ceiling.
-
-A high-pressure enclosure ($g = 400$) was logged with the same harness and omitted from Figure 2. Matter rests on the floor within a second; p2.js does so within about $90\,\mathrm{s}$; Box2D-WASM locks to a two-value limit cycle ($1.000$ / $0.828$ on alternate seconds) consistent with split impulse and a translation cap. That is a solver-survival test, not an energy comparison.
-
 ### 6.3 Cost (Dataset D)
 The “Low-Cost” claim is checkable without a second solver pass. Per dynamic body at integrate, KRB stores `forceVelocity = a_ext * dt` (two floats). Per contact `preSolve` when KRB is on: a `forceVn` dot, optional $\Gamma$, a `workTerm`, one `sqrt`, and a bias update. Per distance-joint `preSolve`: `forceVn`, `workTerm`, one `sqrt`, with `-forceVn` folded into `bias`. There are zero extra PGS, velocity, or position iterations—not a second position pass or coupled-island PE tax. The paper recipe lists contacts and distance joints; whole-step timings below may include hinge Component A (engine-only).
 
