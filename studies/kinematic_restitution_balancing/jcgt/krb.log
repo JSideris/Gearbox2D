@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  23 AUG 2026 03:40
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.8.21)  23 AUG 2026 15:52
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -526,59 +526,42 @@ N\OT1/ptm/m/n/10.95 ,
 
 Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on i
 nput line 128.
-
+[4]
 Overfull \hbox (22.20401pt too wide) in paragraph at lines 140--141
 [][][][][][][][][][][][][][][] 
  []
 
-[4]
 LaTeX Font Info:    Font shape `OT1/phv/m/n' will be
 (Font)              scaled to size 8.99994pt on input line 146.
 LaTeX Font Info:    Font shape `OT1/phv/b/n' will be
 (Font)              scaled to size 8.99994pt on input line 146.
-
-Overfull \hbox (29.01611pt too wide) in paragraph at lines 166--167
-\OT1/ptm/m/n/10.95 Four datasets (Ta-ble [][]1[][]): A--B $\OT1/cmr/m/n/10.95 6
-00 s$\OT1/ptm/m/n/10.95 ; C KRB-on $\OT1/cmr/m/n/10.95 8 h$ \OT1/ptm/m/n/10.95 
-($\OML/cmm/m/it/10.95 t \OT1/cmr/m/n/10.95 = 28800 s$\OT1/ptm/m/n/10.95 ); D na
--tive \OT1/pcr/m/n/10.95 world.step()
- []
-
-
-Overfull \hbox (23.81476pt too wide) in paragraph at lines 166--167
-\OT1/ptm/m/n/10.95 Datasets A and C use stock \OT1/pcr/m/n/10.95 World() \OT1/p
-tm/m/n/10.95 plus \OT1/pcr/m/n/10.95 constants.h\OT1/ptm/m/n/10.95 : \OT1/pcr/m
-/n/10.95 velocity[]iterations$\OT1/cmr/m/n/10.95 =
- []
-
-<../figures/fig-energy-dataset-c.pdf, id=115, 505.89pt x 361.35pt>
+<../figures/fig-energy-dataset-c.pdf, id=108, 505.89pt x 361.35pt>
 File: ../figures/fig-energy-dataset-c.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-dataset-c.pdf>
 Package pdftex.def Info: ../figures/fig-energy-dataset-c.pdf  used on input lin
 e 190.
 (pdftex.def)             Requested size: 297.60114pt x 212.57712pt.
-<../figures/fig-energy-ablation.pdf, id=118, 505.89pt x 520.34402pt>
+<../figures/fig-energy-ablation.pdf, id=111, 505.89pt x 520.34402pt>
 File: ../figures/fig-energy-ablation.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-ablation.pdf>
 Package pdftex.def Info: ../figures/fig-energy-ablation.pdf  used on input line
  197.
 (pdftex.def)             Requested size: 297.60114pt x 306.11105pt.
-<../figures/fig-energy-engines.pdf, id=119, 505.89pt x 390.25798pt>
+<../figures/fig-energy-engines.pdf, id=112, 505.89pt x 390.25798pt>
 File: ../figures/fig-energy-engines.pdf Graphic file (type pdf)
 <use ../figures/fig-energy-engines.pdf>
 Package pdftex.def Info: ../figures/fig-energy-engines.pdf  used on input line 
 223.
 (pdftex.def)             Requested size: 297.60114pt x 229.58327pt.
-[5]
 LaTeX Font Info:    Trying to load font information for OMS+pcr on input line 2
 56.
- (/usr/share/texlive/texmf-dist/tex/latex/psnfss/omspcr.fd
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/omspcr.fd
 File: omspcr.fd 
 )
 LaTeX Font Info:    Font shape `OMS/pcr/m/n' in size <10> not available
 (Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 256.
- [6 <../figures/fig-energy-dataset-c.pdf>] [7 <../figures/fig-energy-ablation.p
-df>] [8 <../figures/fig-energy-engines.pdf>] (./krb.bbl (./krb.brf)
+ [5] [6 <../figures/fig-energy-dataset-c.pdf>] [7 <../figures/fig-energy-ablati
+on.pdf>] [8 <../figures/fig-energy-engines.pdf>] (./krb.bbl (./krb.brf)
 \tf@brf=\write3
 \openout3 = `krb.brf'.
 
@@ -631,7 +614,7 @@ Underfull \hbox (badness 10000) in alignment at lines 304--304
 [][] [] []
  []
 
-<CC-BY-ND.png, id=295, 97.0827pt x 33.9669pt>
+<CC-BY-ND.png, id=293, 97.0827pt x 33.9669pt>
 File: CC-BY-ND.png Graphic file (type png)
 <use CC-BY-ND.png>
 Package pdftex.def Info: CC-BY-ND.png  used on input line 304.
@@ -647,11 +630,11 @@ Package rerunfilecheck Info: File `krb.brf' has not changed.
 Here is how much of TeX's memory you used:
  14761 strings out of 476182
  233526 string characters out of 5795595
- 1964975 words of memory out of 5000000
+ 1976975 words of memory out of 5000000
  36457 multiletter control sequences out of 15000+600000
  592586 words of font info for 108 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 105i,13n,107p,1310b,2098s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 105i,13n,107p,1355b,2098s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/shar
 e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texl
@@ -668,10 +651,10 @@ f-dist/fonts/type1/urw/helvetic/uhvro8a.pfb></usr/share/texlive/texmf-dist/font
 s/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/tim
 es/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
 
-Output written on krb.pdf (10 pages, 350004 bytes).
+Output written on krb.pdf (10 pages, 349686 bytes).
 PDF statistics:
- 398 PDF objects out of 1000 (max. 8388607)
- 309 compressed objects within 4 object streams
+ 395 PDF objects out of 1000 (max. 8388607)
+ 308 compressed objects within 4 object streams
  83 named destinations out of 1000 (max. 500000)
  21 words of extra memory for PDF output out of 10000 (max. 10000000)
 

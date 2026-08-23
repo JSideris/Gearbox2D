@@ -244,3 +244,13 @@ Manuscript run `20260823-26fb84` / cycle-5 path-only hole close (2026-08-23). HE
 - **Partial:** `h-empirical-ab` — abstract narrowed; M02–M06 `claims.json` retargeted to `jcgt/krb.tex` + `contact-constraint.cpp` / `distance-joint.cpp`; M04 slop in claim text; no A-only/B-only traces.
 - **Residual:** `h-length-typical` — still **10 pp** vs pack `typical_pages: 4`; within `max_pages` 12; page count did not increase. **Not fully closed.** Recorded in `residuals.json`.
 - **Frozen:** all energy table cells (`0.999`/`6.53`/`1.07`/Box2D `6.61`/C06 band/C07 `1.009→0.977`/escape step `161`); Dataset D timing cells unchanged; C01–C07 claim meaning; CSV bytes; `cpp/`, `krb.bib`, harness, listings, figures.
+
+## Cycle-6 path close (`KRB_JCGT_CYCLE6_PATH`)
+
+Manuscript run `20260823-1e6d9e` / cycle-6 path-only hole close (2026-08-23). HEAD `f644d10` (10 pp).
+
+- **Before:** 10 pp (`krb.log` 350004 bytes); Component B lead-in claimed unrestricted mechanical energy; Limitations L278 length-ack; claim ids `C01`–`C07` in abstract/Evaluation/captions/Limitations/Conclusion.
+- **After:** 10 pp (`krb.log` 349686 bytes); `latex_error_count` 0 (overfull hboxes only).
+- **Closed:** `h-method-approx` — Method Component B states 1-D / relative / predicted-$\Delta h$ domain before `eq:vsurf`; whitepaper §3.2 mirrored; ties to `workTerm` listing.
+- **Partial:** `h-length-typical` — length-ack sentence deleted; claim ids stripped; Evaluation/Dataset D captions compressed; page count unchanged at 10 (not increased); still **10 pp** vs pack `typical_pages: 4`. **Not fully closed.** Recorded in `residuals.json`.
+- **Frozen:** all energy/timing table cells; cradle off `1.79` secular gain; Method equation algebra; listing semantics; cycle-5 WASM/same-load/merge-listings prose; no `cpp/`/CSV/`krb.bib`/harness edits.
