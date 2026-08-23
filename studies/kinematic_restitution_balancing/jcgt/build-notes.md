@@ -132,3 +132,12 @@ Manuscript run `20260823-2c8d77` / chat `8eb79bc3` (2026-08-22). Path-only close
 - **`h-length-density`:** honest 11 pp vs typical ~4 pp clause; within `max_pages` 12.
 
 Frozen A/B/D table cells, CSV bytes, `cpp/`, `harness.json`, and `krb.bib` unchanged. Rebuild: `krb.pdf` 11 pp (`krb.log`).
+
+## Artifact snapshot (`KRB_JCGT_ARTIFACT_SNAPSHOT`)
+
+Manuscript run `20260823-2c8d77` / Phase 1 restore buildable paper tree (2026-08-22). Closes hole `h-artifact-snapshot`.
+
+- **Pre-check:** `figures/fig-energy-{ablation,engines}.pdf`, `jcgt/krb.pdf`, and `jcgt/CC-BY-ND.png` were already present and tracked in git; `pdflatex`+`bibtex` loop succeeds with both energy PDFs and `CC-BY-ND.png` resolved.
+- **Figures:** Regenerated from committed CSVs via `plot-energy-ablation.py` and `plot-energy-engines.py` (matplotlib via `.decomposer/sandbox/krb-plot-venv`; system `python3` lacks matplotlib).
+- **Build:** `pdflatex`+`bibtex` loop → `krb.pdf` 11 pp, 327165 bytes; `latex_error_count` 0 (overfull hboxes only).
+- **Not closed here:** `h-length-density`, `h-c07-under-narrated`, `h-no-ab-only-ablation`. Frozen numerics and `krb.tex` wording unchanged.
