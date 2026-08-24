@@ -169,7 +169,7 @@ bool CollisionSolver::_solvePolygonPoint() {
     float cosRB = cos(brB), sinRB = sin(brB);
     Vec2 pB(bxB + (lxB * cosRB - lyB * sinRB), byB + (lxB * sinRB + lyB * cosRB));
 
-    float minDepth = FLT_MAX;
+    float maxSeparation = -FLT_MAX;
     Vec2 bestNormal;
     int bestFace = -1;
 
@@ -177,14 +177,14 @@ bool CollisionSolver::_solvePolygonPoint() {
         Vec2 n = polyA.getNormal(i);
         float d = (pB - polyA.getVertex(i)).dot(n);
         if (d > _speculativeMargin) return false;
-        if (d < minDepth) {
-            minDepth = d;
+        if (d > maxSeparation) {
+            maxSeparation = d;
             bestNormal = n;
             bestFace = i;
         }
     }
 
-    float penetration = -minDepth;
+    float penetration = -maxSeparation;
     int bIdxA = world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(_indexA, FIXTURE_IDATA_BODY_INDEX)];
     Vec2 pA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_X)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_Y)]);
     Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
