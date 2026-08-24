@@ -8,8 +8,8 @@
 World::World() : collisionSolver(*this) {
     timeStep = 1.0f / 60.0f;
     invTimeStep = 60.0f;
-    velocityIterations = 50;
-    positionIterations = 10;
+    velocityIterations = 8;
+    positionIterations = 3;
     velocitySubSteps = 1;
     speculativeMargin = 0.01f;
     liveBodyFloatData.resize(MAX_BODIES * BODY_FDATA_EPO, 0.0f);

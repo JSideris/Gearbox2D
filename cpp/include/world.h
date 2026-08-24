@@ -175,7 +175,7 @@ private:
 #ifdef GEARBOX_MT
     std::mutex eventMutex;
 #endif
-    int velocityIterations = 50;
+    int velocityIterations = 8;
     int positionIterations = 3;
     int velocitySubSteps = 1;
     float speculativeMargin = 0.01f; // Default speculative margin

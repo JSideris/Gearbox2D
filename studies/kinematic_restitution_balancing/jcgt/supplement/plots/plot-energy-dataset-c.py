@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Dataset C long-horizon KRB-on figure (PDF + PNG)."""
+"""Build the Dataset C long-horizon figure from the supplement zip layout."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
-HERE = Path(__file__).resolve().parent
-DATA_C = HERE / "data" / "dataset-c"
-FIG = HERE / "figures"
+ROOT = Path(__file__).resolve().parent.parent
+DATA_C = ROOT / "data" / "dataset-c"
+FIG = ROOT / "figures"
 
 COLOR_ON = "#0072B2"
 

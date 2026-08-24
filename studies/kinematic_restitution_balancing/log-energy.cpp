@@ -33,7 +33,7 @@ static emscripten_val bodyOptions(float x, float y, float mass = 1.0f) {
 	return options;
 }
 
-static void sumMechanicalEnergy(World& world, float gy, float yRef, float& keOut, float& peOut) {
+static void sumMechanicalEnergy(World& world, float gy, float yRef, float& keOut, float& peOut, bool includeRotationalKe = true) {
 	keOut = 0.0f;
 	peOut = 0.0f;
 	const int n = world.getBodyCount();
@@ -50,10 +50,12 @@ static void sumMechanicalEnergy(World& world, float gy, float yRef, float& keOut
 		const float vx = body->getVelocityX();
 		const float vy = body->getVelocityY();
 		keOut += 0.5f * mass * (vx * vx + vy * vy);
-		const float invI = body->getInverseInertia();
-		if (invI > 0.0f) {
-			const float w = body->getAngularVelocity();
-			keOut += 0.5f * (1.0f / invI) * w * w;
+		if (includeRotationalKe) {
+			const float invI = body->getInverseInertia();
+			if (invI > 0.0f) {
+				const float w = body->getAngularVelocity();
+				keOut += 0.5f * (1.0f / invI) * w * w;
+			}
 		}
 		// y increases downward; PE = m g (yRef - y)
 		peOut += mass * gy * (yRef - body->getY());
@@ -66,7 +68,7 @@ struct SceneResult {
 	std::string error;
 };
 
-static SceneResult logCradle(const std::string& outDir, int seconds, int sampleEvery, float dt) {
+static SceneResult logCradle(const std::string& outDir, int seconds, int sampleEvery, float dt, bool datasetB) {
 	SceneResult result;
 	result.name = "cradle";
 
@@ -126,20 +128,32 @@ static SceneResult logCradle(const std::string& outDir, int seconds, int sampleE
 
 	float ke0 = 0.0f;
 	float pe0 = 0.0f;
-	sumMechanicalEnergy(world, gy, restingY, ke0, pe0);
-	const float e0 = ke0 + pe0;
+	sumMechanicalEnergy(world, gy, restingY, ke0, pe0, !datasetB);
+	const float e0 = datasetB ? pe0 : (ke0 + pe0);
 
-	const std::filesystem::path path = std::filesystem::path(outDir) / ("cradle-" + std::string(kKrbTag) + ".csv");
+	const std::filesystem::path path = std::filesystem::path(outDir) / (
+		datasetB
+			? "dataset-b-newtons-cradle-gearbox.csv"
+			: ("cradle-" + std::string(kKrbTag) + ".csv"));
 	std::ofstream out(path, std::ios::trunc);
 	if (!out) {
 		result.ok = false;
 		result.error = "failed to write " + path.string();
 		return result;
 	}
-	out << "# scene=cradle krb=" << (kKrbOn ? "on" : "off")
+	out << "# scene=" << (datasetB ? "newtons-cradle" : "cradle")
+		<< " krb=" << (kKrbOn ? "on" : "off")
 		<< " dt=" << dt << " seconds=" << seconds
-		<< " sample_every=" << sampleEvery << " e0=" << e0 << "\n";
-	out << "t_s,ke,pe,e_total,e_over_e0,peak_height\n";
+		<< " sample_every=" << sampleEvery << " e0=" << e0
+		<< " velocity_iterations=" << world.getVelocityIterations()
+		<< " position_iterations=" << world.getPositionIterations()
+		<< (datasetB ? " meter=translational e0=pe_only engine=gearbox2d" : "")
+		<< "\n";
+	if (datasetB) {
+		out << "engine,t_s,e_over_e0\n";
+	} else {
+		out << "t_s,ke,pe,e_total,e_over_e0,peak_height\n";
+	}
 
 	const auto wall0 = std::chrono::steady_clock::now();
 	const int progressEvery = std::max(sampleEvery, 60 * 60);
@@ -147,13 +161,18 @@ static SceneResult logCradle(const std::string& outDir, int seconds, int sampleE
 		if (step % sampleEvery == 0) {
 			float ke = 0.0f;
 			float pe = 0.0f;
-			sumMechanicalEnergy(world, gy, restingY, ke, pe);
+			sumMechanicalEnergy(world, gy, restingY, ke, pe, !datasetB);
 			const float e = ke + pe;
-			const float h0 = restingY - outerBalls[0]->getY();
-			const float h1 = restingY - outerBalls[1]->getY();
-			const float peak = std::max(h0, h1);
-			out << (step * dt) << "," << ke << "," << pe << "," << e << ","
-				<< (e0 != 0.0f ? e / e0 : 0.0f) << "," << peak << "\n";
+			const float ratio = (e0 != 0.0f ? e / e0 : 0.0f);
+			if (datasetB) {
+				out << "gearbox2d," << (step * dt) << "," << ratio << "\n";
+			} else {
+				const float h0 = restingY - outerBalls[0]->getY();
+				const float h1 = restingY - outerBalls[1]->getY();
+				const float peak = std::max(h0, h1);
+				out << (step * dt) << "," << ke << "," << pe << "," << e << ","
+					<< ratio << "," << peak << "\n";
+			}
 			if (step % progressEvery == 0) {
 				out.flush();
 				const auto wall = std::chrono::steady_clock::now();
@@ -171,7 +190,13 @@ static SceneResult logCradle(const std::string& outDir, int seconds, int sampleE
 	return result;
 }
 
-static SceneResult logBounceCircle(const std::string& outDir, int seconds, int sampleEvery, float dt) {
+static SceneResult logBounceCircle(const std::string& outDir, int seconds, int sampleEvery, float dt, bool datasetB) {
+	if (datasetB) {
+		SceneResult skip;
+		skip.name = "bounce-circle";
+		skip.ok = true;
+		return skip;
+	}
 	SceneResult result;
 	result.name = "bounce-circle";
 
@@ -239,7 +264,9 @@ static SceneResult logBounceCircle(const std::string& outDir, int seconds, int s
 	}
 	out << "# scene=bounce-circle krb=" << (kKrbOn ? "on" : "off")
 		<< " dt=" << dt << " seconds=" << seconds
-		<< " sample_every=" << sampleEvery << " e0=" << e0 << "\n";
+		<< " sample_every=" << sampleEvery << " e0=" << e0
+		<< " velocity_iterations=" << world.getVelocityIterations()
+		<< " position_iterations=" << world.getPositionIterations() << "\n";
 	out << "t_s,ke,pe,e_total,e_over_e0,peak_height\n";
 
 	const float escapeMargin = 0.25f;
@@ -278,7 +305,7 @@ static SceneResult logBounceCircle(const std::string& outDir, int seconds, int s
 	return result;
 }
 
-static SceneResult logFloorBounce(const std::string& outDir, int seconds, int sampleEvery, float dt) {
+static SceneResult logFloorBounce(const std::string& outDir, int seconds, int sampleEvery, float dt, bool datasetB) {
 	SceneResult result;
 	result.name = "floor-bounce";
 
@@ -321,7 +348,10 @@ static SceneResult logFloorBounce(const std::string& outDir, int seconds, int sa
 
 	// Energy relative to rest on the floor, so e0 is the drop energy (startY is above the floor).
 	const float e0 = mass * gy * (yContact - startY);
-	const std::filesystem::path path = std::filesystem::path(outDir) / ("floor-bounce-" + std::string(kKrbTag) + ".csv");
+	const std::filesystem::path path = std::filesystem::path(outDir) / (
+		datasetB
+			? "dataset-b-floor-bounce-gearbox.csv"
+			: ("floor-bounce-" + std::string(kKrbTag) + ".csv"));
 	std::ofstream out(path, std::ios::trunc);
 	if (!out) {
 		result.ok = false;
@@ -330,24 +360,39 @@ static SceneResult logFloorBounce(const std::string& outDir, int seconds, int sa
 	}
 	out << "# scene=floor-bounce krb=" << (kKrbOn ? "on" : "off")
 		<< " dt=" << dt << " seconds=" << seconds
-		<< " sample_every=" << sampleEvery << " e0=" << e0 << "\n";
-	out << "t_s,ke,pe,e_total,e_over_e0,peak_height\n";
+		<< " sample_every=" << sampleEvery << " e0=" << e0
+		<< " velocity_iterations=" << world.getVelocityIterations()
+		<< " position_iterations=" << world.getPositionIterations()
+		<< (datasetB ? " meter=translational engine=gearbox2d" : "")
+		<< "\n";
+	if (datasetB) {
+		out << "engine,t_s,e_over_e0\n";
+	} else {
+		out << "t_s,ke,pe,e_total,e_over_e0,peak_height\n";
+	}
 
 	for (int step = 0; step <= totalSteps; ++step) {
 		if (step % sampleEvery == 0) {
 			const float vx = ball->getVelocityX();
 			const float vy = ball->getVelocityY();
 			float ke = 0.5f * mass * (vx * vx + vy * vy);
-			const float invI = ball->getInverseInertia();
-			if (invI > 0.0f) {
-				const float w = ball->getAngularVelocity();
-				ke += 0.5f * (1.0f / invI) * w * w;
+			if (!datasetB) {
+				const float invI = ball->getInverseInertia();
+				if (invI > 0.0f) {
+					const float w = ball->getAngularVelocity();
+					ke += 0.5f * (1.0f / invI) * w * w;
+				}
 			}
 			const float pe = mass * gy * (yContact - ball->getY());
 			const float e = ke + pe;
-			const float peak = startY - ball->getY();
-			out << (step * dt) << "," << ke << "," << pe << "," << e << ","
-				<< (e0 != 0.0f ? e / e0 : 0.0f) << "," << peak << "\n";
+			const float ratio = (e0 != 0.0f ? e / e0 : 0.0f);
+			if (datasetB) {
+				out << "gearbox2d," << (step * dt) << "," << ratio << "\n";
+			} else {
+				const float peak = startY - ball->getY();
+				out << (step * dt) << "," << ke << "," << pe << "," << e << ","
+					<< ratio << "," << peak << "\n";
+			}
 		}
 		if (step < totalSteps) {
 			world.step();
@@ -378,10 +423,11 @@ static bool sceneRequested(const std::string& list, const char* name) {
 
 static void printUsage(const char* argv0) {
 	std::cerr << "Usage: " << argv0
-			  << " --out <dir> [--seconds N] [--sample-every N] [--scene list]\n"
+			  << " --out <dir> [--seconds N] [--sample-every N] [--scene list] [--format a|b]\n"
 			  << "  Dataset A/C energy logger (KRB compile-time ablation).\n"
 			  << "  --scene is a comma list: cradle,bounce-circle,floor-bounce (default: all).\n"
-			  << "  Writes <scene>-{krb|nokrb}.csv into --out.\n";
+			  << "  --format a (default): writes <scene>-{krb|nokrb}.csv (rotational KE).\n"
+			  << "  --format b: Gearbox Dataset B rows (translational; PE-only e0 on cradle).\n";
 }
 
 int main(int argc, char** argv) {
@@ -389,6 +435,7 @@ int main(int argc, char** argv) {
 	std::string scenes = "all";
 	int seconds = 600;
 	int sampleEvery = 60;
+	bool datasetB = false;
 	const float dt = 1.0f / 60.0f;
 
 	for (int i = 1; i < argc; ++i) {
@@ -400,6 +447,16 @@ int main(int argc, char** argv) {
 			sampleEvery = std::max(1, std::atoi(argv[++i]));
 		} else if (std::strcmp(argv[i], "--scene") == 0 && i + 1 < argc) {
 			scenes = argv[++i];
+		} else if (std::strcmp(argv[i], "--format") == 0 && i + 1 < argc) {
+			++i;
+			if (std::strcmp(argv[i], "b") == 0 || std::strcmp(argv[i], "dataset-b") == 0) {
+				datasetB = true;
+			} else if (std::strcmp(argv[i], "a") == 0 || std::strcmp(argv[i], "dataset-a") == 0) {
+				datasetB = false;
+			} else {
+				printUsage(argv[0]);
+				return 2;
+			}
 		} else if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
 			printUsage(argv[0]);
 			return 0;
@@ -416,19 +473,23 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	World knobs;
 	std::cout << "KRB energy logger  krb=" << (kKrbOn ? "on" : "off")
 			  << "  seconds=" << seconds << "  scenes=" << scenes
+			  << "  format=" << (datasetB ? "b" : "a")
+			  << "  velocity_iterations=" << knobs.getVelocityIterations()
+			  << "  position_iterations=" << knobs.getPositionIterations()
 			  << "  out=" << outDir << "\n";
 
 	std::vector<SceneResult> results;
 	if (sceneRequested(scenes, "cradle")) {
-		results.push_back(logCradle(outDir, seconds, sampleEvery, dt));
+		results.push_back(logCradle(outDir, seconds, sampleEvery, dt, datasetB));
 	}
 	if (sceneRequested(scenes, "bounce-circle")) {
-		results.push_back(logBounceCircle(outDir, seconds, sampleEvery, dt));
+		results.push_back(logBounceCircle(outDir, seconds, sampleEvery, dt, datasetB));
 	}
 	if (sceneRequested(scenes, "floor-bounce")) {
-		results.push_back(logFloorBounce(outDir, seconds, sampleEvery, dt));
+		results.push_back(logFloorBounce(outDir, seconds, sampleEvery, dt, datasetB));
 	}
 	if (results.empty()) {
 		std::cerr << "no scenes selected (use cradle,bounce-circle,floor-bounce, or all)\n";

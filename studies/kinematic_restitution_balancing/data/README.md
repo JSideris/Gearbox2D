@@ -1,6 +1,6 @@
 # Dataset A — KRB compile-time ablation
 
-Headless traces from `../log-energy.cpp`. Same scenes, same \(dt = 1/60\), \(e = 1\), no damping, sleep off. Stock `World()` defaults: `velocity_iterations=50`, `position_iterations=10`; `constants.h`: `BAUMGARTE_FACTOR=0.2`, `MAX_POSITION_CORRECTION=0.2`, `PENETRATION_SLOP=0.016`, `RESTITUTION_THRESHOLD=0.01` (Listing 1 \(\Gamma\) uses that \(n,\beta\)). `krb` is the default binary; `nokrb` is `-DGEARBOX_DISABLE_KRB`.
+Headless traces from `../log-energy.cpp`. Same scenes, same \(dt = 1/60\), \(e = 1\), no damping, sleep off. Stock `World()` defaults: `velocity_iterations=8`, `position_iterations=3`; `constants.h`: `BAUMGARTE_FACTOR=0.2`, `MAX_POSITION_CORRECTION=0.2`, `PENETRATION_SLOP=0.016`, `RESTITUTION_THRESHOLD=0.01` (Listing 1 \(\Gamma\) uses that \(n,\beta\)). `krb` is the default binary; `nokrb` is `-DGEARBOX_DISABLE_KRB`.
 
 ```bash
 make log-energy
@@ -14,7 +14,7 @@ Columns: `t_s,ke,pe,e_total,e_over_e0,peak_height`. A `# escaped_at_step=` trail
 
 # Dataset B — stock engines vs Gearbox+KRB
 
-Floor bounce and Newton's cradle, same \(E/E_0\) as Dataset A, from `site/benchmarks.html` (All Engines). Whole-engine traces, not an ablation. The high-pressure enclosure was collected but omitted from Figure 2: Matter/p2 stop bouncing, Box2D enters a two-value limit cycle, so it is not a conservation comparison.
+Floor bounce and Newton's cradle. Gearbox2D rows are a native offline recapture (`logEnergy --format b`) on the same translational \(E/E_0\) meter as `site/benchmarks.html`. Box2D-WASM, p2.js, and Matter.js remain unmodified whole-engine WASM traces from the last All-Engines export. This is whole-engine context, not an in-engine KRB ablation. The high-pressure enclosure was collected but omitted from the engines figure: Matter/p2 stop bouncing, Box2D enters a two-value limit cycle, so it is not a conservation comparison.
 
 ```bash
 python3 plot-energy-engines.py
@@ -41,18 +41,24 @@ make log-energy
 
 Columns match Dataset A. Sampled every \(10\,\mathrm{s}\) of simulation time. KRB on only. Same `World()`/`constants.h` deploy knobs as Dataset A (see above).
 
-Results (2026-08-21, `./logEnergy`, ~14 min wall for the cradle, ~8 min for the circle):
+Results (2026-08-23, `./logEnergy` at stock `World()` 8/3, ~14 min wall for the cradle, ~8 min for the circle):
 
-- **Cradle:** the \(\sim 7\%\) step at \(t \approx 240\)–\(300\,\mathrm{s}\) is the only step in \(8\,\mathrm{h}\). After that, \(E/E_0 \in [1.034, 1.093]\) (mean \(1.053\)); last-hour mean \(1.053\). End \(E/E_0 = 1.067\).
-- **Bounce circle:** stayed in the box. Instantaneous samples alias \(0.66\)–\(1.33\). **Hourly** windowed means go \(0.999 \to 0.982\) (about \(1.7\%\) loss over \(8\,\mathrm{h}\)); the TeX paper reports **600 s** windows on the 8 h trace (\(1.009 \to 0.977\))—a different windowing convention, not a conflicting run length.
+- **Cradle:** the step from \(\sim 0.96\) to \(\sim 1.05\) at \(t \approx 240\)–\(360\,\mathrm{s}\) is the only step in \(8\,\mathrm{h}\). After \(t=360\,\mathrm{s}\), raw \(E/E_0 \in [1.031, 1.074]\) (mean \(1.052\)); last-hour mean \(1.052\). End \(E/E_0 = 1.063\).
+- **Bounce circle:** stayed in the box. Instantaneous samples alias \(0.66\)–\(1.33\). Full \(600\,\mathrm{s}\) windows go \(1.006 \to 0.976\) (about \(3.1\%\) loss over \(8\,\mathrm{h}\)).
 
 # Recapture Dataset B
 
-1. Serve the site (`npm start`) with the default WASM build (KRB on).
-2. Open Benchmarks, select **All Engines**.
-3. Set **Capture** to `600 s` and enable **Fast-forward**.
-4. Run **Floor Bounce** and **Newton's Cradle**. Wait until the status says capture complete.
-5. Click **Export** and replace the files above.
+Gearbox2D rows are recaptured offline (same scenes and translational \(E/E_0\) meter as `site/benchmarks.html`). Box2D / p2 / Matter rows stay from the last All-Engines export.
+
+```bash
+make log-energy
+./logEnergy --out studies/kinematic_restitution_balancing/data \
+	--scene floor-bounce,cradle --seconds 600 --format b
+python3 studies/kinematic_restitution_balancing/merge-dataset-b-gearbox.py
+python3 studies/kinematic_restitution_balancing/plot-energy-engines.py
+```
+
+To recapture the other engines, serve the site (`npm start`), open Benchmarks → All Engines, capture `600 s` with Fast-forward, Export, and replace the files above (then re-run the merge so Gearbox rows stay current).
 
 # Dataset D — KRB cost / wall-time ablation (native)
 
@@ -81,7 +87,7 @@ Scenes:
 
 Protocol: 100 warmup `world.step()` calls, then 1000 timed steps; mean and p95 per repeat (default 3 repeats).
 
-**Capture (2026-08-21, i9-9900KF, g++ 13.3.0, `BENCH_FLAGS`, `velocity_iterations=50`, `position_iterations=10`):** floor-bounce and cradle on/off means overlap within run-to-run scatter (e.g. floor-bounce krb \(\approx 0.006\) ms vs nokrb \(\approx 0.005\) ms per step on steady repeats; cradle \(\approx 0.048\) ms). The high-pressure enclosure shows a larger on/off spread (\(\approx 0.012\) vs \(\approx 0.006\) ms/step) but both remain \(\ll 0.02\) ms/step. **Do not report a vanity % speedup** from these rows; Phase 3 cites the analytic op-count below and states wall-time is not a percent win on Dataset A scenes.
+**Capture (2026-08-23, i9-9900KF, g++ 13.3.0, `BENCH_FLAGS`, 8/3):** the paper table typesets cradle + stack only. Floor bounce and the high-pressure enclosure remain in the CSVs and must not be quoted as overhead (enclosure KRB-off escapes; floor first-repeat is cold). Do not report a percent speedup from those Dataset A rows.
 
 ## Analytic KRB extra work (checkable vs listings)
 

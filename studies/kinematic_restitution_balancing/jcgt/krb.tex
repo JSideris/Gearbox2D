@@ -3,9 +3,14 @@
 \setciteauthor{Joshua Sideris}
 \setcitetitle{Kinematic Restitution Balancing: A Per-Constraint Energy Audit for Velocity-Level Impulse Solvers}
 
-\submitted{\today}
+\submitted{2026-08-23}
 
 \begin{document}
+
+\hypersetup{
+	pdftitle={Kinematic Restitution Balancing: A Per-Constraint Energy Audit for Velocity-Level Impulse Solvers},
+	pdfauthor={Joshua Sideris}
+}
 
 \title{Kinematic Restitution Balancing (KRB)\\\large A Per-Constraint Energy Audit for Velocity-Level Impulse Solvers}
 
@@ -15,7 +20,7 @@
 
 \begin{abstract}
 \small
-In discrete physics simulations using velocity-level impulse solvers (Sequential Impulse / Projected Gauss-Seidel), energy gain is a common numerical artifact. This paper introduces \textbf{Kinematic Restitution Balancing (KRB)}, a per-constraint correction for that leak in both unilateral constraints (collisions) and bilateral constraints (joints). By compensating for force-induced velocity drift (Component~A) and auditing potential-energy shifts during position correction (Component~B), KRB audits the two usual analytic SI energy leaks at per-constraint \texttt{preSolve} setup inside a single-pass SI/PGS pipeline, without a second position pass or extra PGS iterations. The empirical switch is full KRB on/off only; the compile-time floor, enclosure, and cradle ablations do not isolate which leak each component closed. The per-constraint audit does not claim a global energy invariant; coupled constraints (e.g.\ Newton's cradle offsets) can still exchange systemic potential-energy work.
+Velocity-level sequential-impulse solvers gain energy from two analytic leaks: restitution and joint bias see the post-force velocity, and Baumgarte displacement does potential-energy work without a matching kinetic-energy tax. Kinematic Restitution Balancing (KRB) is a per-constraint \texttt{preSolve} audit of those leaks: Component~A subtracts the force increment from the impact velocity, and Component~B adjusts launch or bias speed for the expected correction $\Delta h$. A compile-time on/off ablation in Gearbox2D keeps a single elastic floor bounce at $E/E_0 \approx 1$ over $600\,\mathrm{s}$ (KRB off finishes at $6.53$) and holds a high-rate enclosure in-box; a Newton's cradle remains a bounded offset, not an invariant. The method adds no solver passes.
 \end{abstract}
 
 \section{Introduction}
@@ -53,38 +58,40 @@ With symplectic Euler, integration updates velocity before the constraint solve 
 v_{\mathrm{impact}} = v_{\mathrm{relative}} - (v_{\mathrm{force},B} - v_{\mathrm{force},A}).
 \label{eq:component_a}
 \end{equation}
-Component~A applies at contact and distance-joint \texttt{preSolve} whenever symplectic Euler integration is used, independent of the bias method (other joint types are engine-only; Section~\ref{sec:limitations}). In the implementation listing (Listing~\ref{lst:contact}), \texttt{relativeVn} is this corrected normal velocity after subtracting \texttt{forceVn}.
+The correction is independent of the bias method.
 
 \subsection{Component B: Kinematic energy balancing}
 \label{sec:component_b}
 
-Baumgarte position correction displaces bodies by an expected distance $\Delta h$ along the constraint normal. Component~B applies a one-dimensional work--energy identity along $\mathbf{n}$ only: external forces do work $W = m (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) \Delta h$ over that displacement, and the launch or bias speed is adjusted using $\Delta(\tfrac12 v^2) = W$ on the \emph{relative} normal velocity (Listing~\ref{lst:contact}: \texttt{workTerm} with \texttt{forceVn} $= v_{\mathrm{force},B}-v_{\mathrm{force},A}$ dotted with $\mathbf{n}$; masses cancel). This is not a rigid-body work--energy theorem---tangential motion, $I\omega^2$, and PGS impulse power are out of scope---and $\Delta h$ is the \emph{expected} Baumgarte displacement this step ($d_{\mathrm{eff}}$, cap, $\Gamma$; Section~\ref{sec:deff}), not the work of impulses the solver actually applied. That gives a surface speed
-$v_{\mathrm{surf}}^2 = v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) \Delta h$.
-When available kinetic energy cannot pay the tax, clamp with $\max(0,\cdot)$ and apply restitution:
+Consider a dynamic body against a static floor, contact normal $\mathbf{n}$ as in $v = (v_B - v_A)\cdot\mathbf{n}$, with center-of-mass motion along $\mathbf{n}$. If the position solver will raise the body by an expected distance $\Delta h$ (Section~\ref{sec:deff}; predicted Baumgarte displacement this step, not the work of the impulses the solver actually applied), free-flight rewind to the surface is $v_{\mathrm{impact}}^2 = v_{\mathrm{surf}}^2 - 2(\mathbf{a}\cdot\mathbf{n})\Delta h$, hence
+$v_{\mathrm{surf}}^2 = v_{\mathrm{impact}}^2 + 2(\mathbf{a}\cdot\mathbf{n})\Delta h$.
+Equivalently, $\Delta E_p = -m(\mathbf{a}\cdot\mathbf{n})\Delta h$ taken from $\tfrac12 m v^2$ yields the same update: $\Delta(v^2) = -2\Delta E_p/m = 2(\mathbf{a}\cdot\mathbf{n})\Delta h$, so $m$ cancels. The implementation applies this identity to the relative normal speed with
+$\mathbf{a}_{\mathrm{rel}} = \mathbf{a}_B - \mathbf{a}_A$
+(Listing~\ref{lst:contact}, $\texttt{forceVn}/\Delta t$). When body~A is static, $\mathbf{a}=\mathbf{a}_{\mathrm{rel}}$. If both bodies share the same external acceleration, $\mathbf{a}_{\mathrm{rel}} = \mathbf{0}$ and Component~B is a no-op, consistent with an inverse-mass-weighted correction leaving pair-COM height unchanged. The identity does not include rotation, tangent motion, or impulse work; those residuals are the coupled-graph gap (Section~\ref{sec:limitations}).
+When available kinetic energy cannot pay the tax, clamp with $\max(0,\cdot)$ and apply restitution $v_{\mathrm{final}} = e\, v_{\mathrm{surf}}$:
 \begin{equation}
-v_{\mathrm{surf}} = \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) \Delta h\bigr)},
+v_{\mathrm{surf}} = \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n}) \Delta h\bigr)}.
 \label{eq:vsurf}
 \end{equation}
-\begin{equation}
-v_{\mathrm{final}} = e \cdot v_{\mathrm{surf}} = e \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) \Delta h\bigr)}.
-\label{eq:vfinal}
-\end{equation}
-For ground collisions ($\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n} < 0$), Component~B taxes launch velocity to pay for increased PE; for ceiling collisions ($\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n} > 0$), it credits velocity for work against external forces.
+For ground collisions ($\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n} < 0$), Component~B taxes launch velocity to pay for increased PE; for ceiling collisions ($\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n} > 0$), it credits velocity for work against external forces.
 
 \subsection{Effective displacement prediction}
 \label{sec:deff}
 
-$\Delta h$ is the expected normal displacement used in the Component~B work term---not the full penetration depth, but the portion the position solver will actually correct this step after accounting for launch motion and per-iteration caps. When velocity and position phases are decoupled, the kinematic bounce velocity $v_{\mathrm{launch}}$ (Listing~\ref{lst:contact}: $v_{\mathrm{Bounce}} = -e \cdot \mathrm{relativeVn}$) partially resolves overlap after penetration slop $s$ before the position solver runs. The remaining overlap after that motion is the effective depth
+$\Delta h$ in Equation~\eqref{eq:vsurf} is a per-class \emph{predictor} of this step's Baumgarte travel---not the full constraint error, and not a measurement of the impulses \texttt{solvePosition} actually applied. Contacts and distance joints share that identity; they do not share a predictor.
+
+For bouncing contacts the velocity bias is restitution, so Component~B predicts the later position pass. After slop $s$, the kinematic bounce $v_{\mathrm{launch}} = -e \cdot v_{\mathrm{impact}}$ partially resolves overlap before that pass. The remaining overlap is the effective depth
 \begin{equation}
 d_{\mathrm{eff}} = \max\bigl(0,\, (d - s) - (v_{\mathrm{launch}} \cdot \Delta t)\bigr).
 \label{eq:deff}
 \end{equation}
-Many engines clamp per-iteration correction (e.g.\ Gearbox2D \texttt{MAX\_POSITION\_CORRECTION}). The audit must match the work actually performed:
+Equation~\eqref{eq:deff} uses that pre-tax launch. Substituting the post-tax $v_{\mathrm{final}} = e\,v_{\mathrm{surf}}$ from Equation~\eqref{eq:vsurf} would make $\Delta h$ implicit; we keep the explicit predictor. On a ground tax, $|v_{\mathrm{final}}| < |v_{\mathrm{launch}}|$, so $d_{\mathrm{eff}}$ is slightly low and the tax is slightly light---same sign as the original leak, and $O(\Gamma\,|a_{\mathrm{rel}}|\Delta t/|v_{\mathrm{impact}}|)$ when $d_{\mathrm{eff}}$ is interior. If $v_{\mathrm{launch}}\Delta t$ already clears $(d-s)$, then $d_{\mathrm{eff}} = 0$ and there is no loop.
+Many engines clamp per-iteration correction (e.g.\ Gearbox2D \texttt{MAX\_POSITION\_CORRECTION}). The contact predictor is then
 \begin{equation}
 \Delta h = \min(d_{\mathrm{eff}}, \Delta h_{\max}) \cdot \Gamma,
 \label{eq:deltah}
 \end{equation}
-where $\Gamma = 1 - (1 - \beta)^n$ is the cumulative Baumgarte fraction applied over $n$ position iterations with factor $\beta$.
+where $\Gamma = 1 - (1 - \beta)^n$ is the isolated geometric series (remaining error $\times(1-\beta)$ each iteration) over $n$ position iterations with factor $\beta$. It is not a fit to coupled NGS. When $d_{\mathrm{eff}} > \Delta h_{\max}$ every iteration, real travel is closer to $n\beta\Delta h_{\max}$ than $\Gamma\Delta h_{\max}$; the floor bounce does not hit that regime. Distance joints use the bias travel $\beta C$ (Section~\ref{sec:joints}), not Equation~\eqref{eq:deltah}.
 
 \section{Constraint application}
 \label{sec:constraints}
@@ -105,10 +112,10 @@ Distance joints target zero relative velocity along the rod. Omitting Component~
 
 Let $v_{\mathrm{bias}} = \beta C / \Delta t$ be the ideal correction velocity for constraint error $C$. The audited correction is
 \begin{equation}
-v_{\mathrm{bias\_actual}} = \sqrt{\max\bigl(0,\, v_{\mathrm{bias}}^2 - 2 (\mathbf{a}_{\mathrm{ext}} \cdot \mathbf{n}) (\beta C)\bigr)}.
+v_{\mathrm{bias\_actual}} = \sqrt{\max\bigl(0,\, v_{\mathrm{bias}}^2 - 2 (\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n}) (\beta C)\bigr)}.
 \label{eq:joint_bias}
 \end{equation}
-Equation~\eqref{eq:joint_bias} is the same PE/KE audit with expected stretch displacement $\beta C$ in place of contact $\Delta h$. If kinetic energy cannot pay the PE tax, the joint retains a microscopic Baumgarte sag---bounded audit rather than infinite stiffness at rest. This paper's setup recipe covers contacts and \emph{distance} joints; other joint types are outside the listed implementation.
+Equation~\eqref{eq:joint_bias} is Equation~\eqref{eq:vsurf} with joint predictor $\Delta h_{\mathrm{joint}} = \beta C$: the travel implied by $v_{\mathrm{bias}} = \beta C / \Delta t$, not $\Gamma$ and not the position pass. Slop, the per-step $\Delta h_{\max}$ clamp, and extra joint position iterations when contacts overlap are uncaptured PE work (already inside the cradle residual). If kinetic energy cannot pay the PE tax, the joint retains a microscopic Baumgarte sag---bounded audit rather than infinite stiffness at rest. This paper's setup recipe covers contacts and \emph{distance} joints; other joint types are outside the listed implementation.
 
 \section{Implementation}
 \label{sec:implementation}
@@ -116,16 +123,28 @@ Equation~\eqref{eq:joint_bias} is the same PE/KE audit with expected stretch dis
 KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop.
 
 \paragraph{Integrate store.}
-Per dynamic body at integrate (before the constraint solve): \texttt{forceVelocity = a\_ext * dt} (two floats), with $a_{\mathrm{ext}}$ from gravity and external force before linear damping; zero for sleeping or infinite-mass bodies (supplemental \texttt{cpp/src/world/world-simd.cpp}).
-
-Listings show Gearbox2D \texttt{preSolve} (penetration slop, \texttt{MAX\_POSITION\_CORRECTION}, cumulative $\Gamma$, and folding $-\mathrm{forceVn}$ into \texttt{bias}); a port \emph{merges} this audit into that engine's contact/joint setup rather than pasting the listing into another solver. The measured recipe: store \texttt{forceVelocity = a\_ext * dt} at symplectic-Euler integrate; apply Listings~\ref{lst:contact}--\ref{lst:joint} at contact and distance-joint \texttt{preSolve} with the Evaluation knobs (Section~\ref{sec:evaluation}).
+Per dynamic body at integrate (before the constraint solve), store $v_{\mathrm{force}}$ (\texttt{forceVelocity}):
+$v_{\mathrm{force}} = a_{\mathrm{ext}}\Delta t$ (two floats).
+Here $a_{\mathrm{ext}}$ is gravity plus external force before linear damping; the store is zero for sleeping or infinite-mass bodies.
 
 \subsection{Contact setup}
 \label{sec:impl_contacts}
 
-\lstset{basicstyle=\footnotesize\ttfamily,aboveskip=2pt,belowskip=2pt,float=false}
+\lstset{
+	basicstyle=\footnotesize\ttfamily,
+	aboveskip=2pt,
+	belowskip=2pt,
+	float=false,
+	breaklines=true,
+	breakatwhitespace=true,
+	columns=flexible,
+	mathescape=false,
+	texcl=false,
+	showstringspaces=false
+}
 
 \begin{lstlisting}[caption={Contact \texttt{preSolve} bias (Component A + B).},label={lst:contact}]
+// restitution threshold = 0.01; maxPosCorr = 0.2 (dH max)
 forceVn = dot(bodyB.forceVelocity - bodyA.forceVelocity, n)
 relativeVn = vn - forceVn
 vBounce = -e * relativeVn
@@ -137,7 +156,7 @@ if (shouldBounce) {
     depthAfterVelocity = max(0, (depth - slop) - vBounce * dt)
     cumulativeFactor = 1 - pow(1 - beta, n)
     expectedDisplacement =
-      min(depthAfterVelocity, MAX_POSITION_CORRECTION) * cumulativeFactor
+      min(depthAfterVelocity, maxPosCorr) * cumulativeFactor
   } else { expectedDisplacement = 0 }
   workTerm = 2 * (forceVn / dt) * expectedDisplacement
   vFinal = e * sqrt(max(0, relativeVn * relativeVn + workTerm))
@@ -158,16 +177,16 @@ v_bias_actual = sqrt(max(0, v_bias_sq - workTerm))
 bias = (v_bias_ideal > 0 ? v_bias_actual : -v_bias_actual) - forceVn
 \end{lstlisting}
 
-During the velocity solve, $-\mathrm{forceVn}$ is folded into \texttt{bias} so \texttt{relative\_vn} is not double-corrected (see supplemental \texttt{distance-joint.cpp}).
+During the velocity solve, $-\mathrm{forceVn}$ is folded into \texttt{bias} so \texttt{relative\_vn} is not double-corrected (see the supplement distance-joint listing).
 
 \section{Evaluation}
 \label{sec:evaluation}
 
-Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-on $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$); D native \texttt{world.step()} wall-time only. Protocol: $dt = 1/60$, $e = 1$, zero friction/damping, sleep off; Datasets~A and~C use stock \texttt{World()} plus \texttt{constants.h} (\texttt{velocity\_iterations}$=50$, \texttt{position\_iterations}$=10$, $\beta = 0.2$, slop $0.016$). Dataset~B engines are unmodified whole-engine WASM traces. Full KRB on/off only (no A-only/B-only traces); the compile-time ablation scenes do not isolate which leak each component closed. $E = E_k + E_p$ (A rotational, B translational only); $E/E_0$.
+Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-on $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$); D native \texttt{world.step()} wall-time. Protocol: $dt = 1/60$, $e = 1$, zero friction and damping, sleep off; Datasets~A and~C use stock \texttt{World()} plus \texttt{constants.h} (\texttt{velocity\_iterations}$=8$, \texttt{position\_iterations}$=3$, $\beta = 0.2$, slop $0.016$, restitution threshold $0.01$). Dataset~B Gearbox2D rows are a native offline recapture (\texttt{logEnergy --format b}, translational \(E/E_0\)); Box2D-WASM, p2.js, and Matter.js remain unmodified whole-engine WASM traces. The ablation switch is full KRB on/off. $E = E_k + E_p$ (Datasets~A and~C include rotational KE; Dataset~B is translational only); the reported ratio is $E/E_0$.
 
 \small
 \begin{table}[htb]
-  \caption{Evaluation protocol and Dataset~C (KRB on, $8\,\mathrm{h}$ runs). Enclosure windowed $E/E_0$ uses $600\,\mathrm{s}$ windows of the $8\,\mathrm{h}$ trace, not a $600\,\mathrm{s}$ run. Dataset~D is ms/step native timing, not a Gearbox-versus-Box2D CPU comparison.}
+  \caption{Evaluation protocol. Dataset~C cells are KRB-on $8\,\mathrm{h}$ runs; enclosure $E/E_0$ uses $600\,\mathrm{s}$ windows of that trace.}
   \label{tab:protocol}
   \centering
   \scriptsize
@@ -177,22 +196,15 @@ Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-o
     Set & Scene & Horizon & Surface & Outcome \\
     \hline
     A & all & $600\,\mathrm{s}$ & \texttt{log-energy} & Table~\ref{tab:dataset-a} \\
-    B & floor, cradle & $600\,\mathrm{s}$ & WASM benchmarks & Table~\ref{tab:dataset-b} \\
-    C & enclosure & $8\,\mathrm{h}$ & \texttt{log-energy} & in box; $600\,\mathrm{s}$ win.\ $1.009 \to 0.977$ \\
-    C & cradle & $8\,\mathrm{h}$ & \texttt{log-energy} & $[1.034, 1.093]$; mean $1.053$ \\
-    D & A + stack & timed steps & native \texttt{g++} & Table~\ref{tab:dataset-d} \\
+    B & floor, cradle & $600\,\mathrm{s}$ & offline Gearbox + WASM others & Table~\ref{tab:dataset-b} \\
+    C & enclosure & $8\,\mathrm{h}$ & \texttt{log-energy} & in box; $600\,\mathrm{s}$ win.\ $1.006 \to 0.976$ \\
+    C & cradle & $8\,\mathrm{h}$ & \texttt{log-energy} & $[1.031, 1.074]$; mean $1.052$ \\
+    D & cradle + stack & timed steps & native \texttt{g++} & Table~\ref{tab:dataset-d} \\
     \hline
   \end{tabular}
 \end{table}
 
-\begin{figure}[htb]
-  \centering
-  \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-dataset-c.pdf}
-  \caption{Dataset~C KRB-on continuation to $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$): windowed $E/E_0$ means (cradle $60\,\mathrm{s}$, enclosure $600\,\mathrm{s}$); not an on/off ablation. Empirical scene bounds, not global invariants; enclosure shows slow loss, not the KRB-off SI gain of Figure~\ref{fig:ablation}b.}
-  \label{fig:dataset-c}
-\end{figure}
-
-\begin{figure}[htb]
+\begin{figure}[t]
   \centering
   \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-ablation.pdf}
   \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$. (a)~Elastic floor contact. (b)~High-rate enclosure; KRB on is a $60\,\mathrm{s}$ windowed mean, KRB off raw $1\,\mathrm{Hz}$ samples to tunneling ($t = 2.7\,\mathrm{s}$). (c)~Newton's cradle.}
@@ -212,22 +224,33 @@ Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-o
     Floor bounce & off & $6.53$ & climbing & runaway \\
     High-pressure circle & on & --- & $1.00$ & stayed in box \\
     High-pressure circle & off & --- & --- & escaped, step $161$ \\
-    Newton's cradle & on & $1.07$ & $1.05$ after $t=300$ & bounded offset \\
+    Newton's cradle & on & $1.05$ & $1.05$ after $t=300$ & bounded offset \\
     Newton's cradle & off & $1.79$ & climbing & secular gain \\
     \hline
   \end{tabular}
 \end{table}
 
+Figure~\ref{fig:dataset-c} continues the KRB-on traces to $8\,\mathrm{h}$.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-dataset-c.pdf}
+  \caption{Dataset~C KRB-on continuation to $8\,\mathrm{h}$ ($t = 28800\,\mathrm{s}$): windowed $E/E_0$ means (cradle $60\,\mathrm{s}$, enclosure $600\,\mathrm{s}$).}
+  \label{fig:dataset-c}
+\end{figure}
+
+Figure~\ref{fig:engines} and Table~\ref{tab:dataset-b} place the default KRB-on Gearbox2D build next to unmodified Box2D-WASM, p2.js, and Matter.js. Iteration counts and damping differ, so this is whole-engine context, not an in-engine KRB ablation. Gearbox rows use the same translational meter as the website adapters, logged offline.
+
 \begin{figure}[htb]
   \centering
   \includegraphics[width=0.80\columnwidth]{../figures/fig-energy-engines.pdf}
-  \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$ on unmodified engines. (a)~Elastic floor contact. (b)~Newton's cradle. Gearbox2D is default KRB-on WASM; other engines are whole-engine traces, not in-engine KRB ablation.}
+  \caption{Mechanical energy ratio $E/E_0$ over $600\,\mathrm{s}$. Gearbox2D is a native KRB-on recapture (translational meter); Box2D-WASM, p2.js, and Matter.js are unmodified website exports. (a)~Elastic floor contact. (b)~Newton's cradle.}
   \label{fig:engines}
 \end{figure}
 
 \small
 \begin{table}[htb]
-  \caption{Dataset~B: $E/E_0$ at $600\,\mathrm{s}$ on unmodified whole engines (cross-engine placement, not causal evidence that KRB explains Gearbox versus Box2D/p2/Matter; Dataset~A is the compile-time on/off ablation).}
+  \caption{Dataset~B: $E/E_0$ at $600\,\mathrm{s}$. Gearbox2D native recapture; other engines unmodified.}
   \label{tab:dataset-b}
   \centering
   \begin{tabular}{@{}llrl@{}}
@@ -238,7 +261,7 @@ Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-o
     Floor bounce & Box2D-WASM & $6.61$ & runaway \\
     Floor bounce & p2.js & $0.376$ & slow loss \\
     Floor bounce & Matter.js & $\approx 0$ & dead by $t\approx 160\,\mathrm{s}$ \\
-    Newton's cradle & Gearbox2D (KRB on) & $1.062$ & bounded offset \\
+    Newton's cradle & Gearbox2D (KRB on) & $1.051$ & bounded offset \\
     Newton's cradle & Box2D-WASM & $0.221$ & stepped loss \\
     Newton's cradle & p2.js & $0.320$ & slow loss \\
     Newton's cradle & Matter.js & $\approx 0$ & dead by $t\approx 40\,\mathrm{s}$ \\
@@ -249,57 +272,63 @@ Four datasets (Table~\ref{tab:protocol}): A--B $600\,\mathrm{s}$ energy; C KRB-o
 \subsection{Cost (Dataset D)}
 \label{sec:dataset-d}
 
-Per dynamic body: store $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta t$; per contact or distance-joint \texttt{preSolve}: $\mathrm{forceVn}$ dot, optional $\Gamma$, \texttt{workTerm}, one \texttt{sqrt}, bias update ($-\mathrm{forceVn}$ folded into joint \texttt{bias}). Zero extra PGS, velocity, or position iterations. Table~\ref{tab:dataset-d} is native \texttt{g++} on/off wall-time (\texttt{make log-timing}), not shipped WASM or Gearbox-versus-Box2D CPU.
+Per dynamic body, KRB stores $\mathrm{forceVelocity} = a_{\mathrm{ext}} \cdot \Delta t$; each contact or distance-joint \texttt{preSolve} adds a $\mathrm{forceVn}$ dot, optional $\Gamma$, a \texttt{workTerm}, one \texttt{sqrt}, and a bias update. There are no extra PGS, velocity, or position iterations. Table~\ref{tab:dataset-d} reports native \texttt{g++} on/off wall-time (\texttt{make log-timing}).
 
 \small
 \begin{table}[htb]
-  \caption{Dataset~D: native KRB on/off wall-time per \texttt{world.step()} (mean and repeat range, ms/step). Gearbox2D ships as WASM; these timings are native \texttt{g++} recapture (\texttt{make log-timing}), not shipped WASM cost and not Gearbox-versus-Box2D CPU. High-pressure circle KRB-off escapes early (Dataset~A enclosure); on/off timings are not a same-contact-load comparison---do not read the spread as KRB overhead. Traces: \texttt{data/timing/timing-summary-\{krb,nokrb\}.csv}.}
+  \caption{Dataset~D: native \texttt{g++} on/off wall-time per \texttt{world.step()} (mean and repeat range, ms/step). The stack is the contact-heavy scene and is not Dataset~A. Traces: supplement \texttt{data/timing/}.}
   \label{tab:dataset-d}
   \centering
-  \begin{tabular}{@{}lrrl@{}}
+  \begin{tabular}{@{}lrr@{}}
     \hline
-    Scene & KRB on & KRB off & Notes \\
+    Scene & KRB on & KRB off \\
     \hline
-    Floor bounce & $0.010$ ($0.005$--$0.018$) & $0.009$ ($0.005$--$0.017$) & Dataset A \\
-    High-pressure circle & $0.012$ ($0.012$--$0.013$) & $0.006$ ($0.006$--$0.007$) & Dataset A \\
-    Newton's cradle & $0.048$ ($0.047$--$0.048$) & $0.049$ ($0.047$--$0.050$) & Dataset A \\
-    Large stack & $0.377$ ($0.372$--$0.381$) & $0.375$ ($0.369$--$0.380$) & not Dataset A \\
+    Newton's cradle & $0.051$ ($0.050$--$0.052$) & $0.052$ ($0.050$--$0.053$) \\
+    Large stack & $0.448$ ($0.445$--$0.453$) & $0.426$ ($0.419$--$0.432$) \\
     \hline
   \end{tabular}
 \end{table}
 
+Paper scenes sit in timer scatter; the denser stack is about $+5\%$ mean \texttt{world.step()} with non-overlapping repeats, and that is whole-step wall time, not isolated \texttt{preSolve}.
+
 \section{Limitations}
 \label{sec:limitations}
 
-KRB is a per-constraint audit, not a coupled one; resolving one constraint can force work on another (e.g.\ horizontal collision lifting a pendulum rod).
+KRB is a per-constraint audit, not a coupled one: resolving one constraint can force work on another, as when a horizontal collision lifts a pendulum rod. In the Newton's cradle that shows up as a step from $\sim 0.96$ to $\sim 1.05$ near four minutes (Figure~\ref{fig:ablation}c); the $8\,\mathrm{h}$ band is in Table~\ref{tab:protocol} and Figure~\ref{fig:dataset-c}a. The Dataset~C enclosure stays in-box; $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.006 \to 0.976$ (Figure~\ref{fig:dataset-c}b), a slow loss of about $0.030\,E_0$ rather than the KRB-off SI gain of Figure~\ref{fig:ablation}b.
 
-\textbf{Evaluation regime.} In scope: single-pass SI/PGS, symplectic Euler (Component~A not evaluated on other integrators), contacts and distance joints, $e = 1$, zero friction/damping, sleep off, and the Gearbox \texttt{World()}/\texttt{constants.h} knobs in Section~\ref{sec:evaluation}. Energy results in this paper are reported only for this regime; friction, $e < 1$, other $dt$, or different iteration counts are out of scope. Dataset~A/C cradle energy includes rotational $E_k$; Dataset~B cradle $E/E_0$ is translational only---not the same meter as Figure~\ref{fig:ablation}c ($1.07$) versus Table~\ref{tab:dataset-b} Gearbox ($1.062$). Shown limits: coupled cradle $\sim 7\%$ step then $E/E_0 \in [1.034, 1.093]$ (mean $1.053$) through $8\,\mathrm{h}$ (Figures~\ref{fig:ablation}c, \ref{fig:dataset-c}a); Dataset~C enclosure slow loss $1.009 \to 0.977$ (Figure~\ref{fig:dataset-c}b; $\Delta \approx 0.032$ in windowed $E/E_0$); speculative contacts omit Component~B; joint sqrt cap leaves resting sag; KRB-off enclosure escape (Figure~\ref{fig:ablation}b) is SI leak, not KRB failure; unmodified Box2D/p2/Matter (Figure~\ref{fig:engines}b) dissipate rather than gain. Out of scope: frictional or $e < 1$ games, hinges (engine-only), XPBD/TGS, global conservation. Variational integrators \cite{Hairer2006} are a different claim.
+Energy results use the protocol in Section~\ref{sec:evaluation}: single-pass SI/PGS, symplectic Euler, contacts and distance joints, $e = 1$, zero friction and damping, sleep off, and the stock World defaults and \texttt{constants.h} knobs. Friction, $e < 1$, other $dt$, and other iteration counts were not measured.
 
-No A-only/B-only ablation; full KRB versus \texttt{-DGEARBOX\_DISABLE\_KRB} is the measured switch. Dataset~B is placement only (Section~\ref{sec:evaluation}). Coupled-constraint audit, tunneling, and ill-conditioned chains remain future work.
+A coupled-constraint audit, tunneling, and long ill-conditioned chains remain future work, as do other integrators, hinge joints, and a switch to XPBD or TGS. Variational integrators \cite{Hairer2006} are a different claim.
 
 \section{Conclusion}
 
-KRB is a \texttt{preSolve} audit for the contacts-and-distance-joints recipe in Section~\ref{sec:implementation} within velocity-level SI solvers \cite{Catto2005}: Component~A compensates symplectic-Euler force drift; Component~B taxes PE work of expected $\Delta h$, at a few scalars per constraint with zero extra PGS iterations; Table~\ref{tab:dataset-d} is native \texttt{g++} wall-time only (not shipped WASM or Gearbox-versus-Box2D CPU). Coupled cradle scenes show a bounded $E/E_0$ offset after an early step, not full cradle compensation. KRB-on is not a perfect energy meter: the Dataset~C enclosure drifts slowly ($1.009 \to 0.977$, drop of $0.032$ in windowed $E/E_0$, about $3\%$ of $E_0$ over $8\,\mathrm{h}$), i.e.\ loss not conservation and not the KRB-off SI gain of Dataset~A. The coupled-constraint gap in Section~\ref{sec:limitations} remains open.
+KRB is a \texttt{preSolve} audit for sequential-impulse solvers \cite{Catto2005}: Component~A subtracts symplectic-Euler force drift from the impact velocity, and Component~B taxes the expected correction $\Delta h$. Contact scenes in the Gearbox2D ablation stay bounded; the coupled-constraint gap is in Section~\ref{sec:limitations}.
 
 \small
 \bibliographystyle{jcgt}
 \bibliography{krb}
 
-\vspace{-6pt}
+\vspace{-8pt}
 \section*{Index of Supplemental Materials}
 \small
-Paths are relative to \texttt{studies/kinematic\_restitution\_balancing/} unless noted as repository-root (\texttt{cpp/...}).
-\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
-\item \texttt{jcgt/krb.tex}, \texttt{jcgt/krb.bib}, \texttt{jcgt/build-notes.md}.
-\item \texttt{KRB\_Whitepaper.md} --- number mirror (not authoritative).
-\item \texttt{figures/fig-energy-*.pdf}, \texttt{plot-energy-*.py} (including \texttt{plot-energy-dataset-c.py}).
-\item \texttt{data/README.md}, \texttt{data/*-{krb,nokrb}.csv}, \texttt{data/dataset-b-*-600s.csv}, \texttt{data/dataset-c/}, \texttt{data/timing/}.
-\item \texttt{log-energy.cpp}, \texttt{log-timing.cpp}.
-\item \texttt{cpp/src/solvers/distance-joint.cpp}, \texttt{cpp/src/world/contact-constraint.cpp}.
-\end{itemize}
+{\raggedright
+The archive \texttt{krb-supplement.zip} (ISC) is distributed with this article.
+Paths are relative to the zip root:
+\path{README.md};
+\path{listings/contact-presolve.cpp};
+\path{listings/distance-joint-presolve.cpp};
+\path{listings/integrate-force-velocity.cpp};
+\path{data/dataset-a/};
+\path{data/dataset-b/};
+\path{data/dataset-c/};
+\path{data/timing/};
+\path{plots/};
+\path{figures/}.
+Recapture uses Gearbox2D tag \texttt{krb-jcgt-1} at \url{https://github.com/JSideris/Gearbox2D}.
+\par}
 
 \section*{Author Contact and License}
-\noindent Joshua Sideris, Gear3Games --- \href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}, \href{https://gearbox2d.com}{gearbox2d.com}. Supplemental code and data are ISC-licensed; see \texttt{LICENSE} in the Gearbox2D repository (\href{https://github.com/JSideris/Gearbox2D}{github.com/JSideris/Gearbox2D}).
+\noindent Joshua Sideris, Gear3Games --- \href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}, \href{https://gearbox2d.com}{gearbox2d.com}. Supplemental code and data in \texttt{krb-supplement.zip} are ISC-licensed.
 
 \afterdoc
 
