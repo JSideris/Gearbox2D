@@ -63,35 +63,29 @@ The correction is independent of the bias method.
 \subsection{Component B: Kinematic energy balancing}
 \label{sec:component_b}
 
-Consider a dynamic body against a static floor, contact normal $\mathbf{n}$ as in $v = (v_B - v_A)\cdot\mathbf{n}$, with center-of-mass motion along $\mathbf{n}$. If the position solver will raise the body by an expected distance $\Delta h$ (Section~\ref{sec:deff}; predicted Baumgarte displacement this step, not the work of the impulses the solver actually applied), free-flight rewind to the surface is $v_{\mathrm{impact}}^2 = v_{\mathrm{surf}}^2 - 2(\mathbf{a}\cdot\mathbf{n})\Delta h$, hence
-$v_{\mathrm{surf}}^2 = v_{\mathrm{impact}}^2 + 2(\mathbf{a}\cdot\mathbf{n})\Delta h$.
-Equivalently, $\Delta E_p = -m(\mathbf{a}\cdot\mathbf{n})\Delta h$ taken from $\tfrac12 m v^2$ yields the same update: $\Delta(v^2) = -2\Delta E_p/m = 2(\mathbf{a}\cdot\mathbf{n})\Delta h$, so $m$ cancels. The implementation applies this identity to the relative normal speed with
-$\mathbf{a}_{\mathrm{rel}} = \mathbf{a}_B - \mathbf{a}_A$
-(Listing~\ref{lst:contact}, $\texttt{forceVn}/\Delta t$). When body~A is static, $\mathbf{a}=\mathbf{a}_{\mathrm{rel}}$. If both bodies share the same external acceleration, $\mathbf{a}_{\mathrm{rel}} = \mathbf{0}$ and Component~B is a no-op, consistent with an inverse-mass-weighted correction leaving pair-COM height unchanged. The identity does not include rotation, tangent motion, or impulse work; those residuals are the coupled-graph gap (Section~\ref{sec:limitations}).
-When available kinetic energy cannot pay the tax, clamp with $\max(0,\cdot)$ and apply restitution $v_{\mathrm{final}} = e\, v_{\mathrm{surf}}$:
+After Component~A, tax (or credit) the launch speed for the potential-energy work of this step's expected correction $\Delta h$ (Section~\ref{sec:deff}). For a dynamic body on a static floor, center-of-mass motion along $\mathbf{n}$, free-flight rewind is $v_{\mathrm{impact}}^2 = v_{\mathrm{surf}}^2 - 2(\mathbf{a}\cdot\mathbf{n})\Delta h$. Equivalently, $\Delta E_p = -m(\mathbf{a}\cdot\mathbf{n})\Delta h$ taken from $\tfrac12 m v^2$ gives $\Delta(v^2) = 2(\mathbf{a}\cdot\mathbf{n})\Delta h$, so $m$ cancels. The implementation uses the relative normal acceleration $\mathbf{a}_{\mathrm{rel}} = \mathbf{a}_B - \mathbf{a}_A$ (Listing~\ref{lst:contact}, $\texttt{forceVn}/\Delta t$):
 \begin{equation}
-v_{\mathrm{surf}} = \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n}) \Delta h\bigr)}.
+v_{\mathrm{surf}} = \sqrt{\max\bigl(0,\, v_{\mathrm{impact}}^2 + 2 (\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n}) \Delta h\bigr)},
+\qquad v_{\mathrm{final}} = e\, v_{\mathrm{surf}}.
 \label{eq:vsurf}
 \end{equation}
-For ground collisions ($\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n} < 0$), Component~B taxes launch velocity to pay for increased PE; for ceiling collisions ($\mathbf{a}_{\mathrm{rel}} \cdot \mathbf{n} > 0$), it credits velocity for work against external forces.
+Ground collisions ($\mathbf{a}_{\mathrm{rel}}\cdot\mathbf{n}<0$) tax launch speed; ceiling collisions credit it. If both bodies share the same $\mathbf{a}_{\mathrm{ext}}$, $\mathbf{a}_{\mathrm{rel}}=\mathbf{0}$ and Component~B is a no-op. Rotation, tangent motion, and impulse work are outside this identity (Section~\ref{sec:limitations}).
 
 \subsection{Effective displacement prediction}
 \label{sec:deff}
 
-$\Delta h$ in Equation~\eqref{eq:vsurf} is a per-class \emph{predictor} of this step's Baumgarte travel---not the full constraint error, and not a measurement of the impulses \texttt{solvePosition} actually applied. Contacts and distance joints share that identity; they do not share a predictor.
+Contacts and distance joints share Equation~\eqref{eq:vsurf}; they do not share $\Delta h$.
 
-For bouncing contacts the velocity bias is restitution, so Component~B predicts the later position pass. After slop $s$, the kinematic bounce $v_{\mathrm{launch}} = -e \cdot v_{\mathrm{impact}}$ partially resolves overlap before that pass. The remaining overlap is the effective depth
-\begin{equation}
-d_{\mathrm{eff}} = \max\bigl(0,\, (d - s) - (v_{\mathrm{launch}} \cdot \Delta t)\bigr).
-\label{eq:deff}
-\end{equation}
-Equation~\eqref{eq:deff} uses that pre-tax launch. Substituting the post-tax $v_{\mathrm{final}} = e\,v_{\mathrm{surf}}$ from Equation~\eqref{eq:vsurf} would make $\Delta h$ implicit; we keep the explicit predictor. On a ground tax, $|v_{\mathrm{final}}| < |v_{\mathrm{launch}}|$, so $d_{\mathrm{eff}}$ is slightly low and the tax is slightly light---same sign as the original leak, and $O(\Gamma\,|a_{\mathrm{rel}}|\Delta t/|v_{\mathrm{impact}}|)$ when $d_{\mathrm{eff}}$ is interior. If $v_{\mathrm{launch}}\Delta t$ already clears $(d-s)$, then $d_{\mathrm{eff}} = 0$ and there is no loop.
-Many engines clamp per-iteration correction (e.g.\ Gearbox2D \texttt{MAX\_POSITION\_CORRECTION}). The contact predictor is then
-\begin{equation}
-\Delta h = \min(d_{\mathrm{eff}}, \Delta h_{\max}) \cdot \Gamma,
+For a bouncing contact, the kinematic bounce $v_{\mathrm{launch}} = -e\cdot v_{\mathrm{impact}}$ clears some overlap before the position pass. After slop $s$,
+\begin{align}
+d_{\mathrm{eff}} &= \max\bigl(0,\, (d - s) - v_{\mathrm{launch}}\Delta t\bigr),
+\label{eq:deff}\\
+\Delta h &= \min(d_{\mathrm{eff}}, \Delta h_{\max})\cdot\Gamma,
 \label{eq:deltah}
-\end{equation}
-where $\Gamma = 1 - (1 - \beta)^n$ is the isolated geometric series (remaining error $\times(1-\beta)$ each iteration) over $n$ position iterations with factor $\beta$. It is not a fit to coupled NGS. When $d_{\mathrm{eff}} > \Delta h_{\max}$ every iteration, real travel is closer to $n\beta\Delta h_{\max}$ than $\Gamma\Delta h_{\max}$; the floor bounce does not hit that regime. Distance joints use the bias travel $\beta C$ (Section~\ref{sec:joints}), not Equation~\eqref{eq:deltah}.
+\end{align}
+with $\Gamma = 1-(1-\beta)^n$ over $n$ position iterations. Distance joints use the bias travel $\Delta h_{\mathrm{joint}} = \beta C$ (Section~\ref{sec:joints}), not $\Gamma$.
+
+These $\Delta h$ values are explicit predictors of Baumgarte travel, not a measurement of the later position pass. Using the pre-tax $v_{\mathrm{launch}}$ keeps $\Delta h$ closed-form; a post-tax $v_{\mathrm{final}}$ would make it implicit. On a ground tax the predictor is then slightly low---same sign as the original leak. $\Gamma$ is the isolated geometric series, not a fit to coupled NGS. If $v_{\mathrm{launch}}\Delta t$ already clears $(d-s)$, $d_{\mathrm{eff}}=0$ and there is no loop.
 
 \section{Constraint application}
 \label{sec:constraints}
@@ -296,7 +290,7 @@ Paper scenes sit in timer scatter; the denser stack is about $+5\%$ mean \texttt
 
 KRB is a per-constraint audit, not a coupled one: resolving one constraint can force work on another, as when a horizontal collision lifts a pendulum rod. In the Newton's cradle that shows up as a step from $\sim 0.96$ to $\sim 1.05$ near four minutes (Figure~\ref{fig:ablation}c); the $8\,\mathrm{h}$ band is in Table~\ref{tab:protocol} and Figure~\ref{fig:dataset-c}a. The Dataset~C enclosure stays in-box; $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.006 \to 0.976$ (Figure~\ref{fig:dataset-c}b), a slow loss of about $0.030\,E_0$ rather than the KRB-off SI gain of Figure~\ref{fig:ablation}b.
 
-Energy results use the protocol in Section~\ref{sec:evaluation}: single-pass SI/PGS, symplectic Euler, contacts and distance joints, $e = 1$, zero friction and damping, sleep off, and the stock World defaults and \texttt{constants.h} knobs. Friction, $e < 1$, other $dt$, and other iteration counts were not measured.
+Energy results use the protocol in Section~\ref{sec:evaluation}: single-pass SI/PGS, symplectic Euler, contacts and distance joints, $e = 1$, zero friction and damping, sleep off, and the stock World defaults and \texttt{constants.h} knobs. That meter is the setting where the two leaks in Section~\ref{sec:introduction} are visible. Friction dissipates, and $e<1$ skips the bounce tax whenever \texttt{shouldBounce} is false, so either would mask the audit rather than test it. The step $dt=1/60$ with 8 velocity and 3 position iterations is the usual real-time SI deploy (Box2D's suggested counts); $\Gamma$ uses that deployed $n$. Other $dt$ and iteration counts were not swept.
 
 A coupled-constraint audit, tunneling, and long ill-conditioned chains remain future work, as do other integrators, hinge joints, and a switch to XPBD or TGS. Variational integrators \cite{Hairer2006} are a different claim.
 
