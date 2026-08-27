@@ -99,6 +99,52 @@ static std::pair<int, int> fixturePairKey(int a, int b) {
     return {a, b};
 }
 
+static bool fixturesCanCollide(const Fixture* fA, const Fixture* fB) {
+    if (!fA || !fB || fA->body == fB->body) {
+        return false;
+    }
+    if (fA->isSensor() || fB->isSensor()) {
+        return false;
+    }
+    const uint32_t catA = fA->getCategoryBits();
+    const uint32_t maskA = fA->getMaskBits();
+    const uint32_t catB = fB->getCategoryBits();
+    const uint32_t maskB = fB->getMaskBits();
+    return (catA & maskB) != 0 && (catB & maskA) != 0;
+}
+
+static void markSynthesizedPhysicalCollision(Fixture* fA, Fixture* fB) {
+	if (!fA || !fB) {
+		return;
+	}
+	World& world = fA->world;
+	world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fA->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+	world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(fB->worldIndex, FIXTURE_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+	world.liveBodyIntData[GET_BODY_IDATA_INDEX(fA->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+	world.liveBodyIntData[GET_BODY_IDATA_INDEX(fB->body->worldIndex, BODY_IDATA_FLAGS)] |= HAS_PHYSICAL_COLLISION;
+}
+
+static void trySynthesizeFixturePair(
+    CollisionSolver& collisionSolver,
+    std::unordered_set<std::pair<int, int>, PairHash, PairEqual>& existingPairs,
+    Fixture* fA,
+    Fixture* fB,
+    float dt) {
+    if (!fixturesCanCollide(fA, fB)) {
+        return;
+    }
+    const int idxA = fA->worldIndex;
+    const int idxB = fB->worldIndex;
+    const auto key = fixturePairKey(idxA, idxB);
+    if (existingPairs.count(key) != 0) {
+        return;
+    }
+    if (collisionSolver.solve(idxA, idxB, dt)) {
+        existingPairs.insert(key);
+        markSynthesizedPhysicalCollision(fA, fB);
+    }
+}
+
 static void expandSleepingImpactChain(
     CollisionSolver& collisionSolver,
     const std::vector<Fixture*>& fixturesList,
@@ -237,15 +283,32 @@ static void expandSleepingImpactChain(
                     if (!fB) {
                         continue;
                     }
-                    int idxA = fA->worldIndex;
-                    int idxB = fB->worldIndex;
-                    auto key = fixturePairKey(idxA, idxB);
-                    if (existingPairs.count(key) != 0) {
+                    trySynthesizeFixturePair(collisionSolver, existingPairs, fA, fB, dt);
+                }
+            }
+        }
+    }
+
+    for (Body* dynamicBody : flooded) {
+        if (!dynamicBody || dynamicBody->type == ObjectType::FIXED_OBJECT) {
+            continue;
+        }
+        for (Body* fixedBody : bodiesList) {
+            if (!fixedBody || fixedBody->type != ObjectType::FIXED_OBJECT) {
+                continue;
+            }
+            if (dynamicBody->getInverseMass() + fixedBody->getInverseMass() == 0.0f) {
+                continue;
+            }
+            for (Fixture* fDynamic : dynamicBody->fixtures) {
+                if (!fDynamic) {
+                    continue;
+                }
+                for (Fixture* fFixed : fixedBody->fixtures) {
+                    if (!fFixed) {
                         continue;
                     }
-                    if (collisionSolver.solve(idxA, idxB, dt)) {
-                        existingPairs.insert(key);
-                    }
+                    trySynthesizeFixturePair(collisionSolver, existingPairs, fDynamic, fFixed, dt);
                 }
             }
         }

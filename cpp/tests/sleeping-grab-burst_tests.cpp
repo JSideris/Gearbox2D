@@ -3,6 +3,7 @@
 #include "body.h"
 #include "fixture.h"
 #include "joint.h"
+#include "constants.h"
 #include <cmath>
 #include <vector>
 
@@ -543,6 +544,108 @@ static void assertBikeBurstWithinAwakeOrder(const BikeGrabMetrics& awake, const 
 	EXPECT_LE(sleep.maxSpeed, speedLimit);
 }
 
+static bool aabbOverlaps(const Aabb& a, const Aabb& b) {
+	return a.min.x <= b.max.x && a.max.x >= b.min.x &&
+		a.min.y <= b.max.y && a.max.y >= b.min.y;
+}
+
+static bool dynamicOverlapsFloor(const Body* body, const Aabb& floorAabb) {
+	if (!isDynamicBody(body) || body->fixtures.empty()) {
+		return false;
+	}
+	for (Fixture* fixture : body->fixtures) {
+		if (fixture && aabbOverlaps(fixture->aabb, floorAabb)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static int countSleepingDynamics(const World& world) {
+	int count = 0;
+	const int n = world.getBodyCount();
+	for (int i = 0; i < n; ++i) {
+		Body* body = world.getBodyAtIndex(i);
+		if (isDynamicBody(body) && body->isSleeping) {
+			++count;
+		}
+	}
+	return count;
+}
+
+static int countFloorOverlappingDynamicsWithPhysicalCollision(const World& world, int floorId) {
+	Body* floor = world.getBody(floorId);
+	if (floor == nullptr || floor->fixtures.empty()) {
+		return 0;
+	}
+	const Aabb floorAabb = floor->fixtures[0]->aabb;
+	int count = 0;
+	const int n = world.getBodyCount();
+	for (int i = 0; i < n; ++i) {
+		Body* body = world.getBodyAtIndex(i);
+		if (!dynamicOverlapsFloor(body, floorAabb)) {
+			continue;
+		}
+		const int flags = world.liveBodyIntData[GET_BODY_IDATA_INDEX(body->worldIndex, BODY_IDATA_FLAGS)];
+		if ((flags & HAS_PHYSICAL_COLLISION) != 0) {
+			++count;
+		}
+	}
+	return count;
+}
+
+struct PileFirstStepReconstruction {
+	bool allDynamicSleepingAtGrab = false;
+	bool grabAwakeAfterFirstStep = false;
+	int stillSleepingDynamics = 0;
+	int floorPhysicalCount = 0;
+};
+
+static PileFirstStepReconstruction runPileGrabFirstStep(bool canSleep, int grabId) {
+	World world;
+	world.setTimeStep(kDt);
+	world.setGravity(0.0f, kGravityY);
+	world.setHasFriction(true);
+	world.setHasRestitution(false);
+
+	world.createBody(kFloorId, makeFloorOptions());
+	world.createBody(kGrabId, makeBoxOptions(kStackX, kBottomY, canSleep));
+	for (int i = 0; i < kStackAbove; ++i) {
+		const float y = kBottomY - kStrideY * static_cast<float>(i + 1);
+		world.createBody(kNeighborBaseId + i, makeBoxOptions(kStackX, y, canSleep));
+	}
+
+	settleWorld(world, canSleep);
+
+	PileFirstStepReconstruction metrics;
+	metrics.allDynamicSleepingAtGrab = allDynamicSleeping(world);
+
+	Body* target = world.getBody(grabId);
+	if (target == nullptr) {
+		return metrics;
+	}
+
+	attachComMouseSpring(world, target, kPileSpringHz);
+	// Undo contact-graph cascade from forceWakeUp so only the grab target is
+	// BVH-awake before step 0 (matches the sleep-skip gap under test).
+	const int n = world.getBodyCount();
+	for (int i = 0; i < n; ++i) {
+		Body* body = world.getBodyAtIndex(i);
+		if (!isDynamicBody(body) || body->getId() == grabId) {
+			continue;
+		}
+		if (!body->isSleeping) {
+			body->sleep();
+		}
+	}
+	world.step();
+
+	metrics.grabAwakeAfterFirstStep = !target->isSleeping;
+	metrics.stillSleepingDynamics = countSleepingDynamics(world);
+	metrics.floorPhysicalCount = countFloorOverlappingDynamicsWithPhysicalCollision(world, kFloorId);
+	return metrics;
+}
+
 } // namespace
 
 TEST(SleepingGrabBurst, SandboxPileComGrabStaysNearAwake) {
@@ -573,4 +676,20 @@ TEST(SleepingGrabBurst, MotorcycleWheelGrabNoVelocitySpikeVsAwake) {
 	const BikeGrabMetrics awake = runBikeGrab(false, [](const BikeIsland& island) { return island.rearWheel; });
 	const BikeGrabMetrics sleep = runBikeGrab(true, [](const BikeIsland& island) { return island.rearWheel; });
 	assertBikeBurstWithinAwakeOrder(awake, sleep);
+}
+
+TEST(SleepingGrabBurst, PileWakeReconstructsFloorContactsVsAwakeTwin) {
+	// Grab the top box with target-only BVH wake (no contact-graph cascade) so
+	// flooded lower boxes need expandSleepingImpactChain floor synthesis.
+	const int topGrabId = kNeighborBaseId + (kStackAbove - 1);
+	const PileFirstStepReconstruction awake = runPileGrabFirstStep(false, topGrabId);
+	const PileFirstStepReconstruction sleep = runPileGrabFirstStep(true, topGrabId);
+
+	ASSERT_TRUE(sleep.allDynamicSleepingAtGrab) << "sleep arm must be sleeping before grab";
+	ASSERT_TRUE(sleep.grabAwakeAfterFirstStep) << "grab target must wake on first step";
+	EXPECT_EQ(sleep.stillSleepingDynamics, 0) << "flood wake should clear sleepers";
+
+	EXPECT_GT(awake.floorPhysicalCount, 0) << "awake twin must have floor physical contacts";
+	EXPECT_EQ(sleep.floorPhysicalCount, awake.floorPhysicalCount)
+		<< "sleep grab must reconstruct the same floor contact coverage as awake grab";
 }
