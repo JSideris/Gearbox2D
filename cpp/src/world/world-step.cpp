@@ -19,6 +19,14 @@ bool bodyIsStaticLike(const Body* body) {
 // asleep. Do not use per-body contactCount==0: mask-0 engines and hanging
 // pendulums would never remain sleeping.
 void wakeUnsupportedSleepingIslands(const std::vector<Body*>& bodiesList) {
+	if (bodiesList.empty()) {
+		return;
+	}
+	const Vec2 g = bodiesList[0]->world.getGravity();
+	if (g.magnitudeSquared() <= 1e-12f) {
+		return;
+	}
+
 	int maxIndex = -1;
 	for (Body* body : bodiesList) {
 		if (body && body->worldIndex > maxIndex) {
