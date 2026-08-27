@@ -352,17 +352,22 @@ void SpringJoint::solveFast() {
 
 void SpringJoint::solveFastSIMD(SpringJoint** joints) {
 #if HWY_TARGET != HWY_SCALAR
+    bool anySkip = false;
     for (int i = 0; i < 4; ++i) {
         const float stretch = ((joints[i]->bodyB->getPosition() + joints[i]->rB) -
             (joints[i]->bodyA->getPosition() + joints[i]->rA)).magnitude() - joints[i]->length;
         if (skipSpringSolveOnSupportedWake(joints[i]->bodyA, joints[i]->bodyB, stretch, joints[i]->_dt)) {
-            for (int j = 0; j < 4; ++j) {
-                joints[j]->solveFast();
-            }
-            return;
+            anySkip = true;
+            break;
         }
     }
-    // Load joint properties
+    if (anySkip) {
+        for (int i = 0; i < 4; ++i) {
+            joints[i]->solveFast();
+        }
+        return;
+    }
+
     V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
     V128 bias = v128_make_f32(joints[0]->bias, joints[1]->bias, joints[2]->bias, joints[3]->bias);
     V128 gamma = v128_make_f32(joints[0]->gamma, joints[1]->gamma, joints[2]->gamma, joints[3]->gamma);

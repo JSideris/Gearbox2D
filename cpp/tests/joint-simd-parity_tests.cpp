@@ -187,6 +187,91 @@ void expectSpringBodiesNear(const SpringBodySnapshot& a, const SpringBodySnapsho
 	EXPECT_NEAR(a.wB, b.wB, kTol) << "lane " << lane;
 }
 
+SpringJoint* createDynamicSpringPair(
+	World& world,
+	int baseId,
+	float frequencyHz,
+	float anchorBx,
+	float dynamicBy) {
+	const int dynamicAId = baseId;
+	const int dynamicBId = baseId + 1;
+	const int springId = baseId + 10;
+
+	world.createBody(dynamicAId, makeCircleOptions(0.0f, 0.0f, 1.0f, ObjectType::DYNAMIC_OBJECT));
+	world.createBody(dynamicBId, makeCircleOptions(2.0f, dynamicBy, 1.0f, ObjectType::DYNAMIC_OBJECT));
+
+	world.createSpringJoint(
+		springId, dynamicAId, dynamicBId,
+		0.0f, 0.0f, anchorBx, 0.0f,
+		2.0f, frequencyHz, 0.8f);
+
+	return static_cast<SpringJoint*>(world.getJoint(springId));
+}
+
+SpringJoint* createFixedDynamicSpringPair(
+	World& world,
+	int baseId,
+	float frequencyHz,
+	float dynamicX,
+	float anchorBx) {
+	const int fixedId = baseId;
+	const int dynamicId = baseId + 1;
+	const int springId = baseId + 10;
+
+	world.createBody(fixedId, makeBoxOptions(0.0f, 0.0f, 0.0f, ObjectType::FIXED_OBJECT));
+	world.createBody(dynamicId, makeCircleOptions(dynamicX, 0.0f, 1.0f, ObjectType::DYNAMIC_OBJECT));
+
+	world.createSpringJoint(
+		springId, fixedId, dynamicId,
+		0.0f, 0.0f, anchorBx, 0.0f,
+		2.0f, frequencyHz, 0.8f);
+
+	return static_cast<SpringJoint*>(world.getJoint(springId));
+}
+
+void configureSpringWakeWorld(World& world) {
+	world.setTimeStep(kDt);
+	world.setGravity(0.0f, 9.81f);
+}
+
+void stampSupportedWake(Body* a, Body* b) {
+	a->sleptOnSupport = true;
+	b->sleptOnSupport = true;
+	a->timeSinceWake = 0.0f;
+	b->timeSinceWake = 0.0f;
+}
+
+struct HingeSolveSnapshot {
+	SolverData sA;
+	SolverData sB;
+};
+
+HingeJoint* createHingePair(World& world, int baseId, float wA, float wB) {
+	const int fixedId = baseId;
+	const int dynamicId = baseId + 1;
+	const int hingeId = baseId + 10;
+
+	world.createBody(fixedId, makeBoxOptions(0.0f, 0.0f, 0.0f, ObjectType::FIXED_OBJECT));
+	world.createBody(dynamicId, makeBoxOptions(1.0f, 0.0f, 1.0f, ObjectType::DYNAMIC_OBJECT));
+	world.createHingeJoint(hingeId, fixedId, dynamicId, 0.0f, 0.0f, 0.0f, 0.0f);
+
+	HingeJoint* hinge = static_cast<HingeJoint*>(world.getJoint(hingeId));
+	hinge->preSolve(kDt);
+	hinge->bodyA->setAngularVelocity(wA);
+	hinge->bodyB->setAngularVelocity(wB);
+	return hinge;
+}
+
+HingeSolveSnapshot runHingeScalar(HingeJoint* hinge, const HingeSolveSnapshot& initial) {
+	hinge->context.a = const_cast<SolverData*>(&initial.sA);
+	hinge->context.b = const_cast<SolverData*>(&initial.sB);
+	hinge->solveFast();
+	HingeSolveSnapshot out;
+	out.sA = *static_cast<SolverData*>(hinge->context.a);
+	out.sB = *static_cast<SolverData*>(hinge->context.b);
+	return out;
+}
+
 } // namespace
 
 TEST(JointSimdParity, GearSolveFastMatchesScalar) {
@@ -303,6 +388,168 @@ TEST(JointSimdParity, SpringSolveFastMatchesScalar) {
 		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.b)->v.x, scalarOut[i].sB.v.x, kTol) << "lane " << i;
 		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.b)->v.y, scalarOut[i].sB.v.y, kTol) << "lane " << i;
 		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.b)->w, scalarOut[i].sB.w, kTol) << "lane " << i;
+	}
+}
+
+TEST(JointSimdParity, SpringPreSolveSupportedWakeMatchesScalar) {
+	World scalarWorld;
+	configureSpringWakeWorld(scalarWorld);
+	SpringJoint* scalarSprings[4];
+	SpringBodySnapshot before[4];
+
+	// Lane 0: both dynamic, supported wake, skip warm-start apply.
+	scalarSprings[0] = createDynamicSpringPair(scalarWorld, 600, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(scalarSprings[0]->bodyA, scalarSprings[0]->bodyB);
+	before[0] = captureSpringBodies(scalarSprings[0]);
+
+	// Lane 1: fixed + dynamic, stretch below slop, supported wake.
+	scalarSprings[1] = createFixedDynamicSpringPair(scalarWorld, 620, 25.0f, 2.005f, 0.0f);
+	stampSupportedWake(scalarSprings[1]->bodyA, scalarSprings[1]->bodyB);
+	before[1] = captureSpringBodies(scalarSprings[1]);
+
+	// Lane 2: fixed + dynamic, stretch above slop, supported wake (mouse-like pull).
+	scalarSprings[2] = createFixedDynamicSpringPair(scalarWorld, 640, 25.0f, 2.08f, 0.0f);
+	stampSupportedWake(scalarSprings[2]->bodyA, scalarSprings[2]->bodyB);
+	before[2] = captureSpringBodies(scalarSprings[2]);
+
+	// Lane 3: both dynamic, wake window expired.
+	scalarSprings[3] = createDynamicSpringPair(scalarWorld, 660, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(scalarSprings[3]->bodyA, scalarSprings[3]->bodyB);
+	scalarSprings[3]->bodyA->timeSinceWake = 25.0f * kDt;
+	scalarSprings[3]->bodyB->timeSinceWake = 25.0f * kDt;
+	before[3] = captureSpringBodies(scalarSprings[3]);
+
+	SpringBodySnapshot scalarOut[4];
+	for (int i = 0; i < 4; ++i) {
+		scalarSprings[i]->preSolve(kDt);
+		scalarOut[i] = captureSpringBodies(scalarSprings[i]);
+		for (int j = 0; j < 2; ++j) {
+			if (i == 0 || i == 1) {
+				EXPECT_NEAR(scalarOut[i].vAx, before[i].vAx, kTol);
+				EXPECT_NEAR(scalarOut[i].vAy, before[i].vAy, kTol);
+				EXPECT_NEAR(scalarOut[i].vBx, before[i].vBx, kTol);
+				EXPECT_NEAR(scalarOut[i].vBy, before[i].vBy, kTol);
+			}
+		}
+	}
+
+	World simdWorld;
+	configureSpringWakeWorld(simdWorld);
+	SpringJoint* simdSprings[4];
+	simdSprings[0] = createDynamicSpringPair(simdWorld, 700, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(simdSprings[0]->bodyA, simdSprings[0]->bodyB);
+	simdSprings[1] = createFixedDynamicSpringPair(simdWorld, 720, 25.0f, 2.005f, 0.0f);
+	stampSupportedWake(simdSprings[1]->bodyA, simdSprings[1]->bodyB);
+	simdSprings[2] = createFixedDynamicSpringPair(simdWorld, 740, 25.0f, 2.08f, 0.0f);
+	stampSupportedWake(simdSprings[2]->bodyA, simdSprings[2]->bodyB);
+	simdSprings[3] = createDynamicSpringPair(simdWorld, 760, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(simdSprings[3]->bodyA, simdSprings[3]->bodyB);
+	simdSprings[3]->bodyA->timeSinceWake = 25.0f * kDt;
+	simdSprings[3]->bodyB->timeSinceWake = 25.0f * kDt;
+
+	SpringJoint::preSolveSIMD(simdSprings, kDt);
+
+	for (int i = 0; i < 4; ++i) {
+		expectSpringBodiesNear(captureSpringBodies(simdSprings[i]), scalarOut[i], i);
+	}
+}
+
+TEST(JointSimdParity, SpringSolveFastSupportedWakeMatchesScalar) {
+	SpringSolveSnapshot initial[4];
+	SpringSolveSnapshot scalarOut[4];
+	World scalarWorld;
+	configureSpringWakeWorld(scalarWorld);
+	SpringJoint* scalarSprings[4];
+
+	scalarSprings[0] = createDynamicSpringPair(scalarWorld, 800, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(scalarSprings[0]->bodyA, scalarSprings[0]->bodyB);
+	scalarSprings[1] = createFixedDynamicSpringPair(scalarWorld, 820, 25.0f, 2.005f, 0.0f);
+	stampSupportedWake(scalarSprings[1]->bodyA, scalarSprings[1]->bodyB);
+	scalarSprings[2] = createFixedDynamicSpringPair(scalarWorld, 840, 25.0f, 2.08f, 0.0f);
+	stampSupportedWake(scalarSprings[2]->bodyA, scalarSprings[2]->bodyB);
+	scalarSprings[3] = createDynamicSpringPair(scalarWorld, 860, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(scalarSprings[3]->bodyA, scalarSprings[3]->bodyB);
+	scalarSprings[3]->bodyA->timeSinceWake = 25.0f * kDt;
+	scalarSprings[3]->bodyB->timeSinceWake = 25.0f * kDt;
+
+	for (int i = 0; i < 4; ++i) {
+		scalarSprings[i]->preSolve(kDt);
+		initial[i] = captureSpringSolveState(scalarSprings[i]);
+		initial[i].sA.v.x += 0.2f * static_cast<float>(i);
+		initial[i].sB.v.y -= 0.15f * static_cast<float>(i);
+		initial[i].sA.w = 0.05f;
+		initial[i].sB.w = 0.1f * static_cast<float>(i);
+		const SpringSolveSnapshot input = initial[i];
+		scalarOut[i] = runSpringScalar(scalarSprings[i], input);
+	}
+
+	World simdWorld;
+	configureSpringWakeWorld(simdWorld);
+	SpringJoint* simdSprings[4];
+	simdSprings[0] = createDynamicSpringPair(simdWorld, 900, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(simdSprings[0]->bodyA, simdSprings[0]->bodyB);
+	simdSprings[1] = createFixedDynamicSpringPair(simdWorld, 920, 25.0f, 2.005f, 0.0f);
+	stampSupportedWake(simdSprings[1]->bodyA, simdSprings[1]->bodyB);
+	simdSprings[2] = createFixedDynamicSpringPair(simdWorld, 940, 25.0f, 2.08f, 0.0f);
+	stampSupportedWake(simdSprings[2]->bodyA, simdSprings[2]->bodyB);
+	simdSprings[3] = createDynamicSpringPair(simdWorld, 960, 25.0f, 0.0f, 0.0f);
+	stampSupportedWake(simdSprings[3]->bodyA, simdSprings[3]->bodyB);
+	simdSprings[3]->bodyA->timeSinceWake = 25.0f * kDt;
+	simdSprings[3]->bodyB->timeSinceWake = 25.0f * kDt;
+
+	for (int i = 0; i < 4; ++i) {
+		simdSprings[i]->preSolve(kDt);
+		simdSprings[i]->context.a = const_cast<SolverData*>(&initial[i].sA);
+		simdSprings[i]->context.b = const_cast<SolverData*>(&initial[i].sB);
+	}
+	SpringJoint::solveFastSIMD(simdSprings);
+
+	for (int i = 0; i < 4; ++i) {
+		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.a)->v.x, scalarOut[i].sA.v.x, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.a)->v.y, scalarOut[i].sA.v.y, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.a)->w, scalarOut[i].sA.w, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.b)->v.x, scalarOut[i].sB.v.x, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.b)->v.y, scalarOut[i].sB.v.y, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdSprings[i]->context.b)->w, scalarOut[i].sB.w, kTol) << "lane " << i;
+	}
+}
+
+TEST(JointSimdParity, HingeSolveFastMatchesScalar) {
+	const float wInit[4][2] = {
+		{ 0.1f, 1.2f },
+		{ -0.4f, 0.3f },
+		{ 0.8f, -0.6f },
+		{ 0.0f, 2.0f },
+	};
+
+	HingeSolveSnapshot initial[4];
+	HingeSolveSnapshot scalarOut[4];
+	World scalarWorlds[4];
+	HingeJoint* scalarHinges[4];
+
+	for (int i = 0; i < 4; ++i) {
+		scalarHinges[i] = createHingePair(scalarWorlds[i], 1000 + i * 10, wInit[i][0], wInit[i][1]);
+		initial[i].sA = scalarHinges[i]->bodyA->getSolverData();
+		initial[i].sB = scalarHinges[i]->bodyB->getSolverData();
+		scalarOut[i] = runHingeScalar(scalarHinges[i], initial[i]);
+	}
+
+	World simdWorld;
+	HingeJoint* simdHinges[4];
+	for (int i = 0; i < 4; ++i) {
+		simdHinges[i] = createHingePair(simdWorld, 1100 + i * 10, wInit[i][0], wInit[i][1]);
+		simdHinges[i]->context.a = const_cast<SolverData*>(&initial[i].sA);
+		simdHinges[i]->context.b = const_cast<SolverData*>(&initial[i].sB);
+	}
+	HingeJoint::solveFastSIMD(simdHinges);
+
+	for (int i = 0; i < 4; ++i) {
+		EXPECT_NEAR(static_cast<SolverData*>(simdHinges[i]->context.a)->v.x, scalarOut[i].sA.v.x, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdHinges[i]->context.a)->v.y, scalarOut[i].sA.v.y, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdHinges[i]->context.a)->w, scalarOut[i].sA.w, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdHinges[i]->context.b)->v.x, scalarOut[i].sB.v.x, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdHinges[i]->context.b)->v.y, scalarOut[i].sB.v.y, kTol) << "lane " << i;
+		EXPECT_NEAR(static_cast<SolverData*>(simdHinges[i]->context.b)->w, scalarOut[i].sB.w, kTol) << "lane " << i;
 	}
 }
 

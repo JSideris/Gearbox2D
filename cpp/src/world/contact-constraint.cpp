@@ -530,6 +530,20 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
 
 void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
 #if HWY_TARGET != HWY_SCALAR
+    bool anySkipNormal = false;
+    for (int i = 0; i < 4; ++i) {
+        if (skipNormalVelocityOnSupportedWakeOverlap(*batch[i])) {
+            anySkipNormal = true;
+            break;
+        }
+    }
+    if (anySkipNormal) {
+        for (int i = 0; i < 4; ++i) {
+            batch[i]->solveFast();
+        }
+        return;
+    }
+
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
     V128 neg_one_v = v128_splat_f32(-1.0f);
@@ -565,12 +579,6 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
     V128 imB = v128_make_f32(sB[0]->im,  sB[1]->im,  sB[2]->im,  sB[3]->im);
     V128 iIB = v128_make_f32(sB[0]->iI,  sB[1]->iI,  sB[2]->iI,  sB[3]->iI);
 
-    V128 skipNormal = v128_make_mask_f32(
-        skipNormalVelocityOnSupportedWakeOverlap(*batch[0]),
-        skipNormalVelocityOnSupportedWakeOverlap(*batch[1]),
-        skipNormalVelocityOnSupportedWakeOverlap(*batch[2]),
-        skipNormalVelocityOnSupportedWakeOverlap(*batch[3]));
-
     // Normal constraint
     V128 vrAx = v128_mul_f32(neg_one_v, v128_mul_f32(wA, rAy));
     V128 vrAy = v128_mul_f32(wA, rAx);
@@ -582,7 +590,6 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
 
     V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
     V128 dLambda = v128_mul_f32(v128_neg_f32(v128_add_f32(vn, bias)), nMass);
-    dLambda = v128_select(skipNormal, zero_v, dLambda);
 
     V128 oldImpulse = normalImpulse;
     normalImpulse = v128_max_f32(v128_add_f32(oldImpulse, dLambda), zero_v);
@@ -626,7 +633,6 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
         V128 vt = v128_dot_f32(relVelX_f, relVelY_f, tangentX, tangentY);
         V128 dLambdaT = v128_mul_f32(v128_neg_f32(vt), tMass);
 
-        const World& world = batch[0]->a->world;
         alignas(16) float imA_arr[4], imB_arr[4], normalImpulse_arr[4], coneNormal_arr[4];
         v128_store_f32(imA_arr, imA);
         v128_store_f32(imB_arr, imB);
