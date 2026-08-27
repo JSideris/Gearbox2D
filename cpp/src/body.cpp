@@ -1,8 +1,69 @@
 #include "body.h"
 #include "fixture.h"
+#include "joint.h"
 #include "world.h"
 #include <cmath>
 #include <algorithm>
+#include <vector>
+
+namespace {
+
+bool bodyIsStaticLike(const Body* body) {
+	return body != nullptr &&
+		(body->type == ObjectType::FIXED_OBJECT || body->type == ObjectType::KINEMATIC_OBJECT);
+}
+
+struct SleepSupport {
+	bool any = false;
+	bool worldContact = false;
+	std::vector<Body*> component;
+};
+
+SleepSupport jointComponentSupport(Body* seed) {
+	SleepSupport flags;
+	if (!seed) {
+		return flags;
+	}
+	std::vector<Body*> stack;
+	stack.push_back(seed);
+	flags.component.push_back(seed);
+	while (!stack.empty()) {
+		Body* body = stack.back();
+		stack.pop_back();
+		if (body->getContactCount() > 0 || body->sleptOnWorldContact) {
+			flags.worldContact = true;
+			flags.any = true;
+		}
+		for (Joint* joint : body->joints) {
+			if (!joint) {
+				continue;
+			}
+			Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
+			if (!other) {
+				continue;
+			}
+			if (bodyIsStaticLike(other)) {
+				flags.any = true;
+				continue;
+			}
+			bool seen = false;
+			for (Body* v : flags.component) {
+				if (v == other) {
+					seen = true;
+					break;
+				}
+			}
+			if (seen) {
+				continue;
+			}
+			flags.component.push_back(other);
+			stack.push_back(other);
+		}
+	}
+	return flags;
+}
+
+} // namespace
 
 Body::Body(World& world, int id, int worldIndex, emscripten_val options)
     : world(world), id(id), worldIndex(worldIndex)
@@ -238,10 +299,29 @@ void Body::applyAngularImpulse(float torque) {
 
 void Body::sleep() {
     if (!isSleeping && canSleep) {
+        SleepSupport support = jointComponentSupport(this);
+        for (Body* member : support.component) {
+            if (!member || bodyIsStaticLike(member)) {
+                continue;
+            }
+            if (support.any) {
+                member->sleptOnSupport = true;
+            }
+            if (support.worldContact) {
+                member->sleptOnWorldContact = true;
+            }
+        }
+        sleptOnSupport = support.any;
+        sleptOnWorldContact = support.worldContact;
         isSleeping = true;
         world.liveBodyIntData[GET_BODY_IDATA_INDEX(worldIndex, BODY_IDATA_FLAGS)] |= IS_SLEEPING;
         setVelocityInternal(Vec2(0, 0));
         setAngularVelocityInternal(0);
+        for (Joint* joint : joints) {
+            if (joint && joint->getType() == JointType::SPRING) {
+                joint->clearAccumulatedImpulse();
+            }
+        }
         if (wantsEvents()) world.addEvent((int)EventType::SLEEP, id, -1, -1, -1, 0.0f);
         float pr = getRotation(); float cosR = std::cos(pr); float sinR = std::sin(pr);
         for (auto* f : fixtures) {
@@ -259,6 +339,7 @@ void Body::wakeUp() {
         isSleeping = false;
         world.liveBodyIntData[GET_BODY_IDATA_INDEX(worldIndex, BODY_IDATA_FLAGS)] &= ~IS_SLEEPING;
         setSleepTimer(0);
+        timeSinceWake = 0.0f;
         if (wantsEvents()) world.addEvent((int)EventType::WAKE, id, -1, -1, -1, 0.0f);
         for (auto* f : fixtures) if (f->bvhNode) f->bvhNode->wakeUp();
         for (auto* contact : contacts) contact->wakeUp();

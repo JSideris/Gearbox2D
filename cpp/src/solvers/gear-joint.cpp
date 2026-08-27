@@ -4,6 +4,7 @@
 #include "world.h"
 #include "constants.h"
 #include "simd-math.h"
+#include <algorithm>
 #include <cmath>
 
 namespace {
@@ -48,10 +49,16 @@ void GearJoint::preSolve(float dt) {
     const float maxImpulse = 75.0f * _dt;
     impulse = std::max(-maxImpulse, std::min(maxImpulse, impulse));
 
-    bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - ratio * impulse * iIA);
-    bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + ratio * impulse * iIB);
-    bodyC->setAngularVelocityInternal(bodyC->getAngularVelocity() - impulse * iIC);
-    bodyD->setAngularVelocityInternal(bodyD->getAngularVelocity() + impulse * iID);
+    const float warmAge = std::min(std::min(bodyA->timeSinceWake, bodyB->timeSinceWake),
+        std::min(bodyC->timeSinceWake, bodyD->timeSinceWake));
+    const bool sleptOnSupport = bodyA->sleptOnSupport || bodyB->sleptOnSupport ||
+        bodyC->sleptOnSupport || bodyD->sleptOnSupport;
+    if (warmAge >= 25.0f * dt || !sleptOnSupport) {
+        bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - ratio * impulse * iIA);
+        bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + ratio * impulse * iIB);
+        bodyC->setAngularVelocityInternal(bodyC->getAngularVelocity() - impulse * iIC);
+        bodyD->setAngularVelocityInternal(bodyD->getAngularVelocity() + impulse * iID);
+    }
 }
 
 void GearJoint::solve() {
@@ -201,6 +208,13 @@ void GearJoint::solvePosition() {
     }
 
     float correction = C * BAUMGARTE_FACTOR;
+    const float posAge = std::min(std::min(bodyA->timeSinceWake, bodyB->timeSinceWake),
+        std::min(bodyC->timeSinceWake, bodyD->timeSinceWake));
+    const bool posSleptOnSupport = bodyA->sleptOnSupport || bodyB->sleptOnSupport ||
+        bodyC->sleptOnSupport || bodyD->sleptOnSupport;
+    if (posAge < 25.0f * std::max(_dt, 1e-6f) && posSleptOnSupport) {
+        correction = 0.0f;
+    }
     if (std::abs(correction) > MAX_POSITION_CORRECTION) {
         correction = (correction > 0.0f) ? MAX_POSITION_CORRECTION : -MAX_POSITION_CORRECTION;
     }

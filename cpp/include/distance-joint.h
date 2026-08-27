@@ -31,6 +31,8 @@ public:
     void setLocalAnchorB(Vec2 b) override;
     Vec2 getLocalAnchorB() const override;
 
+    void clearAccumulatedImpulse() override { impulse = 0.0f; }
+
 private:
     float impulse;
     Vec2 normal;

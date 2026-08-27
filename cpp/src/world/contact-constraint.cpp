@@ -34,6 +34,80 @@ float coneNormalForFriction(const ContactConstraint& contact, float normalImpuls
 	return frictionNormalBase + std::min(jammedN, jammedCap);
 }
 
+// Component B for overlapping non-bounce contacts: bounce taxes launch with
+// v_surf^2 = v_impact^2 + 2 a Δh. Resting contacts have no launch, so the
+// position dual only allows Baumgarte travel that keeps v_surf^2 >= 0.
+// At rest (v_impact = 0) that travel is 0. When a_rel >= 0 the bounce path
+// would credit launch; resting overlap must not take that credit as a
+// pair-split (box–box a_rel = 0 would otherwise dump overlap into KE).
+float krbRestingPositionScale(float relativeVn, float forceVn, float expectedDisplacement, float dt) {
+	if (expectedDisplacement <= 1e-8f || dt <= 0.0f) {
+		return 1.0f;
+	}
+	const float accVn = forceVn / dt;
+	const float vImpactSq = relativeVn * relativeVn;
+	if (vImpactSq <= 1e-8f || accVn >= 0.0f) {
+		return 0.0f;
+	}
+	const float dhAfford = vImpactSq / (-2.0f * accVn);
+	return std::min(1.0f, dhAfford / expectedDisplacement);
+}
+
+float supportedWakeWindow(const ContactConstraint& contact) {
+	if (!contact.a) {
+		return 0.0f;
+	}
+	return 25.0f * contact.a->world.getTimeStep() + 1e-12f;
+}
+
+bool contactRecentlyAwakened(const ContactConstraint& contact) {
+	if (!contact.a || !contact.b) {
+		return false;
+	}
+	const float age = std::min(contact.a->timeSinceWake, contact.b->timeSinceWake);
+	return age < supportedWakeWindow(contact);
+}
+
+// Grab-from-rest is not an impact. Default e=0.2 plus gΔt otherwise takes
+// the bounce branch, skips resting KRB/seed, and launches the island.
+bool suppressBounceOnSupportedWake(const ContactConstraint& contact) {
+	if (!contactRecentlyAwakened(contact) || !contact.a || !contact.b) {
+		return false;
+	}
+	return contact.a->sleptOnSupport || contact.b->sleptOnSupport;
+}
+
+// Frozen overlap after sleep() is not an impact. Velocity-level normal PGS
+// would dump pre-solve joint drift into KE; position dual is already krb=0.
+bool skipNormalVelocityOnSupportedWakeOverlap(const ContactConstraint& contact) {
+	return suppressBounceOnSupportedWake(contact) && contact.depth > 0.0f;
+}
+
+// Empty reconstructed resting contacts start at impulse 0, so the first
+// PGS step must cancel gΔt from scratch. Seed only the KRB relative normal
+// (forceVn), not raw vn polluted by joint-only wake motion.
+// Only floor/kinematic contacts: dynamic-dynamic packing would over-seed.
+void maybeSeedRestingWakeImpulse(ContactConstraint& contact, float relativeVn, bool shouldBounce) {
+	if (shouldBounce || contact.depth <= 0.0f || contact.normalImpulse != 0.0f) {
+		return;
+	}
+	if (suppressBounceOnSupportedWake(contact)) {
+		return;
+	}
+	if (!contactRecentlyAwakened(contact) || !contact.a || !contact.b) {
+		return;
+	}
+	const bool aStatic = contact.a->getInverseMass() <= 0.0f;
+	const bool bStatic = contact.b->getInverseMass() <= 0.0f;
+	if (aStatic == bStatic) {
+		return;
+	}
+	if (relativeVn >= 0.0f) {
+		return;
+	}
+	contact.normalImpulse = std::max(0.0f, -relativeVn * contact.normalMass);
+}
+
 } // namespace
 
 void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
@@ -59,6 +133,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
 
     float vBounce = -restitution * relativeVn;
     float expectedDisplacement = 0.0f;
+    krbPositionScale = 1.0f;
 
     if (depth < 0.0f) {
         staticFriction = 0.0f;
@@ -66,6 +141,9 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     }
 
     bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
+    if (suppressBounceOnSupportedWake(*this)) {
+        shouldBounce = false;
+    }
 
     if (shouldBounce) {
         // Speculative (depth < 0): expectedDisplacement = 0 (Component A only).
@@ -94,9 +172,23 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     } else {
         if (depth < 0.0f) {
             bias = -depth / dt;
+            if (suppressBounceOnSupportedWake(*this)) {
+                bias = 0.0f;
+            }
         } else {
             bias = 0.0f;
+            if (depth > 0.0f) {
+                int n = a->world.getPositionIterations();
+                float cumulativeCorrectionFactor = 1.0f - std::pow(1.0f - BAUMGARTE_FACTOR, (float)n);
+                expectedDisplacement = std::min(std::max(0.0f, depth - PENETRATION_SLOP), MAX_POSITION_CORRECTION) * cumulativeCorrectionFactor;
+                if (contactRecentlyAwakened(*this)) {
+                    krbPositionScale = krbRestingPositionScale(relativeVn, forceVn, expectedDisplacement, dt);
+                }
+            }
         }
+    }
+    if (suppressBounceOnSupportedWake(*this) && depth > 0.0f) {
+        krbPositionScale = 0.0f;
     }
 #else
     float relativeVn = vn;
@@ -107,6 +199,10 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     }
 
     bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
+    if (suppressBounceOnSupportedWake(*this)) {
+        shouldBounce = false;
+    }
+    krbPositionScale = 1.0f;
 
     if (shouldBounce) {
         float vFinal = restitution * std::max(0.0f, -relativeVn);
@@ -118,11 +214,20 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     } else {
         if (depth < 0.0f) {
             bias = -depth / dt;
+            if (suppressBounceOnSupportedWake(*this)) {
+                bias = 0.0f;
+            }
         } else {
             bias = 0.0f;
         }
     }
+    if (suppressBounceOnSupportedWake(*this) && depth > 0.0f) {
+        krbPositionScale = 0.0f;
+    }
 #endif
+    if (suppressBounceOnSupportedWake(*this)) {
+        bias = 0.0f;
+    }
     
     tangent = Vec2(-normal.y, normal.x);
     float rtA = rA.x * tangent.y - rA.y * tangent.x;
@@ -143,6 +248,8 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     float thetaB = b->getRotation();
     float cB = std::cos(-thetaB), sB = std::sin(-thetaB);
     localAnchorB = Vec2(rB.x * cB - rB.y * sB, rB.x * sB + rB.y * cB);
+
+    maybeSeedRestingWakeImpulse(*this, relativeVn, shouldBounce);
 }
 
 void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool enableRestitution, bool enablePenetration, bool enableFriction) {
@@ -230,6 +337,24 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 relVelY = v128_sub_f32(v128_add_f32(vBy, tangVelBy), v128_add_f32(vAy, tangVelAy));
     V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
 
+    auto supportedWakeMask = [&]() {
+        V128 wakeAge = v128_make_f32(
+            std::min(batch[0]->a->timeSinceWake, batch[0]->b->timeSinceWake),
+            std::min(batch[1]->a->timeSinceWake, batch[1]->b->timeSinceWake),
+            std::min(batch[2]->a->timeSinceWake, batch[2]->b->timeSinceWake),
+            std::min(batch[3]->a->timeSinceWake, batch[3]->b->timeSinceWake));
+        V128 wakeWindow = v128_splat_f32(25.0f * dt + 1e-12f);
+        V128 recentlyWoke = v128_lt_f32(wakeAge, wakeWindow);
+        V128 support = v128_make_mask_f32(
+            batch[0]->a->sleptOnSupport || batch[0]->b->sleptOnSupport,
+            batch[1]->a->sleptOnSupport || batch[1]->b->sleptOnSupport,
+            batch[2]->a->sleptOnSupport || batch[2]->b->sleptOnSupport,
+            batch[3]->a->sleptOnSupport || batch[3]->b->sleptOnSupport);
+        return v128_and(recentlyWoke, support);
+    };
+
+    alignas(16) float resRelativeVnSeed[4];
+
 #ifndef GEARBOX_DISABLE_KRB
     // Component A: Force Velocity Compensation
     V128 forceVn = v128_dot_f32(v128_sub_f32(fvBx, fvAx), v128_sub_f32(fvBy, fvAy), normalX, normalY);
@@ -248,6 +373,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
     V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
     V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
+    shouldBounce = v128_and(shouldBounce, v128_not(supportedWakeMask()));
 
     // Component B: Kinematic Energy Balancing
     // Speculative (depth < 0): expectedDisp = 0 (Component A only).
@@ -271,6 +397,34 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
     V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+    bias = v128_select(supportedWakeMask(), zero_v, bias);
+
+    // Resting overlap: same Δh predictor as bounce with v_launch = 0, then
+    // limit position travel to payable Component B displacement.
+    V128 depthMinusSlop = v128_max_f32(zero_v, v128_sub_f32(depth, penSlop));
+    V128 expectedRest = v128_select(depth_gt_zero, v128_mul_f32(v128_min_f32(depthMinusSlop, maxPosCorr), cumCorrFactor), zero_v);
+    V128 restEps = v128_splat_f32(1e-8f);
+    V128 accVnRest = accVn;
+    V128 vImpactSqRest = v128_mul_f32(relativeVn, relativeVn);
+    V128 twoA = v128_mul_f32(v128_splat_f32(2.0f), accVnRest);
+    V128 accVnNeg = v128_lt_f32(accVnRest, zero_v);
+    V128 vImpactPos = v128_gt_f32(vImpactSqRest, restEps);
+    V128 expectedRestPos = v128_gt_f32(expectedRest, restEps);
+    V128 dhAfford = v128_select(v128_and(accVnNeg, vImpactPos), v128_div_f32(vImpactSqRest, v128_neg_f32(twoA)), zero_v);
+    V128 safeExpected = v128_select(expectedRestPos, expectedRest, one_v);
+    V128 restScaleFromKe = v128_select(v128_and(vImpactPos, accVnNeg), v128_min_f32(one_v, v128_div_f32(dhAfford, safeExpected)), zero_v);
+    V128 restScale = v128_select(expectedRestPos, restScaleFromKe, one_v);
+    V128 wakeAge = v128_make_f32(
+        std::min(batch[0]->a->timeSinceWake, batch[0]->b->timeSinceWake),
+        std::min(batch[1]->a->timeSinceWake, batch[1]->b->timeSinceWake),
+        std::min(batch[2]->a->timeSinceWake, batch[2]->b->timeSinceWake),
+        std::min(batch[3]->a->timeSinceWake, batch[3]->b->timeSinceWake));
+    V128 wakeWindowRest = v128_splat_f32(25.0f * dt + 1e-12f);
+    V128 recentlyWoke = v128_lt_f32(wakeAge, wakeWindowRest);
+    V128 overlappingRest = v128_and(v128_and(v128_not(shouldBounce), depth_gt_zero), recentlyWoke);
+    V128 krbPositionScale = v128_select(overlappingRest, restScale, one_v);
+    krbPositionScale = v128_select(v128_and(supportedWakeMask(), depth_gt_zero), zero_v, krbPositionScale);
+    v128_store_f32(resRelativeVnSeed, relativeVn);
 #else
     V128 relativeVn = vn;
 
@@ -286,6 +440,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
     V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
     V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
+    shouldBounce = v128_and(shouldBounce, v128_not(supportedWakeMask()));
 
     V128 vFinal = v128_mul_f32(restitution, v128_max_f32(zero_v, v128_neg_f32(relativeVn)));
 
@@ -293,6 +448,10 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
     V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+    bias = v128_select(supportedWakeMask(), zero_v, bias);
+    V128 krbPositionScale = one_v;
+    krbPositionScale = v128_select(v128_and(supportedWakeMask(), v128_gt_f32(depth, zero_v)), zero_v, krbPositionScale);
+    v128_store_f32(resRelativeVnSeed, relativeVn);
 #endif
 
     // Tangent and tangent mass
@@ -328,8 +487,9 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     // Result buffers
     float resRAx[4], resRAy[4], resRBx[4], resRBy[4];
     float resNormalMass[4], resBias[4], resTangentX[4], resTangentY[4], resTangentMass[4];
-    float resStaticFric[4], resKineticFric[4];
+    float resStaticFric[4], resKineticFric[4], resKrbScale[4];
     float resLAx[4], resLAy[4], resLNAx[4], resLNAy[4], resLBx[4], resLBy[4];
+    float resVn[4], resBounce[4];
 
     v128_store_f32(resRAx, rAx); v128_store_f32(resRAy, rAy);
     v128_store_f32(resRBx, rBx); v128_store_f32(resRBy, rBy);
@@ -339,15 +499,19 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     v128_store_f32(resTangentMass, tangentMass);
     v128_store_f32(resStaticFric, staticFric);
     v128_store_f32(resKineticFric, kineticFric);
+    v128_store_f32(resKrbScale, krbPositionScale);
     v128_store_f32(resLAx, localAnchorAx); v128_store_f32(resLAy, localAnchorAy);
     v128_store_f32(resLNAx, localNormalAx); v128_store_f32(resLNAy, localNormalAy);
     v128_store_f32(resLBx, localAnchorBx); v128_store_f32(resLBy, localAnchorBy);
+    v128_store_f32(resVn, vn);
+    v128_store_f32(resBounce, shouldBounce);
 
     for(int i = 0; i < 4; i++) {
         batch[i]->rA = Vec2(resRAx[i], resRAy[i]);
         batch[i]->rB = Vec2(resRBx[i], resRBy[i]);
         batch[i]->normalMass = resNormalMass[i];
         batch[i]->bias = resBias[i];
+        batch[i]->krbPositionScale = resKrbScale[i];
         batch[i]->tangent = Vec2(resTangentX[i], resTangentY[i]);
         batch[i]->tangentMass = resTangentMass[i];
         batch[i]->staticFriction = resStaticFric[i];
@@ -355,6 +519,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
         batch[i]->localAnchorA = Vec2(resLAx[i], resLAy[i]);
         batch[i]->localNormalA = Vec2(resLNAx[i], resLNAy[i]);
         batch[i]->localAnchorB = Vec2(resLBx[i], resLBy[i]);
+        maybeSeedRestingWakeImpulse(*batch[i], resRelativeVnSeed[i], resBounce[i] != 0.0f);
     }
 #else
     for (int i = 0; i < 4; ++i) {
@@ -400,6 +565,12 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
     V128 imB = v128_make_f32(sB[0]->im,  sB[1]->im,  sB[2]->im,  sB[3]->im);
     V128 iIB = v128_make_f32(sB[0]->iI,  sB[1]->iI,  sB[2]->iI,  sB[3]->iI);
 
+    V128 skipNormal = v128_make_mask_f32(
+        skipNormalVelocityOnSupportedWakeOverlap(*batch[0]),
+        skipNormalVelocityOnSupportedWakeOverlap(*batch[1]),
+        skipNormalVelocityOnSupportedWakeOverlap(*batch[2]),
+        skipNormalVelocityOnSupportedWakeOverlap(*batch[3]));
+
     // Normal constraint
     V128 vrAx = v128_mul_f32(neg_one_v, v128_mul_f32(wA, rAy));
     V128 vrAy = v128_mul_f32(wA, rAx);
@@ -408,14 +579,15 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
 
     V128 relVelX = v128_sub_f32(v128_add_f32(vBx, vrBx), v128_add_f32(vAx, vrAx));
     V128 relVelY = v128_sub_f32(v128_add_f32(vBy, vrBy), v128_add_f32(vAy, vrAy));
-    
+
     V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
     V128 dLambda = v128_mul_f32(v128_neg_f32(v128_add_f32(vn, bias)), nMass);
-    
+    dLambda = v128_select(skipNormal, zero_v, dLambda);
+
     V128 oldImpulse = normalImpulse;
     normalImpulse = v128_max_f32(v128_add_f32(oldImpulse, dLambda), zero_v);
     dLambda = v128_sub_f32(normalImpulse, oldImpulse);
-    
+
     V128 impulseX = v128_mul_f32(normalX, dLambda);
     V128 impulseY = v128_mul_f32(normalY, dLambda);
 
@@ -430,8 +602,13 @@ void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
     vBy = v128_add_f32(vBy, v128_mul_f32(impulseY, imB));
     wB = v128_add_f32(wB, v128_mul_f32(torqueB, iIB));
 
-    // Friction constraint
-    V128 staticFric = v128_make_f32(batch[0]->staticFriction, batch[1]->staticFriction, batch[2]->staticFriction, batch[3]->staticFriction);
+    // Friction constraint. Grab-from-rest is not a slide: skip tangent
+    // PGS on supported-wake contacts (same window as bounce suppress).
+    V128 staticFric = v128_make_f32(
+        suppressBounceOnSupportedWake(*batch[0]) ? 0.0f : batch[0]->staticFriction,
+        suppressBounceOnSupportedWake(*batch[1]) ? 0.0f : batch[1]->staticFriction,
+        suppressBounceOnSupportedWake(*batch[2]) ? 0.0f : batch[2]->staticFriction,
+        suppressBounceOnSupportedWake(*batch[3]) ? 0.0f : batch[3]->staticFriction);
     if (v128_any_true(v128_gt_f32(staticFric, zero_v))) {
         V128 kineticFric = v128_make_f32(batch[0]->kineticFriction, batch[1]->kineticFriction, batch[2]->kineticFriction, batch[3]->kineticFriction);
         V128 tangentX = v128_make_f32(batch[0]->tangent.x, batch[1]->tangent.x, batch[2]->tangent.x, batch[3]->tangent.x);
@@ -511,33 +688,36 @@ void ContactConstraint::solveFast() {
     SolverData& sA = *static_cast<SolverData*>(context.a);
     SolverData& sB = *static_cast<SolverData*>(context.b);
 
-    // Normal constraint
-    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
-    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
-    Vec2 relVel = (sB.v + vrB) - (sA.v + vrA);
-    
-    float vn = relVel.dot(normal);
-    float dLambda = -(vn + bias) * normalMass;
-    
-    float oldImpulse = normalImpulse;
-    normalImpulse = std::max(oldImpulse + dLambda, 0.0f);
-    dLambda = normalImpulse - oldImpulse;
-    
-    Vec2 impulse = normal * dLambda;
-    if (sA.im > 0) {
-        float torqueA = rA.cross(impulse);
-        sA.v.x -= impulse.x * sA.im;
-        sA.v.y -= impulse.y * sA.im;
-        sA.w -= torqueA * sA.iI;
-    }
-    if (sB.im > 0) {
-        sB.v.x += impulse.x * sB.im;
-        sB.v.y += impulse.y * sB.im;
-        sB.w += rB.cross(impulse) * sB.iI;
+    if (!skipNormalVelocityOnSupportedWakeOverlap(*this)) {
+        // Normal constraint
+        Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+        Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+        Vec2 relVel = (sB.v + vrB) - (sA.v + vrA);
+
+        float vn = relVel.dot(normal);
+        float dLambda = -(vn + bias) * normalMass;
+
+        float oldImpulse = normalImpulse;
+        normalImpulse = std::max(oldImpulse + dLambda, 0.0f);
+        dLambda = normalImpulse - oldImpulse;
+
+        Vec2 impulse = normal * dLambda;
+        if (sA.im > 0) {
+            float torqueA = rA.cross(impulse);
+            sA.v.x -= impulse.x * sA.im;
+            sA.v.y -= impulse.y * sA.im;
+            sA.w -= torqueA * sA.iI;
+        }
+        if (sB.im > 0) {
+            sB.v.x += impulse.x * sB.im;
+            sB.v.y += impulse.y * sB.im;
+            sB.w += rB.cross(impulse) * sB.iI;
+        }
     }
 
-    // Friction constraint
-    if (staticFriction > 0.0f) {
+    // Friction constraint. Grab-from-rest is not a slide: leftover or
+    // first-iteration tangent impulses spin a resting wheel (vx ≈ ωr).
+    if (staticFriction > 0.0f && !suppressBounceOnSupportedWake(*this)) {
         Vec2 vrA_new(-sA.w * rA.y, sA.w * rA.x);
         Vec2 vrB_new(-sB.w * rB.y, sB.w * rB.x);
         Vec2 relVel_new = (sB.v + vrB_new) - (sA.v + vrA_new);
@@ -576,7 +756,7 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
     float wA = a->getAngularVelocity(), wB = b->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     Vec2 relVel = (vB + vrB) - (vA + vrA);
-    if (enableNormal) {
+    if (enableNormal && !skipNormalVelocityOnSupportedWakeOverlap(*this)) {
         float vn = relVel.dot(normal);
         float dLambda = -(vn + bias) * normalMass;
         if (std::isfinite(dLambda)) {
@@ -587,7 +767,7 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
         }
     }
 
-    if (enableFriction && staticFriction > 0.0f) {
+    if (enableFriction && staticFriction > 0.0f && !suppressBounceOnSupportedWake(*this)) {
         Vec2 vA_new = a->getVelocity(), vB_new = b->getVelocity();
         float wA_new = a->getAngularVelocity(), wB_new = b->getAngularVelocity();
         Vec2 vrA_new(-wA_new * rA.y, wA_new * rA.x), vrB_new(-wB_new * rB.y, wB_new * rB.x);
@@ -627,7 +807,7 @@ void ContactConstraint::solvePosition() {
     float current_depth = depth - separation_vec.dot(normal_curr);
     if (current_depth <= PENETRATION_SLOP) return;
 
-    float correction = std::min(current_depth - PENETRATION_SLOP, MAX_POSITION_CORRECTION) * BAUMGARTE_FACTOR;
+    float correction = std::min(current_depth - PENETRATION_SLOP, MAX_POSITION_CORRECTION) * BAUMGARTE_FACTOR * krbPositionScale;
     float rnA = rA_curr.x * normal_curr.y - rA_curr.y * normal_curr.x;
     float rnB = rB_curr.x * normal_curr.y - rB_curr.y * normal_curr.x;
     float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;

@@ -28,6 +28,13 @@ public:
     bool isSleeping = false;
     bool canSleep = true;
     float sleepTimeRequired = 1.0f;
+    float timeSinceWake = 1e9f;
+    // Last sleep() saw contacts or a joint to FIXED/kinematic in the joint
+    // component. Airborne unsupported sleep stays false so soft-spring bias
+    // still works on resume; grab-from-rest stays true so frozen stretch
+    // is not dumped as KE.
+    bool sleptOnSupport = false;
+    bool sleptOnWorldContact = false;
     
     float getSleepTimer() const;
     void setSleepTimer(float t);

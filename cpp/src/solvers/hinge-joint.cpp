@@ -2,6 +2,7 @@
 #include "body.h"
 #include "world.h"
 #include "simd-math.h"
+#include <algorithm>
 #include <cmath>
 
 HingeJoint::HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB)
@@ -40,14 +41,27 @@ void HingeJoint::preSolve(float dt) {
     Vec2 forceVelDiff = bodyB->getForceVelocity() - bodyA->getForceVelocity();
     
     bias = vB - forceVelDiff;
+    const float age = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
+    if (age < 25.0f * dt && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
+        bias = Vec2(0.0f, 0.0f);
+    }
 #else
     bias = C * (BAUMGARTE_FACTOR / dt);
+    const float age = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
+    if (age < 25.0f * dt && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
+        bias = Vec2(0.0f, 0.0f);
+    }
 #endif
-    
-    bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
-    bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
-    bodyB->setVelocityInternal(bodyB->getVelocity() + impulse * imB);
-    bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(impulse) * iIB);
+
+    // Sleep zeroed v; applying the rest-holding impulse would dump it as KE.
+    // Keep the accumulator so PGS continues from support, but skip the apply.
+    const float warmAge = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
+    if (warmAge >= 25.0f * dt || (!bodyA->sleptOnSupport && !bodyB->sleptOnSupport)) {
+        bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
+        bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
+        bodyB->setVelocityInternal(bodyB->getVelocity() + impulse * imB);
+        bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(impulse) * iIB);
+    }
 }
 
 void HingeJoint::solve() {
@@ -205,6 +219,12 @@ void HingeJoint::solvePosition() {
     if (Cmag < PENETRATION_SLOP) return;
 
     Vec2 correction = C * BAUMGARTE_FACTOR;
+    // Frozen hinge C after sleep() is rest error, not impact. Same travel=0
+    // identity as overlapping non-bounce contacts. Function still runs.
+    const float posAge = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
+    if (posAge < 25.0f * std::max(_dt, 1e-6f) && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
+        correction = Vec2(0.0f, 0.0f);
+    }
     float corrMag = correction.magnitude();
     if (corrMag > maxCorrection) {
         correction = (correction / corrMag) * maxCorrection;

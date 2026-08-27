@@ -1,8 +1,100 @@
 #include "world.h"
 #include "body.h"
 #include "fixture.h"
+#include "joint.h"
 #include "constants.h"
 #include <algorithm>
+#include <vector>
+
+namespace {
+
+bool bodyIsStaticLike(const Body* body) {
+	return body != nullptr &&
+		(body->type == ObjectType::FIXED_OBJECT || body->type == ObjectType::KINEMATIC_OBJECT);
+}
+
+// Isolated / airborne sleepers have no kept world contacts. Resume the whole
+// joint component so they can fall instead of freezing in mid-air. Hanging
+// islands (a joint to FIXED/kinematic) and piles with persisted contacts stay
+// asleep. Do not use per-body contactCount==0: mask-0 engines and hanging
+// pendulums would never remain sleeping.
+void wakeUnsupportedSleepingIslands(const std::vector<Body*>& bodiesList) {
+	int maxIndex = -1;
+	for (Body* body : bodiesList) {
+		if (body && body->worldIndex > maxIndex) {
+			maxIndex = body->worldIndex;
+		}
+	}
+	if (maxIndex < 0) {
+		return;
+	}
+
+	std::vector<char> visited(static_cast<size_t>(maxIndex) + 1, 0);
+	std::vector<Body*> stack;
+	std::vector<Body*> component;
+
+	for (Body* seed : bodiesList) {
+		if (!seed || bodyIsStaticLike(seed)) {
+			continue;
+		}
+		const int seedIdx = seed->worldIndex;
+		if (seedIdx < 0 || visited[static_cast<size_t>(seedIdx)]) {
+			continue;
+		}
+
+		stack.clear();
+		component.clear();
+		stack.push_back(seed);
+		visited[static_cast<size_t>(seedIdx)] = 1;
+
+		bool hasWorldContact = false;
+		bool hasStaticJoint = false;
+
+		while (!stack.empty()) {
+			Body* body = stack.back();
+			stack.pop_back();
+			component.push_back(body);
+			if (body->getContactCount() > 0) {
+				hasWorldContact = true;
+			}
+			for (Joint* joint : body->joints) {
+				if (!joint) {
+					continue;
+				}
+				Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
+				if (!other) {
+					continue;
+				}
+				if (bodyIsStaticLike(other)) {
+					hasStaticJoint = true;
+					continue;
+				}
+				const int otherIdx = other->worldIndex;
+				if (otherIdx < 0 || visited[static_cast<size_t>(otherIdx)]) {
+					continue;
+				}
+				visited[static_cast<size_t>(otherIdx)] = 1;
+				stack.push_back(other);
+			}
+		}
+
+		if (hasWorldContact || hasStaticJoint) {
+			continue;
+		}
+		for (Body* body : component) {
+			if (body->isSleeping && !bodyIsStaticLike(body)) {
+				body->wakeUp();
+			}
+		}
+	}
+}
+
+struct DeferredGravity {
+	int worldIndex;
+	float gScale;
+};
+
+} // namespace
 
 void World::step() {
     currentPairs.clear();
@@ -68,6 +160,11 @@ void World::_doIntegrateVelocities() {
 void World::_doIntegrateVelocitiesSubStep(float dt) {
     // 1. Scalar Pass: Wake up logic and discrete impulses
     // This pass is branchy, so we keep it scalar.
+    wakeUnsupportedSleepingIslands(bodiesList);
+
+    std::vector<DeferredGravity> deferredGravity;
+    const float wakeWindow = 25.0f * dt + 1e-12f;
+
     for (auto* body : bodiesList) {
         int bIdx = body->worldIndex;
         if (body->isSleeping && body->type != ObjectType::FIXED_OBJECT) {
@@ -79,7 +176,22 @@ void World::_doIntegrateVelocitiesSubStep(float dt) {
                 body->wakeUp();
             }
         }
-        
+
+        if (!body->isSleeping && body->type != ObjectType::FIXED_OBJECT) {
+            body->timeSinceWake += dt;
+            // Resting floor/terrain contacts already hold mg. Applying gΔt on
+            // the same bodies after sleep() zeros v dumps that delta as KE.
+            // Joint-only support (cradle hangers) still takes gravity.
+            if (body->sleptOnWorldContact && body->timeSinceWake < wakeWindow) {
+                float& gScale = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_G_SCALE)];
+                deferredGravity.push_back({bIdx, gScale});
+                gScale = 0.0f;
+            }
+        }
+    }
+
+    for (auto* body : bodiesList) {
+        int bIdx = body->worldIndex;
         if (body->isSleeping) continue;
 
         float im = liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdx, BODY_FDATA_IM)];
@@ -107,4 +219,8 @@ void World::_doIntegrateVelocitiesSubStep(float dt) {
 
     // 2. Vectorized Pass: Dense math (forces, gravity, damping, velocity integration)
     _doIntegrateVelocitiesSIMD(dt);
+
+    for (const DeferredGravity& saved : deferredGravity) {
+        liveBodyFloatData[GET_BODY_FDATA_INDEX(saved.worldIndex, BODY_FDATA_G_SCALE)] = saved.gScale;
+    }
 }

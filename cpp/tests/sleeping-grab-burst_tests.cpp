@@ -80,8 +80,16 @@ struct PileGrabMetrics {
 
 struct BikeGrabMetrics {
 	float maxSpeed = 0.0f;
+	float chassisSpeed = 0.0f;
+	float armSpeed = 0.0f;
+	float wheelSpeed = 0.0f;
+	float engineSpeed = 0.0f;
 	bool allDynamicSleepingAtGrab = false;
 	bool grabAwakeAfterFirstStep = false;
+	bool chassisSleptOnSupport = false;
+	bool armSleptOnSupport = false;
+	bool wheelSleptOnSupport = false;
+	int wheelContacts = 0;
 };
 
 static emscripten_val makeFloorOptions() {
@@ -512,6 +520,16 @@ static BikeGrabMetrics runBikeGrab(bool canSleep, Body* (*pickGrabBody)(const Bi
 
 	BikeGrabMetrics metrics;
 	metrics.allDynamicSleepingAtGrab = allDynamicSleeping(world);
+	if (island.chassis) {
+		metrics.chassisSleptOnSupport = island.chassis->sleptOnSupport;
+	}
+	if (island.rearArm) {
+		metrics.armSleptOnSupport = island.rearArm->sleptOnSupport;
+	}
+	if (island.rearWheel) {
+		metrics.wheelSleptOnSupport = island.rearWheel->sleptOnSupport;
+		metrics.wheelContacts = island.rearWheel->getContactCount();
+	}
 
 	Body* target = pickGrabBody(island);
 	if (target == nullptr) {
@@ -526,6 +544,22 @@ static BikeGrabMetrics runBikeGrab(bool canSleep, Body* (*pickGrabBody)(const Bi
 			metrics.grabAwakeAfterFirstStep = !target->isSleeping;
 		}
 		metrics.maxSpeed = std::max(metrics.maxSpeed, maxBikeSpeed(island));
+		if (island.chassis) {
+			metrics.chassisSpeed = std::max(metrics.chassisSpeed,
+				std::hypot(island.chassis->getVelocityX(), island.chassis->getVelocityY()));
+		}
+		if (island.rearArm) {
+			metrics.armSpeed = std::max(metrics.armSpeed,
+				std::hypot(island.rearArm->getVelocityX(), island.rearArm->getVelocityY()));
+		}
+		if (island.rearWheel) {
+			metrics.wheelSpeed = std::max(metrics.wheelSpeed,
+				std::hypot(island.rearWheel->getVelocityX(), island.rearWheel->getVelocityY()));
+		}
+		if (island.engine) {
+			metrics.engineSpeed = std::max(metrics.engineSpeed,
+				std::hypot(island.engine->getVelocityX(), island.engine->getVelocityY()));
+		}
 	}
 
 	EXPECT_TRUE(bodyStateFinite(island.chassis));
@@ -541,7 +575,23 @@ static void assertBikeBurstWithinAwakeOrder(const BikeGrabMetrics& awake, const 
 	ASSERT_TRUE(sleep.grabAwakeAfterFirstStep) << "grab target must wake on first observe step";
 
 	const float speedLimit = kBurstMultiple * std::max(awake.maxSpeed, kVelFloor);
-	EXPECT_LE(sleep.maxSpeed, speedLimit);
+	EXPECT_LE(sleep.maxSpeed, speedLimit)
+		<< "sleep maxSpeed=" << sleep.maxSpeed
+		<< " awake=" << awake.maxSpeed
+		<< " chassis=" << sleep.chassisSpeed
+		<< " arm=" << sleep.armSpeed
+		<< " wheel=" << sleep.wheelSpeed
+		<< " engine=" << sleep.engineSpeed
+		<< " chassisSupport=" << sleep.chassisSleptOnSupport
+		<< " armSupport=" << sleep.armSleptOnSupport
+		<< " wheelSupport=" << sleep.wheelSleptOnSupport
+		<< " wheelContacts=" << sleep.wheelContacts;
+	EXPECT_LE(sleep.chassisSpeed, speedLimit)
+		<< "sleep chassis=" << sleep.chassisSpeed << " limit=" << speedLimit
+		<< " awakeMax=" << awake.maxSpeed;
+	EXPECT_LE(sleep.wheelSpeed, speedLimit)
+		<< "sleep wheel=" << sleep.wheelSpeed << " limit=" << speedLimit
+		<< " awakeMax=" << awake.maxSpeed;
 }
 
 static bool aabbOverlaps(const Aabb& a, const Aabb& b) {
@@ -692,4 +742,202 @@ TEST(SleepingGrabBurst, PileWakeReconstructsFloorContactsVsAwakeTwin) {
 	EXPECT_GT(awake.floorPhysicalCount, 0) << "awake twin must have floor physical contacts";
 	EXPECT_EQ(sleep.floorPhysicalCount, awake.floorPhysicalCount)
 		<< "sleep grab must reconstruct the same floor contact coverage as awake grab";
+}
+
+TEST(SleepingGrabBurst, AirborneSleeperWithNoContactsResumesFalling) {
+	World world;
+	world.setTimeStep(kDt);
+	world.setGravity(0.0f, kGravityY);
+	world.setHasFriction(false);
+	world.setHasRestitution(false);
+
+	world.createBody(kFloorId, makeFloorOptions());
+	world.createBody(kGrabId, makeBoxOptions(0.0f, 0.0f, true));
+
+	Body* box = world.getBody(kGrabId);
+	ASSERT_NE(box, nullptr);
+	box->sleep();
+	ASSERT_TRUE(box->isSleeping);
+	EXPECT_EQ(box->getContactCount(), 0);
+
+	const float startY = box->getY();
+	for (int i = 0; i < 10; ++i) {
+		world.step();
+	}
+
+	EXPECT_FALSE(box->isSleeping) << "unsupported sleeper must resume";
+	EXPECT_GT(box->getY(), startY + 0.05f) << "must fall with gravity, not freeze in air";
+	EXPECT_TRUE(bodyStateFinite(box));
+}
+
+TEST(SleepingGrabBurst, HangingSleeperOnFixedJointStaysAsleep) {
+	World world;
+	world.setTimeStep(kDt);
+	world.setGravity(0.0f, kGravityY);
+	world.setHasFriction(false);
+	world.setHasRestitution(false);
+
+	emscripten_val anchor = makeMouseAnchorOptions(0.0f, 0.0f);
+	anchor.properties["shape"] = (int)ObjectShape::BOX;
+	anchor.properties["width"] = 0.2f;
+	anchor.properties["height"] = 0.2f;
+	world.createBody(kFloorId, anchor);
+
+	emscripten_val ball = makeBoxOptions(0.0f, 2.0f, true);
+	ball.properties["shape"] = (int)ObjectShape::CIRCLE;
+	ball.properties["radius"] = 0.25f;
+	ball.properties["maskBits"] = 0;
+	world.createBody(kGrabId, ball);
+	world.createDistanceJoint(kSpringId, kFloorId, kGrabId, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
+
+	Body* hanging = world.getBody(kGrabId);
+	ASSERT_NE(hanging, nullptr);
+	hanging->sleep();
+	ASSERT_TRUE(hanging->isSleeping);
+	EXPECT_EQ(hanging->getContactCount(), 0);
+
+	for (int i = 0; i < kSleepHoldSteps; ++i) {
+		world.step();
+	}
+
+	EXPECT_TRUE(hanging->isSleeping) << "joint to FIXED must not auto-wake a hanging sleeper";
+	EXPECT_TRUE(bodyStateFinite(hanging));
+}
+
+TEST(SleepingGrabBurst, FrozenSoftSpringWakeStaysNearSettled) {
+	auto run = [](bool canSleep) -> float {
+		World world;
+		world.setTimeStep(kDt);
+		world.setGravity(0.0f, 0.0f);
+		world.setHasFriction(false);
+		world.setHasRestitution(false);
+
+		world.createBody(kFloorId, makeMouseAnchorOptions(0.0f, 0.0f));
+		emscripten_val box = makeBoxOptions(0.0f, 1.2f, canSleep);
+		box.properties["maskBits"] = 0;
+		world.createBody(kGrabId, box);
+		world.createSpringJoint(kSpringId, kFloorId, kGrabId, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 25.0f, 0.8f);
+
+		Body* arm = world.getBody(kGrabId);
+		if (canSleep) {
+			arm->sleep();
+			for (int i = 0; i < kSleepHoldSteps; ++i) {
+				world.step();
+			}
+			arm->forceWakeUp();
+		} else {
+			for (int i = 0; i < kBikeAwakeSettleSteps; ++i) {
+				world.step();
+			}
+		}
+
+		float maxSpeed = 0.0f;
+		for (int i = 0; i < kObserveSteps; ++i) {
+			world.step();
+			maxSpeed = std::max(maxSpeed, std::hypot(arm->getVelocityX(), arm->getVelocityY()));
+		}
+		return maxSpeed;
+	};
+
+	const float awake = run(false);
+	const float sleep = run(true);
+	const float speedLimit = kBurstMultiple * std::max(awake, kVelFloor);
+	EXPECT_LE(sleep, speedLimit)
+		<< "frozen 25 Hz stretch after sleep must not dump more speed than a settled awake twin";
+}
+
+TEST(SleepingGrabBurst, HingedMassOnSupportedSleeperStaysNearSettled) {
+	auto run = [](bool canSleep) -> float {
+		World world;
+		world.setTimeStep(kDt);
+		world.setGravity(0.0f, kGravityY);
+		world.setHasFriction(true);
+		world.setHasRestitution(false);
+
+		world.createBody(kFloorId, makeFloorOptions());
+		world.createBody(kGrabId, makeBoxOptions(0.0f, kTargetY, canSleep));
+		emscripten_val mass = makeBoxOptions(0.0f, kTargetY - 0.4f, canSleep);
+		mass.properties["maskBits"] = 0;
+		mass.properties["mass"] = 5.0f;
+		world.createBody(kNeighborBaseId, mass);
+		world.createHingeJoint(kSpringId, kGrabId, kNeighborBaseId, 0.0f, -0.2f, 0.0f, 0.2f);
+
+		Body* support = world.getBody(kGrabId);
+		Body* hanging = world.getBody(kNeighborBaseId);
+		if (canSleep) {
+			for (int i = 0; i < kPreSleepSteps; ++i) {
+				world.step();
+			}
+			support->sleep();
+			hanging->sleep();
+			for (int i = 0; i < kSleepHoldSteps; ++i) {
+				world.step();
+			}
+			support->forceWakeUp();
+			hanging->forceWakeUp();
+		} else {
+			for (int i = 0; i < kBikeAwakeSettleSteps; ++i) {
+				world.step();
+			}
+		}
+
+		float maxSpeed = 0.0f;
+		for (int i = 0; i < kObserveSteps; ++i) {
+			world.step();
+			const float s1 = std::hypot(support->getVelocityX(), support->getVelocityY());
+			const float s2 = std::hypot(hanging->getVelocityX(), hanging->getVelocityY());
+			maxSpeed = std::max(maxSpeed, std::max(s1, s2));
+		}
+		return maxSpeed;
+	};
+
+	const float awake = run(false);
+	const float sleep = run(true);
+	const float speedLimit = kBurstMultiple * std::max(awake, kVelFloor);
+	EXPECT_LE(sleep, speedLimit)
+		<< "hinge rest impulse must not dump into KE after sleep zeros velocity";
+}
+
+TEST(SleepingGrabBurst, RestingWakeWithDefaultRestitutionStaysNearSettled) {
+	auto run = [](bool canSleep) -> float {
+		World world;
+		world.setTimeStep(kDt);
+		world.setGravity(0.0f, kGravityY);
+		world.setHasFriction(true);
+		world.setHasRestitution(true);
+
+		world.createBody(kFloorId, makeFloorOptions());
+		emscripten_val box = makeBoxOptions(0.0f, kTargetY, canSleep);
+		box.properties["restitution"] = 0.2f;
+		world.createBody(kGrabId, box);
+
+		Body* body = world.getBody(kGrabId);
+		if (canSleep) {
+			for (int i = 0; i < kPreSleepSteps; ++i) {
+				world.step();
+			}
+			body->sleep();
+			for (int i = 0; i < kSleepHoldSteps; ++i) {
+				world.step();
+			}
+			body->forceWakeUp();
+		} else {
+			for (int i = 0; i < kBikeAwakeSettleSteps; ++i) {
+				world.step();
+			}
+		}
+
+		float maxSpeed = 0.0f;
+		for (int i = 0; i < kObserveSteps; ++i) {
+			world.step();
+			maxSpeed = std::max(maxSpeed, std::hypot(body->getVelocityX(), body->getVelocityY()));
+		}
+		return maxSpeed;
+	};
+
+	const float awake = run(false);
+	const float sleep = run(true);
+	const float speedLimit = kBurstMultiple * std::max(awake, kVelFloor);
+	EXPECT_LE(sleep, speedLimit)
+		<< "wake-from-sleep on a floor must not treat gΔt as a restitution launch";
 }

@@ -27,6 +27,8 @@ public:
 
     bool isConnectedTo(Body* body) const override;
 
+    void clearAccumulatedImpulse() override { impulse = 0.0f; }
+
 private:
     float impulse;
     float mass;

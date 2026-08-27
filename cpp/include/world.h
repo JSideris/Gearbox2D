@@ -73,6 +73,7 @@ struct ContactConstraint {
     float restitution;
     float normalImpulse, frictionImpulse;
     float frictionNormalBase;
+    float krbPositionScale;
     ContactID id;
     bool inIsland;
     
@@ -84,7 +85,7 @@ struct ContactConstraint {
     void solve(bool enableNormal, bool enableFriction);
     void solvePosition();
 
-    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), frictionNormalBase(0.0f), staticFriction(0.0f), kineticFriction(0.0f), inIsland(false) {}
+    ContactConstraint() : normalImpulse(0.0f), frictionImpulse(0.0f), frictionNormalBase(0.0f), krbPositionScale(1.0f), staticFriction(0.0f), kineticFriction(0.0f), inIsland(false) {}
 
     // Temporary storage during iterations
     struct SolverContext {

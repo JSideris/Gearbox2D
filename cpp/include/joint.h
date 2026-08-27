@@ -61,6 +61,9 @@ public:
     virtual bool isConnectedTo(Body* body) const {
         return bodyA == body || bodyB == body;
     }
+
+    // Sleep zeros body velocity; leftover warm-start would dump that force as KE.
+    virtual void clearAccumulatedImpulse() {}
 };
 
 #endif

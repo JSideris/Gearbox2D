@@ -3,7 +3,74 @@
 #include "world.h"
 #include "constants.h"
 #include "simd-math.h"
+#include <algorithm>
 #include <cmath>
+
+namespace {
+
+float krbRestingPositionScale(float relativeVn, float forceVn, float expectedDisplacement, float dt) {
+	if (expectedDisplacement <= 1e-8f || dt <= 0.0f) {
+		return 1.0f;
+	}
+	const float accVn = forceVn / dt;
+	const float vImpactSq = relativeVn * relativeVn;
+	if (vImpactSq <= 1e-8f || accVn >= 0.0f) {
+		return 0.0f;
+	}
+	const float dhAfford = vImpactSq / (-2.0f * accVn);
+	return std::min(1.0f, dhAfford / expectedDisplacement);
+}
+
+// Frozen stretch after sleep() zeros velocity. Soft-spring bias is a velocity
+// Baumgarte term; at rest it would dump |d-L| into KE. Same bounce identity
+// as overlapping non-bounce contacts. Window covers 20 observe steps and
+// expires during a 120-step hold so landing suspension still works.
+float springWakeBiasScale(Body* a, Body* b, const Vec2& rA, const Vec2& rB, const Vec2& normal, float stretch, float dt) {
+#ifndef GEARBOX_DISABLE_KRB
+	if (!a || !b || dt <= 0.0f) {
+		return 1.0f;
+	}
+	const float age = std::min(a->timeSinceWake, b->timeSinceWake);
+	if (age >= 25.0f * dt || (!a->sleptOnSupport && !b->sleptOnSupport)) {
+		return 1.0f;
+	}
+	const float expectedDisplacement = std::abs(stretch);
+	if (expectedDisplacement <= 1e-8f) {
+		return 1.0f;
+	}
+	const float forceVn = (b->getForceVelocity() - a->getForceVelocity()).dot(normal);
+	const Vec2 tvA(-a->getAngularVelocity() * rA.y, a->getAngularVelocity() * rA.x);
+	const Vec2 tvB(-b->getAngularVelocity() * rB.y, b->getAngularVelocity() * rB.x);
+	const Vec2 relVel = (b->getVelocity() + tvB) - (a->getVelocity() + tvA);
+	const float relativeVn = relVel.dot(normal) - forceVn;
+	return krbRestingPositionScale(relativeVn, forceVn, expectedDisplacement, dt);
+#else
+	(void)a;
+	(void)b;
+	(void)rA;
+	(void)rB;
+	(void)normal;
+	(void)stretch;
+	(void)dt;
+	return 1.0f;
+#endif
+}
+
+bool skipSpringSolveOnSupportedWake(Body* a, Body* b, float stretch, float dt) {
+	if (!a || !b || dt <= 0.0f) {
+		return false;
+	}
+	const float age = std::min(a->timeSinceWake, b->timeSinceWake);
+	if (age >= 25.0f * dt || (!a->sleptOnSupport && !b->sleptOnSupport)) {
+		return false;
+	}
+	if (a->getInverseMass() > 0.0f && b->getInverseMass() > 0.0f) {
+		return true;
+	}
+	return std::abs(stretch) < PENETRATION_SLOP;
+}
+
+} // namespace
 
 SpringJoint::SpringJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, float length, float frequencyHz, float dampingRatio)
     : Joint(id, a, b), localAnchorA(anchorA), localAnchorB(anchorB), length(length), frequencyHz(frequencyHz), dampingRatio(dampingRatio), impulse(0.0f), mass(0.0f), bias(0.0f), gamma(0.0f) {}
@@ -46,16 +113,20 @@ void SpringJoint::preSolve(float dt) {
         }
         mass = k + gamma;
         mass = (mass > 0.0f) ? 1.0f / mass : 0.0f;
+        bias *= springWakeBiasScale(bodyA, bodyB, rA, rB, normal, dMag - length, dt);
     } else {
         gamma = 0.0f;
         bias = 0.0f;
         mass = (k > 0.0f) ? 1.0f / k : 0.0f;
     }
-    Vec2 p = normal * impulse;
-    bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
-    bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(p) * iIA);
-    bodyB->setVelocityInternal(bodyB->getVelocity() + p * imB);
-    bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(p) * iIB);
+    const float stretch = dMag - length;
+    if (!skipSpringSolveOnSupportedWake(bodyA, bodyB, stretch, dt)) {
+        Vec2 p = normal * impulse;
+        bodyA->setVelocityInternal(bodyA->getVelocity() - p * imA);
+        bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(p) * iIA);
+        bodyB->setVelocityInternal(bodyB->getVelocity() + p * imB);
+        bodyB->setAngularVelocityInternal(bodyB->getAngularVelocity() + rB.cross(p) * iIB);
+    }
 }
 
 void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
@@ -188,12 +259,20 @@ void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
         joints[i]->normal = Vec2(resNormalX[i], resNormalY[i]);
         joints[i]->impulse = resImpulse[i];
         joints[i]->mass = resMass[i];
-        joints[i]->bias = resBias[i];
-        joints[i]->gamma = resGamma[i];
         joints[i]->rA = Vec2(resRAx[i], resRAy[i]);
         joints[i]->rB = Vec2(resRBx[i], resRBy[i]);
+        const float stretch = ((joints[i]->bodyB->getPosition() + joints[i]->rB)
+            - (joints[i]->bodyA->getPosition() + joints[i]->rA)).magnitude() - joints[i]->length;
+        joints[i]->bias = resBias[i] * springWakeBiasScale(
+            joints[i]->bodyA, joints[i]->bodyB, joints[i]->rA, joints[i]->rB,
+            Vec2(resNormalX[i], resNormalY[i]), stretch, dt);
+        joints[i]->gamma = resGamma[i];
         joints[i]->lastNormal = joints[i]->normal;
         joints[i]->hasLastNormal = true;
+
+        if (skipSpringSolveOnSupportedWake(joints[i]->bodyA, joints[i]->bodyB, stretch, dt)) {
+            continue;
+        }
 
         // Apply initial impulse scalar-wise
         Vec2 p = joints[i]->normal * joints[i]->impulse;
@@ -214,6 +293,10 @@ void SpringJoint::preSolveSIMD(SpringJoint** joints, float dt) {
 
 
 void SpringJoint::solve() {
+    const float stretch = ((bodyB->getPosition() + rB) - (bodyA->getPosition() + rA)).magnitude() - length;
+    if (skipSpringSolveOnSupportedWake(bodyA, bodyB, stretch, _dt)) {
+        return;
+    }
     Vec2 vA = bodyA->getVelocity(), vB = bodyB->getVelocity();
     float wA = bodyA->getAngularVelocity(), wB = bodyB->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
@@ -235,6 +318,10 @@ void SpringJoint::solve() {
 }
 
 void SpringJoint::solveFast() {
+    const float stretch = ((bodyB->getPosition() + rB) - (bodyA->getPosition() + rA)).magnitude() - length;
+    if (skipSpringSolveOnSupportedWake(bodyA, bodyB, stretch, _dt)) {
+        return;
+    }
     SolverData& sA = *static_cast<SolverData*>(context.a);
     SolverData& sB = *static_cast<SolverData*>(context.b);
 
@@ -265,6 +352,16 @@ void SpringJoint::solveFast() {
 
 void SpringJoint::solveFastSIMD(SpringJoint** joints) {
 #if HWY_TARGET != HWY_SCALAR
+    for (int i = 0; i < 4; ++i) {
+        const float stretch = ((joints[i]->bodyB->getPosition() + joints[i]->rB) -
+            (joints[i]->bodyA->getPosition() + joints[i]->rA)).magnitude() - joints[i]->length;
+        if (skipSpringSolveOnSupportedWake(joints[i]->bodyA, joints[i]->bodyB, stretch, joints[i]->_dt)) {
+            for (int j = 0; j < 4; ++j) {
+                joints[j]->solveFast();
+            }
+            return;
+        }
+    }
     // Load joint properties
     V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
     V128 bias = v128_make_f32(joints[0]->bias, joints[1]->bias, joints[2]->bias, joints[3]->bias);

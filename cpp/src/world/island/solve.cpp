@@ -110,6 +110,20 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
         c->context.b = &getSolverBody(c->b);
     }
 
+    // Joint-only wake frames can spin solver state before floor contacts join.
+    // Clear it at island entry; PGS and mouse/spring still run this step.
+    const float wakeWindow = 25.0f * dt + 1e-12f;
+    for (Body* b : island.bodies) {
+        if (!b || b->type == ObjectType::FIXED_OBJECT) {
+            continue;
+        }
+        if (b->sleptOnWorldContact && b->timeSinceWake < wakeWindow) {
+            SolverData& s = solverBodies[b->worldIndex];
+            s.v = Vec2(0.0f, 0.0f);
+            s.w = 0.0f;
+        }
+    }
+
     std::vector<Vec2> prePgsV(solverBodies.size());
     for (Body* b : island.bodies) {
         prePgsV[b->worldIndex] = solverBodies[b->worldIndex].v;
@@ -118,11 +132,23 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
         }
     }
 
-    // Apply warm starting impulses
+    // Apply warm starting impulses. Sleep zeros v; applying leftover
+    // rest impulses (normal or friction) dumps them as KE. Keep the
+    // accumulator so PGS still solves; same skip-apply as hinge/gear.
     for (ContactConstraint* c : island.contacts) {
         SolverData& sA = *static_cast<SolverData*>(c->context.a);
         SolverData& sB = *static_cast<SolverData*>(c->context.b);
-        
+
+        bool skipWarmApply = false;
+        if (c->a && c->b) {
+            const float age = std::min(c->a->timeSinceWake, c->b->timeSinceWake);
+            const float window = 25.0f * dt + 1e-12f;
+            skipWarmApply = age < window && (c->a->sleptOnSupport || c->b->sleptOnSupport);
+        }
+        if (skipWarmApply) {
+            continue;
+        }
+
         if (c->normalImpulse != 0 || c->frictionImpulse != 0) {
             Vec2 impulse = c->normal * c->normalImpulse + c->tangent * c->frictionImpulse;
             if (sA.im > 0) {
