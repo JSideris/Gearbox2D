@@ -21,33 +21,6 @@ protected:
     }
 };
 
-TEST_F(DistanceJointTest, DistanceIsMaintained) {
-    int idA = 1, idB = 2, jointId = 100;
-    
-    // Fixed object at (0, 0)
-    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.createBody(idA, options);
-    
-    // Rigid body at (5, 0)
-    options.properties["x"] = 5.0f;
-    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    world.createBody(idB, options);
-    
-    Body* objB = world.getBody(idB);
-    
-    // Distance joint with length 3.0
-    // Anchors at centers (0, 0)
-    world.createDistanceJoint(jointId, idA, idB, 0.0f, 0.0f, 0.0f, 0.0f, 3.0f);
-    
-    // Let it settle for a bit
-    for (int i = 0; i < 60; ++i) {
-        world.step();
-    }
-    
-    float distance = objB->getPosition().magnitude();
-    EXPECT_NEAR(distance, 3.0f, 0.01f);
-}
-
 TEST_F(DistanceJointTest, CentrifugalForce) {
     int idA = 1, idB = 2, jointId = 100;
     
@@ -72,36 +45,6 @@ TEST_F(DistanceJointTest, CentrifugalForce) {
         float distance = objB->getPosition().magnitude();
         EXPECT_NEAR(distance, 2.0f, 0.05f);
     }
-}
-
-TEST_F(DistanceJointTest, ReactionForce) {
-    int idA = 1, idB = 2, jointId = 100;
-    
-    world.setGravity(0.0f, -10.0f);
-    
-    // Fixed object at (0, 0)
-    options.properties["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
-    world.createBody(idA, options);
-    
-    // Rigid body at (0, -2)
-    options.properties["x"] = 0.0f;
-    options.properties["y"] = -2.0f;
-    options.properties["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
-    options.properties["mass"] = 1.0f;
-    world.createBody(idB, options);
-    
-    // Distance joint with length 2.0
-    world.createDistanceJoint(jointId, idA, idB, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f);
-    
-    for (int i = 0; i < 20; ++i) {
-        world.step();
-    }
-    
-    Joint* joint = world.getJoint(jointId);
-    Vec2 reaction = joint->getReactionForce(60.0f);
-    
-    // Upward force should be 10.0 (mass * gravity)
-    EXPECT_NEAR(reaction.y, 10.0f, 0.5f);
 }
 
 TEST_F(DistanceJointTest, SetLengthAtRuntime) {

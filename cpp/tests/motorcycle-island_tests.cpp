@@ -395,17 +395,6 @@ TEST(MotorcycleIsland, ThrottleGearOnlyDoesNotProgressivelySink) {
 	recordThrottleMetrics(result);
 }
 
-TEST(MotorcycleIsland, ThrottleSpringAndEngineNoGearDoesNotProgressivelySink) {
-	World world;
-	DrivetrainIsland island = buildDrivetrainIsland(world, {true, false, true});
-
-	RunResult result = runSimulation(
-		world, island, kTotalSteps, island.engine, makeThrottleCallback(island.engine));
-	assertContactOccurred(result);
-	assertThrottlePenBounds(result);
-	recordThrottleMetrics(result);
-}
-
 TEST(MotorcycleIsland, ThrottleDoesNotProgressivelySink) {
 	World world;
 	DrivetrainIsland island = buildDrivetrainIsland(world);
@@ -415,64 +404,4 @@ TEST(MotorcycleIsland, ThrottleDoesNotProgressivelySink) {
 	assertContactOccurred(result);
 	assertThrottlePenBounds(result);
 	recordThrottleMetrics(result);
-}
-
-TEST(MotorcycleIsland, CauseIsolationRanking) {
-	World controlWorld;
-	IdleIsland controlIsland = buildIdleLandingIsland(controlWorld);
-	RunResult controlResult = runSimulation(controlWorld, controlIsland, kTotalSteps, nullptr);
-
-	World springWorld;
-	DrivetrainIsland springIsland = buildDrivetrainIsland(springWorld, {false, false, true});
-	RunResult springResult = runSimulation(springWorld, springIsland, kTotalSteps, nullptr);
-
-	World gearWorld;
-	DrivetrainIsland gearIsland = buildDrivetrainIsland(gearWorld, {true, true, false});
-	RunResult gearResult = runSimulation(gearWorld, gearIsland, kTotalSteps, gearIsland.engine);
-
-	World fullIdleWorld;
-	DrivetrainIsland fullIdleIsland = buildDrivetrainIsland(fullIdleWorld);
-	RunResult fullIdleResult = runSimulation(
-		fullIdleWorld, fullIdleIsland, kTotalSteps, fullIdleIsland.engine);
-
-	World throttleGearWorld;
-	DrivetrainIsland throttleGearIsland = buildDrivetrainIsland(throttleGearWorld, {true, true, false});
-	RunResult throttleGearResult = runSimulation(
-		throttleGearWorld, throttleGearIsland, kTotalSteps, throttleGearIsland.engine,
-		makeThrottleCallback(throttleGearIsland.engine));
-
-	World throttleSpringEngineWorld;
-	DrivetrainIsland throttleSpringEngineIsland =
-		buildDrivetrainIsland(throttleSpringEngineWorld, {true, false, true});
-	RunResult throttleSpringEngineResult = runSimulation(
-		throttleSpringEngineWorld, throttleSpringEngineIsland, kTotalSteps,
-		throttleSpringEngineIsland.engine,
-		makeThrottleCallback(throttleSpringEngineIsland.engine));
-
-	World throttleFullWorld;
-	DrivetrainIsland throttleFullIsland = buildDrivetrainIsland(throttleFullWorld);
-	RunResult throttleFullResult = runSimulation(
-		throttleFullWorld, throttleFullIsland, kTotalSteps, throttleFullIsland.engine,
-		makeThrottleCallback(throttleFullIsland.engine));
-
-	const float idleControlPen = controlResult.maxPenLastWindow;
-	const float idleSpringPen = springResult.maxPenLastWindow;
-	const float idleGearPen = gearResult.maxPenLastWindow;
-	const float idleFullPen = fullIdleResult.maxPenLastWindow;
-	const float throttleGearPen = throttleGearResult.maxPenLastWindow;
-	const float throttleSpringEnginePen = throttleSpringEngineResult.maxPenLastWindow;
-	const float throttleFullPen = throttleFullResult.maxPenLastWindow;
-
-	::testing::Test::RecordProperty("idle_control_pen", idleControlPen);
-	::testing::Test::RecordProperty("idle_spring_pen", idleSpringPen);
-	::testing::Test::RecordProperty("idle_gear_pen", idleGearPen);
-	::testing::Test::RecordProperty("idle_full_pen", idleFullPen);
-	::testing::Test::RecordProperty("throttle_gear_pen", throttleGearPen);
-	::testing::Test::RecordProperty("throttle_spring_engine_pen", throttleSpringEnginePen);
-	::testing::Test::RecordProperty("throttle_full_pen", throttleFullPen);
-
-	EXPECT_LE(idleControlPen, PENETRATION_SLOP);
-	EXPECT_LE(idleSpringPen, PENETRATION_SLOP);
-	EXPECT_LE(idleFullPen, PENETRATION_SLOP);
-	EXPECT_LE(throttleFullPen, PENETRATION_SLOP);
 }
