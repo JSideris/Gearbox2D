@@ -97,7 +97,7 @@ These $\Delta h$ values are explicit predictors of Baumgarte travel, not a measu
 
 \subsection{Contacts and speculative gaps}
 
-For physical overlap ($d > 0$), both Component~A and Component~B are required. Speculative contacts (created before overlap, $d < 0$) use Component~A only since $\Delta h = 0$. Apply restitution bias when enabled and velocity exceeds a threshold or a speculative gap closes too fast.
+For physical overlap ($d > 0$), both Component~A and Component~B are required. Speculative contacts (created before overlap, $d < 0$) use Component~A only since $\Delta h = 0$. Apply restitution bias when enabled and velocity exceeds a threshold or a speculative gap closes too fast. Resting contacts must not receive an $e=1$ launch bias.
 
 \subsection{Distance joints}
 \label{sec:joints}
@@ -112,7 +112,7 @@ where $v_{\mathrm{bias}} = \beta C / \Delta t$ and $\Delta h_{\mathrm{joint}} = 
 \section{Implementation}
 \label{sec:implementation}
 
-KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop. Store $v_{\mathrm{force}} = a_{\mathrm{ext}}\Delta t$ per dynamic body at integrate (before the constraint solve); zero for sleeping or infinite-mass bodies. Full listings in supplement; Listings~\ref{lst:contact} and~\ref{lst:joint} show the measured recipes for contacts and distance joints.
+KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop. Store $v_{\mathrm{force}} = a_{\mathrm{ext}}\Delta t$ per dynamic body at integrate (before the constraint solve); here $a_{\mathrm{ext}}$ is gravity plus external force before linear damping; the store is zero for sleeping or infinite-mass bodies. Full listings in supplement; Listings~\ref{lst:contact} and~\ref{lst:joint} show the measured recipes for contacts and distance joints.
 
 \subsection{Contact and joint setup}
 
@@ -164,24 +164,7 @@ During the velocity solve, $-\mathrm{forceVn}$ is folded into \texttt{bias} so \
 \section{Evaluation}
 \label{sec:evaluation}
 
-Four datasets (Table~\ref{tab:protocol}): A $600\,\mathrm{s}$ energy ablation; D native \texttt{world.step()} wall-time; B/C in supplement. Protocol: $dt = 1/60$, $e = 1$, zero friction and damping, sleep off; Dataset~A uses stock \texttt{World()} plus \texttt{constants.h} (\texttt{velocity\_iterations}$=8$, \texttt{position\_iterations}$=3$, $\beta = 0.2$, slop $0.016$, restitution threshold $0.01$). The ablation switch is full KRB on/off. $E = E_k + E_p$ (including rotational KE); the reported ratio is $E/E_0$.
-
-\small
-\begin{table}[htb]
-  \caption{Evaluation protocol. Datasets B (multi-engine) and C (8 h continuation) in supplement.}
-  \label{tab:protocol}
-  \centering
-  \scriptsize
-  \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{@{}lllll@{}}
-    \hline
-    Set & Scene & Horizon & Surface & Outcome \\
-    \hline
-    A & floor, enclosure, cradle & $600\,\mathrm{s}$ & \texttt{log-energy} & Table~\ref{tab:dataset-a} \\
-    D & cradle + stack & timed steps & native \texttt{g++} & Table~\ref{tab:dataset-d} \\
-    \hline
-  \end{tabular}
-\end{table}
+Four datasets: A $600\,\mathrm{s}$ energy ablation; D native \texttt{world.step()} wall-time; B/C in supplement. Protocol: $dt = 1/60$, $e = 1$, zero friction and damping, sleep off; Datasets~A and~C use stock \texttt{World()} plus \texttt{constants.h} (\texttt{velocity\_iterations}$=8$, \texttt{position\_iterations}$=3$, $\beta = 0.2$, slop $0.016$, restitution threshold $0.01$). The ablation switch is full KRB on/off. $E = E_k + E_p$ (including rotational KE); the reported ratio is $E/E_0$.
 
 \small
 \begin{table}[htb]
