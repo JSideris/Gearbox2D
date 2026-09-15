@@ -41,12 +41,12 @@ Writes `figures/fig-energy-ablation.{pdf,png}` (paper Figure 1 teaser),
 
 ## Recapture (optional)
 
-Energy and timing numbers in the paper were produced with Gearbox2D. After the
-evaluation tag `krb-jcgt-1` is published, clone
-<https://github.com/JSideris/Gearbox2D> and check out that tag. Until then,
-use the repository default branch.
+Energy and timing numbers in the paper were produced with Gearbox2D. Clone
+<https://github.com/JSideris/Gearbox2D> and check out the evaluation tag
+`krb-jcgt-1`:
 
 ```bash
+git checkout krb-jcgt-1
 make log-energy
 ./logEnergy --out studies/kinematic_restitution_balancing/data --seconds 600
 make log-energy GEARBOX_DISABLE_KRB=1
