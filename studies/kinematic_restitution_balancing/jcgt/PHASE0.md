@@ -1,19 +1,19 @@
 # Phase 0 — KRB JCGT Freeze (2026-09-15)
 
-**Status:** Phase 0–2 execution in progress
+**Status:** Phase 0–2 complete; packaging fixes applied per review
 
 ## One-sentence claim
 
-A cheap per-constraint `preSolve` energy audit (Components A and B) stops artificial energy gain in single-pass sequential-impulse contact solvers without extra solver iterations.
+A cheap per-constraint `preSolve` energy audit (Components A and B) audits artificial energy leaks in single-pass sequential-impulse contact solvers; bounded offset remains for coupled constraints.
 
-## PDF (main article) — keep ≤6 pages (prefer ≤5)
+## PDF (main article) — keep ~6-7 pages with joints
 
-1. **Teaser figure** (mandatory) — before/after energy or enclosure stay-vs-tunnel
+1. **Teaser figure** (mandatory) — energy ablation (a/b/c) as Figure 1
 2. **Problem** — two analytic leaks (force-integration drift; Baumgarte PE work)
-3. **Method** — A/B + Δh predictors (compressed) + implementation listings
+3. **Method** — A/B + Δh predictors (with caveats: m cancels, v_launch, predictor properties) + implementation listings
 4. **Dataset A ablation** — floor bounce + enclosure (the strong result)
-5. **Dataset D cost table** (brief)
-6. **Limitations** — coupled graphs, protocol scope
+5. **Dataset D cost table** (brief, or pointer to supplement)
+6. **Limitations** — coupled graphs, protocol scope, cradle bounded offset caveat
 7. **Conclusion** + Index of Supplemental Materials (pointers)
 
 ## Zip (supplement) — move/keep
@@ -21,19 +21,22 @@ A cheap per-constraint `preSolve` energy audit (Components A and B) stops artifi
 - **Dataset B** multi-engine whole-engine context (figure + CSVs) — **moved out of main narrative**
 - **Dataset C** 8 h continuation (figure + CSVs) — **one PDF sentence max**
 - All CSVs, plot scripts, listings, LICENSE, recapture commands
-- Optional later: A-only/B-only floor table
+- Optional: Dataset D timing table if page pressure requires
 
 ## Standing edit rule
 
-**Every change shortens the PDF or improves the zip.**
+**Move exhibits, not identities.**
 
+- Do NOT shorten Method derivations (m cancels, v_launch definition, predictor properties)
+- Do NOT drop cradle caveat to look more successful  
+- Do NOT keep Dataset B in main narrative
+- Do NOT print ablation figure as both teaser and body figure
 - No other-engine ports
 - No related-work expansion
-- Clear aspirational `\submitted{2026-08-23}` until real filing
 
 ## Target
 
-`krb.pdf` **≤ 6 pages** (prefer **≤ 5**)
+`krb.pdf` **~6-7 pages with joints** (contacts-only ~4 pages only if editor forces claim change)
 
 ## Current state (before Phase 1)
 
