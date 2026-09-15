@@ -21,7 +21,7 @@
   \label{fig:ablation}
 }
 
-\author{Joshua Sideris\\Gear3Games\\\href{https://gearbox2d.com}{https://gearbox2d.com}\\\href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}}
+\author{Joshua Sideris\\Independent\\\href{https://gearbox2d.com}{https://gearbox2d.com}\\\href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}}
 
 \maketitle
 
@@ -112,7 +112,7 @@ where $v_{\mathrm{bias}} = \beta C / \Delta t$ and $\Delta h_{\mathrm{joint}} = 
 \section{Implementation}
 \label{sec:implementation}
 
-KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop. Store $v_{\mathrm{force}} = a_{\mathrm{ext}}\Delta t$ per dynamic body at integrate (before the constraint solve); here $a_{\mathrm{ext}}$ is gravity plus external force before linear damping; the store is zero for sleeping or infinite-mass bodies. Full listings in supplement; Listings~\ref{lst:contact} and~\ref{lst:joint} show the measured recipes for contacts and distance joints.
+KRB runs at contact and distance-joint \texttt{preSolve}, before the velocity iteration loop. Prerequisites: symplectic Euler with per-body \texttt{forceVelocity} ($a_{\mathrm{ext}} \Delta t$), Baumgarte position correction with factor $\beta$, position iteration count $n$, and penetration slop. Store $v_{\mathrm{force}} = a_{\mathrm{ext}}\Delta t$ per dynamic body at integrate (before the constraint solve); here $a_{\mathrm{ext}}$ is gravity plus external force before linear damping; the store is zero for sleeping or infinite-mass bodies. Full listings in supplement; Listings~\ref{lst:contact} and~\ref{lst:joint} show the measured recipes for contacts and distance joints. The paper listings are the recipe; production Gearbox2D sources include additional wake/sleep gates and SIMD interleave that are not shown here.
 
 \subsection{Contact and joint setup}
 
@@ -214,11 +214,13 @@ Paper scenes sit in timer scatter; the denser stack is about $+5\%$ mean with no
 
 KRB is a per-constraint audit, not a coupled one: resolving one constraint can force work on another. In the Newton's cradle this shows as a step from $\sim 0.96$ to $\sim 1.05$ near four minutes (Figure~\ref{fig:ablation}c); see supplement for 8 h results. The Dataset~C enclosure stays in-box but $600\,\mathrm{s}$ windowed $E/E_0$ drifts $1.006 \to 0.976$ (slow loss, not the KRB-off SI gain).
 
+The reported ablation is full KRB on/off; we cannot attribute the floor-bounce bounded outcome to Component~A vs.\ Component~B individually from these traces alone.
+
 Energy results use the protocol in Section~\ref{sec:evaluation}: single-pass SI/PGS, symplectic Euler, contacts and distance joints, $e = 1$, zero friction and damping, sleep off. Friction dissipates, and $e<1$ skips the bounce tax when \texttt{shouldBounce} is false, so either would mask the audit. A coupled-constraint audit, tunneling, ill-conditioned chains, other integrators, hinge joints, and a switch to XPBD or TGS remain future work.
 
 \section{Conclusion}
 
-KRB is a \texttt{preSolve} audit for sequential-impulse solvers: Component~A subtracts symplectic-Euler force drift from the impact velocity, and Component~B taxes the expected correction $\Delta h$. Contact scenes in the Gearbox2D ablation stay bounded; the coupled-constraint gap is in Section~\ref{sec:limitations}.
+KRB is a \texttt{preSolve} audit for sequential-impulse solvers: Component~A subtracts symplectic-Euler force drift from the impact velocity, and Component~B taxes the expected correction $\Delta h$. Contact scenes in the Gearbox2D ablation stay bounded; the coupled-constraint gap is in Section~\ref{sec:limitations}. KRB ships in production Gearbox2D, live at the linked site and available for game development.
 
 \small
 \bibliographystyle{jcgt}
@@ -232,7 +234,7 @@ The archive \texttt{krb-supplement.zip} (ISC) contains: \path{README.md}; \path{
 \par}
 
 \section*{Author Contact and License}
-\noindent Joshua Sideris, Gear3Games --- \href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}, \href{https://gearbox2d.com}{gearbox2d.com}. Supplemental code and data in \texttt{krb-supplement.zip} are ISC-licensed.
+\noindent Joshua Sideris, Independent --- \href{mailto:josh.sideris@gmail.com}{josh.sideris@gmail.com}, \href{https://gearbox2d.com}{gearbox2d.com}. Supplemental code and data in \texttt{krb-supplement.zip} are ISC-licensed.
 
 \afterdoc
 
