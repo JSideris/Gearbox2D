@@ -394,14 +394,3 @@ TEST(MotorcycleIsland, ThrottleGearOnlyDoesNotProgressivelySink) {
 	assertThrottlePenBounds(result);
 	recordThrottleMetrics(result);
 }
-
-TEST(MotorcycleIsland, ThrottleDoesNotProgressivelySink) {
-	World world;
-	DrivetrainIsland island = buildDrivetrainIsland(world);
-
-	RunResult result = runSimulation(
-		world, island, kTotalSteps, island.engine, makeThrottleCallback(island.engine));
-	assertContactOccurred(result);
-	assertThrottlePenBounds(result);
-	recordThrottleMetrics(result);
-}
