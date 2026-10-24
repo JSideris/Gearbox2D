@@ -1,0 +1,101 @@
+# Publishes gearbox2d when package.json is ahead of the registry.
+# The example site deploys from ci.yml.
+#
+# One-time setup on npmjs.com: add a trusted publisher for this
+# repository and workflow filename publish.yml. No NPM_TOKEN.
+
+name: Publish
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: https://registry.npmjs.org
+          cache: 'npm'
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@^11.5.1
+
+      - name: Check whether this version is already published
+        id: version
+        run: |
+          local=$(node -p "require('./package.json').version")
+          remote=$(npm view gearbox2d version 2>/dev/null || true)
+          echo "Local version: $local"
+          echo "npm version:   ${remote:-<unpublished>}"
+          if [ "$local" = "$remote" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing to publish."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Node dependencies
+        if: steps.version.outputs.publish == 'true'
+        run: npm install
+
+      - name: Install Native Build Dependencies
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake
+
+      - name: Set up Google Test
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          git clone https://github.com/google/googletest.git /tmp/googletest
+          cd /tmp/googletest
+          mkdir build
+          cd build
+          cmake ..
+          make -j$(nproc)
+        env:
+          GTEST_DIR: /tmp/googletest/googletest
+
+      - name: Create WASM placeholders for tests
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          mkdir -p dist/wasm
+          touch dist/wasm/gearbox-module-mt.js
+          touch dist/wasm/gearbox-module-st.js
+
+      - name: Run Native C++ Tests
+        if: steps.version.outputs.publish == 'true'
+        run: make test -B
+        env:
+          GTEST_DIR: /tmp/googletest/googletest
+          GTEST_LIB_DIR: /tmp/googletest/build/lib
+
+      - name: Run TypeScript Tests
+        if: steps.version.outputs.publish == 'true'
+        run: npm run test:ts
+
+      - name: Install Emscripten
+        if: steps.version.outputs.publish == 'true'
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build package
+        if: steps.version.outputs.publish == 'true'
+        run: npm run build
+
+      - name: Publish to npm
+        if: steps.version.outputs.publish == 'true'
+        run: npm publish --ignore-scripts
