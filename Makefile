@@ -12,8 +12,8 @@ GTEST_DIR ?= /usr/src/googletest/googletest
 GTEST_LIB_DIR ?= .
 GTEST_LIBS = -lgtest -lgtest_main
 
-# Compiler
-EMCC = emcc
+# Compiler. Emscripten 6.0.6+ does not link libc++ from emcc.
+EMCC = em++
 CXX = g++  # Native C++ compiler for tests
 
 # Project name
