@@ -477,6 +477,10 @@ export class World {
 		this.world.setHasFriction(v);
 	}
 
+	setHasKrb(v: boolean) {
+		this.world.setHasKrb(v);
+	}
+
 	setSpeculativeMargin(v: number) {
 		this.world.setSpeculativeMargin(v);
 	}

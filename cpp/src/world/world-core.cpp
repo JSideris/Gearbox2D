@@ -21,8 +21,16 @@ World::World() : collisionSolver(*this) {
     solverBodyActive.resize(MAX_BODIES, 0);
     nextFixtureId = 1;
 #ifdef GEARBOX_MT
-    // Initialize the thread pool with 4 threads matching PTHREAD_POOL_SIZE
-    threadPool = std::make_unique<ThreadPool>(4);
+#ifdef __EMSCRIPTEN__
+    // PTHREAD_POOL_SIZE is 4. A second World that constructs another
+    // ThreadPool(4) blocks the browser main thread: new workers are
+    // delivered on that same thread, which is already waiting in pthread_create.
+    static ThreadPool sharedPool(4);
+    threadPool = &sharedPool;
+#else
+    ownedThreadPool = std::make_unique<ThreadPool>(4);
+    threadPool = ownedThreadPool.get();
+#endif
     for (int i = 0; i < 4; ++i) {
         mtSolvers.push_back(std::make_unique<ThreadLocalSolver>(*this));
     }
@@ -248,6 +256,7 @@ void World::setGravity(float x, float y) { gravity.x = x; gravity.y = y; }
 void World::setHasPenetrationResolution(bool v) { hasPenetrationResolution = v; }
 void World::setHasRestitution(bool v) { hasRestitution = v; }
 void World::setHasFriction(bool v) { hasFriction = v; }
+void World::setHasKrb(bool v) { hasKrb = v; }
 
 int World::getEventCount() { return (int)eventData.size() / 6; }
 void World::addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB, float impulse) {

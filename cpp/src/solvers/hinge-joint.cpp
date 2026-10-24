@@ -34,24 +34,25 @@ void HingeJoint::preSolve(float dt) {
     Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
     Vec2 C = (posB + rB) - (posA + rA);
     
-#ifndef GEARBOX_DISABLE_KRB
+#ifdef GEARBOX_DISABLE_KRB
+    const bool useKrb = false;
+#else
+    const bool useKrb = bodyA->world.getHasKrb();
+#endif
+    if (useKrb) {
     // Kinematic Restitution Balancing (KRB) for Hinge Joint
     // Component A: Force Velocity Compensation
     Vec2 vB = C * (BAUMGARTE_FACTOR / dt);
     Vec2 forceVelDiff = bodyB->getForceVelocity() - bodyA->getForceVelocity();
     
     bias = vB - forceVelDiff;
-    const float age = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
-    if (age < 25.0f * dt && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
-        bias = Vec2(0.0f, 0.0f);
-    }
-#else
+    } else {
     bias = C * (BAUMGARTE_FACTOR / dt);
+    }
     const float age = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
     if (age < 25.0f * dt && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
         bias = Vec2(0.0f, 0.0f);
     }
-#endif
 
     // Sleep zeroed v; applying the rest-holding impulse would dump it as KE.
     // Keep the accumulator so PGS continues from support, but skip the apply.

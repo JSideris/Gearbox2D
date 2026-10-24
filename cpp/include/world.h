@@ -171,6 +171,7 @@ private:
     bool hasPenetrationResolution = true;
     bool hasRestitution = true;
     bool hasFriction = true;
+    bool hasKrb = true;
     std::vector<ContactConstraint> contactConstraints;
     std::vector<float> eventData;
 #ifdef GEARBOX_MT
@@ -184,7 +185,8 @@ private:
     int nextFixtureId = 1;
 
 #ifdef GEARBOX_MT
-    std::unique_ptr<ThreadPool> threadPool;
+    std::unique_ptr<ThreadPool> ownedThreadPool;
+    ThreadPool* threadPool = nullptr;
     std::vector<std::unique_ptr<ThreadLocalSolver>> mtSolvers;
 #endif
 
@@ -271,6 +273,8 @@ public:
     void setHasPenetrationResolution(bool value);
     void setHasRestitution(bool value);
     void setHasFriction(bool value);
+    void setHasKrb(bool value);
+    bool getHasKrb() const { return hasKrb; }
     void setGravity(float x, float y);
     Vec2 getGravity() const { return gravity; }
     ChainResidualStats getLastChainResidual() const { return lastChainResidual; }

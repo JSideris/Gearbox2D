@@ -125,11 +125,18 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     Vec2 tangentialVelocityB(-rB.y * b->getAngularVelocity(), rB.x * b->getAngularVelocity());
     Vec2 relVel = (b->getVelocity() + tangentialVelocityB) - (a->getVelocity() + tangentialVelocityA);
     float vn = relVel.dot(normal);
+    float relativeVn = vn;
+    bool shouldBounce = false;
 
-#ifndef GEARBOX_DISABLE_KRB
+#ifdef GEARBOX_DISABLE_KRB
+    const bool useKrb = false;
+#else
+    const bool useKrb = a->world.getHasKrb();
+#endif
+    if (useKrb) {
     // Component A: Force Velocity Compensation
     float forceVn = (b->getForceVelocity() - a->getForceVelocity()).dot(normal);
-    float relativeVn = vn - forceVn;
+    relativeVn = vn - forceVn;
 
     float vBounce = -restitution * relativeVn;
     float expectedDisplacement = 0.0f;
@@ -140,7 +147,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
         kineticFriction = 0.0f;
     }
 
-    bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
+    shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
     if (suppressBounceOnSupportedWake(*this)) {
         shouldBounce = false;
     }
@@ -190,15 +197,15 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     if (suppressBounceOnSupportedWake(*this) && depth > 0.0f) {
         krbPositionScale = 0.0f;
     }
-#else
-    float relativeVn = vn;
+    } else {
+    relativeVn = vn;
 
     if (depth < 0.0f) {
         staticFriction = 0.0f;
         kineticFriction = 0.0f;
     }
 
-    bool shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
+    shouldBounce = enableRestitution && (relativeVn < -RESTITUTION_THRESHOLD || (depth < 0.0f && relativeVn < depth / dt));
     if (suppressBounceOnSupportedWake(*this)) {
         shouldBounce = false;
     }
@@ -224,7 +231,7 @@ void ContactConstraint::preSolve(float dt, bool enableRestitution, bool enablePe
     if (suppressBounceOnSupportedWake(*this) && depth > 0.0f) {
         krbPositionScale = 0.0f;
     }
-#endif
+    }
     if (suppressBounceOnSupportedWake(*this)) {
         bias = 0.0f;
     }
@@ -354,11 +361,20 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     };
 
     alignas(16) float resRelativeVnSeed[4];
+    V128 relativeVn;
+    V128 shouldBounce;
+    V128 bias;
+    V128 krbPositionScale;
 
-#ifndef GEARBOX_DISABLE_KRB
+#ifdef GEARBOX_DISABLE_KRB
+    const bool useKrb = false;
+#else
+    const bool useKrb = world.getHasKrb();
+#endif
+    if (useKrb) {
     // Component A: Force Velocity Compensation
     V128 forceVn = v128_dot_f32(v128_sub_f32(fvBx, fvAx), v128_sub_f32(fvBy, fvAy), normalX, normalY);
-    V128 relativeVn = v128_sub_f32(vn, forceVn);
+    relativeVn = v128_sub_f32(vn, forceVn);
     V128 vBounce = v128_mul_f32(v128_neg_f32(restitution), relativeVn);
 
     // Speculative contact masks
@@ -372,7 +388,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 depth_over_dt = v128_div_f32(depth, dt_v);
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
     V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
-    V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
+    shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
     shouldBounce = v128_and(shouldBounce, v128_not(supportedWakeMask()));
 
     // Component B: Kinematic Energy Balancing
@@ -396,7 +412,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     // Bias calculation
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
-    V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+    bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
     bias = v128_select(supportedWakeMask(), zero_v, bias);
 
     // Resting overlap: same Δh predictor as bounce with v_launch = 0, then
@@ -422,11 +438,11 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 wakeWindowRest = v128_splat_f32(25.0f * dt + 1e-12f);
     V128 recentlyWoke = v128_lt_f32(wakeAge, wakeWindowRest);
     V128 overlappingRest = v128_and(v128_and(v128_not(shouldBounce), depth_gt_zero), recentlyWoke);
-    V128 krbPositionScale = v128_select(overlappingRest, restScale, one_v);
+    krbPositionScale = v128_select(overlappingRest, restScale, one_v);
     krbPositionScale = v128_select(v128_and(supportedWakeMask(), depth_gt_zero), zero_v, krbPositionScale);
     v128_store_f32(resRelativeVnSeed, relativeVn);
-#else
-    V128 relativeVn = vn;
+    } else {
+    relativeVn = vn;
 
     // Speculative contact masks
     V128 depth_lt_zero = v128_lt_f32(depth, zero_v);
@@ -439,7 +455,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 depth_over_dt = v128_div_f32(depth, dt_v);
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
     V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
-    V128 shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
+    shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
     shouldBounce = v128_and(shouldBounce, v128_not(supportedWakeMask()));
 
     V128 vFinal = v128_mul_f32(restitution, v128_max_f32(zero_v, v128_neg_f32(relativeVn)));
@@ -447,12 +463,12 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     // Bias calculation
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
-    V128 bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
+    bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
     bias = v128_select(supportedWakeMask(), zero_v, bias);
-    V128 krbPositionScale = one_v;
+    krbPositionScale = one_v;
     krbPositionScale = v128_select(v128_and(supportedWakeMask(), v128_gt_f32(depth, zero_v)), zero_v, krbPositionScale);
     v128_store_f32(resRelativeVnSeed, relativeVn);
-#endif
+    }
 
     // Tangent and tangent mass
     V128 tangentX = v128_neg_f32(normalY);

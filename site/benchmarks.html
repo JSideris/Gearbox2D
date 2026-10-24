@@ -305,6 +305,16 @@
 			#export-button i {
 				margin-right: 8px;
 			}
+
+			.engine-tabs.krb-ablation-mode {
+				display: none;
+			}
+
+			#metrics.all-mode.krb-ablation-metrics {
+				top: auto;
+				bottom: 16px;
+				transform: translate(-50%, 0);
+			}
 		</style>
 	</head>
 	<body>
@@ -344,6 +354,15 @@
 					<label class="capture-control" title="Advance 10 simulation steps per frame">
 						<input type="checkbox" id="fast-forward" />
 						<span>Fast-forward</span>
+					</label>
+					<label
+						class="capture-control"
+						id="krb-ablation-control"
+						title="Local: hide other engines and compare Gearbox2D with KRB on vs off"
+						style="display: none"
+					>
+						<input type="checkbox" id="krb-ablation" />
+						<span>KRB on / off</span>
 					</label>
 					<button id="export-button" title="Download logged series as CSV" disabled>
 						<i class="fas fa-download"></i>
@@ -406,7 +425,12 @@
 					</div>
 					<div id="engine-legend">
 						<div class="legend-item" id="legend-gearbox2d">
-							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>Gearbox2D
+							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>
+							<span id="legend-gearbox2d-text">Gearbox2D</span>
+						</div>
+						<div class="legend-item" id="legend-gearbox2d-nokrb" style="display: none">
+							<span class="legend-color" style="color: #fbbf24; background: #fbbf24"></span>Gearbox2D (KRB
+							off)
 						</div>
 						<div class="legend-item" id="legend-clone" style="display: none">
 							<span class="legend-color" style="color: #8fbc8f; background: #8fbc8f"></span>Gearbox2D
@@ -448,7 +472,7 @@
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 		<script type="module">
-			import gearbox from "gearbox2d";
+			import gearbox, { Gearbox } from "gearbox2d";
 			import { GearboxAdapter } from "./utils/adapters/gearbox-adapter.ts";
 			import { MatterAdapter, P2Adapter, Box2DAdapter } from "./utils/adapters/competitor-adapters.ts";
 			import { ProtocolRenderer } from "./utils/protocol-renderer.ts";
@@ -465,6 +489,9 @@
 			const exportButton = document.getElementById("export-button");
 			const captureSelect = document.getElementById("capture-seconds");
 			const fastForwardToggle = document.getElementById("fast-forward");
+			const krbAblationControl = document.getElementById("krb-ablation-control");
+			const krbAblationToggle = document.getElementById("krb-ablation");
+			const engineTabs = document.querySelector(".engine-tabs");
 			const engineNameEl = document.getElementById("engine-name");
 			const engineLegend = document.getElementById("engine-legend");
 			const SIM_DT = 1 / 60;
@@ -489,6 +516,13 @@
 								{ label: "Matter.js", borderColor: "#f472b6", data: [], tension: 0.1, pointRadius: 0 },
 								{ label: "P2.js", borderColor: "#a855f7", data: [], tension: 0.1, pointRadius: 0 },
 								{ label: "Box2D-WASM", borderColor: "#60a5fa", data: [], tension: 0.1, pointRadius: 0 },
+								{
+									label: "Gearbox2D (KRB off)",
+									borderColor: "#fbbf24",
+									data: [],
+									tension: 0.1,
+									pointRadius: 0,
+								},
 							],
 						},
 						options: {
@@ -520,7 +554,14 @@
 							},
 						},
 					});
-					this.engineMap = { gearbox2d: 0, "gearbox2d-clone": 1, matterjs: 2, p2js: 3, box2dwasm: 4 };
+					this.engineMap = {
+						gearbox2d: 0,
+						"gearbox2d-clone": 1,
+						matterjs: 2,
+						p2js: 3,
+						box2dwasm: 4,
+						"gearbox2d-nokrb": 5,
+					};
 				}
 
 				addPoint(engine, time, value) {
@@ -559,11 +600,29 @@
 			let isRunning = false;
 			let frameId = null;
 			let gearboxWorld = null;
+			let krbCompareEngine = null;
+			let gearboxWorldKrb = null;
+			let gearboxWorldNoKrb = null;
 			let gearboxClone = null;
 			let currentScenarioKey = "large-stack";
 			let captureSeconds = 60;
 			let fastForward = false;
+			let krbAblation = false;
 			let captureComplete = false;
+
+			function isLocalHost() {
+				return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+			}
+
+			async function ensureKrbCompareWorlds() {
+				if (krbCompareEngine) return;
+				// Separate ST module: a second MT World() in this WASM deadlocks
+				// the browser (PTHREAD_POOL_SIZE is already taken by gearboxWorld).
+				krbCompareEngine = new Gearbox();
+				await krbCompareEngine.init({ mode: "st" });
+				gearboxWorldKrb = krbCompareEngine.createWorld();
+				gearboxWorldNoKrb = krbCompareEngine.createWorld();
+			}
 
 			function updateURL(replace = false) {
 				const activeTab = document.querySelector(".engine-tab.active");
@@ -576,6 +635,11 @@
 					params.set("ff", "1");
 				} else {
 					params.delete("ff");
+				}
+				if (isLocalHost() && krbAblation) {
+					params.set("krb", "1");
+				} else {
+					params.delete("krb");
 				}
 
 				if (engine === "all") {
@@ -607,6 +671,7 @@
 				const enabledParam = params.get("enabled");
 				const captureParam = params.get("capture");
 				const ffParam = params.get("ff");
+				const krbParam = params.get("krb");
 
 				if (scenarioParam && scenarios[scenarioParam]) {
 					currentScenarioKey = scenarioParam;
@@ -618,6 +683,8 @@
 				}
 				fastForward = ffParam === "1";
 				fastForwardToggle.checked = fastForward;
+				krbAblation = isLocalHost() && krbParam === "1";
+				krbAblationToggle.checked = krbAblation;
 
 				if (enabledParam) {
 					enabledEngines = enabledParam
@@ -668,7 +735,8 @@
 					gearboxWorld = gearbox.createWorld();
 					console.log("Gearbox2D initialized globally");
 
-					if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+					if (isLocalHost()) {
+						krbAblationControl.style.display = "flex";
 						try {
 							const mod = await import("gearbox2d-clone");
 							gearboxClone = mod.default;
@@ -680,7 +748,6 @@
 						}
 					}
 
-					// Auto-start first benchmark
 					startBenchmark();
 				} catch (e) {
 					console.error("Failed to initialize Gearbox2D:", e);
@@ -742,14 +809,18 @@
 				label.className = "engine-label" + (alignRight ? " right-aligned" : "");
 				label.textContent =
 					engineType === "gearbox2d"
-						? "Gearbox2D"
-						: engineType === "gearbox2d-clone"
-							? "Gearbox2D (Clone)"
-							: engineType === "matterjs"
-								? "Matter.js"
-								: engineType === "p2js"
-									? "P2.js"
-									: "Box2D-WASM";
+						? krbAblation
+							? "Gearbox2D · KRB on"
+							: "Gearbox2D"
+						: engineType === "gearbox2d-nokrb"
+							? "Gearbox2D · KRB off"
+							: engineType === "gearbox2d-clone"
+								? "Gearbox2D (Clone)"
+								: engineType === "matterjs"
+									? "Matter.js"
+									: engineType === "p2js"
+										? "P2.js"
+										: "Box2D-WASM";
 				wrapper.appendChild(label);
 
 				const canvas = document.createElement("canvas");
@@ -762,9 +833,18 @@
 				let adapter;
 				switch (engineType) {
 					case "gearbox2d":
+						if (krbAblation) {
+							await ensureKrbCompareWorlds();
+							adapter = new GearboxAdapter(gearboxWorldKrb, krbCompareEngine, { krb: true });
+							break;
+						}
 						if (!gearboxWorld) await gearbox.init();
 						if (!gearboxWorld) gearboxWorld = gearbox.createWorld();
-						adapter = new GearboxAdapter(gearboxWorld, gearbox);
+						adapter = new GearboxAdapter(gearboxWorld, gearbox, { krb: true });
+						break;
+					case "gearbox2d-nokrb":
+						await ensureKrbCompareWorlds();
+						adapter = new GearboxAdapter(gearboxWorldNoKrb, krbCompareEngine, { krb: false });
 						break;
 					case "gearbox2d-clone":
 						if (!gearboxClone.isInitialized) await gearboxClone.init();
@@ -815,27 +895,43 @@
 				canvasContainer.innerHTML = "";
 				activeEngines = [];
 				canvasContainer.className = "";
+				engineTabs.classList.toggle("krb-ablation-mode", krbAblation);
+				document.getElementById("legend-gearbox2d-text").textContent = krbAblation
+					? "Gearbox2D (KRB on)"
+					: "Gearbox2D";
+				benchmarkChart.chart.data.datasets[0].label = krbAblation ? "Gearbox2D (KRB on)" : "Gearbox2D";
 
-				if (selectedEngine === "all" || selectedEngine === "compare") {
+				if (krbAblation) {
+					canvasContainer.classList.add("all-mode", "layout-2");
+					metricsContainer.classList.add("all-mode", "krb-ablation-metrics");
+					engineLegend.style.display = "grid";
+					engineNameEl.style.display = "none";
+					Array.from(engineLegend.children).forEach((el) => {
+						el.style.display =
+							el.id === "legend-gearbox2d" || el.id === "legend-gearbox2d-nokrb" ? "flex" : "none";
+					});
+					activeEngines.push(await createEngineInstance("gearbox2d", false, 0.6));
+					activeEngines.push(await createEngineInstance("gearbox2d-nokrb", true, 0.6));
+				} else if (selectedEngine === "all" || selectedEngine === "compare") {
 					canvasContainer.classList.add("all-mode");
 					metricsContainer.classList.add("all-mode");
+					metricsContainer.classList.remove("krb-ablation-metrics");
 					engineLegend.style.display = "grid";
 					engineNameEl.style.display = "none";
 
 					if (selectedEngine === "compare") {
 						document.getElementById("legend-clone").style.display = "flex";
 						Array.from(engineLegend.children).forEach((el) => {
-							if (el.id !== "legend-clone" && el.id !== "legend-gearbox2d") {
-								el.style.display = "none";
-							}
+							el.style.display =
+								el.id === "legend-clone" || el.id === "legend-gearbox2d" ? "flex" : "none";
 						});
 						canvasContainer.classList.add("layout-2");
 						activeEngines.push(await createEngineInstance("gearbox2d", false, 0.6));
 						activeEngines.push(await createEngineInstance("gearbox2d-clone", true, 0.6));
 					} else {
-						document.getElementById("legend-clone").style.display = "none";
 						Array.from(engineLegend.children).forEach((el) => {
-							if (el.id !== "legend-clone") el.style.display = "flex";
+							el.style.display =
+								el.id === "legend-clone" || el.id === "legend-gearbox2d-nokrb" ? "none" : "flex";
 						});
 
 						const engineConfigs = [
@@ -887,7 +983,7 @@
 					}
 				} else {
 					canvasContainer.classList.remove("all-mode");
-					metricsContainer.classList.remove("all-mode");
+					metricsContainer.classList.remove("all-mode", "krb-ablation-metrics");
 					engineLegend.style.display = "none";
 					engineNameEl.style.display = "flex";
 					activeEngines.push(await createEngineInstance(selectedEngine, false, 1.0));
@@ -1031,10 +1127,7 @@
 					benchmarkChart.render();
 				}
 
-				const loggedT = Math.min(
-					captureSeconds,
-					Math.max(0, ...activeEngines.map((e) => e.simSteps * SIM_DT)),
-				);
+				const loggedT = Math.min(captureSeconds, Math.max(0, ...activeEngines.map((e) => e.simSteps * SIM_DT)));
 				if (!stillLogging && !captureComplete) {
 					captureComplete = true;
 					document.getElementById("status-text").textContent =
@@ -1104,6 +1197,14 @@
 				updateURL(true);
 			});
 
+			krbAblationToggle.addEventListener("change", () => {
+				krbAblation = isLocalHost() && krbAblationToggle.checked;
+				krbAblationToggle.checked = krbAblation;
+				updateURL(true);
+				benchmarkChart.clear();
+				startBenchmark();
+			});
+
 			sidebarToggle.addEventListener("click", () => {
 				sidebar.classList.toggle("collapsed");
 			});
@@ -1116,7 +1217,11 @@
 					if (e.target.closest(".engine-toggle-wrapper")) return;
 
 					const engine = tab.dataset.engine;
-					if (tab.classList.contains("active")) {
+					if (krbAblation) {
+						krbAblation = false;
+						krbAblationToggle.checked = false;
+					}
+					if (tab.classList.contains("active") && !krbAblationToggle.checked) {
 						// Reset current simulation if re-clicked
 						handleReset();
 						return;

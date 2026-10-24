@@ -87,6 +87,7 @@ export interface CppWorld {
 	setHasPenetrationResolution(v: boolean): void;
 	setHasRestitution(v: boolean): void;
 	setHasFriction(v: boolean): void;
+	setHasKrb(v: boolean): void;
 	setSpeculativeMargin(v: number): void;
 	getSpeculativeMargin(): number;
 	queryBodiesAtPoint(x: number, y: number, mask: number): WasmVector;

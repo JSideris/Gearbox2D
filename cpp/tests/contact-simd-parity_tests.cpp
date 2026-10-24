@@ -261,3 +261,33 @@ TEST(ContactSimdParity, SolveFastSupportedWakeOverlapMatchesScalar) {
 		expectSolveNear(scalarOut[i], simdOut, i);
 	}
 }
+
+TEST(ContactSimdParity, PreSolveKrbOffMatchesScalar) {
+	ContactConstraint simdContacts[4];
+	World simdWorld;
+	configureContactWorld(simdWorld);
+	simdWorld.setHasKrb(false);
+	for (int i = 0; i < 4; ++i) {
+		setupSimdLane(simdWorld, i, simdContacts[i]);
+	}
+
+	ContactPreSolveSnapshot scalarOut[4];
+	for (int i = 0; i < 4; ++i) {
+		World scalarWorld;
+		configureContactWorld(scalarWorld);
+		scalarWorld.setHasKrb(false);
+		ContactConstraint scalarContact;
+		setupScalarLane(scalarWorld, i, scalarContact);
+		scalarContact.preSolve(kDt, true, true, true);
+		scalarOut[i] = capturePreSolve(scalarContact);
+	}
+
+	ContactConstraint* batch[4] = {
+		&simdContacts[0], &simdContacts[1], &simdContacts[2], &simdContacts[3]
+	};
+	ContactConstraint::preSolveSIMD(batch, kDt, true, true, true);
+
+	for (int i = 0; i < 4; ++i) {
+		expectPreSolveNear(scalarOut[i], capturePreSolve(simdContacts[i]), i);
+	}
+}

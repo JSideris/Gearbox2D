@@ -104,6 +104,7 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("setHasPenetrationResolution", &World::setHasPenetrationResolution)
         .function("setHasRestitution", &World::setHasRestitution)
         .function("setHasFriction", &World::setHasFriction)
+        .function("setHasKrb", &World::setHasKrb)
         .function("setSpeculativeMargin", &World::setSpeculativeMargin)
         .function("getSpeculativeMargin", &World::getSpeculativeMargin);
 }

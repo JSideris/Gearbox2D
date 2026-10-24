@@ -7,12 +7,14 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 	private bodies = new Map<number, any>();
 	private nextId = 1000;
 	private gearboxInstance: any;
+	private enableKrb: boolean;
 
-	constructor(existingWorld?: any, gearboxInstance: any = gearbox) {
+	constructor(existingWorld?: any, gearboxInstance: any = gearbox, options: { krb?: boolean } = {}) {
 		if (existingWorld) {
 			this.world = existingWorld;
 		}
 		this.gearboxInstance = gearboxInstance;
+		this.enableKrb = options.krb !== false;
 	}
 
 	private getInternalId(id: string | number): number {
@@ -32,6 +34,7 @@ export class GearboxAdapter implements PhysicsEngineAdapter {
 		this.world.setHasRestitution(true);
 		this.world.setHasFriction(true);
 		this.world.setHasPenetrationResolution(true);
+		this.world.setHasKrb(this.enableKrb);
 	}
 
 	step(dt: number): void {

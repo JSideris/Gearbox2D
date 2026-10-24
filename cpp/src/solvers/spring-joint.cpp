@@ -27,7 +27,7 @@ float krbRestingPositionScale(float relativeVn, float forceVn, float expectedDis
 // expires during a 120-step hold so landing suspension still works.
 float springWakeBiasScale(Body* a, Body* b, const Vec2& rA, const Vec2& rB, const Vec2& normal, float stretch, float dt) {
 #ifndef GEARBOX_DISABLE_KRB
-	if (!a || !b || dt <= 0.0f) {
+	if (!a || !b || dt <= 0.0f || !a->world.getHasKrb()) {
 		return 1.0f;
 	}
 	const float age = std::min(a->timeSinceWake, b->timeSinceWake);
