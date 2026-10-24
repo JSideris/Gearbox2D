@@ -246,10 +246,78 @@
 				border: 1px solid rgba(255, 255, 255, 0.2);
 				box-shadow: 0 0 8px currentColor;
 			}
+
+			.capture-control {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				color: var(--text-muted);
+				font-family: var(--font-header);
+				font-size: 0.7rem;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				user-select: none;
+			}
+
+			.capture-control select {
+				background: rgba(15, 23, 42, 0.5);
+				color: var(--text-main);
+				border: 1px solid var(--border);
+				border-radius: 4px;
+				padding: 6px 8px;
+				font-family: inherit;
+				font-size: 0.75rem;
+			}
+
+			.capture-control input[type="checkbox"] {
+				accent-color: var(--accent-cyan);
+				margin: 0;
+			}
+
+			#export-button {
+				background-color: transparent;
+				color: var(--accent-cyan);
+				border: 1px solid var(--accent-cyan);
+				border-radius: 4px;
+				padding: 8px 16px;
+				cursor: pointer;
+				font-family: var(--font-header);
+				font-size: 0.8rem;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				display: flex;
+				align-items: center;
+				transition: var(--transition);
+			}
+
+			#export-button:hover:not(:disabled) {
+				background-color: var(--accent-cyan);
+				color: var(--bg-deep);
+				box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+			}
+
+			#export-button:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			#export-button i {
+				margin-right: 8px;
+			}
+
+			.engine-tabs.krb-ablation-mode {
+				display: none;
+			}
+
+			#metrics.all-mode.krb-ablation-metrics {
+				top: auto;
+				bottom: 16px;
+				transform: translate(-50%, 0);
+			}
 		</style>
-		<script type="module" crossorigin src="./assets/benchmarks-CCVXYu6D.js"></script>
+		<script type="module" crossorigin src="./assets/benchmarks-TrZpiZ5T.js"></script>
 		<link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
-		<link rel="modulepreload" crossorigin href="./assets/engine-BOyobCwa.js">
+		<link rel="modulepreload" crossorigin href="./assets/engine-DQc-R8nH.js">
 		<link rel="stylesheet" crossorigin href="./assets/examples-styles-DGfjjK-Z.css">
 	</head>
 	<body>
@@ -279,6 +347,30 @@
 					<h1 id="scenario-name">Loading benchmark...</h1>
 				</div>
 				<div class="header-right">
+					<label class="capture-control" title="Simulation seconds to log on the chart">
+						<span>Capture</span>
+						<select id="capture-seconds">
+							<option value="60">60 s</option>
+							<option value="600">600 s</option>
+						</select>
+					</label>
+					<label class="capture-control" title="Advance 10 simulation steps per frame">
+						<input type="checkbox" id="fast-forward" />
+						<span>Fast-forward</span>
+					</label>
+					<label
+						class="capture-control"
+						id="krb-ablation-control"
+						title="Local: hide other engines and compare Gearbox2D with KRB on vs off"
+						style="display: none"
+					>
+						<input type="checkbox" id="krb-ablation" />
+						<span>KRB on / off</span>
+					</label>
+					<button id="export-button" title="Download logged series as CSV" disabled>
+						<i class="fas fa-download"></i>
+						<span class="button-text">Export</span>
+					</button>
 					<button id="reset-button" title="Reset current benchmark">
 						<i class="fas fa-redo-alt"></i>
 						<span class="button-text">Reset</span>
@@ -336,7 +428,12 @@
 					</div>
 					<div id="engine-legend">
 						<div class="legend-item" id="legend-gearbox2d">
-							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>Gearbox2D
+							<span class="legend-color" style="color: #4ade80; background: #4ade80"></span>
+							<span id="legend-gearbox2d-text">Gearbox2D</span>
+						</div>
+						<div class="legend-item" id="legend-gearbox2d-nokrb" style="display: none">
+							<span class="legend-color" style="color: #fbbf24; background: #fbbf24"></span>Gearbox2D (KRB
+							off)
 						</div>
 						<div class="legend-item" id="legend-clone" style="display: none">
 							<span class="legend-color" style="color: #8fbc8f; background: #8fbc8f"></span>Gearbox2D
