@@ -40,7 +40,8 @@ OUTPUT_JS_ST = $(BUILD_DIR)/gearbox-module-st.js
 # C++ compiler flags
 COMMON_FLAGS = -O3 -msimd128 -s WASM=1 --bind -s MODULARIZE=1 -s EXPORT_ES6=1 -s ENVIRONMENT='web,worker' -I$(HIGHWAY_DIR)
 MT_FLAGS = -pthread -s PTHREAD_POOL_SIZE=4 -s ALLOW_MEMORY_GROWTH=1 -DGEARBOX_MT
-ST_FLAGS = 
+# HEAP8 is reassigned on the module each time the heap grows (emscripten updateMemoryViews).
+ST_FLAGS = -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=268435456 -sEXPORTED_RUNTIME_METHODS=HEAP8
 
 # Research-only ablation. Default is KRB on.
 #   make test GEARBOX_DISABLE_KRB=1

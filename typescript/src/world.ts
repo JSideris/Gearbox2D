@@ -11,15 +11,18 @@ export type Joint = HingeJoint | DistanceJoint | SpringJoint | GearJoint;
 
 export class World {
 	world: CppWorld;
-	liveBodyFloatData: Float32Array;
-	liveBodyIntData: Int32Array;
-	liveFixtureFloatData: Float32Array;
-	liveFixtureIntData: Int32Array;
+	private _liveBodyFloatData!: Float32Array;
+	private _liveBodyIntData!: Int32Array;
+	private _liveFixtureFloatData!: Float32Array;
+	private _liveFixtureIntData!: Int32Array;
 
-	bodyFloats: BufferView<Float32Array>;
-	bodyInts: BufferView<Int32Array>;
-	fixtureFloats: BufferView<Float32Array>;
-	fixtureInts: BufferView<Int32Array>;
+	private _bodyFloats!: BufferView<Float32Array>;
+	private _bodyInts!: BufferView<Int32Array>;
+	private _fixtureFloats!: BufferView<Float32Array>;
+	private _fixtureInts!: BufferView<Int32Array>;
+
+	/** Heap byte length when the views were last built. 0 when no wasm getter is installed. */
+	private _heapBytes = 0;
 
 	bodiesById: { [key: number]: Body } = {};
 	bodiesByInternalId: { [key: number]: Body } = {};
@@ -61,16 +64,61 @@ export class World {
 		this.refreshViews();
 	}
 
-	refreshViews() {
-		this.liveBodyFloatData = this.world.getLiveBodyFloatData();
-		this.liveBodyIntData = this.world.getLiveBodyIntData();
-		this.liveFixtureFloatData = this.world.getLiveFixtureFloatData();
-		this.liveFixtureIntData = this.world.getLiveFixtureIntData();
+	get liveBodyFloatData(): Float32Array {
+		this.ensureViews();
+		return this._liveBodyFloatData;
+	}
+	get liveBodyIntData(): Int32Array {
+		this.ensureViews();
+		return this._liveBodyIntData;
+	}
+	get liveFixtureFloatData(): Float32Array {
+		this.ensureViews();
+		return this._liveFixtureFloatData;
+	}
+	get liveFixtureIntData(): Int32Array {
+		this.ensureViews();
+		return this._liveFixtureIntData;
+	}
 
-		this.bodyFloats = new BufferView(this.liveBodyFloatData, MAX_BODIES);
-		this.bodyInts = new BufferView(this.liveBodyIntData, MAX_BODIES);
-		this.fixtureFloats = new BufferView(this.liveFixtureFloatData, MAX_FIXTURES);
-		this.fixtureInts = new BufferView(this.liveFixtureIntData, MAX_FIXTURES);
+	get bodyFloats(): BufferView<Float32Array> {
+		this.ensureViews();
+		return this._bodyFloats;
+	}
+	get bodyInts(): BufferView<Int32Array> {
+		this.ensureViews();
+		return this._bodyInts;
+	}
+	get fixtureFloats(): BufferView<Float32Array> {
+		this.ensureViews();
+		return this._fixtureFloats;
+	}
+	get fixtureInts(): BufferView<Int32Array> {
+		this.ensureViews();
+		return this._fixtureInts;
+	}
+
+	/** Rebuild SoA views when another allocation has replaced the wasm heap buffer. */
+	private ensureViews() {
+		if (!this._wasmMemoryGetter) return;
+		const bytes = this._wasmMemoryGetter();
+		// A detached view reports byteLength 0. That covers a getter that cannot see the new heap.
+		const detached = this._liveBodyFloatData.byteLength === 0;
+		if (bytes !== this._heapBytes || detached) this.refreshViews();
+	}
+
+	refreshViews() {
+		this._liveBodyFloatData = this.world.getLiveBodyFloatData();
+		this._liveBodyIntData = this.world.getLiveBodyIntData();
+		this._liveFixtureFloatData = this.world.getLiveFixtureFloatData();
+		this._liveFixtureIntData = this.world.getLiveFixtureIntData();
+
+		this._bodyFloats = new BufferView(this._liveBodyFloatData, MAX_BODIES);
+		this._bodyInts = new BufferView(this._liveBodyIntData, MAX_BODIES);
+		this._fixtureFloats = new BufferView(this._liveFixtureFloatData, MAX_FIXTURES);
+		this._fixtureInts = new BufferView(this._liveFixtureIntData, MAX_FIXTURES);
+
+		this._heapBytes = this._wasmMemoryGetter?.() ?? 0;
 	}
 
 	clear() {
@@ -557,17 +605,20 @@ export class World {
 		// Always refresh views after step because eventData growth might have triggered heap growth or vector reallocation
 		this.refreshViews();
 
-		// Process events
+		// Process events. Copy scalars out first: a callback that allocates can grow the heap and detach eventData.
 		const eventCount = this.world.getEventCount();
 		if (eventCount > 0) {
 			const eventData = this.world.getEventData();
+			const events = new Float32Array(eventCount * 6);
+			for (let i = 0; i < events.length; i++) events[i] = eventData[i];
+
 			for (let i = 0; i < eventCount; i++) {
-				const type = eventData[i * 6];
-				const internalIdA = eventData[i * 6 + 1];
-				const internalIdB = eventData[i * 6 + 2];
-				const internalFIdA = eventData[i * 6 + 3];
-				const internalFIdB = eventData[i * 6 + 4];
-				const impulse = eventData[i * 6 + 5];
+				const type = events[i * 6];
+				const internalIdA = events[i * 6 + 1];
+				const internalIdB = events[i * 6 + 2];
+				const internalFIdA = events[i * 6 + 3];
+				const internalFIdB = events[i * 6 + 4];
+				const impulse = events[i * 6 + 5];
 
 				const bodyA = this.bodiesByInternalId[internalIdA];
 				const bodyB = this.bodiesByInternalId[internalIdB];
