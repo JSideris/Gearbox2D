@@ -1269,13 +1269,13 @@ For advanced users or performance-critical tasks, you can access both the new vi
 *   `world.liveFixtureIntData`
 
 ### Performance Tip: GPU Uploads
-If you are building a custom high-performance renderer (e.g., using WebGL or WebGPU), you can upload the underlying raw buffers (like `world.liveBodyFloatData`) directly to the GPU. This allows you to render thousands of objects with zero CPU overhead per-object.
+If you are building a custom high-performance renderer (e.g., using WebGL or WebGPU), read `world.liveBodyFloatData` again on each upload. The single-threaded WASM heap starts near 16 MiB and grows, up to 256 MiB, when more worlds or objects are allocated. Growth replaces the heap `ArrayBuffer`. A `Float32Array` kept from an earlier read is then detached. Property access such as `body.x` refreshes the engine's views on the next read; a buffer you captured yourself does not.
 
 ## Memory Safety Best Practices
 
 1.  **Don't "New" in Loops**: Avoid creating worlds inside frequent events or animation frames.
 2.  **Recycle IDs**: Use a consistent ID mapping strategy to avoid confusion when bodies are removed and added.
-3.  **Check Heap Growth**: Be aware that as the number of objects grows, the WASM heap may resize. Gearbox2D handles this internally, but frequent resizing can cause small performance hitches.
+3.  **Re-read after heap growth**: The single-threaded heap grows up to 256 MiB. Views refresh the next time they are read. Read `world.liveBodyFloatData` again after any allocation before uploading it. Frequent resizing can cause small performance hitches.
 
 
 --- SECTION: architecture-coordinates.md ---
