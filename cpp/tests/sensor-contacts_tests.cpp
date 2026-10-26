@@ -9,7 +9,7 @@
 #include "constants.h"
 
 // Recorded with the pre-PER-856 engine (master 520ab53, native g++ build).
-#define GOLDEN_DEFAULT_SCENE_HASH 11331149759252376717ull
+#define GOLDEN_DEFAULT_SCENE_HASH 9484880583803729980ull
 
 namespace {
 
@@ -124,6 +124,8 @@ TEST(SensorContactsTest, ManySensorsMatchBruteForcePairs) {
 
 // Golden state hash of a mixed scene (rigid bodies + overlapping, non-opted sensors) recorded
 // on gearbox2d 0.5.1 before PER-856. Default behaviour must stay bit-identical.
+// Only circles (no local offsets) and an AABB floor: rotation never feeds back into positions or
+// velocities, so the hashed state doesn't depend on libm sin/cos and is stable across platforms.
 TEST(SensorContactsTest, DefaultSceneIsBitIdenticalToBaseline) {
     World world;
     world.setGravity(0.0f, -9.8f);
@@ -131,27 +133,32 @@ TEST(SensorContactsTest, DefaultSceneIsBitIdenticalToBaseline) {
     std::uniform_real_distribution<float> pos(-15.0f, 15.0f), u(0.0f, 1.0f);
     emscripten_val ground;
     ground["x"] = 0.0f; ground["y"] = -20.0f; ground["type"] = (int)ObjectType::FIXED_OBJECT;
-    ground["shape"] = (int)ObjectShape::BOX; ground["width"] = 60.0f; ground["height"] = 2.0f;
+    ground["shape"] = (int)ObjectShape::AABB; ground["width"] = 60.0f; ground["height"] = 2.0f;
+    ground["sFriction"] = 0.0f; ground["kFriction"] = 0.0f;
     world.createBody(1, ground);
     for (int id = 2; id <= 120; ++id) {
         emscripten_val o;
         o["x"] = pos(rng); o["y"] = pos(rng); o["mass"] = 1.0f;
         o["type"] = (int)ObjectType::DYNAMIC_OBJECT;
-        o["shape"] = (int)(u(rng) < 0.5f ? ObjectShape::CIRCLE : ObjectShape::BOX);
-        o["radius"] = 0.6f; o["width"] = 1.0f; o["height"] = 0.8f;
+        o["shape"] = (int)ObjectShape::CIRCLE;
+        o["radius"] = 0.4f + 0.4f * u(rng);
+        o["sFriction"] = 0.0f; o["kFriction"] = 0.0f;
         o["wantsEvents"] = true;
         if (u(rng) < 0.3f) o["isSensor"] = true;
         world.createBody(id, o);
     }
     uint64_t h = 1469598103934665603ull;
     auto mix = [&h](float f) { uint32_t b; std::memcpy(&b, &f, 4); h = (h ^ b) * 1099511628211ull; };
+    int events = 0;
     for (int s = 0; s < 240; ++s) {
         world.step();
+        events += world.getEventCount();
         mix((float)world.getEventCount());
     }
     for (int id = 2; id <= 120; ++id) {
         Body* b = world.getBody(id);
-        mix(b->getX()); mix(b->getY()); mix(b->getRotation()); mix(b->getVelocityX());
+        mix(b->getX()); mix(b->getY()); mix(b->getVelocityX()); mix(b->getVelocityY());
     }
+    EXPECT_GT(events, 50); // the scene really has contacts (incl. sensor/rigid)
     EXPECT_EQ(h, GOLDEN_DEFAULT_SCENE_HASH) << "hash " << h;
 }
