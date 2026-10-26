@@ -1,5 +1,5 @@
 import { DebugGraphics } from "./debug-graphics.js";
-import { SHAPES, BODY_TYPES } from "./constants.js";
+import { SHAPES, BODY_TYPES, QUERY_FLAGS } from "./constants.js";
 import { World } from "./world.js";
 import * as polygon from "./polygon-utils.js";
 import type { WasmModule, CppWorld, CppVec2 } from "./wasm-types.js";
@@ -15,6 +15,7 @@ export class Gearbox {
 	// Enums.
 	shapes = SHAPES;
 	bodyTypes = BODY_TYPES;
+	queryFlags = QUERY_FLAGS;
 	polygon = {
 		makeRegularPolygon: polygon.makeRegularPolygon,
 		makeStar: polygon.makeStar,
