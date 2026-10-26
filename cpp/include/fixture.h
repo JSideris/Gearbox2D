@@ -10,6 +10,7 @@ class Body;
 class World;
 struct BvhNode;
 struct CollisionProperties;
+struct QueryShape;
 
 struct MassData {
     float mass;
@@ -57,6 +58,10 @@ public:
     void setSensor(bool isSensor);
     bool isSensor() const;
     bool wantsEvents() const;
+    void setSensorContacts(bool enabled);
+    bool getSensorContacts() const;
+    // World-space convex geometry for spatial queries (see spatial-query.h).
+    void getQueryShape(QueryShape& out) const;
     void setDensity(float density);
     
     // BVH Support

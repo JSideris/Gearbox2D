@@ -110,6 +110,18 @@ export const BODY_TYPES = {
 export const FIXTURE_FLAGS = {
 	IS_SENSOR: 0x4,
 	WANTS_EVENTS: 0x8,
+	/** Opt-in sensor-vs-sensor contacts (both sensors need it). */
+	SENSOR_CONTACTS: 0x10,
+};
+
+/** Flags for the low-level spatial queries (World.queryAABBRaw and friends). */
+export const QUERY_FLAGS = {
+	/** At most one hit per body. */
+	UNIQUE_BODIES: 0x1,
+	/** Ignore sensor fixtures. */
+	SKIP_SENSORS: 0x2,
+	/** Raycast: every hit sorted by fraction instead of the closest one. */
+	RAY_ALL: 0x4,
 };
 
 export const JOINT_TYPES = {

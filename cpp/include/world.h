@@ -25,6 +25,7 @@
 #include "joint.h"
 #include "solver-data.h"
 #include "simd-math.h"
+#include "spatial-query.h"
 
 class Body;
 class Fixture;
@@ -202,6 +203,30 @@ private:
     std::unordered_map<std::pair<int, int>, WarmStartData, PairHash, PairEqual> warmStartImpulses;
     std::unordered_set<std::pair<int, int>, PairHash, PairEqual> disabledPairs;
 
+    // Spatial query buffers (PER-856). Grown geometrically, never shrunk.
+    std::vector<int32_t> queryHits;
+    std::vector<float> rayHits;
+    std::vector<int32_t> batchOffsets;
+    std::vector<float> batchInput;
+    std::vector<int32_t> batchExclude;
+    std::vector<int32_t> queryHeader = std::vector<int32_t>(4, 0);
+    std::vector<BvhNode*> queryCandidates;
+    std::vector<BvhNode*> queryStack;
+    std::vector<uint32_t> queryBodyStamp;
+    uint32_t queryStampCounter = 0;
+    std::vector<std::pair<RayHit, Fixture*>> rayScratch;
+    std::vector<Fixture*> queryAccepted;
+    const void* queryBufPtr[3] = {nullptr, nullptr, nullptr};
+    size_t queryBufCap[3] = {0, 0, 0};
+
+    void _queryBegin();
+    int _queryEnd(int count);
+    bool _queryAccepts(const Fixture* f, uint32_t mask, int flags, int excludeBodyId) const;
+    void _queryNewStamp();
+    void _emitAccepted(int flags);
+    void _collectAabb(const Vec2& lo, const Vec2& hi, uint32_t mask, int flags);
+    void _collectRadius(const Vec2& c, float radius, uint32_t mask, int flags, int excludeBodyId);
+
     std::unordered_map<int, int> tempBodyIdMap;
     std::unordered_map<int, int> tempFixtureIdMap;
 
@@ -280,6 +305,32 @@ public:
     ChainResidualStats getLastChainResidual() const { return lastChainResidual; }
 
     std::vector<int> queryBodiesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
+
+    // --- Spatial queries (PER-856) ---------------------------------------
+    // All walk the BVH broadphase, then run an exact shape test on its candidates.
+    // A fixture matches when (categoryBits & mask) != 0; see QUERY_FLAG_* for flags.
+    // Hits land in reused buffers: queryHits holds [fixtureId, bodyId] pairs (internal ids),
+    // rayHits holds [t, px, py, nx, ny] per hit. Each call returns its hit count.
+    int queryAABB(float minX, float minY, float maxX, float maxY, uint32_t mask = 0xFFFFFFFF, int flags = 0);
+    int queryRadius(float x, float y, float radius, uint32_t mask = 0xFFFFFFFF, int flags = 0);
+    // Ray p1->p2. Default: closest hit only; QUERY_FLAG_RAY_ALL returns every hit sorted by t.
+    // excludeBodyId (internal id, -1 = none) skips one body, e.g. the shooter.
+    int raycast(float x1, float y1, float x2, float y2, uint32_t mask = 0xFFFFFFFF, int flags = 0, int excludeBodyId = -1);
+    // Batched radius query: centres from batchInput ([x, y, radius] per query) and
+    // batchExclude (internal body id to skip per query, -1 = none). Hits for query i are
+    // queryHits pairs [batchOffsets[i], batchOffsets[i+1]). Returns the total hit count.
+    int queryRadiusBatch(int count, uint32_t mask = 0xFFFFFFFF, int flags = 0);
+    // Grows the batch input buffers to hold `count` queries.
+    void reserveQueryBatch(int count);
+
+    const std::vector<int32_t>& getQueryHits() const { return queryHits; }
+    const std::vector<float>& getRayHits() const { return rayHits; }
+    const std::vector<int32_t>& getBatchOffsets() const { return batchOffsets; }
+    std::vector<float>& getBatchInputBuffer() { return batchInput; }
+    std::vector<int32_t>& getBatchExcludeBuffer() { return batchExclude; }
+    // [0] = generation, bumped whenever a query buffer moves or grows. Allocated once; never moves.
+    int getQueryBufferGeneration() const { return queryHeader[0]; }
+    Fixture* getFixtureAtIndex(int index) const;
     std::vector<int> queryFixturesAtPoint(float x, float y, uint32_t mask = 0xFFFFFFFF);
     Body* getBody(int id) const;
     Body* getBodyAtIndex(int index) const;
@@ -294,8 +345,16 @@ public:
     emscripten_val getLiveFixtureFloatData();
     emscripten_val getLiveFixtureIntData();
     emscripten_val getEventData();
+    // Views over the full capacity of the query buffers; re-fetch when the generation changes.
+    emscripten_val getQueryHeader();
+    emscripten_val getQueryHitsView();
+    emscripten_val getRayHitsView();
+    emscripten_val getBatchOffsetsView();
+    emscripten_val getBatchInputView();
+    emscripten_val getBatchExcludeView();
 #endif
     int getEventCount();
+    const std::vector<float>& getEventBuffer() const { return eventData; }
     void addEvent(int type, int bodyA, int bodyB, int fixtureA, int fixtureB, float impulse);
 
     void step();

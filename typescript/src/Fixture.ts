@@ -178,6 +178,15 @@ export class Fixture {
 		this.body.world.refreshViews();
 	}
 
+	/** Sensor-vs-sensor contacts: two sensors report contacts only when both have this on. */
+	get sensorContacts() {
+		return (this.flags & FIXTURE_FLAGS.SENSOR_CONTACTS) !== 0;
+	}
+	set sensorContacts(v: boolean) {
+		this.forEachSubFixture((_, cppObj) => cppObj?.setSensorContacts(v));
+		this.body.world.refreshViews();
+	}
+
 	get wantsEvents() {
 		return (this.flags & FIXTURE_FLAGS.WANTS_EVENTS) !== 0;
 	}
