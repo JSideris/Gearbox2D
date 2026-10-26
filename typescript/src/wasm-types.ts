@@ -12,6 +12,8 @@ export interface CppVec2 {
 
 export interface CppFixture {
 	setSensor(v: boolean): void;
+	setSensorContacts(v: boolean): void;
+	getSensorContacts(): boolean;
 	setDensity(v: number): void;
 }
 
@@ -92,6 +94,17 @@ export interface CppWorld {
 	getSpeculativeMargin(): number;
 	queryBodiesAtPoint(x: number, y: number, mask: number): WasmVector;
 	queryFixturesAtPoint(x: number, y: number, mask: number): WasmVector;
+	queryAABB(minX: number, minY: number, maxX: number, maxY: number, mask: number, flags: number): number;
+	queryRadius(x: number, y: number, radius: number, mask: number, flags: number): number;
+	raycast(x1: number, y1: number, x2: number, y2: number, mask: number, flags: number, excludeBodyId: number): number;
+	queryRadiusBatch(count: number, mask: number, flags: number): number;
+	reserveQueryBatch(count: number): void;
+	getQueryHeader(): Int32Array;
+	getQueryHitsView(): Int32Array;
+	getRayHitsView(): Float32Array;
+	getBatchOffsetsView(): Int32Array;
+	getBatchInputView(): Float32Array;
+	getBatchExcludeView(): Int32Array;
 	step(): void;
 	updateBodyId(oldId: number, newId: number): void;
 	updateFixtureId(oldId: number, newId: number): void;

@@ -156,7 +156,21 @@ int World::raycast(float x1, float y1, float x2, float y2, uint32_t mask, int fl
                 best = h; bestF = f; tMax = h.t;
             }
         } else {
-            for (int i = 0; i < node->childCount; ++i) if (node->children[i]) queryStack.push_back(node->children[i]);
+            // Push children that the ray reaches, farthest first, so the nearest is popped next
+            // and a closest hit shrinks tMax before the far subtrees are visited.
+            float tc[BvhNode::MAX_CHILDREN];
+            BvhNode* ch[BvhNode::MAX_CHILDREN];
+            int k = 0;
+            for (int i = 0; i < node->childCount; ++i) {
+                BvhNode* c = node->children[i];
+                if (!c) continue;
+                float t = sq::rayAabb(p, d, c->bounds.min, c->bounds.max, tMax);
+                if (t < 0.0f) continue;
+                int j = k++;
+                while (j > 0 && tc[j - 1] < t) { tc[j] = tc[j - 1]; ch[j] = ch[j - 1]; --j; }
+                tc[j] = t; ch[j] = c;
+            }
+            for (int i = 0; i < k; ++i) queryStack.push_back(ch[i]);
         }
     }
 

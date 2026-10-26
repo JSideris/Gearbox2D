@@ -71,6 +71,12 @@ $(OUTPUT_JS_ST): $(SRC)
 	mkdir -p $(BUILD_DIR)
 	$(EMCC) $(COMMON_FLAGS) $(KRB_FLAGS) $(ST_FLAGS) $(SRC) -I$(INCLUDE_DIR) -o $(OUTPUT_JS_ST)
 
+# PER-856 spatial-query micro-benchmark (BVH vs brute force)
+QUERY_BENCH_SRC = cpp/benchmarks/queries/query-bench.cpp
+bench-queries: $(SRC) $(QUERY_BENCH_SRC)
+	$(CXX) $(BENCH_FLAGS) -o runQueryBench $(SRC) $(QUERY_BENCH_SRC) -I$(INCLUDE_DIR)
+	./runQueryBench
+
 # Test build
 test: $(TEST_TARGET)
 

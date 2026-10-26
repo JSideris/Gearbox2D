@@ -3,7 +3,8 @@ import { BufferView } from "./BufferAccessor.js";
 import { Body } from "./Body.js";
 import { Fixture } from "./Fixture.js";
 import { HingeJoint, DistanceJoint, SpringJoint, GearJoint } from "./joints.js";
-import type { BodyOptions, FixtureOptions, JointOptions } from "./types.js";
+import type { BodyOptions, FixtureOptions, JointOptions, QueryOptions, RaycastHit, RaycastOptions } from "./types.js";
+import { QUERY_FLAGS } from "./constants.js";
 import type { CppWorld, WasmVector } from "./wasm-types.js";
 import { JS_OVERHEAD, estimateMapMemory } from "./MemoryEstimator.js";
 
@@ -23,6 +24,15 @@ export class World {
 
 	/** Heap byte length when the views were last built. 0 when no wasm getter is installed. */
 	private _heapBytes = 0;
+
+	// Spatial query buffers (views into WASM memory, re-fetched only when the generation changes).
+	private _qHeader: Int32Array | null = null;
+	private _qGeneration = -1;
+	private _qHits: Int32Array = new Int32Array(0);
+	private _rayHits: Float32Array = new Float32Array(0);
+	private _batchOffsets: Int32Array = new Int32Array(0);
+	private _batchInput: Float32Array = new Float32Array(0);
+	private _batchExclude: Int32Array = new Int32Array(0);
 
 	bodiesById: { [key: number]: Body } = {};
 	bodiesByInternalId: { [key: number]: Body } = {};
@@ -596,6 +606,216 @@ export class World {
 		return hits
 			.map((internalId) => this.fixturesByInternalId[internalId]?.id)
 			.filter((id) => id !== undefined) as number[];
+	}
+
+	// --- Spatial queries (PER-856) -------------------------------------------------------
+	// Every query walks the BVH broadphase and then runs an exact shape test; nothing scans all
+	// bodies. The *Raw methods are allocation-free: they return a hit count and leave the hits in
+	// `queryHits` ([internal fixture id, internal body id] pairs), `rayHits` ([fraction, x, y, nx, ny]
+	// per hit) and `batchOffsets`. Map ids with bodyByInternalId / fixtureByInternalId.
+
+	/** Hits of the last query: [internalFixtureId, internalBodyId] pairs. Valid until the next query. */
+	get queryHits(): Int32Array {
+		return this._qHits;
+	}
+	/** Ray hits of the last raycast: [fraction, x, y, nx, ny] per hit. */
+	get rayHits(): Float32Array {
+		return this._rayHits;
+	}
+	/** Last batch: hits of query i are pairs [batchOffsets[i], batchOffsets[i + 1]). */
+	get batchOffsets(): Int32Array {
+		return this._batchOffsets;
+	}
+
+	bodyByInternalId(internalId: number): Body | undefined {
+		return this.bodiesByInternalId[internalId];
+	}
+	fixtureByInternalId(internalId: number): Fixture | undefined {
+		return this.fixturesByInternalId[internalId];
+	}
+
+	private static queryFlags(
+		opts: { skipSensors?: boolean; uniqueBodies?: boolean } | undefined,
+		uniqueDefault: boolean,
+	) {
+		let flags = 0;
+		if (opts?.uniqueBodies ?? uniqueDefault) flags |= QUERY_FLAGS.UNIQUE_BODIES;
+		if (opts?.skipSensors) flags |= QUERY_FLAGS.SKIP_SENSORS;
+		return flags;
+	}
+
+	/** Re-fetches the query views when a buffer moved or the heap grew (detached views have length 0). */
+	private syncQueryViews() {
+		if (!this._qHeader || this._qHeader.length === 0) {
+			this._qHeader = this.world.getQueryHeader();
+			this._qGeneration = -1;
+		}
+		const gen = this._qHeader[0];
+		// Heap growth detaches every view, including the header, which forces a full refresh above.
+		if (gen !== this._qGeneration) {
+			this._qHits = this.world.getQueryHitsView();
+			this._rayHits = this.world.getRayHitsView();
+			this._batchOffsets = this.world.getBatchOffsetsView();
+			this._batchInput = this.world.getBatchInputView();
+			this._batchExclude = this.world.getBatchExcludeView();
+			this._qGeneration = gen;
+		}
+	}
+
+	queryAABBRaw(
+		minX: number,
+		minY: number,
+		maxX: number,
+		maxY: number,
+		mask: number = 0xffffffff,
+		flags: number = 0,
+	): number {
+		const n = this.world.queryAABB(minX, minY, maxX, maxY, mask >>> 0, flags);
+		this.syncQueryViews();
+		return n;
+	}
+
+	queryRadiusRaw(x: number, y: number, radius: number, mask: number = 0xffffffff, flags: number = 0): number {
+		const n = this.world.queryRadius(x, y, radius, mask >>> 0, flags);
+		this.syncQueryViews();
+		return n;
+	}
+
+	raycastRaw(
+		x1: number,
+		y1: number,
+		x2: number,
+		y2: number,
+		mask: number = 0xffffffff,
+		flags: number = 0,
+		excludeInternalBodyId: number = -1,
+	): number {
+		const n = this.world.raycast(x1, y1, x2, y2, mask >>> 0, flags, excludeInternalBodyId);
+		this.syncQueryViews();
+		return n;
+	}
+
+	/**
+	 * Input buffers for queryRadiusBatchRaw, sized for at least `count` queries:
+	 * `centers` holds [x, y, radius] per query, `exclude` an internal body id to skip (-1 = none).
+	 * Write into them, then call queryRadiusBatchRaw(count). Re-get them after any other world call.
+	 */
+	batchInput(count: number): { centers: Float32Array; exclude: Int32Array } {
+		this.syncQueryViews();
+		if (this._batchExclude.length < count) {
+			this.world.reserveQueryBatch(count);
+			this.syncQueryViews();
+		}
+		return { centers: this._batchInput, exclude: this._batchExclude };
+	}
+
+	/** Runs `count` radius queries from batchInput() in one WASM call. Returns the total hit count. */
+	queryRadiusBatchRaw(count: number, mask: number = 0xffffffff, flags: number = 0): number {
+		const n = this.world.queryRadiusBatch(count, mask >>> 0, flags);
+		this.syncQueryViews();
+		return n;
+	}
+
+	private collectBodies(n: number): Body[] {
+		const out: Body[] = [];
+		const hits = this._qHits;
+		for (let i = 0; i < n; i++) {
+			const body = this.bodiesByInternalId[hits[i * 2 + 1]];
+			if (body) out.push(body);
+		}
+		return out;
+	}
+
+	/** Bodies with a fixture overlapping the box, ordered by fixture creation. */
+	queryAABB(minX: number, minY: number, maxX: number, maxY: number, opts?: QueryOptions): Body[] {
+		return this.collectBodies(
+			this.queryAABBRaw(minX, minY, maxX, maxY, opts?.mask ?? 0xffffffff, World.queryFlags(opts, true)),
+		);
+	}
+
+	/** Bodies with a fixture overlapping the circle. */
+	queryRadius(x: number, y: number, radius: number, opts?: QueryOptions): Body[] {
+		return this.collectBodies(
+			this.queryRadiusRaw(x, y, radius, opts?.mask ?? 0xffffffff, World.queryFlags(opts, true)),
+		);
+	}
+
+	private rayHit(i: number): RaycastHit<Body, Fixture> | null {
+		const body = this.bodiesByInternalId[this._qHits[i * 2 + 1]];
+		const fixture = this.fixturesByInternalId[this._qHits[i * 2]];
+		if (!body || !fixture) return null;
+		const r = this._rayHits;
+		return {
+			body,
+			fixture,
+			fraction: r[i * 5],
+			x: r[i * 5 + 1],
+			y: r[i * 5 + 2],
+			nx: r[i * 5 + 3],
+			ny: r[i * 5 + 4],
+		};
+	}
+
+	/** Closest hit along (x1, y1) -> (x2, y2), or null. */
+	raycast(x1: number, y1: number, x2: number, y2: number, opts?: RaycastOptions): RaycastHit<Body, Fixture> | null {
+		const n = this.raycastRaw(
+			x1,
+			y1,
+			x2,
+			y2,
+			opts?.mask ?? 0xffffffff,
+			World.queryFlags(opts, false),
+			opts?.exclude?.internalId ?? -1,
+		);
+		return n > 0 ? this.rayHit(0) : null;
+	}
+
+	/** Every hit along the ray, nearest first. */
+	raycastAll(x1: number, y1: number, x2: number, y2: number, opts?: RaycastOptions): RaycastHit<Body, Fixture>[] {
+		const n = this.raycastRaw(
+			x1,
+			y1,
+			x2,
+			y2,
+			opts?.mask ?? 0xffffffff,
+			World.queryFlags(opts, false) | QUERY_FLAGS.RAY_ALL,
+			opts?.exclude?.internalId ?? -1,
+		);
+		const out: RaycastHit<Body, Fixture>[] = [];
+		for (let i = 0; i < n; i++) {
+			const h = this.rayHit(i);
+			if (h) out.push(h);
+		}
+		return out;
+	}
+
+	/**
+	 * Many radius queries in one WASM call. `queries` holds [x, y, radius] per query; `exclude[i]`
+	 * (optional) is a body to leave out of query i, e.g. the querying body itself.
+	 * Returns one Body[] per query (unique bodies).
+	 */
+	queryRadiusBatch(
+		queries: ArrayLike<number>,
+		exclude?: ArrayLike<Body | null | undefined>,
+		opts?: QueryOptions,
+	): Body[][] {
+		const count = Math.floor(queries.length / 3);
+		const input = this.batchInput(count);
+		for (let i = 0; i < count * 3; i++) input.centers[i] = queries[i];
+		for (let i = 0; i < count; i++) input.exclude[i] = exclude?.[i]?.internalId ?? -1;
+		this.queryRadiusBatchRaw(count, opts?.mask ?? 0xffffffff, World.queryFlags(opts, true));
+		const out: Body[][] = [];
+		const off = this._batchOffsets,
+			hits = this._qHits;
+		for (let q = 0; q < count; q++) {
+			const list: Body[] = [];
+			for (let i = off[q]; i < off[q + 1]; i++) {
+				const body = this.bodiesByInternalId[hits[i * 2 + 1]];
+				if (body) list.push(body);
+			}
+			out.push(list);
+		}
+		return out;
 	}
 
 	step() {
