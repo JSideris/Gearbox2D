@@ -25,6 +25,7 @@ struct CollisionProperties {
     uint32_t systemCategory;    // Internal engine category (Static, Dynamic, Point, etc.)
     bool isSleeping;
     bool isRigid;               // For sensor filtering
+    bool sensorContacts;        // Opt-in: this sensor also pairs with other opted-in sensors
     int32_t bodyId;             // The ID of the body this fixture belongs to
     Vec2 velocity;              // Current velocity of the body
     
@@ -34,6 +35,7 @@ struct CollisionProperties {
           systemCategory(CATEGORY_DYNAMIC),
           isSleeping(false),
           isRigid(true),
+          sensorContacts(false),
           bodyId(-1),
           velocity(0, 0) {}
     
@@ -49,9 +51,10 @@ struct CollisionProperties {
             return false;
         }
         
-        // Non-rigid sensors don't collide with other non-rigid sensors
+        // Non-rigid sensors don't collide with other non-rigid sensors,
+        // unless both opted in to sensor-vs-sensor contacts.
         if ((systemCategory & CATEGORY_SENSOR) && (other.systemCategory & CATEGORY_SENSOR) &&
-            !isRigid && !other.isRigid) {
+            !isRigid && !other.isRigid && !(sensorContacts && other.sensorContacts)) {
             return false;
         }
         
@@ -68,6 +71,7 @@ struct AggregatedProperties {
     bool containsAwake;                // Any awake objects in subtree?
     bool containsSleep;                // Any sleeping objects in subtree?
     bool containsRigid;                // Any rigid objects in subtree?
+    bool containsSensorContacts;       // Any sensor opted in to sensor-vs-sensor contacts?
     int32_t bodyId;                    // The ID if all objects belong to same body, else -1
     bool isMultiBody;                  // True if contains objects from multiple bodies
     Vec2 avgVelocity;                  // Average velocity of all objects in subtree
@@ -81,6 +85,7 @@ struct AggregatedProperties {
           containsAwake(false),
           containsSleep(false),
           containsRigid(false),
+          containsSensorContacts(false),
           bodyId(-1),
           isMultiBody(false),
           avgVelocity(0, 0),
@@ -96,6 +101,7 @@ struct AggregatedProperties {
         containsAwake |= other.containsAwake;
         containsSleep |= other.containsSleep;
         containsRigid |= other.containsRigid;
+        containsSensorContacts |= other.containsSensorContacts;
         mayContainSelfCollisions = mayContainSelfCollisions || other.mayContainSelfCollisions || childrenCanCollide;
 
         if (leafCount == 0) {
@@ -121,6 +127,7 @@ struct AggregatedProperties {
         agg.containsAwake = !props.isSleeping;
         agg.containsSleep = props.isSleeping;
         agg.containsRigid = props.isRigid;
+        agg.containsSensorContacts = props.sensorContacts;
         agg.bodyId = props.bodyId;
         agg.isMultiBody = false;
         agg.avgVelocity = props.velocity;
@@ -157,9 +164,11 @@ struct AggregatedProperties {
         }
         
         // Special case: if both contain only non-rigid sensors, skip
+        // (unless both subtrees hold sensors that opted in to sensor-vs-sensor contacts)
         if (containsSystemCategories == CATEGORY_SENSOR && 
             other.containsSystemCategories == CATEGORY_SENSOR &&
-            !containsRigid && !other.containsRigid) {
+            !containsRigid && !other.containsRigid &&
+            !(containsSensorContacts && other.containsSensorContacts)) {
             return false;
         }
         

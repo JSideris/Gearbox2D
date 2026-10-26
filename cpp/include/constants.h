@@ -117,6 +117,14 @@ enum class ObjectType {
 
 #define FIXTURE_FLAG_IS_SENSOR 0x4
 #define FIXTURE_FLAG_WANTS_EVENTS 0x8
+// Opt-in sensor-vs-sensor contacts: two sensors pair only when both carry this flag
+// (and their category/mask filters allow it). Off by default.
+#define FIXTURE_FLAG_SENSOR_CONTACTS 0x10
+
+// Spatial query flags (queryAABB / queryRadius / raycast / queryRadiusBatch)
+#define QUERY_FLAG_UNIQUE_BODIES 0x1   // at most one hit per body (first fixture / nearest ray hit)
+#define QUERY_FLAG_SKIP_SENSORS 0x2    // ignore sensor fixtures
+#define QUERY_FLAG_RAY_ALL 0x4         // raycast: every hit sorted by fraction (default: closest only)
 
 enum class ObjectShape {
     POINT,

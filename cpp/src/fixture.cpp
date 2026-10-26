@@ -2,6 +2,7 @@
 #include "body.h"
 #include "world.h"
 #include "collision-solver.h"
+#include "spatial-query.h"
 #include <cmath>
 #include <algorithm>
 
@@ -24,6 +25,9 @@ Fixture::Fixture(World& world, int id, int worldIndex, Body* body, emscripten_va
     }
     if (!options["wantsEvents"].isUndefined() && options["wantsEvents"].as<bool>()) {
         flags |= FIXTURE_FLAG_WANTS_EVENTS;
+    }
+    if (!options["sensorContacts"].isUndefined() && options["sensorContacts"].as<bool>()) {
+        flags |= FIXTURE_FLAG_SENSOR_CONTACTS;
     }
     world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] = flags;
 
@@ -174,6 +178,24 @@ bool Fixture::isSensor() const {
     return (world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] & FIXTURE_FLAG_IS_SENSOR) != 0;
 }
 
+void Fixture::setSensorContacts(bool enabled) {
+    int idx = GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS);
+    if (enabled) {
+        world.liveFixtureIntData[idx] |= FIXTURE_FLAG_SENSOR_CONTACTS;
+    } else {
+        world.liveFixtureIntData[idx] &= ~FIXTURE_FLAG_SENSOR_CONTACTS;
+    }
+    if (bvhNode) {
+        CollisionProperties props = bvhNode->properties;
+        props.sensorContacts = enabled;
+        bvhNode->updateProperties(props);
+    }
+}
+
+bool Fixture::getSensorContacts() const {
+    return (world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] & FIXTURE_FLAG_SENSOR_CONTACTS) != 0;
+}
+
 bool Fixture::wantsEvents() const {
     return (world.liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(worldIndex, FIXTURE_IDATA_FLAGS)] & FIXTURE_FLAG_WANTS_EVENTS) != 0;
 }
@@ -282,6 +304,7 @@ CollisionProperties Fixture::getCollisionProperties() const {
     props.userMask = getMaskBits();
     props.systemCategory = getSystemCategory();
     props.isRigid = !isSensor();
+    props.sensorContacts = getSensorContacts();
     props.isSleeping = body->isSleeping;
     props.bodyId = body->id;
     props.velocity = body->getVelocity();
@@ -462,5 +485,78 @@ bool Fixture::testPoint(float x, float y) const {
         }
         default: 
             return false;
+    }
+}
+
+void Fixture::getQueryShape(QueryShape& out) const {
+    float px = body->getX();
+    float py = body->getY();
+    float pr = body->getRotation();
+    float lx = getLocalX();
+    float ly = getLocalY();
+    float cosR = std::cos(pr);
+    float sinR = std::sin(pr);
+    Vec2 center(px + (lx * cosR - ly * sinR), py + (lx * sinR + ly * cosR));
+    float rotation = pr + getLocalR();
+    float c = std::cos(rotation);
+    float s = std::sin(rotation);
+    auto toWorld = [&](float x, float y) { return Vec2(center.x + x * c - y * s, center.y + x * s + y * c); };
+
+    out.n = 0;
+    out.r = 0.0f;
+    switch (shape) {
+        case ObjectShape::CIRCLE:
+            out.kind = QueryShape::DISC; out.a = center; out.r = getRadius();
+            return;
+        case ObjectShape::CAPSULE: {
+            float r = getRadius();
+            float halfL = std::max(0.0f, getHeight() * 0.5f - r);
+            out.kind = QueryShape::CAPSULE;
+            out.a = toWorld(0.0f, -halfL);
+            out.b = toWorld(0.0f, halfL);
+            out.r = r;
+            return;
+        }
+        case ObjectShape::AABB:
+        case ObjectShape::BOX: {
+            float hw = getWidth() * 0.5f, hh = getHeight() * 0.5f;
+            out.kind = QueryShape::POLY;
+            out.n = 4;
+            if (shape == ObjectShape::AABB) {
+                out.v[0] = Vec2(center.x - hw, center.y - hh); out.v[1] = Vec2(center.x + hw, center.y - hh);
+                out.v[2] = Vec2(center.x + hw, center.y + hh); out.v[3] = Vec2(center.x - hw, center.y + hh);
+            } else {
+                out.v[0] = toWorld(-hw, -hh); out.v[1] = toWorld(hw, -hh);
+                out.v[2] = toWorld(hw, hh);   out.v[3] = toWorld(-hw, hh);
+            }
+            return;
+        }
+        case ObjectShape::ELLIPSE: {
+            float rx = getWidth() * 0.5f, ry = getHeight() * 0.5f;
+            out.kind = QueryShape::POLY;
+            out.n = QUERY_SHAPE_MAX_VERTICES;
+            for (int i = 0; i < out.n; ++i) {
+                float t = 6.28318530718f * (float)i / (float)out.n;
+                out.v[i] = toWorld(rx * std::cos(t), ry * std::sin(t));
+            }
+            return;
+        }
+        case ObjectShape::POLYGON: {
+            int vCount = (int)world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_COUNT)];
+            vCount = std::min(vCount, QUERY_SHAPE_MAX_VERTICES);
+            out.kind = QueryShape::POLY;
+            out.n = vCount;
+            for (int i = 0; i < vCount; ++i) {
+                float vx = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2)];
+                float vy = world.liveFixtureFloatData[GET_FIXTURE_FDATA_INDEX(worldIndex, FIXTURE_FDATA_VERTEX_START + i * 2 + 1)];
+                out.v[i] = toWorld(vx, vy);
+            }
+            sq::makeCCW(out.v, out.n);
+            return;
+        }
+        case ObjectShape::POINT:
+        default:
+            out.kind = QueryShape::DISC; out.a = center; out.r = 0.0f;
+            return;
     }
 }
