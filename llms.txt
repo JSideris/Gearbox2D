@@ -15,4 +15,7 @@ Gearbox2D is a blazing-fast, web-first 2D physics engine engineered from the gro
 - [Full Documentation](/llms-full.txt): A single file containing all documentation for easy LLM ingestion.
 - [Introduction](/documentation.html#introduction)
 - [Installation](/documentation.html#installation)
+- [Spatial Queries](/documentation.html#interaction-queries): queryAABB, queryRadius, raycasts, batched and allocation-free queries
+- [Navigation](/documentation.html#navigation): native grid A* / HPA* with batched, time-sliced `findPaths`
+- [Nav Arena example](/showcase.html#nav-arena): many bots pathfinding with the native nav grid
 - [API Reference](/documentation.html#api-reference)
