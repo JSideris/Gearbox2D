@@ -27,6 +27,8 @@
 #include "simd-math.h"
 #include "spatial-query.h"
 
+namespace nav { class NavSystem; }
+
 class Body;
 class Fixture;
 class Joint;
@@ -243,6 +245,8 @@ private:
     void _solveIslandVelocity(Island& island, float dt, int substepIndex, std::vector<Vec2>& prePgsAll);
     void _solveIslandPosition(Island& island, float dt, int substepIndex);
 
+    std::unique_ptr<nav::NavSystem> navSys;
+
 public:
     Bvh bvh;
     float invTimeStep;
@@ -352,6 +356,43 @@ public:
     emscripten_val getBatchOffsetsView();
     emscripten_val getBatchInputView();
     emscripten_val getBatchExcludeView();
+#endif
+    // --- Navigation (PER-871) ------------------------------------------------------------
+    // One occupancy grid per world with native A* / HPA* (see nav.h and docs/navigation.md).
+    // The step only notes which tracked fixtures moved; findPaths() runs every queued request
+    // within a node budget and writes the results to the nav output buffer in one call.
+    void navCreate(double minX, double minY, double maxX, double maxY, double cell, double clearance, int flags);
+    void navDestroy();
+    bool navHasGrid() const;
+    int navCols() const;
+    int navRows() const;
+    void navAddBox(double x, double y, double w, double h, double angle);
+    void navAddDisc(double x, double y, double r, double keepOut);
+    // Cells [c0..c1] x [r0..r1] of the base layer were written through the base view (c0 < 0: all).
+    void navCommitBase(int c0, int r0, int c1, int r1);
+    // Fixtures whose categoryBits & mask != 0 block their cells (flags & 1: sensors too). 0 = off.
+    void navTrack(uint32_t mask, int flags);
+    // Moving obstacles from the disc input buffer ([x, y, r] per disc).
+    void navSetDynamic(int count);
+    void navPushDynamic(int count);
+    void navPopDynamic();
+    int navDynamicLayers() const;
+    void navBuildHierarchy(int cluster, int wideEntrance);
+    void navSync();
+    void navReserve(int requests, int discs);
+    int findPaths(double budget, double minSlice, int newCount);
+    int navFindPath(double fx, double fy, double tx, double ty, int mode, double maxExpanded);
+    void navCancel(int id);
+    void navClearRequests();
+    nav::NavSystem& navSystem();
+#ifdef __EMSCRIPTEN__
+    emscripten_val navGetHeader();
+    emscripten_val navGetRequestView();
+    emscripten_val navGetDiscView();
+    emscripten_val navGetOutView();
+    emscripten_val navGetBaseView();
+    emscripten_val navGetBlockedView();
+    emscripten_val navGetDynamicView();
 #endif
     int getEventCount();
     const std::vector<float>& getEventBuffer() const { return eventData; }

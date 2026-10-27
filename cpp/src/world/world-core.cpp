@@ -2,6 +2,7 @@
 #include "body.h"
 #include "fixture.h"
 #include "constants.h"
+#include "nav.h"
 #include <algorithm>
 #include <cmath>
 
@@ -86,6 +87,7 @@ int World::createFixture(int bodyId, int fixtureId, emscripten_val options, bool
     fixture->updateAabb(1);
 
     fixture->bvhNode = bvh.insert(fixture->aabb, fixture, fixture->getCollisionProperties());
+    if (navSys) navSys->onFixtureCreated(fixture);
 
     return fixture->worldIndex;
 }
@@ -96,6 +98,7 @@ int World::removeObject(int id) {
 
     Body* body = itBody->second;
     int bIdx = body->worldIndex;
+    if (navSys) navSys->onBodyRemoved(body);
     
     // Remove joints
     std::vector<int> jointsToRemove;
@@ -202,6 +205,7 @@ int World::removeObject(int id) {
 }
 
 void World::clear() {
+    if (navSys) navSys->onWorldCleared();
     jointsMap.clear();
     distanceJoints.clear();
     springJoints.clear();

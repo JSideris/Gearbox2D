@@ -3,6 +3,7 @@
 #include "fixture.h"
 #include "joint.h"
 #include "constants.h"
+#include "nav.h"
 #include <algorithm>
 #include <vector>
 
@@ -159,6 +160,7 @@ void World::step() {
         _buildAndProcessIslands(subStepDt, i);
     }
     _doContactManagement();
+    if (navSys) navSys->afterStep(); // PER-871: dirty-cell bookkeeping only
 }
 
 void World::_doIntegrateVelocities() {
