@@ -39,6 +39,7 @@
 
 ## Spatial Queries & Interaction
 - `interaction-queries.md`: Spatial Queries
+- `navigation.md`: Navigation (Pathfinding)
 
 ## Graphics & Debugging
 - `graphics-debug.md`: Debug Graphics
@@ -49,6 +50,5 @@
 
 ## Advanced & Planned Features
 - `planned-fluid-dynamics.md`: Fluid Dynamics (Planned)
-- `planned-ai-pathfinding.md`: AI Pathfinding (Planned)
 - `planned-ccd.md`: Continuous Collision Detection (Planned)
 

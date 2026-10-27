@@ -359,6 +359,7 @@ public:
     void track(uint32_t mask, int flags);
     void buildHierarchy(int cluster, int wideEntrance);
     void sync(); // applies tracked-fixture changes and pending static changes (hierarchy rebuild)
+    void syncAndPublish(); // sync() and refresh the header (World::navSync)
 
     int findPaths(double budget, double minSlice, int newCount);
     int findPathNow(double fx, double fy, double tx, double ty, int mode, double maxExpanded);

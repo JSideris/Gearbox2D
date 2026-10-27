@@ -7,6 +7,7 @@ import type { BodyOptions, FixtureOptions, JointOptions, QueryOptions, RaycastHi
 import { QUERY_FLAGS } from "./constants.js";
 import type { CppWorld, WasmVector } from "./wasm-types.js";
 import { JS_OVERHEAD, estimateMapMemory } from "./MemoryEstimator.js";
+import { Nav, type NavBounds, type NavGridOptions, type NavPathResult } from "./nav.js";
 
 export type Joint = HingeJoint | DistanceJoint | SpringJoint | GearJoint;
 
@@ -816,6 +817,32 @@ export class World {
 			out.push(list);
 		}
 		return out;
+	}
+
+	// --- Navigation (PER-871) ------------------------------------------------------------
+	private _nav: Nav | null = null;
+
+	/**
+	 * Creates this world's nav grid (replacing any previous one). Path requests queue on it with
+	 * nav.request(...) and run with world.findPaths(budget), once per tick after step().
+	 */
+	createNav(bounds: NavBounds, options: NavGridOptions = {}): Nav {
+		this._nav = new Nav(this.world, bounds, options);
+		return this._nav;
+	}
+
+	/** The nav grid made by createNav, or null. */
+	get nav(): Nav | null {
+		return this._nav;
+	}
+
+	/**
+	 * Runs every queued nav request within `budget` A* node expansions in one WASM call (see Nav.findPaths).
+	 * Call it once per tick, after step(); unfinished requests carry over.
+	 */
+	findPaths(budget: number, minSlice = 0): NavPathResult[] {
+		if (!this._nav) throw new Error("World.findPaths: call createNav() first");
+		return this._nav.findPaths(budget, minSlice);
 	}
 
 	step() {

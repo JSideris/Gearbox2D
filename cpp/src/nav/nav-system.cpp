@@ -256,6 +256,12 @@ void NavSystem::sync() {
     }
 }
 
+void NavSystem::syncAndPublish() {
+    ioBegin();
+    sync();
+    ioEnd();
+}
+
 // ---- requests ------------------------------------------------------------------------------------
 
 void NavSystem::writeResult(const Request& r) {

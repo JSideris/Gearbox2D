@@ -11,6 +11,8 @@ Every query walks the BVH broadphase first and then runs an exact shape test on 
 | `raycastAll(x1, y1, x2, y2, opts)` | every hit along a segment, nearest first |
 | `queryRadiusBatch(queries, exclude?, opts)` | many radius queries in **one** WASM call |
 
+For paths (grid A* / HPA*, batched once per tick) see [Navigation](navigation.md).
+
 ## Filters
 
 All queries take `{ mask, skipSensors }`. A fixture matches when `(categoryBits & mask) != 0`, the same rule as `queryBodiesAtPoint`. `skipSensors: true` ignores sensor fixtures (usually what you want for line of sight). Raycasts also take `exclude` (a body to ignore, such as the shooter) and, for `raycastAll`, `uniqueBodies`.

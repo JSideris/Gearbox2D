@@ -42,7 +42,7 @@ void World::navPushDynamic(int count) {
 void World::navPopDynamic() { if (navHasGrid()) navSys->grid->popDynamic(); }
 int World::navDynamicLayers() const { return navHasGrid() ? navSys->grid->dynamicLayers() : 0; }
 void World::navBuildHierarchy(int cluster, int wideEntrance) { navSystem().buildHierarchy(cluster, wideEntrance); }
-void World::navSync() { navSystem().sync(); }
+void World::navSync() { navSystem().syncAndPublish(); }
 void World::navReserve(int requests, int discs) { navSystem().reserve(requests, discs); }
 int World::findPaths(double budget, double minSlice, int newCount) { return navSystem().findPaths(budget, minSlice, newCount); }
 int World::navFindPath(double fx, double fy, double tx, double ty, int mode, double maxExpanded) {

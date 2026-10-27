@@ -1,3 +1,0 @@
-# AI & Pathfinding (Planned)
-TODO
-

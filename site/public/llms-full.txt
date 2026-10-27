@@ -67,6 +67,21 @@ Gearbox2D is currently in **Beta**. It's performant and stable, and ready for pr
 
 We welcome contributions! If you want to build the engine from source or modify the C++ core, please follow the [Development & Contributing Guide](docs/development.md).
 
+## Research builds (KRB ablation)
+
+For **benchmarking and research only** (not a supported product build), you can compile a native binary with Kinematic Restitution Balancing (KRB) disabled:
+
+```bash
+make test GEARBOX_DISABLE_KRB=1
+make benchmark GEARBOX_DISABLE_KRB=1
+make log-energy
+make log-energy GEARBOX_DISABLE_KRB=1
+./logEnergy --out studies/kinematic_restitution_balancing/data --seconds 600
+./logEnergy-nokrb --out studies/kinematic_restitution_balancing/data --seconds 600
+```
+
+`make log-energy` writes `logEnergy` (KRB on) or `logEnergy-nokrb` (flag set). It does not run the gtest suite. Default builds (`npm run build`, `make wasm`, `make test` without the flag) always ship with KRB enabled. The no-KRB test binary skips KRB energy gtests; full test green is required on the default build only.
+
 ## License
 
 ISC
@@ -639,6 +654,8 @@ npm run test:cpp
 npm run test:ts
 ```
 
+For a **research-only** native build with KRB disabled (algorithm ablation, not for release), see [Research builds (KRB ablation)](../readme.md#research-builds-krb-ablation).
+
 ## Troubleshooting
 
 - **Emscripten not found**: Ensure you have run `source ./emsdk_env.sh` in your current terminal session.
@@ -874,7 +891,6 @@ npm run test:ts
 ## Known Issues
 - Spring joints can't be adjusted at runtime - see the commented-out spring test case.
 - Bullet through paper is somewhat unreliable. Also affects the high-energy bounce benchmark, which is broken for Gearbox2d.
-- Newton's cradle tests are showing some regression. After several bounces,
 - Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
 - 20-Segment-Chain jitters automatically.
 - Engine seems to have better performance in ST mode. Worth looking into this to re-evaluate whether MT is worth it.
@@ -1253,13 +1269,13 @@ For advanced users or performance-critical tasks, you can access both the new vi
 *   `world.liveFixtureIntData`
 
 ### Performance Tip: GPU Uploads
-If you are building a custom high-performance renderer (e.g., using WebGL or WebGPU), you can upload the underlying raw buffers (like `world.liveBodyFloatData`) directly to the GPU. This allows you to render thousands of objects with zero CPU overhead per-object.
+If you are building a custom high-performance renderer (e.g., using WebGL or WebGPU), read `world.liveBodyFloatData` again on each upload. The single-threaded WASM heap starts near 16 MiB and grows, up to 256 MiB, when more worlds or objects are allocated. Growth replaces the heap `ArrayBuffer`. A `Float32Array` kept from an earlier read is then detached. Property access such as `body.x` refreshes the engine's views on the next read; a buffer you captured yourself does not.
 
 ## Memory Safety Best Practices
 
 1.  **Don't "New" in Loops**: Avoid creating worlds inside frequent events or animation frames.
 2.  **Recycle IDs**: Use a consistent ID mapping strategy to avoid confusion when bodies are removed and added.
-3.  **Check Heap Growth**: Be aware that as the number of objects grows, the WASM heap may resize. Gearbox2D handles this internally, but frequent resizing can cause small performance hitches.
+3.  **Re-read after heap growth**: The single-threaded heap grows up to 256 MiB. Views refresh the next time they are read. Read `world.liveBodyFloatData` again after any allocation before uploading it. Frequent resizing can cause small performance hitches.
 
 
 --- SECTION: architecture-coordinates.md ---
@@ -1596,7 +1612,7 @@ Fixture properties define the physical behavior of a body's shape.
 - `staticFriction`: Resistance to starting motion between two surfaces.
 - `kineticFriction`: Resistance to maintaining motion between two surfaces.
 
-Friction is typically set between `0.0` (perfectly slippery) and `1.0` (high friction). The actual friction between two colliding fixtures is calculated as the average of their respective friction values.
+Friction is typically set between `0.0` (perfectly slippery) and `1.0` (high friction). When two fixtures collide, each coefficient is mixed independently using the geometric mean of the two fixture values: mixed static friction is `sqrt(staticFriction_A × staticFriction_B)`, and mixed kinetic friction is `sqrt(kineticFriction_A × kineticFriction_B)`.
 
 ### Density
 `density`: Used for automatic mass and inertia calculations.
@@ -2288,8 +2304,155 @@ Note: Reading `obj.isSleeping` is still useful for logic that needs to know the 
 --- SECTION: interaction-queries.md ---
 
 # Spatial Queries
-TODO
 
+Every query walks the BVH broadphase first and then runs an exact shape test on its few candidates. None of them iterate every body, so they stay cheap as the world grows. Use them instead of scanning your own body list.
+
+| Query | Finds |
+|---|---|
+| `queryBodiesAtPoint(x, y, mask)` / `queryFixturesAtPoint` | shapes containing a point |
+| `queryAABB(minX, minY, maxX, maxY, opts)` | bodies overlapping an axis-aligned box |
+| `queryRadius(x, y, radius, opts)` | bodies overlapping a circle |
+| `raycast(x1, y1, x2, y2, opts)` | the closest hit along a segment, or `null` |
+| `raycastAll(x1, y1, x2, y2, opts)` | every hit along a segment, nearest first |
+| `queryRadiusBatch(queries, exclude?, opts)` | many radius queries in **one** WASM call |
+
+For paths (grid A* / HPA*, batched once per tick) see [Navigation](navigation.md).
+
+## Filters
+
+All queries take `{ mask, skipSensors }`. A fixture matches when `(categoryBits & mask) != 0`, the same rule as `queryBodiesAtPoint`. `skipSensors: true` ignores sensor fixtures (usually what you want for line of sight). Raycasts also take `exclude` (a body to ignore, such as the shooter) and, for `raycastAll`, `uniqueBodies`.
+
+```js
+const nearby = world.queryRadius(ship.x, ship.y, 25, { mask: CATEGORY_SHIPS });
+const crates = world.queryAABB(0, 0, 10, 10);
+
+const hit = world.raycast(gun.x, gun.y, aimX, aimY, { exclude: ship, skipSensors: true });
+if (hit) console.log(hit.body.id, hit.fraction, hit.x, hit.y, hit.nx, hit.ny);
+```
+
+A raycast hit has `fraction` (0..1 along the segment), the hit point and the surface normal. A ray that starts inside a shape hits it at `fraction` 0 with the normal pointing back along the ray. `POINT` fixtures have no area, so rays never hit them (box and radius queries still find them).
+
+Results are deterministic: hits are ordered by fixture creation order (rays: by distance, then fixture order), independent of how the BVH tree happens to be shaped.
+
+## Batched neighbour queries
+
+`queryRadiusBatch` runs one radius query per centre in a single call into WASM, for example every agent's neighbours each tick:
+
+```js
+const queries = [];
+for (const a of agents) queries.push(a.body.x, a.body.y, 30);
+const neighbours = world.queryRadiusBatch(queries, agents.map((a) => a.body)); // exclude self
+// neighbours[i] is a Body[] for agents[i]
+```
+
+## Allocation-free API
+
+The `*Raw` methods return a hit count and leave the results in reused typed arrays inside WASM memory, so a hot loop allocates nothing:
+
+- `world.queryHits`: `[internalFixtureId, internalBodyId]` pairs. Map with `world.bodyByInternalId(id)` / `world.fixtureByInternalId(id)`, or compare against `body.internalId`.
+- `world.rayHits`: `[fraction, x, y, nx, ny]` per hit (raycasts only).
+- `world.batchOffsets`: hits of batch query `i` are pairs `batchOffsets[i]` to `batchOffsets[i + 1]`.
+
+```js
+const n = world.queryRadiusRaw(x, y, 20, mask, QUERY_FLAGS.UNIQUE_BODIES);
+for (let i = 0; i < n; i++) handle(world.queryHits[i * 2 + 1]);
+
+const { centers, exclude } = world.batchInput(agents.length); // [x, y, radius] per query
+// ...fill centers / exclude (internal body id or -1)...
+const total = world.queryRadiusBatchRaw(agents.length, mask, QUERY_FLAGS.UNIQUE_BODIES);
+```
+
+`QUERY_FLAGS` are `UNIQUE_BODIES` (one hit per body), `SKIP_SENSORS` and `RAY_ALL`. The arrays are only valid until the next query on that world; re-read `world.queryHits` after each call, and call `batchInput()` again before filling a new batch.
+
+## Sensor-vs-sensor contacts
+
+By default two sensors never report contacts with each other. Opt a sensor in with the fixture option `sensorContacts: true` (or `fixture.sensorContacts = true` at runtime). A pair of sensors reports `onCollisionStart` / `onCollisionEnd` only when **both** opted in and their category/mask filters allow it. Nothing changes for fixtures that don't opt in. Sensors still never push each other.
+
+```js
+world.createBody({ ..., isSensor: true, wantsEvents: true, sensorContacts: true });
+```
+
+A fixed (static) sensor and a moving sensor already reported contacts before this option existed; that is unchanged.
+
+
+--- SECTION: navigation.md ---
+
+# Navigation (Pathfinding)
+
+Gearbox2D can plan paths for many agents natively. Each world has one nav grid (cells marked blocked or free). Path requests queue up during the tick, and `world.findPaths(budget)` runs them all in **one** WASM call. Results come back through a shared `Float64Array`.
+
+The planner is a C++ port of gear3engine's g3e-ai `NavGrid` (typed-array A*) and `NavHierarchy` (HPA*). It uses the same rasterisation, neighbour order, tie-breaking, smoothing and options, so it returns the same paths as the JS version, point for point. `scripts/nav-parity-test.mjs` checks this on 30 seeded worlds.
+
+## Setup
+
+```js
+const nav = world.createNav({ minX: -200, minY: -200, maxX: 200, maxY: 200 }, {
+	cell: 1,            // cell size (world units)
+	clearance: 2,       // obstacles are inflated by this (agent radius + margin)
+	rasterize: "centers", // or "touching" (default)
+	atGoal: "empty",    // same-cell start/goal: no points (default "goal")
+	nearestFreeOutside: "point",
+	astarTies: "heap",  // or "lowerH" (default)
+});
+
+// Static obstacles go straight into the grid:
+for (const w of walls) nav.addBox(w);      // { x, y, w, h, angle }
+nav.addDisc({ x: 10, y: 5, r: 3 });
+
+// ...or take them from the physics world: fixtures whose categoryBits match the mask block their cells.
+nav.track(CATEGORY_WALLS);
+
+// ...or copy a finished mask (cols * rows, 1 = blocked), e.g. a JS NavGrid's `blocked`.
+nav.setStaticMask(jsGrid.blocked);
+
+nav.buildHierarchy({ cluster: 16 }); // optional, needed for HPA requests
+```
+
+`world.step()` only notes which tracked fixtures moved. Their cells, and the hierarchy clusters they touch, are updated at the start of the next `findPaths` (or by calling `nav.syncStatic()`). Physics steps never pay for pathfinding.
+
+## Moving obstacles
+
+These use the same semantics as `NavGrid.setDynamicObstacles` / `pushDynamicObstacles` / `popDynamicObstacles`: discs inflated by the clearance, which plain A* and the HPA corridor avoid. HPA alone ignores them.
+
+```js
+nav.setDynamicObstacles(rocks.map((r) => ({ x: r.x, y: r.y, r: r.radius })));
+nav.pushDynamicObstacles([fireZone]); // a temporary layer
+nav.popDynamicObstacles();
+```
+
+## Requests
+
+```js
+// During the tick (no WASM crossing):
+nav.request(bot.id, bot.pos, bot.target);                                   // plain A*
+nav.request(other.id, other.pos, flag, { mode: NAV_MODE.HPA });             // hierarchical, walls only
+nav.request(third.id, third.pos, base, { mode: NAV_MODE.HPA_CORRIDOR, discs: [threat] });
+
+// Once per tick, after step():
+for (const r of world.findPaths(20000)) {
+	if (r.status === NAV_STATUS.PATH) bots.get(r.id).follow(r.points);
+}
+```
+
+| Mode | Same as | Sees |
+|---|---|---|
+| `NAV_MODE.GRID` | `NavGrid.findPath` | walls + moving obstacles + the request's `discs` |
+| `NAV_MODE.HPA` | `NavHierarchy.findPath` | walls only |
+| `NAV_MODE.HPA_CORRIDOR` | `NavHierarchy.findPath(.., { dynamic: "corridor" })` | walls, then moving obstacles inside the route's clusters |
+
+The `budget` caps A* node expansions across the whole call. Requests run oldest first. A request that runs out of budget keeps its search state and continues next tick, so a long route spreads over several ticks instead of causing a spike. `minSlice` gives every queued request at least that many nodes even after the budget is spent. `nav.cancel(id)` and `nav.clearRequests()` drop queued requests. `maxExpanded` (default 200 000) gives up on a single search, like the JS planner.
+
+A result is `{ id, status, expanded, length, points }`. `points` are the waypoints after the start, ending at the goal (or the free spot nearest to it). Status is `PATH`, `NO_PATH`, `NO_HIERARCHY` (an HPA request before `buildHierarchy`), or `BAD_REQUEST`.
+
+For a single path right now there is `nav.findPath(from, to, { mode })`. It makes its own WASM call and leaves the queue alone.
+
+### Allocation-free results
+
+`nav.findPathsRaw(budget)` returns only the count. Then read `nav.out` directly: `out[0]` = count, then for each result `[id, status, expanded, length, nPoints, x0, y0, x1, y1, ...]`. The view stays valid until the next nav call.
+
+## Performance
+
+On the Saucers ctf map (400 × 400 cells, 150 routes over 150 m), native plain A* runs about 1.1–1.2× faster than the JS typed-array A* in V8, and HPA about 1.3–1.6× faster. The search is limited by heap and memory traffic, which V8 already handles well. The bigger gains come from batching: one crossing per tick (about 0.1 µs for an empty call) and time-sliced requests that spread work across ticks. `scripts/nav-bench.mjs` reproduces these numbers.
 
 
 --- SECTION: graphics-debug.md ---
@@ -2417,13 +2580,6 @@ For broad-phase collision detection, Gearbox2D uses a high-performance **Boundin
 --- SECTION: planned-fluid-dynamics.md ---
 
 # Fluid Dynamics (Planned)
-TODO
-
-
-
---- SECTION: planned-ai-pathfinding.md ---
-
-# AI & Pathfinding (Planned)
 TODO
 
 
