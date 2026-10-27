@@ -70,3 +70,14 @@ world.createBody({ ..., isSensor: true, wantsEvents: true, sensorContacts: true 
 ```
 
 A fixed (static) sensor and a moving sensor already reported contacts before this option existed; that is unchanged.
+
+Opted-in sensor pairs take part in the contact graph like any other pair (narrow phase every step, start/end events), so opt in only the sensors that need it. Toggling `fixture.isSensor` at runtime works too (it calls the native `setSensor`).
+
+## Caveats
+
+- **Raw views are short-lived.** `world.queryHits`, `world.rayHits`, `world.batchOffsets` and the `batchInput()` arrays are only valid until the next query on that world. The object-returning methods (`queryAABB`, `queryRadius`, `raycast`, ...) copy their results, so you can keep those.
+- **Buffers never shrink.** The hit and batch buffers grow to the largest result you have asked for and keep that size for the life of the world. One huge query (say, `queryAABB` over the whole map) sets the high-water mark.
+- **Ellipses are tested as 16-gons.** `ELLIPSE` fixtures are approximated by an inscribed 16-sided polygon for box, radius and ray tests, so a hit right on the curved edge can be off by up to about 2 % of the radius (the polygon sits inside the ellipse).
+- **`POINT` fixtures are never hit by rays.** They have no area. Box and radius queries still find them.
+- **Hand-moved bodies lag one step.** Queries see the broadphase as of the last `world.step()` (above). [Navigation](navigation.md) tracking is not affected, because it reads the fixture's real pose.
+- **Use queries, not scans.** For "is anything touching X" or "who is near X", a query or a sensor's contact events cost about as much as the few candidates they return. Looping over every body costs as much as the whole world.
