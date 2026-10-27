@@ -106,6 +106,41 @@ export interface CppWorld {
 	getBatchInputView(): Float32Array;
 	getBatchExcludeView(): Int32Array;
 	step(): void;
+	navCreate(
+		minX: number,
+		minY: number,
+		maxX: number,
+		maxY: number,
+		cell: number,
+		clearance: number,
+		flags: number,
+	): void;
+	navDestroy(): void;
+	navHasGrid(): boolean;
+	navCols(): number;
+	navRows(): number;
+	navAddBox(x: number, y: number, w: number, h: number, angle: number): void;
+	navAddDisc(x: number, y: number, r: number, keepOut: number): void;
+	navCommitBase(c0: number, r0: number, c1: number, r1: number): void;
+	navTrack(mask: number, flags: number): void;
+	navSetDynamic(count: number): void;
+	navPushDynamic(count: number): void;
+	navPopDynamic(): void;
+	navDynamicLayers(): number;
+	navBuildHierarchy(cluster: number, wideEntrance: number): void;
+	navSync(): void;
+	navReserve(requests: number, discs: number): void;
+	findPaths(budget: number, minSlice: number, newCount: number): number;
+	navFindPath(fx: number, fy: number, tx: number, ty: number, mode: number, maxExpanded: number): number;
+	navCancel(id: number): void;
+	navClearRequests(): void;
+	navGetHeader(): Int32Array;
+	navGetRequestView(): Float64Array;
+	navGetDiscView(): Float64Array;
+	navGetOutView(): Float64Array;
+	navGetBaseView(): Uint8Array;
+	navGetBlockedView(): Uint8Array;
+	navGetDynamicView(): Uint8Array;
 	updateBodyId(oldId: number, newId: number): void;
 	updateFixtureId(oldId: number, newId: number): void;
 	updateJointId(oldId: number, newId: number): void;

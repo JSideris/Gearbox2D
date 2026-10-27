@@ -1,6 +1,6 @@
 {
   "name": "gearbox2d",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A 2D physics engine with TypeScript interface and WebAssembly core",
   "main": "dist/js/gearbox.js",
   "types": "dist/js/gearbox.d.ts",
@@ -17,7 +17,9 @@
     "test:cpp": "make test -B",
     "test": "npm run test:cpp && npm run test:ts",
     "test:wasm": "node scripts/heap-growth-test.mjs && node scripts/spatial-query-wasm-test.mjs",
+    "test:wasm:nav": "node scripts/nav-parity-test.mjs",
     "bench:queries": "make bench-queries -B && node scripts/query-bench.mjs",
+    "bench:nav": "node scripts/nav-bench.mjs",
     "bench:cpp": "make benchmark -B",
     "bench:compare": "bash scripts/compare-benchmarks.sh",
     "clone-build": "node scripts/clone-build.js",

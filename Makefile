@@ -31,7 +31,7 @@ LOG_ENERGY_SRC = studies/kinematic_restitution_balancing/log-energy.cpp
 LOG_TIMING_SRC = studies/kinematic_restitution_balancing/log-timing.cpp
 
 # Source files
-SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/world/*.cpp) $(wildcard $(SRC_DIR)/world/island/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp)
+SRC = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/world/*.cpp) $(wildcard $(SRC_DIR)/world/island/*.cpp) $(wildcard $(SRC_DIR)/solvers/*.cpp) $(wildcard $(SRC_DIR)/nav/*.cpp)
 
 # Output files
 OUTPUT_JS_MT = $(BUILD_DIR)/gearbox-module-mt.js

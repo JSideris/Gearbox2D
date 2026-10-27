@@ -3,6 +3,7 @@ export * from "./Body.js";
 export * from "./Fixture.js";
 export * from "./joints.js";
 export * from "./world.js";
+export * from "./nav.js";
 export * from "./engine.js";
 export * from "./debug-graphics.js";
 
