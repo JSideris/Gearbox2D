@@ -4,6 +4,14 @@
 #include "constants.h"
 #include <algorithm>
 
+// The 1-vs-4 SIMD narrow phase exists only for circle-vs-circle and circle-vs-point. A run of four pairs with any
+// other second shape (box, polygon, capsule...) must take the scalar path: the SIMD branch solves nothing for them
+// and then skips all four pairs, which silently drops those contacts (a circle passing through a box it overlaps
+// whenever it had 4+ same-shape box pairs in a row, e.g. walls plus overlapping sensor zones).
+static inline bool hasCircleSimdPath(int shape2) {
+    return shape2 == (int)ObjectShape::CIRCLE || shape2 == (int)ObjectShape::POINT;
+}
+
 void World::_doBroadPhase() {
     bvh.detectCollisions();
 }
@@ -64,7 +72,7 @@ void World::_doNarrowPhase(float dt) {
                     int shape2 = liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f2->worldIndex, FIXTURE_IDATA_SHAPE)];
 
                     // SIMD 1-vs-4 run-length check
-                    if (shape1 == (int)ObjectShape::CIRCLE && (j + 3 < end)) {
+                    if (shape1 == (int)ObjectShape::CIRCLE && (j + 3 < end) && hasCircleSimdPath(shape2)) {
                         bool canSimd = true;
                         int indicesB[4];
                         indicesB[0] = f2->worldIndex;
@@ -143,7 +151,7 @@ void World::_doNarrowPhase(float dt) {
         int shape2 = liveFixtureIntData[GET_FIXTURE_IDATA_INDEX(f2->worldIndex, FIXTURE_IDATA_SHAPE)];
 
         // SIMD 1-vs-4 run-length check
-        if (shape1 == (int)ObjectShape::CIRCLE && (j + 3 < (int)bvh.collisionPairs.size())) {
+        if (shape1 == (int)ObjectShape::CIRCLE && (j + 3 < (int)bvh.collisionPairs.size()) && hasCircleSimdPath(shape2)) {
             bool canSimd = true;
             int indicesB[4];
             indicesB[0] = f2->worldIndex;
