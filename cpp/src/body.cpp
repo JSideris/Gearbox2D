@@ -201,11 +201,25 @@ void Body::setRotation(float r) {
 }
 
 float Body::getVelocityX() const { return world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VX)]; }
-void Body::setVelocityX(float vx) { world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VX)] = vx; wakeUp(); }
+void Body::setVelocityX(float vx) {
+    world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VX)] = vx;
+    // Pose writes already refresh the fat AABB. Velocity does too, or the next
+    // broadphase still sweeps the old speed and a shot goes through the wall.
+    recomputeAabb(0);
+    wakeUp();
+}
 float Body::getVelocityY() const { return world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VY)]; }
-void Body::setVelocityY(float vy) { world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VY)] = vy; wakeUp(); }
+void Body::setVelocityY(float vy) {
+    world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VY)] = vy;
+    recomputeAabb(0);
+    wakeUp();
+}
 float Body::getAngularVelocity() const { return world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_RS)]; }
-void Body::setAngularVelocity(float rs) { world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_RS)] = rs; wakeUp(); }
+void Body::setAngularVelocity(float rs) {
+    world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_RS)] = rs;
+    recomputeAabb(0);
+    wakeUp();
+}
 
 float Body::getMass() const { return world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)]; }
 void Body::setMass(float m) {
@@ -258,7 +272,12 @@ void Body::setPosition(Vec2 p) {
     wakeUp();
 }
 Vec2 Body::getVelocity() const { return Vec2(getVelocityX(), getVelocityY()); }
-void Body::setVelocity(Vec2 v) { setVelocityX(v.x); setVelocityY(v.y); }
+void Body::setVelocity(Vec2 v) {
+    world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VX)] = v.x;
+    world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VY)] = v.y;
+    recomputeAabb(0);
+    wakeUp();
+}
 void Body::setVelocityInternal(Vec2 v) {
     world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VX)] = v.x;
     world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_VY)] = v.y;
