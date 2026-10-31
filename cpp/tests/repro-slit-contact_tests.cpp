@@ -19,12 +19,11 @@
 // (measured minimum about 2.67). With no contact, speed 10 ends at y = -13.858
 // after 120 steps.
 //
-// N = 5 is the Saucers scene. It misses on the single-threaded narrow phase,
-// which is the wasm module Saucers loads. `make test` defines GEARBOX_MT and
-// splits this small pair list across four threads, so five sensors still hold.
-// Twelve sensors make one of those batches long enough to drop the wall, and
-// the circle lands at the same y = -13.858. Four sensors, creating the wall
-// first, or moving the second wall away all keep the contact.
+// N = 5 is the Saucers scene. It used to miss on the single-threaded narrow
+// phase, which is the wasm module Saucers loads. `make test` defines
+// GEARBOX_MT and splits this small pair list across four threads, so five
+// sensors held even before the fix. Twelve sensors made one of those batches
+// long enough to drop the wall. `make test-st` is the single-threaded run.
 
 static const float kRestY = 2.6f;
 
@@ -117,8 +116,8 @@ static void expectHeld(const SlitRecipe& recipe) {
         << " finalY=" << run.finalY;
 }
 
-// Saucers recipe. Fails without GEARBOX_MT. The multithreaded test build keeps it.
-TEST(SlitContactRepro, FiveSensorsDropTheWall) {
+// Saucers recipe. Five sensors only drop the wall on the single-threaded narrow phase.
+TEST(SlitContactRepro, FiveSensorsHoldsWall) {
     const float speeds[] = {10.0f, 0.5f, 60.0f};
     const int steps[] = {120, 1200, 120};
     std::string misses;
@@ -134,8 +133,8 @@ TEST(SlitContactRepro, FiveSensorsDropTheWall) {
 }
 
 // Same order as the recipe, with enough sensors that a 4-thread narrow phase
-// also drops the wall. Speed 10 lands at y = -13.858, the same free-fall.
-TEST(SlitContactRepro, TwelveSensorsDropTheWall) {
+// also used to drop the wall. Speed 10 free-falls to y = -13.858 when it does.
+TEST(SlitContactRepro, TwelveSensorsHoldsWall) {
     expectHeld({12, false, 13.0f, 10.0f, 120});
 }
 

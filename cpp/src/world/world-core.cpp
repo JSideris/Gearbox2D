@@ -84,12 +84,7 @@ int World::createFixture(int bodyId, int fixtureId, emscripten_val options, bool
     fixturesList.push_back(fixture);
     
     body->addFixture(fixture, recomputeMass);
-    // A resting spawn stays tight, matching the first broadphase the solver has
-    // always used. A spawn that already has velocity needs the fat box: a tight
-    // one ignores that speed, the first broadphase misses, and the body integrates
-    // straight through (thick-wall oneshot).
-    bool moving = body->getVelocityX() != 0.0f || body->getVelocityY() != 0.0f || body->getAngularVelocity() != 0.0f;
-    fixture->updateAabb(moving ? 0 : 1);
+    fixture->updateAabb(1);
 
     fixture->bvhNode = bvh.insert(fixture->aabb, fixture, fixture->getCollisionProperties());
     if (navSys) navSys->onFixtureCreated(fixture);

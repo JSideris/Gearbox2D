@@ -340,3 +340,28 @@ TEST(TunnelingRepro, ThickWallBlocksCircle) {
 
     EXPECT_TRUE(crossings.empty()) << crossings;
 }
+
+// Saucers writes vx into the shared body buffer. Body::setVelocityX is not
+// exported, so a setter-only refit never runs on that path.
+TEST(TunnelingRepro, ThickWallBlocksBufferVelocity) {
+    const float wallWidth = 4.0f;
+    const float exitX = wallWidth * 0.5f;
+    const float startX = -exitX - kRadius - 0.05f;
+
+    World world;
+    configureWorld(world, 0.0f);
+    world.createBody(1, fixedBox(0.0f, 0.0f, wallWidth, 6.0f, ObjectShape::BOX));
+    world.createBody(2, movingCircle(startX, 0.0f, 0.0f, 0.0f));
+    Body* circle = world.getBody(2);
+    ASSERT_NE(circle, nullptr);
+
+    int i = circle->worldIndex;
+    circle->world.liveBodyFloatData[GET_BODY_FDATA_INDEX(i, BODY_FDATA_VX)] = 180.0f;
+
+    float farX = startX;
+    for (int step = 0; step < 120; ++step) {
+        world.step();
+        farX = std::max(farX, circle->getX());
+    }
+    EXPECT_LE(farX, exitX) << "buffer vx=180 ended at x=" << farX;
+}
