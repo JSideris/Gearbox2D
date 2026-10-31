@@ -154,6 +154,11 @@ void World::step() {
     // Apply position integration per substep as well
     for (int i = 0; i < velocitySubSteps; ++i) {
         _doIntegrateVelocitiesSubStep(subStepDt);
+        // JS writes velocity straight into the body buffer, and impulses land
+        // during the integrate above. The broadphase reads the boxes, so they
+        // have to cover this step's travel first. The sync's containment check
+        // skips the leaf update when the fat box already does.
+        _syncFixturesSIMD(subStepDt);
         _doBroadPhase();
         _doNarrowPhase(subStepDt);
         

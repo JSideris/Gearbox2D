@@ -57,6 +57,12 @@ jobs:
           GTEST_DIR: /tmp/googletest/googletest
           GTEST_LIB_DIR: /tmp/googletest/build/lib
 
+      - name: Run single-threaded C++ tests
+        run: make test-st -B
+        env:
+          GTEST_DIR: /tmp/googletest/googletest
+          GTEST_LIB_DIR: /tmp/googletest/build/lib
+
       - name: Run TypeScript Tests
         run: npm run test:ts
 

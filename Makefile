@@ -19,6 +19,7 @@ CXX = g++  # Native C++ compiler for tests
 # Project name
 TARGET = gearbox-module
 TEST_TARGET = runTests
+TEST_TARGET_ST = runTests-st
 BENCH_TARGET = runBenchmarks
 ifeq ($(GEARBOX_DISABLE_KRB),1)
 LOG_ENERGY_BIN = logEnergy-nokrb
@@ -55,6 +56,9 @@ KRB_FLAGS = -DGEARBOX_DISABLE_KRB
 endif
 
 GTEST_FLAGS = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT $(KRB_FLAGS)
+# Saucers ships the single-threaded wasm module. `make test` always defines
+# GEARBOX_MT, which splits small pair lists so the 5-sensor wall drop never runs.
+GTEST_FLAGS_ST = -I$(GTEST_DIR)/include -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread $(KRB_FLAGS)
 BENCH_FLAGS = -I$(INCLUDE_DIR) -I$(HIGHWAY_DIR) -pthread -DGEARBOX_MT -O3 -march=native -mfma $(KRB_FLAGS)
 
 # Default target to build the project
@@ -84,6 +88,12 @@ $(TEST_TARGET): $(SRC) $(TEST_SRC)
 	$(CXX) $(GTEST_FLAGS) -o $(TEST_TARGET) $(SRC) $(TEST_SRC) -I$(INCLUDE_DIR) -L$(GTEST_LIB_DIR) -pthread $(GTEST_LIBS)
 	./$(TEST_TARGET)
 
+test-st: $(TEST_TARGET_ST)
+
+$(TEST_TARGET_ST): $(SRC) $(TEST_SRC)
+	$(CXX) $(GTEST_FLAGS_ST) -o $(TEST_TARGET_ST) $(SRC) $(TEST_SRC) -I$(INCLUDE_DIR) -L$(GTEST_LIB_DIR) -pthread $(GTEST_LIBS)
+	./$(TEST_TARGET_ST)
+
 # Benchmark build
 benchmark: $(BENCH_TARGET)
 
@@ -105,6 +115,6 @@ $(LOG_TIMING_BIN): $(SRC) $(LOG_TIMING_SRC)
 
 # Clean up build files
 clean:
-	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(BENCH_TARGET) logEnergy logEnergy-nokrb logTiming logTiming-nokrb
+	rm -rf $(BUILD_DIR) $(TEST_TARGET) $(TEST_TARGET_ST) $(BENCH_TARGET) logEnergy logEnergy-nokrb logTiming logTiming-nokrb
 
-.PHONY: all clean wasm test benchmark log-energy log-timing
+.PHONY: all clean wasm test test-st benchmark log-energy log-timing

@@ -8,8 +8,15 @@
 #include "fixture.h"
 #include "constants.h"
 
-// Recorded with the pre-PER-856 engine (master 520ab53, native g++ build).
-#define GOLDEN_DEFAULT_SCENE_HASH 9484880583803729980ull
+// Mixed-scene tripwire. The 0.5.1 pin (9484880583803729980) moved in 0.7.1:
+// fat bounds are refit before broadphase, so the first step's pairs include
+// this step's travel. Threaded and single-threaded narrow phases order those
+// pairs differently, so each build has its own pin. `make test` is threaded.
+#ifdef GEARBOX_MT
+#define GOLDEN_DEFAULT_SCENE_HASH 18374170494446402228ull
+#else
+#define GOLDEN_DEFAULT_SCENE_HASH 8627616186565530714ull
+#endif
 
 namespace {
 
@@ -122,10 +129,10 @@ TEST(SensorContactsTest, ManySensorsMatchBruteForcePairs) {
     EXPECT_EQ(countEvents(world, (int)EventType::COLLISION_START), expected);
 }
 
-// Golden state hash of a mixed scene (rigid bodies + overlapping, non-opted sensors) recorded
-// on gearbox2d 0.5.1 before PER-856. Default behaviour must stay bit-identical.
+// State hash of a mixed scene (rigid bodies + overlapping, non-opted sensors).
+// Default sensor behaviour stays bit-identical to the pin for this build.
 // Only circles (no local offsets) and an AABB floor: rotation never feeds back into positions or
-// velocities, so the hashed state doesn't depend on libm sin/cos and is stable across platforms.
+// velocities, so the hashed state doesn't depend on libm sin/cos.
 TEST(SensorContactsTest, DefaultSceneIsBitIdenticalToBaseline) {
     World world;
     world.setGravity(0.0f, -9.8f);
