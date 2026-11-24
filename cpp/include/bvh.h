@@ -848,10 +848,17 @@ public:
         }
     }
     
+#ifdef GEARBOX_BROWSER_BENCH
+    unsigned leafUpdates = 0;
+#endif
+
     // Update a leaf's AABB and propagate changes with re-insertion
     BvhNode* updateLeaf(BvhNode* leaf, const Aabb& newBounds, const CollisionProperties& props) {
         if (!leaf || !leaf->isLeaf) return leaf;
         
+#ifdef GEARBOX_BROWSER_BENCH
+        ++leafUpdates;
+#endif
         // Capture data before removal
         void* userData = leaf->data;
 

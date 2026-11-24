@@ -19,6 +19,10 @@ public:
     template<class F, class... Args>
     auto enqueue(F&& f, Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type>;
 
+#ifdef GEARBOX_BROWSER_BENCH
+    unsigned completedTasks = 0; // Read only after wait(), while workers are idle.
+#endif
+
     // Wait until all tasks in the queue are completed
     void wait();
 
@@ -64,6 +68,9 @@ inline ThreadPool::ThreadPool(size_t threads)
 
                     {
                         std::unique_lock<std::mutex> lock(this->queue_mutex);
+#ifdef GEARBOX_BROWSER_BENCH
+                        ++completedTasks;
+#endif
                         --this->active_tasks;
                         if(this->tasks.empty() && this->active_tasks == 0) {
                             this->wait_condition.notify_all();

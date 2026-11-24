@@ -104,6 +104,11 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("updateFixtureId", &World::updateFixtureId)
         .function("updateJointId", &World::updateJointId)
         .function("syncDefragmentedIds", &World::syncDefragmentedIds)
+#ifdef GEARBOX_BROWSER_BENCH
+        .function("benchCandidates", &World::benchCandidates)
+        .function("benchLeafUpdates", &World::benchLeafUpdates)
+        .function("benchWorkerTasks", &World::benchWorkerTasks)
+#endif
         .function("step", &World::step)
         .function("queryBodiesAtPoint", &World::queryBodiesAtPoint)
         .function("queryFixturesAtPoint", &World::queryFixturesAtPoint)

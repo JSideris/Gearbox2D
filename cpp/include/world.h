@@ -249,6 +249,17 @@ private:
 
 public:
     Bvh bvh;
+#ifdef GEARBOX_BROWSER_BENCH
+    unsigned benchCandidates() const { return bvh.collisionPairs.size(); }
+    unsigned benchLeafUpdates() const { return bvh.leafUpdates; }
+    unsigned benchWorkerTasks() const {
+#ifdef GEARBOX_MT
+        return threadPool->completedTasks;
+#else
+        return 0;
+#endif
+    }
+#endif
     float invTimeStep;
     std::vector<float> liveBodyFloatData;
     std::vector<int> liveBodyIntData;
