@@ -75,6 +75,12 @@ jobs:
       - name: Build TypeScript Wrapper
         run: npm run build:ts
 
+      - name: Run WASM integration tests
+        run: npm run test:wasm
+
+      - name: Run WASM navigation parity tests
+        run: npm run test:wasm:nav
+
       - name: Build Examples Site
         run: npm run site:build
 
