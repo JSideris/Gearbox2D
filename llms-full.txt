@@ -10,7 +10,7 @@ Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the
 
 1.  **Web-First Performance**: Zero-copy memory sharing between WASM and JavaScript via shared buffers.
 2.  **Authoritative Synchronization**: Designed for real-time multiplayer with stable state injection.
-3.  **Integrated AI**: Built-in support for NavMeshes, RVO/ORCA, and pathfinding at native speeds.
+3.  **Integrated AI**: Native grid A* and hierarchical pathfinding with batched, time-sliced requests.
 
 ## Getting Started
 
@@ -56,12 +56,13 @@ Check out [Your First Simulation](docs/first-simulation.md) for a full, copy-pas
 - [Introduction](docs/introduction.md) - Core pillars and architecture.
 - [Installation](docs/installation.md) - NPM, CDN, and WebAssembly requirements.
 - [Your First Simulation](docs/first-simulation.md) - Build a falling box demo.
-- [API Reference](docs/api-reference.md) - Detailed class and method documentation.
+- [Spatial Queries](docs/interaction-queries.md) - Picking, raycasts, area searches, and batched queries.
+- [Navigation](docs/navigation.md) - Grid setup, obstacles, and path requests.
 - [Development Guide](docs/development.md) - How to build from source and contribute.
 
 ## Project Status & Roadmap
 
-Gearbox2D is currently in **Beta**. It's performant and stable, and ready for production use, but is still a WIP and will be receiving considerable updates over coming months to get it to something I am willing to refer to as "v1". Check the [plan.md](plan.md) file for a detailed list of implemented features and future goals.
+Gearbox2D is currently in **Beta**. It's performant and stable, and ready for production use, but is still a WIP and will be receiving considerable updates over coming months to get it to something I am willing to refer to as "v1". The [project roadmap](plan.md) lists active work in priority order and the use cases that would justify future features.
 
 ## Contributing
 
@@ -80,7 +81,7 @@ make log-energy GEARBOX_DISABLE_KRB=1
 ./logEnergy-nokrb --out studies/kinematic_restitution_balancing/data --seconds 600
 ```
 
-`make log-energy` writes `logEnergy` (KRB on) or `logEnergy-nokrb` (flag set). It does not run the gtest suite. Default builds (`npm run build`, `make wasm`, `make test` without the flag) always ship with KRB enabled. The no-KRB test binary skips KRB energy gtests; full test green is required on the default build only.
+`make log-energy` writes `logEnergy` (KRB on) or `logEnergy-nokrb` (flag set). It does not run the gtest suite. In standard builds, each world starts with KRB enabled. For a runtime comparison in the same build, call `world.setHasKrb(false)` on the comparison world. The no-KRB test binary skips KRB energy gtests; full test green is required on the default build only.
 
 ## License
 
@@ -100,7 +101,7 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 ## Why Gearbox2D?
 
 *   **Zero-Copy Interop**: Access physical state (position, rotation) with O(1) overhead. The TypeScript wrapper reads directly from WASM memory buffers.
-*   **Integrated Intelligence**: Pathfinding, RVO/ORCA obstacle avoidance, and high-frequency sensors run natively inside the physics loop.
+*   **Integrated Intelligence**: Queue path requests for multiple agents and advance them together with a per-tick search budget.
 *   **Authoritative Synchronization**: Native support for real-time state updates and rollback, optimized for multiplayer architectures.
 
 ## Core Features
@@ -111,8 +112,8 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 - **Shared Memory Model**: No serialization or copying across the WASM-JS bridge.
 
 ### AI and Robotics
-- **NavMeshes**: Rapid pathfinding through complex environments.
-- **Local Navigation**: Collision-free movement for hundreds of agents using ORCA/RVO.
+- **Grid navigation**: Choose grid A*, hierarchical A*, or a hierarchical corridor search. Track fixtures to update the grid as obstacles move.
+- **Local steering**: Games can use batched radius queries to find nearby agents and apply their own avoidance rules.
 - **Agent Perception**: High-efficiency raycast and area sensor queries.
 
 ### Constraints and Joints
@@ -123,14 +124,12 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 Gearbox2D introduces several architectural advancements designed for modern, large-scale web applications:
 
 *   **Novel BVH Biasing**: Our spatial partitioning engine uses **Collision Mask Biasing** and **Sleep Biasing** to dynamically restructure the Bounding Volume Hierarchy. This significantly reduces intersection tests in complex scenes where many objects occupy the same space but belong to different collision layers.
-*   **Physics-Native AI Suite**: A* pathfinding, NavMeshes, and RVO/ORCA local navigation are integrated directly into the physics loop. This allows agents to navigate complex environments with full awareness of physical constraints and dynamic obstacles at native speeds.
-*   **The "Big World" Solver**: Specialized handling for microscopic and galactic scales solves the precision issues common in standard engines, enabling massive-scale simulations without coordinate jitter or "big world" floating-point errors.
-*   **Hybrid Soft Constraints**: Leverage per-object Baumgarte bias factors to create "squishy" interactions and soft joints without the performance penalty of a dedicated soft-body engine.
-*   **Speed-Adaptive Bounding**: Bounding volume padding that scales with velocity and angular momentum, preventing "tunneling" for high-speed objects while keeping the broad-phase tight for slow-moving ones.
-*   **Kinematic Restitution Balancing (KRB)**: A mathematically rigorous "energy audit" that eliminates artificial energy gain in bouncy objects by analytically taxing launch speeds to pay for solver-induced position correction.
+*   **Soft springs** use frequency and damping ratio to control how quickly a joint returns to its rest length.
+*   **Speed-adaptive bounds** expand broad-phase candidates along a body's predicted motion so the narrow phase can consider fast-moving pairs.
+*   **Kinematic Restitution Balancing (KRB)** is enabled by default. For bouncing contacts, it accounts for velocity added by external forces during the step and adjusts rebound speed for the displacement expected from position correction.
 
 ## Project Status
-Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
+Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Beta**. The public API is evolving. Grid navigation is available and fluid dynamics is planned.
 
 [View the Development Roadmap →](#plan)
 
@@ -666,236 +665,27 @@ For a **research-only** native build with KRB disabled (algorithm ablation, not 
 
 --- SECTION: plan.md ---
 
-# Plan:
+# Gearbox2D roadmap
 
-## Solvers & Physics Loop
-- [x] High-level physics loop implementation (`step`).
-	- [x] Substepping (Velocity Substeps).
-	- [x] Velocity Integration.
-	- [x] Position Integration.
-- [x] **Collision Solver** (Geometric Narrow Phase).
-	- [x] Geometric intersection tests.
-	- [x] Contact manifold generation (Point, Normal, Depth).
-- [x] **Velocity Solver** (Sequential Impulse).
-	- [x] Iterative solver for contact constraints.
-	- [x] Friction resolution (Static & Kinetic).
-	- [x] Warmstarting.
-- [x] **Position Solver** (Non-linear Gauss-Seidel).
-	- [x] Iterative penetration resolution.
-	- [x] Baumgarte stabilization (with multi-fixture scaling).
-- [x] **Joint Solver**.
-	- [x] Pre-solve and solve phases.
-	- [x] Integration with global iterative solver.
+## Active work, in priority order
 
-## Shapes, Kinematics, Collisions
-- [x] Setup and test Rust w/ web assembly target.
-- [x] Define basic starting classes for the physics module.
-	- [x] RigidBody.
-	- [x] Vec2.
-- [x] Contain all objects in a world. Ability to add and remove objects to/from world.
-- [x] Add a world tick.
-- [ ] Ability to export raw data as a byte array.
-- [x] Add debug visuals.
-- [x] Add a few different shapes.
-	- [x] AABB.
-	- [x] Box.
-	- [x] Capsule.
-	- [x] Circle.
-	- [x] Convex polygons.
-	- [X] Concave polygons.
-	- [ ] Edge (optional).
-	- [x] Point.
-- [x] Composite objects (Multi-fixture bodies).
-- [x] Add rotations.
-- [x] Compute/track AABB for each object.
-- [x] Implement BVH.
-- [x] Implement broad phase collision detection using BVH.
-- [x] Implement narrow phase collision detection.
-	- [x] AABB-AABB.
-	- [x] Box-AABB -> Box-Box.
-	- [x] Box-Box.
-	- [x] Capsule-AABB.
-	- [x] Capsule-Box.
-	- [x] Capsule-Capsule.
-	- [x] Circle-AABB.
-	- [x] Circle-Box.
-	- [x] Circle-Capsule.
-	- [x] Circle-Circle.
-	- [x] Polygon-AABB.
-	- [x] Polygon-Box.
-	- [x] Polygon-Capsule.
-	- [x] Polygon-Circle.
-	- [x] Polygon-Polygon.
-	- [ ] Edge-AABB.
-	- [ ] Edge-Box.
-	- [ ] Edge-Capsule.
-	- [ ] Edge-Circle.
-	- [ ] Edge-Convex.
-	- [ ] Edge-Edge.
-	- [x] Point-AABB.
-	- [x] Point-Box.
-	- [x] Point-Capsule.
-	- [x] Point-Circle.
-	- [x] Polygon-Point.
-	- [ ] Point-Edge.
-	- [x] Point-Point.
-- [x] Collision resolvers.
-	- [x] **Collision Solver** (Geometric Narrow Phase).
-		- [x] Geometric intersection tests.
-		- [x] Contact manifold generation (Point, Normal, Depth).
-	- [x] **Velocity Solver** (Sequential Impulse).
-		- [x] Iterative solver for contact constraints.
-		- [x] Friction resolution (Static & Kinetic).
-		- [x] Warmstarting.
-	- [x] **Position Solver** (Non-linear Gauss-Seidel).
-		- [x] Iterative penetration resolution.
-		- [x] Baumgarte stabilization (with multi-fixture scaling).
-	- [x] **Joint Solver**.
-		- [x] Pre-solve and solve phases.
-		- [x] Integration with global iterative solver.
-- [x] Implement collision events.
-	- [X] Body-body collision events.
-	- [X] Fixture-fixture collision events.
-- [x] Define object types.
-	- [x] Sensor.
-	- [x] Physical.
-	- [x] Fixed.
-	- [X] Kinematic.
-- [x] Implement an applyForce on objects.
-- [x] Implement an applyImpulse on objects.
-- [x] Implement an applyAngularImpulse on objects.
-- [x] Determine and apply impulse for rigid body collisions with basic shapes.
-- [X] Collision tracking.
+1. **Make spatial queries see a teleport immediately.** After JavaScript changes `body.x`, `body.y`, or `body.r`, queries should use the new pose before the next `world.step()`. Cover radius, box, ray, and batched queries through the public API, including a rotated body with an offset fixture. Measure the cost of repeated writes and queries. Run `npm run test:wasm` and `npm run test:wasm:nav` in CI after building the WASM core and TypeScript wrapper. [Issue #5](https://github.com/JSideris/Gearbox2D/issues/5)
+2. **Verify runtime spring and mass edits.** Change a loaded spring's rest length, frequency, and damping through the public API and check how its motion responds. For mass, the JavaScript setter writes mass and inverse mass, while the native setter also updates inertia and the mass-override flag. Define how an explicit mass interacts with later fixture density changes, then test linear and angular response through both paths.
+3. **Reproduce the remaining collision and stability reports.** Recheck bullet-through-paper and high-energy bounce at a fixed timestep alongside the existing slit, corner, and wall regressions. For chain jitter, chain-belt clipping, stack drift, or motorcycle wheel penetration, isolate any engine failure in a minimal native test. Check scalar/SIMD parity for solver changes. Keep showcase calibration in the example.
+   - Measure slipping and resting drift on steep slopes, recording slope angle, friction, and timestep. Measure penetration and drift in mixed-shape piles and pyramids at fixed solver settings. For jitter at rest, log sleep and wake transitions in the minimal reproduction.
+4. **Measure when browser multithreading pays off.** Compare single-threaded and multithreaded builds on the same mostly sleeping scene, dense pile, and set of independent islands. Vary body count and report median and p95 step times with browser and hardware details. Record broad-phase candidate counts and tree updates to identify the bottleneck. Use the results to decide whether to change tree maintenance, awake-body storage, or parallel integration.
 
-## Constraints
-- [x] Hinged.
-- [x] Distance.
-- [x] Spring.
-- [x] Gear constraint.
-	- [ ] Mechanical friction (optional).
+## Current architecture
 
+The C++/WASM engine uses a sequential-impulse solver with hard contacts, velocity-space springs, and Kinematic Restitution Balancing enabled by default. The broad phase pads fixture bounds for linear and angular motion. Bodies can hold multiple fixtures, and the wrapper decomposes concave polygons into convex pieces. Games can query the spatial index and batch grid A* or hierarchical path requests. See the [world guide](https://github.com/JSideris/Gearbox2D/blob/master/docs/architecture-world.md), [shape guide](https://github.com/JSideris/Gearbox2D/blob/master/docs/shapes.md), and [navigation guide](https://github.com/JSideris/Gearbox2D/blob/master/docs/navigation.md).
 
-## Interactions
-- [x] Spatial picking (query BVH).
-- [ ] Raycasting (planned).
-- [ ] AABB queries (planned).
+## Future directions
 
-## Misc
-- [x] Elasticity (restitution).
-- [x] Static/dynamic friction.
-- [x] Support changing the center of mass.
-- [x] Live data buffers (Direct Wasm/TS memory mapping).
-- [x] Per-fixture material properties (Friction, Restitution, Density).
-- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization (optional).
+- **Edge or chain terrain.** Revisit when a level needs boundary behavior that existing fixtures cannot represent adequately. Use that level to define the expected contacts at segment endpoints.
+- **State serialization.** A save/load or network consumer should specify which state must survive a round trip. Rendering already has access to live WASM views.
+- **Aerodynamics and buoyancy.** Scope wind and velocity-dependent drag around a game workload and a measurable force response. Treat buoyancy separately when a water scene supplies an acceptance test.
+- **Navigation and world scale.** Revisit navmeshes, local avoidance, inverse kinematics, or danger maps when a game demonstrates a limit of grid paths, queries, or game-side steering. Revisit world-coordinate precision when a target map establishes the required range and accuracy.
 
-
-## Events
-- [X] Events buffer.
-- [X] Opt in per object.
-- [X] On collision events.
-	- [X] Return impulse.
-- [X] On collision end events.
-- [X] On sleep events.
-- [X] On wake up.
-- [ ] On pre-solve (optional).
-- [ ] On post-solve (optional).
-
-## Fluid Dynamics
-- [X] Simple linear dampening.
-- [X] Simple rotational dampening.
-- [ ] Wind.
-- [ ] Advanced drag.
-- [ ] Under water / liquid.
-	- [ ]  Bouancy.
-
-## Optimizations
-
-### General Optimizations
-- [x] Cache inverse mass.
-- [x] Cache inverse inertia.
-- [x] Cache inverse dt.
-- [x] Cache exponential decay factor when dt is set.
-- [x] Implement collision masks.
-- [X] Warmstarting.
-- [ ] Focus areas & resolution.
-
-### High-Fidelity Optimizations
-- [X] Kinematic restitution balancing (novel).
-
-### Broad Phase Optimizations
-- [x] Broad phase using AABBs.
-- [x] Do not recompute AABB when no movement happens.
-- [ ] Stagger AABB recalculation when movement is slow.
-- [x] Speed-dependant bounding area padding.
-- [ ] Spin-dependant bounding area padding (optional).
-- [x] Bounding volume hierarchy (BVH).
-- [X] BVH heuristic biasing.
-	- [x] BVH sleep biasing.
-	- [x] BVH collision mask biasing (novel).
-	- [X] BVH particle biasing.
-	- [X] Static island biasing.
-	- [X] Same-body biasing.
-	- [X] Velocity biasing.
-	- [X] Sensor biasing.
-	- [ ] Experimentally fine-tune BVH biases.
-- [ ] Rebalance BVH.
-- [ ] Experimental: Caching previous broad-phase collisions.
-- [ ] Experimental: Instead of reinserting on movement, consider tree traversal.
-- [ ] Experimental: Consider combining the broad phase with the kinematics phase.
-
-### Sleep Optimizations
-- [x] Sleeping objects.
-- [x] Islands.
-- [x] Shrinkwrap AABB on sleep.
-- [ ] Experimental: Separate vectors for sleeping/awake objects.
-- [ ] Experimental: Re-insert into BVH upon sleep.
-- [ ] Experimental: Sleep drift (sleeping at terminal velocity).
-
-### Parallelization
-#### SIMD Vectorization (WASM SIMD128)
-- [x] SIMD-accelerated math library (2D dot, cross, rotate, etc.).
-- [x] Vectorized global integrators (4-way SoA processing).
-- [x] SIMD narrow-phase solvers (Circle-Circle, Box-Box, etc.).
-- [x] SIMD BVH traversal (4/8-way bounding box tests).
-- [x] SIMD constraint and joint solvers (batched solving).
-- [x] Bulk world-data synchronization (vectorized vertex transforms).
-
-#### Multi-threading
-- [x] Persistent thread pool system.
-- [x] Parallel island solver (concurrent independent islands).
-- [x] Parallel narrow-phase detection (multi-threaded collision pairs).
-- [ ] Parallel global integrators (gravity and motion updates).
-
-## Advanced Features
-- [x] Smart anti-tunelling (Speculative Contacts).
-- [ ] Advanced drag.
-- [ ] Forcefields.
-- [ ] Microscopic scale.
-- [ ] Galactic scales.
-- [ ] Automatic handling for big world problem.
-- [ ] Changing mass dynamically.
-- [ ] Changing size dynamically (stretch goal)
-- [ ] Snap nodes for complex objects (experimental).
-
-## AI
-- [ ] A*.
-- [ ] A* biasing.
-- [ ] A* advanced coordination.
-- [ ] Precomputed nav mesh.
-- [ ] High-performance sensors.
-- [ ] Agent steering and movement.
-- [ ] Local Navigation & Obsticle Avoidance (RVO/ORCA).
-- [ ] Inverse Kinematics.
-- [ ] Collision Prediction / Danger Maps (optional)
-
-## Known Issues
-- Spring joints can't be adjusted at runtime - see the commented-out spring test case.
-- Bullet through paper is somewhat unreliable. Also affects the high-energy bounce benchmark, which is broken for Gearbox2d.
-- Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
-- 20-Segment-Chain jitters automatically.
-- Engine seems to have better performance in ST mode. Worth looking into this to re-evaluate whether MT is worth it.
-- Slight jitter visible in the stacks benchmark. Might be possible to fix by making slight tweaks to some of the engine's constants.
-- In the chain belt example, we can observe clipping and violent jitter. This was a regression likely introduced in mid Februrary 2026 while debugging other stability issues.
 
 --- SECTION: architecture-world.md ---
 
@@ -2334,7 +2124,7 @@ A raycast hit has `fraction` (0..1 along the segment), the hit point and the sur
 
 Results are deterministic: hits are ordered by fixture creation order (rays: by distance, then fixture order), independent of how the BVH tree happens to be shaped.
 
-Queries use the broadphase as of the last `world.step()`. A body whose `x`, `y` or `r` you set by hand shows up at its new position only after the next step, and until then it is missed at both spots (see [#5](https://github.com/JSideris/Gearbox2D/issues/5)).
+Setting a body’s `x`, `y`, or `r` updates its fixture bounds immediately. Spatial queries see the new transform before the next `world.step()`.
 
 ## Batched neighbour queries
 

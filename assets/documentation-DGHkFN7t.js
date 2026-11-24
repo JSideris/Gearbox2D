@@ -429,7 +429,7 @@ Gearbox2D is backed by C++, which does not have automatic garbage collection for
 
 *   **Never leave worlds dangling**: If you call \`createWorld()\` repeatedly without calling \`destroy()\`, your application will eventually crash with an **Out of Memory (OOM)** error.
 *   **Reference Cleanup**: When you call \`world.destroy()\`, ensure you also nullify any JavaScript references to that world to allow the JS garbage collector to clean up the wrapper object.
-`,B=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),_=`# Broad Phase
+`,_=Object.freeze(Object.defineProperty({__proto__:null,default:T},Symbol.toStringTag,{value:"Module"})),I=`# Broad Phase
 
 Gearbox2D uses a Dynamic Bounding Volume Hierarchy (BVH) for its broad phase collision detection. To maximize performance, the BVH employs several "logical biasing" techniques during object insertion. These heuristics encourage objects with similar physical properties to cluster together, allowing the engine to prune entire subtrees of potential collisions early in the detection process.
 
@@ -467,13 +467,13 @@ Objects moving in similar directions or at similar speeds are encouraged to clus
 ## Experimental Tuning
 
 All bias weights are internally adjustable, allowing for fine-grained performance tuning based on the specific needs of a simulation (e.g., high body counts vs. high particle counts).
-`,I=Object.freeze(Object.defineProperty({__proto__:null,default:_},Symbol.toStringTag,{value:"Module"})),j=`# Collision Filtering
+`,j=Object.freeze(Object.defineProperty({__proto__:null,default:I},Symbol.toStringTag,{value:"Module"})),B=`# Collision Filtering
 TODO
 
-`,D=Object.freeze(Object.defineProperty({__proto__:null,default:j},Symbol.toStringTag,{value:"Module"})),k=`# Narrow Phase
+`,k=Object.freeze(Object.defineProperty({__proto__:null,default:B},Symbol.toStringTag,{value:"Module"})),D=`# Narrow Phase
 TODO
 
-`,P=Object.freeze(Object.defineProperty({__proto__:null,default:k},Symbol.toStringTag,{value:"Module"})),C=`# Core Concepts
+`,P=Object.freeze(Object.defineProperty({__proto__:null,default:D},Symbol.toStringTag,{value:"Module"})),O=`# Core Concepts
 
 Understanding these three fundamental concepts will help you build stable and predictable simulations in Gearbox2D.
 
@@ -527,7 +527,7 @@ An **Impulse** is an instantaneous change in momentum. Think of it like a hammer
 ### Angular Impulses
 If you want to spin an object instantly without hitting a specific point, use \`applyAngularImpulse(torque)\`.
 
-`,O=Object.freeze(Object.defineProperty({__proto__:null,default:C},Symbol.toStringTag,{value:"Module"})),M=`# Development & Contributing
+`,C=Object.freeze(Object.defineProperty({__proto__:null,default:O},Symbol.toStringTag,{value:"Module"})),M=`# Development & Contributing
 
 Follow these instructions to build Gearbox2D from source or contribute to the C++ core. If you just want to use the engine in your project, see [Installation](#installation).
 
@@ -988,7 +988,7 @@ Gearbox2D uses a precomputed \`decayMap\` to ensure that velocities decay consis
 `,H=Object.freeze(Object.defineProperty({__proto__:null,default:G},Symbol.toStringTag,{value:"Module"})),z=`# Debug Graphics
 TODO
 
-`,L=Object.freeze(Object.defineProperty({__proto__:null,default:z},Symbol.toStringTag,{value:"Module"})),N=`# Installation
+`,L=Object.freeze(Object.defineProperty({__proto__:null,default:z},Symbol.toStringTag,{value:"Module"})),J=`# Installation
 
 Gearbox2D is a high-performance 2D physics engine. Because it is powered by WebAssembly, there are a few specific ways to include it in your project.
 
@@ -1092,7 +1092,7 @@ npx http-server .
 
 Once you have the engine installed, check out [Your First Simulation](#first-simulation) to build a falling box demo.
 
-`,J=Object.freeze(Object.defineProperty({__proto__:null,default:N},Symbol.toStringTag,{value:"Module"})),V="# Spatial Queries\n\nEvery query walks the BVH broadphase first and then runs an exact shape test on its few candidates. None of them iterate every body, so they stay cheap as the world grows. Use them instead of scanning your own body list.\n\n| Query | Finds |\n|---|---|\n| `queryBodiesAtPoint(x, y, mask)` / `queryFixturesAtPoint` | shapes containing a point |\n| `queryAABB(minX, minY, maxX, maxY, opts)` | bodies overlapping an axis-aligned box |\n| `queryRadius(x, y, radius, opts)` | bodies overlapping a circle |\n| `raycast(x1, y1, x2, y2, opts)` | the closest hit along a segment, or `null` |\n| `raycastAll(x1, y1, x2, y2, opts)` | every hit along a segment, nearest first |\n| `queryRadiusBatch(queries, exclude?, opts)` | many radius queries in **one** WASM call |\n\nFor paths (grid A* / HPA*, batched once per tick) see [Navigation](navigation.md).\n\n## Filters\n\nAll queries take `{ mask, skipSensors }`. A fixture matches when `(categoryBits & mask) != 0`, the same rule as `queryBodiesAtPoint`. `skipSensors: true` ignores sensor fixtures (usually what you want for line of sight). Raycasts also take `exclude` (a body to ignore, such as the shooter) and, for `raycastAll`, `uniqueBodies`.\n\n```js\nconst nearby = world.queryRadius(ship.x, ship.y, 25, { mask: CATEGORY_SHIPS });\nconst crates = world.queryAABB(0, 0, 10, 10);\n\nconst hit = world.raycast(gun.x, gun.y, aimX, aimY, { exclude: ship, skipSensors: true });\nif (hit) console.log(hit.body.id, hit.fraction, hit.x, hit.y, hit.nx, hit.ny);\n```\n\nA raycast hit has `fraction` (0..1 along the segment), the hit point and the surface normal. A ray that starts inside a shape hits it at `fraction` 0 with the normal pointing back along the ray. `POINT` fixtures have no area, so rays never hit them (box and radius queries still find them).\n\nResults are deterministic: hits are ordered by fixture creation order (rays: by distance, then fixture order), independent of how the BVH tree happens to be shaped.\n\nQueries use the broadphase as of the last `world.step()`. A body whose `x`, `y` or `r` you set by hand shows up at its new position only after the next step, and until then it is missed at both spots (see [#5](https://github.com/JSideris/Gearbox2D/issues/5)).\n\n## Batched neighbour queries\n\n`queryRadiusBatch` runs one radius query per centre in a single call into WASM, for example every agent's neighbours each tick:\n\n```js\nconst queries = [];\nfor (const a of agents) queries.push(a.body.x, a.body.y, 30);\nconst neighbours = world.queryRadiusBatch(queries, agents.map((a) => a.body)); // exclude self\n// neighbours[i] is a Body[] for agents[i]\n```\n\n## Allocation-free API\n\nThe `*Raw` methods return a hit count and leave the results in reused typed arrays inside WASM memory, so a hot loop allocates nothing:\n\n- `world.queryHits`: `[internalFixtureId, internalBodyId]` pairs. Map with `world.bodyByInternalId(id)` / `world.fixtureByInternalId(id)`, or compare against `body.internalId`.\n- `world.rayHits`: `[fraction, x, y, nx, ny]` per hit (raycasts only).\n- `world.batchOffsets`: hits of batch query `i` are pairs `batchOffsets[i]` to `batchOffsets[i + 1]`.\n\n```js\nconst n = world.queryRadiusRaw(x, y, 20, mask, QUERY_FLAGS.UNIQUE_BODIES);\nfor (let i = 0; i < n; i++) handle(world.queryHits[i * 2 + 1]);\n\nconst { centers, exclude } = world.batchInput(agents.length); // [x, y, radius] per query\n// ...fill centers / exclude (internal body id or -1)...\nconst total = world.queryRadiusBatchRaw(agents.length, mask, QUERY_FLAGS.UNIQUE_BODIES);\n```\n\n`QUERY_FLAGS` are `UNIQUE_BODIES` (one hit per body), `SKIP_SENSORS` and `RAY_ALL`. The arrays are only valid until the next query on that world; re-read `world.queryHits` after each call, and call `batchInput()` again before filling a new batch.\n\n## Sensor-vs-sensor contacts\n\nBy default two sensors never report contacts with each other. Opt a sensor in with the fixture option `sensorContacts: true` (or `fixture.sensorContacts = true` at runtime). A pair of sensors reports `onCollisionStart` / `onCollisionEnd` only when **both** opted in and their category/mask filters allow it. Nothing changes for fixtures that don't opt in. Sensors still never push each other.\n\n```js\nworld.createBody({ ..., isSensor: true, wantsEvents: true, sensorContacts: true });\n```\n\nA fixed (static) sensor and a moving sensor already reported contacts before this option existed; that is unchanged.\n\nOpted-in sensor pairs take part in the contact graph like any other pair (narrow phase every step, start/end events), so opt in only the sensors that need it. Toggling `fixture.isSensor` at runtime works too (it calls the native `setSensor`).\n\n## Caveats\n\n- **Raw views are short-lived.** `world.queryHits`, `world.rayHits`, `world.batchOffsets` and the `batchInput()` arrays are only valid until the next query on that world. The object-returning methods (`queryAABB`, `queryRadius`, `raycast`, ...) copy their results, so you can keep those.\n- **Buffers never shrink.** The hit and batch buffers grow to the largest result you have asked for and keep that size for the life of the world. One huge query (say, `queryAABB` over the whole map) sets the high-water mark.\n- **Ellipses are tested as 16-gons.** `ELLIPSE` fixtures are approximated by an inscribed 16-sided polygon for box, radius and ray tests, so a hit right on the curved edge can be off by up to about 2 % of the radius (the polygon sits inside the ellipse).\n- **`POINT` fixtures are never hit by rays.** They have no area. Box and radius queries still find them.\n- **Hand-moved bodies lag one step.** Queries see the broadphase as of the last `world.step()` (above). [Navigation](navigation.md) tracking is not affected, because it reads the fixture's real pose.\n- **Use queries, not scans.** For \"is anything touching X\" or \"who is near X\", a query or a sensor's contact events cost about as much as the few candidates they return. Looping over every body costs as much as the whole world.\n",U=Object.freeze(Object.defineProperty({__proto__:null,default:V},Symbol.toStringTag,{value:"Module"})),X=`# Introduction
+`,N=Object.freeze(Object.defineProperty({__proto__:null,default:J},Symbol.toStringTag,{value:"Module"})),U="# Spatial Queries\n\nEvery query walks the BVH broadphase first and then runs an exact shape test on its few candidates. None of them iterate every body, so they stay cheap as the world grows. Use them instead of scanning your own body list.\n\n| Query | Finds |\n|---|---|\n| `queryBodiesAtPoint(x, y, mask)` / `queryFixturesAtPoint` | shapes containing a point |\n| `queryAABB(minX, minY, maxX, maxY, opts)` | bodies overlapping an axis-aligned box |\n| `queryRadius(x, y, radius, opts)` | bodies overlapping a circle |\n| `raycast(x1, y1, x2, y2, opts)` | the closest hit along a segment, or `null` |\n| `raycastAll(x1, y1, x2, y2, opts)` | every hit along a segment, nearest first |\n| `queryRadiusBatch(queries, exclude?, opts)` | many radius queries in **one** WASM call |\n\nFor paths (grid A* / HPA*, batched once per tick) see [Navigation](navigation.md).\n\n## Filters\n\nAll queries take `{ mask, skipSensors }`. A fixture matches when `(categoryBits & mask) != 0`, the same rule as `queryBodiesAtPoint`. `skipSensors: true` ignores sensor fixtures (usually what you want for line of sight). Raycasts also take `exclude` (a body to ignore, such as the shooter) and, for `raycastAll`, `uniqueBodies`.\n\n```js\nconst nearby = world.queryRadius(ship.x, ship.y, 25, { mask: CATEGORY_SHIPS });\nconst crates = world.queryAABB(0, 0, 10, 10);\n\nconst hit = world.raycast(gun.x, gun.y, aimX, aimY, { exclude: ship, skipSensors: true });\nif (hit) console.log(hit.body.id, hit.fraction, hit.x, hit.y, hit.nx, hit.ny);\n```\n\nA raycast hit has `fraction` (0..1 along the segment), the hit point and the surface normal. A ray that starts inside a shape hits it at `fraction` 0 with the normal pointing back along the ray. `POINT` fixtures have no area, so rays never hit them (box and radius queries still find them).\n\nResults are deterministic: hits are ordered by fixture creation order (rays: by distance, then fixture order), independent of how the BVH tree happens to be shaped.\n\nSetting a body’s `x`, `y`, or `r` updates its fixture bounds immediately. Spatial queries see the new transform before the next `world.step()`.\n\n## Batched neighbour queries\n\n`queryRadiusBatch` runs one radius query per centre in a single call into WASM, for example every agent's neighbours each tick:\n\n```js\nconst queries = [];\nfor (const a of agents) queries.push(a.body.x, a.body.y, 30);\nconst neighbours = world.queryRadiusBatch(queries, agents.map((a) => a.body)); // exclude self\n// neighbours[i] is a Body[] for agents[i]\n```\n\n## Allocation-free API\n\nThe `*Raw` methods return a hit count and leave the results in reused typed arrays inside WASM memory, so a hot loop allocates nothing:\n\n- `world.queryHits`: `[internalFixtureId, internalBodyId]` pairs. Map with `world.bodyByInternalId(id)` / `world.fixtureByInternalId(id)`, or compare against `body.internalId`.\n- `world.rayHits`: `[fraction, x, y, nx, ny]` per hit (raycasts only).\n- `world.batchOffsets`: hits of batch query `i` are pairs `batchOffsets[i]` to `batchOffsets[i + 1]`.\n\n```js\nconst n = world.queryRadiusRaw(x, y, 20, mask, QUERY_FLAGS.UNIQUE_BODIES);\nfor (let i = 0; i < n; i++) handle(world.queryHits[i * 2 + 1]);\n\nconst { centers, exclude } = world.batchInput(agents.length); // [x, y, radius] per query\n// ...fill centers / exclude (internal body id or -1)...\nconst total = world.queryRadiusBatchRaw(agents.length, mask, QUERY_FLAGS.UNIQUE_BODIES);\n```\n\n`QUERY_FLAGS` are `UNIQUE_BODIES` (one hit per body), `SKIP_SENSORS` and `RAY_ALL`. The arrays are only valid until the next query on that world; re-read `world.queryHits` after each call, and call `batchInput()` again before filling a new batch.\n\n## Sensor-vs-sensor contacts\n\nBy default two sensors never report contacts with each other. Opt a sensor in with the fixture option `sensorContacts: true` (or `fixture.sensorContacts = true` at runtime). A pair of sensors reports `onCollisionStart` / `onCollisionEnd` only when **both** opted in and their category/mask filters allow it. Nothing changes for fixtures that don't opt in. Sensors still never push each other.\n\n```js\nworld.createBody({ ..., isSensor: true, wantsEvents: true, sensorContacts: true });\n```\n\nA fixed (static) sensor and a moving sensor already reported contacts before this option existed; that is unchanged.\n\nOpted-in sensor pairs take part in the contact graph like any other pair (narrow phase every step, start/end events), so opt in only the sensors that need it. Toggling `fixture.isSensor` at runtime works too (it calls the native `setSensor`).\n\n## Caveats\n\n- **Raw views are short-lived.** `world.queryHits`, `world.rayHits`, `world.batchOffsets` and the `batchInput()` arrays are only valid until the next query on that world. The object-returning methods (`queryAABB`, `queryRadius`, `raycast`, ...) copy their results, so you can keep those.\n- **Buffers never shrink.** The hit and batch buffers grow to the largest result you have asked for and keep that size for the life of the world. One huge query (say, `queryAABB` over the whole map) sets the high-water mark.\n- **Ellipses are tested as 16-gons.** `ELLIPSE` fixtures are approximated by an inscribed 16-sided polygon for box, radius and ray tests, so a hit right on the curved edge can be off by up to about 2 % of the radius (the polygon sits inside the ellipse).\n- **`POINT` fixtures are never hit by rays.** They have no area. Box and radius queries still find them.\n- **Hand-moved bodies lag one step.** Queries see the broadphase as of the last `world.step()` (above). [Navigation](navigation.md) tracking is not affected, because it reads the fixture's real pose.\n- **Use queries, not scans.** For \"is anything touching X\" or \"who is near X\", a query or a sensor's contact events cost about as much as the few candidates they return. Looping over every body costs as much as the whole world.\n",V=Object.freeze(Object.defineProperty({__proto__:null,default:U},Symbol.toStringTag,{value:"Module"})),X=`# Introduction
 
 **Gearbox2D** is a high-performance 2D physics and AI engine written in C++, compiled to WebAssembly, and designed for the modern web. 
 
@@ -1101,7 +1101,7 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 ## Why Gearbox2D?
 
 *   **Zero-Copy Interop**: Access physical state (position, rotation) with O(1) overhead. The TypeScript wrapper reads directly from WASM memory buffers.
-*   **Integrated Intelligence**: Pathfinding, RVO/ORCA obstacle avoidance, and high-frequency sensors run natively inside the physics loop.
+*   **Integrated Intelligence**: Queue path requests for multiple agents and advance them together with a per-tick search budget.
 *   **Authoritative Synchronization**: Native support for real-time state updates and rollback, optimized for multiplayer architectures.
 
 ## Core Features
@@ -1112,8 +1112,8 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 - **Shared Memory Model**: No serialization or copying across the WASM-JS bridge.
 
 ### AI and Robotics
-- **NavMeshes**: Rapid pathfinding through complex environments.
-- **Local Navigation**: Collision-free movement for hundreds of agents using ORCA/RVO.
+- **Grid navigation**: Choose grid A*, hierarchical A*, or a hierarchical corridor search. Track fixtures to update the grid as obstacles move.
+- **Local steering**: Games can use batched radius queries to find nearby agents and apply their own avoidance rules.
 - **Agent Perception**: High-efficiency raycast and area sensor queries.
 
 ### Constraints and Joints
@@ -1124,14 +1124,12 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 Gearbox2D introduces several architectural advancements designed for modern, large-scale web applications:
 
 *   **Novel BVH Biasing**: Our spatial partitioning engine uses **Collision Mask Biasing** and **Sleep Biasing** to dynamically restructure the Bounding Volume Hierarchy. This significantly reduces intersection tests in complex scenes where many objects occupy the same space but belong to different collision layers.
-*   **Physics-Native AI Suite**: A* pathfinding, NavMeshes, and RVO/ORCA local navigation are integrated directly into the physics loop. This allows agents to navigate complex environments with full awareness of physical constraints and dynamic obstacles at native speeds.
-*   **The "Big World" Solver**: Specialized handling for microscopic and galactic scales solves the precision issues common in standard engines, enabling massive-scale simulations without coordinate jitter or "big world" floating-point errors.
-*   **Hybrid Soft Constraints**: Leverage per-object Baumgarte bias factors to create "squishy" interactions and soft joints without the performance penalty of a dedicated soft-body engine.
-*   **Speed-Adaptive Bounding**: Bounding volume padding that scales with velocity and angular momentum, preventing "tunneling" for high-speed objects while keeping the broad-phase tight for slow-moving ones.
-*   **Kinematic Restitution Balancing (KRB)**: A mathematically rigorous "energy audit" that eliminates artificial energy gain in bouncy objects by analytically taxing launch speeds to pay for solver-induced position correction.
+*   **Soft springs** use frequency and damping ratio to control how quickly a joint returns to its rest length.
+*   **Speed-adaptive bounds** expand broad-phase candidates along a body's predicted motion so the narrow phase can consider fast-moving pairs.
+*   **Kinematic Restitution Balancing (KRB)** is enabled by default. For bouncing contacts, it accounts for velocity added by external forces during the step and adjusts rebound speed for the displacement expected from position correction.
 
 ## Project Status
-Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
+Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Beta**. The public API is evolving. Grid navigation is available and fluid dynamics is planned.
 
 [View the Development Roadmap →](#plan)
 
@@ -1895,234 +1893,25 @@ body.createFixture({
     vertices: starVertices
 });
 \`\`\`
-`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Plan:
+`,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Gearbox2D roadmap
 
-## Solvers & Physics Loop
-- [x] High-level physics loop implementation (\`step\`).
-	- [x] Substepping (Velocity Substeps).
-	- [x] Velocity Integration.
-	- [x] Position Integration.
-- [x] **Collision Solver** (Geometric Narrow Phase).
-	- [x] Geometric intersection tests.
-	- [x] Contact manifold generation (Point, Normal, Depth).
-- [x] **Velocity Solver** (Sequential Impulse).
-	- [x] Iterative solver for contact constraints.
-	- [x] Friction resolution (Static & Kinetic).
-	- [x] Warmstarting.
-- [x] **Position Solver** (Non-linear Gauss-Seidel).
-	- [x] Iterative penetration resolution.
-	- [x] Baumgarte stabilization (with multi-fixture scaling).
-- [x] **Joint Solver**.
-	- [x] Pre-solve and solve phases.
-	- [x] Integration with global iterative solver.
+## Active work, in priority order
 
-## Shapes, Kinematics, Collisions
-- [x] Setup and test Rust w/ web assembly target.
-- [x] Define basic starting classes for the physics module.
-	- [x] RigidBody.
-	- [x] Vec2.
-- [x] Contain all objects in a world. Ability to add and remove objects to/from world.
-- [x] Add a world tick.
-- [ ] Ability to export raw data as a byte array.
-- [x] Add debug visuals.
-- [x] Add a few different shapes.
-	- [x] AABB.
-	- [x] Box.
-	- [x] Capsule.
-	- [x] Circle.
-	- [x] Convex polygons.
-	- [X] Concave polygons.
-	- [ ] Edge (optional).
-	- [x] Point.
-- [x] Composite objects (Multi-fixture bodies).
-- [x] Add rotations.
-- [x] Compute/track AABB for each object.
-- [x] Implement BVH.
-- [x] Implement broad phase collision detection using BVH.
-- [x] Implement narrow phase collision detection.
-	- [x] AABB-AABB.
-	- [x] Box-AABB -> Box-Box.
-	- [x] Box-Box.
-	- [x] Capsule-AABB.
-	- [x] Capsule-Box.
-	- [x] Capsule-Capsule.
-	- [x] Circle-AABB.
-	- [x] Circle-Box.
-	- [x] Circle-Capsule.
-	- [x] Circle-Circle.
-	- [x] Polygon-AABB.
-	- [x] Polygon-Box.
-	- [x] Polygon-Capsule.
-	- [x] Polygon-Circle.
-	- [x] Polygon-Polygon.
-	- [ ] Edge-AABB.
-	- [ ] Edge-Box.
-	- [ ] Edge-Capsule.
-	- [ ] Edge-Circle.
-	- [ ] Edge-Convex.
-	- [ ] Edge-Edge.
-	- [x] Point-AABB.
-	- [x] Point-Box.
-	- [x] Point-Capsule.
-	- [x] Point-Circle.
-	- [x] Polygon-Point.
-	- [ ] Point-Edge.
-	- [x] Point-Point.
-- [x] Collision resolvers.
-	- [x] **Collision Solver** (Geometric Narrow Phase).
-		- [x] Geometric intersection tests.
-		- [x] Contact manifold generation (Point, Normal, Depth).
-	- [x] **Velocity Solver** (Sequential Impulse).
-		- [x] Iterative solver for contact constraints.
-		- [x] Friction resolution (Static & Kinetic).
-		- [x] Warmstarting.
-	- [x] **Position Solver** (Non-linear Gauss-Seidel).
-		- [x] Iterative penetration resolution.
-		- [x] Baumgarte stabilization (with multi-fixture scaling).
-	- [x] **Joint Solver**.
-		- [x] Pre-solve and solve phases.
-		- [x] Integration with global iterative solver.
-- [x] Implement collision events.
-	- [X] Body-body collision events.
-	- [X] Fixture-fixture collision events.
-- [x] Define object types.
-	- [x] Sensor.
-	- [x] Physical.
-	- [x] Fixed.
-	- [X] Kinematic.
-- [x] Implement an applyForce on objects.
-- [x] Implement an applyImpulse on objects.
-- [x] Implement an applyAngularImpulse on objects.
-- [x] Determine and apply impulse for rigid body collisions with basic shapes.
-- [X] Collision tracking.
+1. **Make spatial queries see a teleport immediately.** After JavaScript changes \`body.x\`, \`body.y\`, or \`body.r\`, queries should use the new pose before the next \`world.step()\`. Cover radius, box, ray, and batched queries through the public API, including a rotated body with an offset fixture. Measure the cost of repeated writes and queries. Run \`npm run test:wasm\` and \`npm run test:wasm:nav\` in CI after building the WASM core and TypeScript wrapper. [Issue #5](https://github.com/JSideris/Gearbox2D/issues/5)
+2. **Verify runtime spring and mass edits.** Change a loaded spring's rest length, frequency, and damping through the public API and check how its motion responds. For mass, the JavaScript setter writes mass and inverse mass, while the native setter also updates inertia and the mass-override flag. Define how an explicit mass interacts with later fixture density changes, then test linear and angular response through both paths.
+3. **Reproduce the remaining collision and stability reports.** Recheck bullet-through-paper and high-energy bounce at a fixed timestep alongside the existing slit, corner, and wall regressions. For chain jitter, chain-belt clipping, stack drift, or motorcycle wheel penetration, isolate any engine failure in a minimal native test. Check scalar/SIMD parity for solver changes. Keep showcase calibration in the example.
+   - Measure slipping and resting drift on steep slopes, recording slope angle, friction, and timestep. Measure penetration and drift in mixed-shape piles and pyramids at fixed solver settings. For jitter at rest, log sleep and wake transitions in the minimal reproduction.
+4. **Measure when browser multithreading pays off.** Compare single-threaded and multithreaded builds on the same mostly sleeping scene, dense pile, and set of independent islands. Vary body count and report median and p95 step times with browser and hardware details. Record broad-phase candidate counts and tree updates to identify the bottleneck. Use the results to decide whether to change tree maintenance, awake-body storage, or parallel integration.
 
-## Constraints
-- [x] Hinged.
-- [x] Distance.
-- [x] Spring.
-- [x] Gear constraint.
-	- [ ] Mechanical friction (optional).
+## Current architecture
 
+The C++/WASM engine uses a sequential-impulse solver with hard contacts, velocity-space springs, and Kinematic Restitution Balancing enabled by default. The broad phase pads fixture bounds for linear and angular motion. Bodies can hold multiple fixtures, and the wrapper decomposes concave polygons into convex pieces. Games can query the spatial index and batch grid A* or hierarchical path requests. See the [world guide](https://github.com/JSideris/Gearbox2D/blob/master/docs/architecture-world.md), [shape guide](https://github.com/JSideris/Gearbox2D/blob/master/docs/shapes.md), and [navigation guide](https://github.com/JSideris/Gearbox2D/blob/master/docs/navigation.md).
 
-## Interactions
-- [x] Spatial picking (query BVH).
-- [ ] Raycasting (planned).
-- [ ] AABB queries (planned).
+## Future directions
 
-## Misc
-- [x] Elasticity (restitution).
-- [x] Static/dynamic friction.
-- [x] Support changing the center of mass.
-- [x] Live data buffers (Direct Wasm/TS memory mapping).
-- [x] Per-fixture material properties (Friction, Restitution, Density).
-- [ ] Squishy objects via per-object bias factor for Baumgarte stabilization (optional).
-
-
-## Events
-- [X] Events buffer.
-- [X] Opt in per object.
-- [X] On collision events.
-	- [X] Return impulse.
-- [X] On collision end events.
-- [X] On sleep events.
-- [X] On wake up.
-- [ ] On pre-solve (optional).
-- [ ] On post-solve (optional).
-
-## Fluid Dynamics
-- [X] Simple linear dampening.
-- [X] Simple rotational dampening.
-- [ ] Wind.
-- [ ] Advanced drag.
-- [ ] Under water / liquid.
-	- [ ]  Bouancy.
-
-## Optimizations
-
-### General Optimizations
-- [x] Cache inverse mass.
-- [x] Cache inverse inertia.
-- [x] Cache inverse dt.
-- [x] Cache exponential decay factor when dt is set.
-- [x] Implement collision masks.
-- [X] Warmstarting.
-- [ ] Focus areas & resolution.
-
-### High-Fidelity Optimizations
-- [X] Kinematic restitution balancing (novel).
-
-### Broad Phase Optimizations
-- [x] Broad phase using AABBs.
-- [x] Do not recompute AABB when no movement happens.
-- [ ] Stagger AABB recalculation when movement is slow.
-- [x] Speed-dependant bounding area padding.
-- [ ] Spin-dependant bounding area padding (optional).
-- [x] Bounding volume hierarchy (BVH).
-- [X] BVH heuristic biasing.
-	- [x] BVH sleep biasing.
-	- [x] BVH collision mask biasing (novel).
-	- [X] BVH particle biasing.
-	- [X] Static island biasing.
-	- [X] Same-body biasing.
-	- [X] Velocity biasing.
-	- [X] Sensor biasing.
-	- [ ] Experimentally fine-tune BVH biases.
-- [ ] Rebalance BVH.
-- [ ] Experimental: Caching previous broad-phase collisions.
-- [ ] Experimental: Instead of reinserting on movement, consider tree traversal.
-- [ ] Experimental: Consider combining the broad phase with the kinematics phase.
-
-### Sleep Optimizations
-- [x] Sleeping objects.
-- [x] Islands.
-- [x] Shrinkwrap AABB on sleep.
-- [ ] Experimental: Separate vectors for sleeping/awake objects.
-- [ ] Experimental: Re-insert into BVH upon sleep.
-- [ ] Experimental: Sleep drift (sleeping at terminal velocity).
-
-### Parallelization
-#### SIMD Vectorization (WASM SIMD128)
-- [x] SIMD-accelerated math library (2D dot, cross, rotate, etc.).
-- [x] Vectorized global integrators (4-way SoA processing).
-- [x] SIMD narrow-phase solvers (Circle-Circle, Box-Box, etc.).
-- [x] SIMD BVH traversal (4/8-way bounding box tests).
-- [x] SIMD constraint and joint solvers (batched solving).
-- [x] Bulk world-data synchronization (vectorized vertex transforms).
-
-#### Multi-threading
-- [x] Persistent thread pool system.
-- [x] Parallel island solver (concurrent independent islands).
-- [x] Parallel narrow-phase detection (multi-threaded collision pairs).
-- [ ] Parallel global integrators (gravity and motion updates).
-
-## Advanced Features
-- [x] Smart anti-tunelling (Speculative Contacts).
-- [ ] Advanced drag.
-- [ ] Forcefields.
-- [ ] Microscopic scale.
-- [ ] Galactic scales.
-- [ ] Automatic handling for big world problem.
-- [ ] Changing mass dynamically.
-- [ ] Changing size dynamically (stretch goal)
-- [ ] Snap nodes for complex objects (experimental).
-
-## AI
-- [ ] A*.
-- [ ] A* biasing.
-- [ ] A* advanced coordination.
-- [ ] Precomputed nav mesh.
-- [ ] High-performance sensors.
-- [ ] Agent steering and movement.
-- [ ] Local Navigation & Obsticle Avoidance (RVO/ORCA).
-- [ ] Inverse Kinematics.
-- [ ] Collision Prediction / Danger Maps (optional)
-
-## Known Issues
-- Spring joints can't be adjusted at runtime - see the commented-out spring test case.
-- Bullet through paper is somewhat unreliable. Also affects the high-energy bounce benchmark, which is broken for Gearbox2d.
-- Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
-- 20-Segment-Chain jitters automatically.
-- Engine seems to have better performance in ST mode. Worth looking into this to re-evaluate whether MT is worth it.
-- Slight jitter visible in the stacks benchmark. Might be possible to fix by making slight tweaks to some of the engine's constants.
-- In the chain belt example, we can observe clipping and violent jitter. This was a regression likely introduced in mid Februrary 2026 while debugging other stability issues.`,Be=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),_e=Object.assign({"../docs/structure.md":h})["../docs/structure.md"].default,c=Object.assign({"../docs/DEVELOPER_PARALLELISM.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":A,"../docs/architecture-world.md":B,"../docs/collision-broad-phase.md":I,"../docs/collision-filtering.md":D,"../docs/collision-narrow-phase.md":P,"../docs/core-concepts.md":O,"../docs/development.md":E,"../docs/events.md":W,"../docs/first-simulation.md":q,"../docs/game-loop.md":H,"../docs/graphics-debug.md":L,"../docs/installation.md":J,"../docs/interaction-queries.md":U,"../docs/introduction.md":Y,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/navigation.md":re,"../docs/objects-body-types.md":ce,"../docs/objects-lifecycle.md":he,"../docs/objects-properties.md":pe,"../docs/performance-optimizations.md":me,"../docs/performance-tips.md":fe,"../docs/planned-ccd.md":ve,"../docs/planned-fluid-dynamics.md":xe,"../docs/shapes.md":Ae,"../docs/structure.md":h,"../plan.md":Be});function Ie(n){const o=n.split(`
-`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const u=Ie(_e),d=document.getElementById("docs-list"),je=document.getElementById("doc-title"),l=document.getElementById("doc-content");function De(){u.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function p(){const n=window.location.hash.substring(1),o=n?`${n}.md`:u[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),je.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=g.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(m=>m.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",p);De();p();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),y=document.getElementById("sidebar-toggle");y.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!y.contains(n.target)&&a.classList.add("collapsed")});
+- **Edge or chain terrain.** Revisit when a level needs boundary behavior that existing fixtures cannot represent adequately. Use that level to define the expected contacts at segment endpoints.
+- **State serialization.** A save/load or network consumer should specify which state must survive a round trip. Rendering already has access to live WASM views.
+- **Aerodynamics and buoyancy.** Scope wind and velocity-dependent drag around a game workload and a measurable force response. Treat buoyancy separately when a water scene supplies an acceptance test.
+- **Navigation and world scale.** Revisit navmeshes, local avoidance, inverse kinematics, or danger maps when a game demonstrates a limit of grid paths, queries, or game-side steering. Revisit world-coordinate precision when a target map establishes the required range and accuracy.
+`,_e=Object.freeze(Object.defineProperty({__proto__:null,default:Te},Symbol.toStringTag,{value:"Module"})),Ie=Object.assign({"../docs/structure.md":h})["../docs/structure.md"].default,c=Object.assign({"../docs/DEVELOPER_PARALLELISM.md":v,"../docs/architecture-coordinates.md":x,"../docs/architecture-wasm-memory.md":A,"../docs/architecture-world.md":_,"../docs/collision-broad-phase.md":j,"../docs/collision-filtering.md":k,"../docs/collision-narrow-phase.md":P,"../docs/core-concepts.md":C,"../docs/development.md":E,"../docs/events.md":W,"../docs/first-simulation.md":q,"../docs/game-loop.md":H,"../docs/graphics-debug.md":L,"../docs/installation.md":N,"../docs/interaction-queries.md":V,"../docs/introduction.md":Y,"../docs/joints-distance.md":K,"../docs/joints-gear.md":Z,"../docs/joints-hinge.md":ne,"../docs/joints-overview.md":oe,"../docs/joints-spring.md":ae,"../docs/navigation.md":re,"../docs/objects-body-types.md":ce,"../docs/objects-lifecycle.md":he,"../docs/objects-properties.md":pe,"../docs/performance-optimizations.md":me,"../docs/performance-tips.md":fe,"../docs/planned-ccd.md":ve,"../docs/planned-fluid-dynamics.md":xe,"../docs/shapes.md":Ae,"../docs/structure.md":h,"../plan.md":_e});function je(n){const o=n.split(`
+`),i=[];let e=null;for(const t of o)if(t.startsWith("##"))e={name:t.replace(/^##\s+/,"").trim(),pages:[]},i.push(e);else if(t.startsWith("-")){const s=t.match(/- `([^`]+\.md)`:\s*(.*)/);s&&e&&e.pages.push({file:s[1],title:s[2].trim().replace(/\.$/,"")})}return i}const u=je(Ie),d=document.getElementById("docs-list"),Be=document.getElementById("doc-title"),l=document.getElementById("doc-content");function ke(){u.forEach(n=>{const o=document.createElement("li");o.className="section",o.textContent=n.name,d.appendChild(o),n.pages.forEach(i=>{const e=document.createElement("li"),t=document.createElement("a");t.className="sidebar-link",t.textContent=i.title,t.href=`#${i.file.replace(".md","")}`,t.dataset.file=i.file,e.appendChild(t),d.appendChild(e)})}),document.querySelectorAll(".sidebar-link").forEach(n=>{n.addEventListener("click",()=>{r()&&a.classList.add("collapsed")})})}async function p(){const n=window.location.hash.substring(1),o=n?`${n}.md`:u[0]?.pages[0]?.file||"";if(!o)return;document.querySelectorAll(".sidebar-link").forEach(e=>{e.getAttribute("href")===`#${o.replace(".md","")}`?(e.classList.add("active"),Be.textContent=e.textContent):e.classList.remove("active")});let i=c[`../docs/${o}`]?.default;!i&&o==="plan.md"&&(i=c["../plan.md"]?.default),i?(l.innerHTML=g.parse(i),l.querySelectorAll("pre code").forEach(e=>{const t=e.parentElement,s=Array.from(e.classList).find(m=>m.startsWith("language-"));s&&t.setAttribute("data-lang",s.replace("language-","")),hljs.highlightElement(e)})):l.innerHTML=`<p>Error: Could not load documentation file "${o}".</p>`,document.getElementById("main").scrollTop=0}window.addEventListener("hashchange",p);ke();p();const r=()=>window.innerWidth<=768,a=document.getElementById("sidebar"),y=document.getElementById("sidebar-toggle");y.addEventListener("click",()=>{a.classList.toggle("collapsed")});r()&&a.classList.add("collapsed");window.addEventListener("resize",()=>{r()&&!a.classList.contains("collapsed")&&a.classList.add("collapsed")});window.addEventListener("click",n=>{r()&&!a.classList.contains("collapsed")&&!a.contains(n.target)&&!y.contains(n.target)&&a.classList.add("collapsed")});

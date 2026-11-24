@@ -8,7 +8,7 @@ Gearbox2D is a blazing-fast, web-first 2D physics engine engineered from the gro
 
 - **Web-First Performance**: Zero-copy memory sharing between WASM and JavaScript via shared buffers.
 - **Authoritative Synchronization**: Designed for real-time multiplayer with stable state injection.
-- **Integrated AI**: Built-in support for NavMeshes, RVO/ORCA, and pathfinding at native speeds.
+- **Integrated AI**: Native grid A* and hierarchical pathfinding with batched, time-sliced requests.
 
 ## Documentation
 
@@ -18,4 +18,3 @@ Gearbox2D is a blazing-fast, web-first 2D physics engine engineered from the gro
 - [Spatial Queries](/documentation.html#interaction-queries): queryAABB, queryRadius, raycasts, batched and allocation-free queries
 - [Navigation](/documentation.html#navigation): native grid A* / HPA* with batched, time-sliced `findPaths`
 - [Nav Arena example](/showcase.html#nav-arena): many bots pathfinding with the native nav grid
-- [API Reference](/documentation.html#api-reference)
