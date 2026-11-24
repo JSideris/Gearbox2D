@@ -7,7 +7,7 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 ## Why Gearbox2D?
 
 *   **Zero-Copy Interop**: Access physical state (position, rotation) with O(1) overhead. The TypeScript wrapper reads directly from WASM memory buffers.
-*   **Integrated Intelligence**: Pathfinding, RVO/ORCA obstacle avoidance, and high-frequency sensors run natively inside the physics loop.
+*   **Integrated Intelligence**: Queue path requests for multiple agents and advance them together with a per-tick search budget.
 *   **Authoritative Synchronization**: Native support for real-time state updates and rollback, optimized for multiplayer architectures.
 
 ## Core Features
@@ -18,8 +18,8 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 - **Shared Memory Model**: No serialization or copying across the WASM-JS bridge.
 
 ### AI and Robotics
-- **NavMeshes**: Rapid pathfinding through complex environments.
-- **Local Navigation**: Collision-free movement for hundreds of agents using ORCA/RVO.
+- **Grid navigation**: Choose grid A*, hierarchical A*, or a hierarchical corridor search. Track fixtures to update the grid as obstacles move.
+- **Local steering**: Games can use batched radius queries to find nearby agents and apply their own avoidance rules.
 - **Agent Perception**: High-efficiency raycast and area sensor queries.
 
 ### Constraints and Joints
@@ -30,14 +30,12 @@ Unlike traditional ports of physics libraries, Gearbox2D is engineered specifica
 Gearbox2D introduces several architectural advancements designed for modern, large-scale web applications:
 
 *   **Novel BVH Biasing**: Our spatial partitioning engine uses **Collision Mask Biasing** and **Sleep Biasing** to dynamically restructure the Bounding Volume Hierarchy. This significantly reduces intersection tests in complex scenes where many objects occupy the same space but belong to different collision layers.
-*   **Physics-Native AI Suite**: A* pathfinding, NavMeshes, and RVO/ORCA local navigation are integrated directly into the physics loop. This allows agents to navigate complex environments with full awareness of physical constraints and dynamic obstacles at native speeds.
-*   **The "Big World" Solver**: Specialized handling for microscopic and galactic scales solves the precision issues common in standard engines, enabling massive-scale simulations without coordinate jitter or "big world" floating-point errors.
-*   **Hybrid Soft Constraints**: Leverage per-object Baumgarte bias factors to create "squishy" interactions and soft joints without the performance penalty of a dedicated soft-body engine.
-*   **Speed-Adaptive Bounding**: Bounding volume padding that scales with velocity and angular momentum, preventing "tunneling" for high-speed objects while keeping the broad-phase tight for slow-moving ones.
-*   **Kinematic Restitution Balancing (KRB)**: A mathematically rigorous "energy audit" that eliminates artificial energy gain in bouncy objects by analytically taxing launch speeds to pay for solver-induced position correction.
+*   **Soft springs** use frequency and damping ratio to control how quickly a joint returns to its rest length.
+*   **Speed-adaptive bounds** expand broad-phase candidates along a body's predicted motion so the narrow phase can consider fast-moving pairs.
+*   **Kinematic Restitution Balancing (KRB)** is enabled by default. For bouncing contacts, it accounts for velocity added by external forces during the step and adjusts rebound speed for the displacement expected from position correction.
 
 ## Project Status
-Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Alpha**. While the core physics solver is stable, APIs are evolving as we finalize the AI and fluid dynamics modules.
+Gearbox2D has been in development since 2023 and was first published to npm in January 2026. The engine is currently in **Beta**. The public API is evolving. Grid navigation is available and fluid dynamics is planned.
 
 [View the Development Roadmap →](#plan)
 

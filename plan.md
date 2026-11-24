@@ -20,7 +20,7 @@
 	- [x] Integration with global iterative solver.
 
 ## Shapes, Kinematics, Collisions
-- [x] Setup and test Rust w/ web assembly target.
+- [x] Build the C++ core for WebAssembly with Emscripten.
 - [x] Define basic starting classes for the physics module.
 	- [x] RigidBody.
 	- [x] Vec2.
@@ -109,8 +109,8 @@
 
 ## Interactions
 - [x] Spatial picking (query BVH).
-- [ ] Raycasting (planned).
-- [ ] AABB queries (planned).
+- [x] Raycasts (nearest hit and all hits).
+- [x] AABB, radius, and batched radius queries.
 
 ## Misc
 - [x] Elasticity (restitution).
@@ -152,7 +152,7 @@
 - [ ] Focus areas & resolution.
 
 ### High-Fidelity Optimizations
-- [X] Kinematic restitution balancing (novel).
+- [X] Kinematic Restitution Balancing (KRB), enabled by default for new worlds.
 
 ### Broad Phase Optimizations
 - [x] Broad phase using AABBs.
@@ -210,21 +210,21 @@
 - [ ] Snap nodes for complex objects (experimental).
 
 ## AI
-- [ ] A*.
+- [x] Native grid A*, hierarchical A*, and corridor search.
+- [x] Batched, time-sliced path requests and tracked obstacles.
 - [ ] A* biasing.
 - [ ] A* advanced coordination.
 - [ ] Precomputed nav mesh.
 - [ ] High-performance sensors.
 - [ ] Agent steering and movement.
-- [ ] Local Navigation & Obsticle Avoidance (RVO/ORCA).
+- [ ] Local Navigation & Obstacle Avoidance (RVO/ORCA).
 - [ ] Inverse Kinematics.
 - [ ] Collision Prediction / Danger Maps (optional)
 
-## Known Issues
-- Spring joints can't be adjusted at runtime - see the commented-out spring test case.
-- Bullet through paper is somewhat unreliable. Also affects the high-energy bounce benchmark, which is broken for Gearbox2d.
-- Motorcycle example shows several issues. Back wheel sinks into the ground, and others. Likely a problem with KRB. Joints are also unstable.
-- 20-Segment-Chain jitters automatically.
-- Engine seems to have better performance in ST mode. Worth looking into this to re-evaluate whether MT is worth it.
-- Slight jitter visible in the stacks benchmark. Might be possible to fix by making slight tweaks to some of the engine's constants.
-- In the chain belt example, we can observe clipping and violent jitter. This was a regression likely introduced in mid Februrary 2026 while debugging other stability issues.
+## Known issues and follow-up
+
+- [Issue #5](https://github.com/JSideris/Gearbox2D/issues/5) tracks stale spatial queries after a JavaScript write to `body.x`, `body.y`, or `body.r`. A query can miss the moved body until the next step.
+- Verify runtime spring edits through the public API. The spring guide documents writable length, frequency, and damping, but the native `UpdateParametersAtRuntime` test is commented out.
+- Recheck bullet-through-paper and high-energy bounce against the current solver. The circle-versus-box SIMD fix includes regressions for slits, corners, and thick walls.
+- Reproduce earlier reports of motorcycle wheel penetration, stack jitter, 20-segment chain jitter, and chain-belt clipping. Isolate engine failures in a minimal test before changing the solver.
+- Measure single-threaded and multithreaded step times across scene sizes and island counts.

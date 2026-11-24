@@ -8,7 +8,7 @@ Gearbox2D is a blazing-fast, **web-first** 2D physics engine engineered from the
 
 1.  **Web-First Performance**: Zero-copy memory sharing between WASM and JavaScript via shared buffers.
 2.  **Authoritative Synchronization**: Designed for real-time multiplayer with stable state injection.
-3.  **Integrated AI**: Built-in support for NavMeshes, RVO/ORCA, and pathfinding at native speeds.
+3.  **Integrated AI**: Native grid A* and hierarchical pathfinding with batched, time-sliced requests.
 
 ## Getting Started
 
@@ -54,7 +54,8 @@ Check out [Your First Simulation](docs/first-simulation.md) for a full, copy-pas
 - [Introduction](docs/introduction.md) - Core pillars and architecture.
 - [Installation](docs/installation.md) - NPM, CDN, and WebAssembly requirements.
 - [Your First Simulation](docs/first-simulation.md) - Build a falling box demo.
-- [API Reference](docs/api-reference.md) - Detailed class and method documentation.
+- [Spatial Queries](docs/interaction-queries.md) - Picking, raycasts, area searches, and batched queries.
+- [Navigation](docs/navigation.md) - Grid setup, obstacles, and path requests.
 - [Development Guide](docs/development.md) - How to build from source and contribute.
 
 ## Project Status & Roadmap
@@ -78,7 +79,7 @@ make log-energy GEARBOX_DISABLE_KRB=1
 ./logEnergy-nokrb --out studies/kinematic_restitution_balancing/data --seconds 600
 ```
 
-`make log-energy` writes `logEnergy` (KRB on) or `logEnergy-nokrb` (flag set). It does not run the gtest suite. Default builds (`npm run build`, `make wasm`, `make test` without the flag) always ship with KRB enabled. The no-KRB test binary skips KRB energy gtests; full test green is required on the default build only.
+`make log-energy` writes `logEnergy` (KRB on) or `logEnergy-nokrb` (flag set). It does not run the gtest suite. In standard builds, each world starts with KRB enabled. For a runtime comparison in the same build, call `world.setHasKrb(false)` on the comparison world. The no-KRB test binary skips KRB energy gtests; full test green is required on the default build only.
 
 ## License
 

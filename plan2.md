@@ -1,16 +1,15 @@
-# Remaining Tasks
+# Solver stability follow-up
 
-## Stability & Quality
-- [ ] **Address Restitution Energy Conservation**: `StabilityTest.RestitutionEnergyConservation` is failing. Aggressive position correction may be injecting energy. Consider implementing a full KRB (Kinematic Restitution Balancing) "tax" on bounces to pay for position correction.
-- [ ] **Tune Slopes & Inclines**: Verify that "Lean Pseudo-Friction" and current stability fixes behave correctly on steep slopes.
-- [ ] **Solver Iterations**: Investigate the impact of iteration counts on deep stacks. If bottom objects still sink randomly, it may require more iterations or a more advanced PGS (Projected Gauss-Seidel) tuning.
+## Kinematic Restitution Balancing
 
-## Refactoring & Maintenance
-- [ ] **Move Constants to `constants.h`**: The following magic numbers should be moved to the constants file:
-    - Slop (`0.004f`) in `ContactConstraint::preSolve`.
-    - Position Bias Cap (`-30.0f`) in `ContactConstraint::preSolve`.
-- [ ] **Formalize Pseudo-Friction**: The "Lean Pseudo-Friction" is currently a simplified implementation. Consider upgrading to a full 2x2 mass matrix solver for position correction if complex multi-body constraints become unstable.
-- [ ] **Optimize Sleep Logic**: Further refine the relationship between `WAKE_MOVEMENT_THRESHOLD` and `SLEEP_VELOCITY_THRESHOLD` to prevent "sleep-wake loops" in micro-jitter scenarios.
+KRB is implemented and enabled by default for each world. For bouncing contacts it compensates for force-induced velocity during the step and adjusts rebound speed to account for stabilization displacement. The [whitepaper](studies/kinematic_restitution_balancing/KRB_Whitepaper.md) describes the contact and joint rules, measurements, and limitations. The [research build instructions](readme.md#research-builds-krb-ablation) explain how to compare KRB on and off.
 
-## Testing
-- [ ] **Programmatic Sinking Tests**: Expand `RegressionPileTest` to include more varied stacking scenarios (e.g., pyramids, mixed shapes).
+Regression coverage includes [restitution energy conservation](cpp/tests/stability_tests.cpp), the [energy harness](cpp/tests/energy-harness_tests.cpp), and a [per-world KRB comparison](cpp/tests/krb-runtime-ablation_tests.cpp).
+
+## Remaining investigations
+
+- Measure slipping and resting drift on steep inclines. Record the slope, friction, and timestep for any reproducible failure.
+- Extend pile coverage with mixed shapes and pyramids. Measure penetration and drift at fixed solver settings.
+- Check whether apparent resting jitter repeatedly wakes a sleeping body. Capture the sleep and wake transitions in a minimal test before changing thresholds.
+
+See the [project roadmap](plan.md) for reported showcase issues and follow-up work.
