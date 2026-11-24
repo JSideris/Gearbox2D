@@ -29,7 +29,7 @@ A raycast hit has `fraction` (0..1 along the segment), the hit point and the sur
 
 Results are deterministic: hits are ordered by fixture creation order (rays: by distance, then fixture order), independent of how the BVH tree happens to be shaped.
 
-Queries use the broadphase as of the last `world.step()`. A body whose `x`, `y` or `r` you set by hand shows up at its new position only after the next step, and until then it is missed at both spots (see [#5](https://github.com/JSideris/Gearbox2D/issues/5)).
+Setting a body’s `x`, `y`, or `r` updates its fixture bounds immediately. Spatial queries see the new transform before the next `world.step()`.
 
 ## Batched neighbour queries
 

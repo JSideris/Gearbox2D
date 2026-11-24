@@ -167,6 +167,27 @@ const nearBoundary = (b, cx, cy, r) => overlapsCircle(b, cx, cy, r * 1.001 + 1e-
 	world.destroy();
 }
 
+// Public transform writes must move fixture proxies before another simulation step.
+{
+	const world = gearbox.createWorld();
+	world.setGravity(0, 0);
+	const body = world.createBody({
+		type: gearbox.bodyTypes.DYNAMIC_OBJECT, x: -20, y: 0,
+		shape: gearbox.shapes.BOX, width: 12, height: 1,
+	});
+	world.step();
+	const hits = (x, y) => world.queryRadius(x, y, 0.1).includes(body);
+	check(hits(-20, 0), "initial box is indexed");
+	body.x = 20;
+	check(hits(20, 0) && !hits(-20, 0), "x write moves box in radius queries");
+	body.y = 30;
+	check(hits(25, 30) && !hits(25, 0), "y write moves box in radius queries");
+	body.r = Math.PI / 2;
+	check(hits(20, 35) && !hits(25, 30), "rotation alone moves the long end of the box");
+	check(world.raycast(18, 35, 22, 35)?.body === body, "raycast finds the rotated box");
+	world.destroy();
+}
+
 if (failures) {
 	console.error(`${failures} failure(s)`);
 	process.exit(1);

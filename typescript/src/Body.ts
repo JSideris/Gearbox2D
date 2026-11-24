@@ -132,22 +132,19 @@ export class Body {
 		return this.floats.get(BODY_X_OFFSET);
 	}
 	set x(v) {
-		this.floats.set(BODY_X_OFFSET, v);
-		this.wakeUp();
+		this.cppBody?.setX(v);
 	}
 	get y() {
 		return this.floats.get(BODY_Y_OFFSET);
 	}
 	set y(v) {
-		this.floats.set(BODY_Y_OFFSET, v);
-		this.wakeUp();
+		this.cppBody?.setY(v);
 	}
 	get r() {
 		return this.floats.get(BODY_R_OFFSET);
 	}
 	set r(v) {
-		this.floats.set(BODY_R_OFFSET, v);
-		this.wakeUp();
+		this.cppBody?.setRotation(v);
 	}
 
 	get vx() {

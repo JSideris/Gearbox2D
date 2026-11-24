@@ -35,8 +35,11 @@ EMSCRIPTEN_BINDINGS(world) {
         .property("canSleep", &Body::canSleep)
         .property("sleepTimeRequired", &Body::sleepTimeRequired)
         .function("getX", &Body::getX)
+        .function("setX", &Body::setX)
         .function("getY", &Body::getY)
+        .function("setY", &Body::setY)
         .function("getRotation", &Body::getRotation)
+        .function("setRotation", &Body::setRotation)
         .function("recomputeMassProperties", &Body::recomputeInverseInertia);
 
     emscripten::class_<Fixture>("Fixture")
