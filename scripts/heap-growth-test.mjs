@@ -1,5 +1,5 @@
 // Single-threaded wasm heap: many live worlds, then a read on an older world after another allocation.
-// Requires dist/ from `npm run build`. Not part of `npm test` (CI does not build a real wasm module).
+// Run with npm run test:wasm after building the WASM core and TypeScript wrapper.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

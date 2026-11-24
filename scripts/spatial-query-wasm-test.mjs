@@ -1,6 +1,5 @@
 // PER-856: spatial queries and sensor-vs-sensor contacts through the real single-threaded WASM module.
-// Requires dist/ from `npm run build`. Like heap-growth-test.mjs, not part of `npm test`
-// (CI's jest run has no real wasm module). Run: npm run test:wasm:queries
+// Run with npm run test:wasm after building the WASM core and TypeScript wrapper.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
