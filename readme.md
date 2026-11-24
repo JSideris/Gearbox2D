@@ -60,7 +60,7 @@ Check out [Your First Simulation](docs/first-simulation.md) for a full, copy-pas
 
 ## Project Status & Roadmap
 
-Gearbox2D is currently in **Beta**. It's performant and stable, and ready for production use, but is still a WIP and will be receiving considerable updates over coming months to get it to something I am willing to refer to as "v1". Check the [plan.md](plan.md) file for a detailed list of implemented features and future goals.
+Gearbox2D is currently in **Beta**. It's performant and stable, and ready for production use, but is still a WIP and will be receiving considerable updates over coming months to get it to something I am willing to refer to as "v1". The [project roadmap](plan.md) lists active work in priority order and the use cases that would justify future features.
 
 ## Contributing
 
