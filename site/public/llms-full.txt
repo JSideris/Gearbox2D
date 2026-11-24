@@ -667,13 +667,13 @@ For a **research-only** native build with KRB disabled (algorithm ablation, not 
 
 # Gearbox2D roadmap
 
-## Active work, in priority order
+## Active work
 
-1. **Make spatial queries see a teleport immediately.** After JavaScript changes `body.x`, `body.y`, or `body.r`, queries should use the new pose before the next `world.step()`. Cover radius, box, ray, and batched queries through the public API, including a rotated body with an offset fixture. Measure the cost of repeated writes and queries. Run `npm run test:wasm` and `npm run test:wasm:nav` in CI after building the WASM core and TypeScript wrapper. [Issue #5](https://github.com/JSideris/Gearbox2D/issues/5)
-2. **Verify runtime spring and mass edits.** Change a loaded spring's rest length, frequency, and damping through the public API and check how its motion responds. For mass, the JavaScript setter writes mass and inverse mass, while the native setter also updates inertia and the mass-override flag. Define how an explicit mass interacts with later fixture density changes, then test linear and angular response through both paths.
-3. **Reproduce the remaining collision and stability reports.** Recheck bullet-through-paper and high-energy bounce at a fixed timestep alongside the existing slit, corner, and wall regressions. For chain jitter, chain-belt clipping, stack drift, or motorcycle wheel penetration, isolate any engine failure in a minimal native test. Check scalar/SIMD parity for solver changes. Keep showcase calibration in the example.
-   - Measure slipping and resting drift on steep slopes, recording slope angle, friction, and timestep. Measure penetration and drift in mixed-shape piles and pyramids at fixed solver settings. For jitter at rest, log sleep and wake transitions in the minimal reproduction.
-4. **Measure when browser multithreading pays off.** Compare single-threaded and multithreaded builds on the same mostly sleeping scene, dense pile, and set of independent islands. Vary body count and report median and p95 step times with browser and hardware details. Record broad-phase candidate counts and tree updates to identify the bottleneck. Use the results to decide whether to change tree maintenance, awake-body storage, or parallel integration.
+Measure worker overhead and prototype batching small independent islands. Compare median and p95 step times with the current single-threaded and multithreaded builds on the same browser workloads. Use the measurements to decide whether to change worker dispatch. [Issue #27](https://github.com/JSideris/Gearbox2D/issues/27)
+
+## Completed work
+
+The roadmap sweep covers spatial queries, runtime edits, collision and stability regressions, showcase fixes, and the browser benchmark. It also records the subsequent cradle and slab fixes. [Findings by issue](https://github.com/JSideris/Gearbox2D/blob/master/studies/roadmap-sweep.md)
 
 ## Current architecture
 
@@ -1374,8 +1374,12 @@ Body properties define the state and movement of an object in the world.
 - `vr`: Angular velocity in radians per second.
 
 ### Mass & Inertia
-- `mass`: Total mass of the body (sum of all fixture masses).
-- `inertia`: The body's resistance to rotational acceleration.
+
+A dynamic body normally gets its mass from the sum of its fixture masses (density times area). Assigning a positive `body.mass` in JavaScript or calling `Body::setMass` with a positive value in C++ overrides the total immediately. A positive mass at creation has the same effect.
+
+While the override is active, changing a fixture’s density keeps the total mass fixed. The engine recalculates the center of mass and rotational inertia using the fixtures’ relative masses and scales the inertia to the overridden total. With no positive fixture mass, the override still determines the linear impulse response and the angular impulse response is zero.
+
+Assign zero or a negative mass to clear the override. Mass and inertia immediately reflect the current fixture densities and follow subsequent density edits. Fixed and kinematic bodies ignore mass assignments.
 
 ### Damping
 - `linearDamping`: Simulates air resistance or drag (0.0 to 1.0).
@@ -2124,7 +2128,7 @@ A raycast hit has `fraction` (0..1 along the segment), the hit point and the sur
 
 Results are deterministic: hits are ordered by fixture creation order (rays: by distance, then fixture order), independent of how the BVH tree happens to be shaped.
 
-Queries use the broadphase as of the last `world.step()`. A body whose `x`, `y` or `r` you set by hand shows up at its new position only after the next step, and until then it is missed at both spots (see [#5](https://github.com/JSideris/Gearbox2D/issues/5)).
+Setting a body’s `x`, `y`, or `r` updates its fixture bounds immediately. Spatial queries see the new transform before the next `world.step()`.
 
 ## Batched neighbour queries
 
