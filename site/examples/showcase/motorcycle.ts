@@ -311,17 +311,17 @@ export const motorcycleExample = new Example({
 		if (!chassis) return;
 
 		// --- 3. Controls & Engine ---
-		const throttlePower = 75.0;
+		const throttlePower = 25.0;
 		const leanPower = 100.0;
-		const maxEngineSpeed = 100.0; // Higher top speed
+		const maxEngineSpeed = 30.0; // rad/s
 
 		if (keys["KeyD"]) {
-			if (engine.rs < maxEngineSpeed) {
+			if (engine.rs > -maxEngineSpeed) {
 				engine.applyAngularImpulse(-throttlePower * dt);
 			}
 		}
 		if (keys["KeyA"]) {
-			if (engine.rs > -maxEngineSpeed) {
+			if (engine.rs < maxEngineSpeed) {
 				engine.applyAngularImpulse(throttlePower * dt);
 			}
 		}
