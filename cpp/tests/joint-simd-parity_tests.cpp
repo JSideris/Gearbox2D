@@ -4,6 +4,7 @@
 #include "gear-joint.h"
 #include "spring-joint.h"
 #include "hinge-joint.h"
+#include "distance-joint.h"
 #include "solver-data.h"
 #include <cmath>
 
@@ -579,4 +580,55 @@ TEST(JointSimdParity, FourSoftSpringsWorldStepStaysFinite) {
 			EXPECT_TRUE(std::isfinite(ball->getAngularVelocity()));
 		}
 	}
+}
+
+TEST(JointSimdParity, DistancePinAndMixedRodBatches) {
+    for (bool mixed : {false, true}) {
+        SCOPED_TRACE(mixed);
+        World scalarWorld, batchWorld;
+        DistanceJoint* scalar[4];
+        DistanceJoint* batch[4];
+        SolverData states[2][4][2];
+        for (int i = 0; i < 4; ++i) {
+            float length = mixed && i % 2 ? 1.0f : 0.0f;
+            for (int w = 0; w < 2; ++w) {
+                World& world = w == 0 ? scalarWorld : batchWorld;
+                int a = 2 * i + 1, b = a + 1, id = 100 + i;
+                world.createBody(a, makeBoxOptions(0, 0, 1, ObjectType::DYNAMIC_OBJECT));
+                world.createBody(b, makeBoxOptions(length, 1, 2 + i, ObjectType::DYNAMIC_OBJECT));
+                world.createDistanceJoint(id, a, b, 0, 0.5f, 0, -0.5f, length);
+                world.getBody(a)->setVelocity(Vec2(i + 1, -0.5f));
+                world.getBody(b)->setAngularVelocity(-1.0f);
+                (w == 0 ? scalar : batch)[i] = static_cast<DistanceJoint*>(world.getJoint(id));
+            }
+        }
+        for (int step = 0; step < 2; ++step) {
+            for (auto* joint : scalar) joint->preSolve(kDt);
+            DistanceJoint::preSolveSIMD(batch, kDt);
+            for (int i = 0; i < 4; ++i) {
+                for (int w = 0; w < 2; ++w) {
+                    DistanceJoint* joint = w == 0 ? scalar[i] : batch[i];
+                    states[w][i][0] = joint->bodyA->getSolverData();
+                    states[w][i][1] = joint->bodyB->getSolverData();
+                    joint->context.a = &states[w][i][0];
+                    joint->context.b = &states[w][i][1];
+                }
+                scalar[i]->solveFast();
+            }
+            DistanceJoint::solveFastSIMD(batch);
+            for (int i = 0; i < 4; ++i) {
+                for (int side = 0; side < 2; ++side) {
+                    const auto& a = states[0][i][side];
+                    const auto& b = states[1][i][side];
+                    EXPECT_NEAR(a.v.x, b.v.x, kTol);
+                    EXPECT_NEAR(a.v.y, b.v.y, kTol);
+                    EXPECT_NEAR(a.w, b.w, kTol);
+                }
+                const Vec2 forceA = scalar[i]->getReactionForce(1 / kDt);
+                const Vec2 forceB = batch[i]->getReactionForce(1 / kDt);
+                EXPECT_NEAR(forceA.x, forceB.x, kTol);
+                EXPECT_NEAR(forceA.y, forceB.y, kTol);
+            }
+        }
+    }
 }

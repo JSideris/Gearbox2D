@@ -227,7 +227,7 @@ bool hasFasterPendulumOutsider(
         if (inPack.count(cand) != 0) {
             continue;
         }
-        if (!bodyHasDistanceJoint(cand)) {
+        if (!bodyHasPendulumRod(cand)) {
             continue;
         }
         if (cand->worldIndex < 0 || static_cast<size_t>(cand->worldIndex) >= solverBodies.size()) {
@@ -313,12 +313,12 @@ float incomingEdgeApproachingVn(Island& island, Body* a, Body* b) {
     return 0.0f;
 }
 
-bool allBodiesHaveDistanceJoints(const std::vector<Body*>& ordered) {
+bool allBodiesHavePendulumRods(const std::vector<Body*>& ordered) {
     if (ordered.empty()) {
         return false;
     }
     for (Body* b : ordered) {
-        if (!bodyHasDistanceJoint(b)) {
+        if (!bodyHasPendulumRod(b)) {
             return false;
         }
     }
@@ -349,7 +349,7 @@ Vec2 pendulumTangent(Body* body, Vec2 n_chain) {
         return n_chain;
     }
     for (Joint* joint : body->joints) {
-        if (joint->getType() != JointType::DISTANCE) {
+        if (!isPendulumRod(joint)) {
             continue;
         }
         Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
@@ -381,7 +381,7 @@ bool extendPendulumPack(
     const std::vector<Vec2>& prePgsV,
     std::vector<Body*>& ordered,
     Vec2 n_chain) {
-    if (ordered.size() < 2 || !allBodiesHaveDistanceJoints(ordered)) {
+    if (ordered.size() < 2 || !allBodiesHavePendulumRods(ordered)) {
         return false;
     }
 
@@ -435,7 +435,7 @@ bool extendPendulumPack(
         if (!cand || cand->type == ObjectType::FIXED_OBJECT) {
             return false;
         }
-        return bodyHasDistanceJoint(cand) && massOk(cand) && radiusOk(cand);
+        return bodyHasPendulumRod(cand) && massOk(cand) && radiusOk(cand);
     };
 
     const float maxDy = std::max(spacing, refR * 2.0f);
@@ -581,7 +581,7 @@ bool applyEnergyBoundedFarEndPath(
     }
     n_chain = n_chain / nMag;
 
-    const bool useTangent = allBodiesHaveDistanceJoints(ordered);
+    const bool useTangent = allBodiesHavePendulumRods(ordered);
     std::vector<SolverData*> bodies;
     std::vector<Vec2> axis;
     std::vector<Vec2> vPre;
@@ -766,7 +766,7 @@ void applyElasticMapToPathComponents(
         if (neighbor->worldIndex >= 0 && static_cast<size_t>(neighbor->worldIndex) < prePgsV.size()) {
             neighborU = std::abs(prePgsV[neighbor->worldIndex].dot(n_chain));
         }
-        const bool allDJ = allBodiesHaveDistanceJoints(ordered);
+        const bool allDJ = allBodiesHavePendulumRods(ordered);
         if (allDJ) {
             incomingU = prePgsSpeed(prePgsV, incoming);
             neighborU = prePgsSpeed(prePgsV, neighbor);
@@ -895,7 +895,7 @@ int reprojectDistanceJointsForBodies(
         }
         involved.insert(b);
         for (Joint* joint : b->joints) {
-            if (joint->getType() != JointType::DISTANCE) {
+            if (!isPendulumRod(joint)) {
                 continue;
             }
             DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);
@@ -1115,7 +1115,7 @@ void World::_reprojectIslandJointsAfterChainMap(Island& island) {
 
     for (int iter = 0; iter < kChainJointReprojectIters; ++iter) {
         for (Joint* joint : island.joints) {
-            if (joint->getType() != JointType::DISTANCE) {
+            if (!isPendulumRod(joint)) {
                 continue;
             }
             DistanceJoint* distanceJoint = static_cast<DistanceJoint*>(joint);

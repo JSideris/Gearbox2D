@@ -179,3 +179,98 @@ TEST_F(DistanceJointTest, MixedOverlapChainStaysFinite) {
     }
 }
 
+
+TEST_F(DistanceJointTest, UndisturbedTwentyLinkChainSettles) {
+    world.setGravity(0.0f, 10.0f);
+    world.setTimeStep(1.0f / 60.0f);
+    emscripten_val anchorOptions;
+    anchorOptions["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    anchorOptions["shape"] = static_cast<int>(ObjectShape::CIRCLE);
+    anchorOptions["radius"] = 0.1f;
+    anchorOptions["x"] = 5.0f;
+    anchorOptions["y"] = 1.049f;
+    world.createBody(1, anchorOptions);
+
+    // Deterministic offsets within the showcase's initialization range.
+    options["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    options["shape"] = static_cast<int>(ObjectShape::BOX);
+    options["width"] = 0.4f;
+    options["height"] = 0.15f;
+    options["mass"] = 0.2f;
+    options["canSleep"] = false;
+    options["x"] = 5.0000049f;
+    for (int i = 0; i < 20; ++i) {
+        options["y"] = static_cast<float>(1.0 + (i + 1) * 0.4);
+        world.createBody(i + 2, options);
+        const Vec2 anchor(5.0f, static_cast<float>(1.2 + i * 0.4));
+        const Vec2 a = anchor - world.getBody(i + 1)->getPosition();
+        const Vec2 b = anchor - world.getBody(i + 2)->getPosition();
+        world.createDistanceJoint(100 + i, i + 1, i + 2, a.x, a.y, b.x, b.y, 0.0f);
+    }
+
+    for (int step = 0; step < 600; ++step) world.step();
+    Vec2 settled[20];
+    for (int i = 0; i < 20; ++i) settled[i] = world.getBody(i + 2)->getPosition();
+    float peakTravel = 0.0f, peakGap = 0.0f;
+    for (int step = 0; step < 600; ++step) {
+        world.step();
+        for (int i = 0; i < 20; ++i) {
+            Joint* joint = world.getJoint(100 + i);
+            Body* a = joint->bodyA;
+            Body* b = joint->bodyB;
+            const Vec2 pa = a->getPosition() + joint->getLocalAnchorA().rotate(a->getRotation());
+            const Vec2 pb = b->getPosition() + joint->getLocalAnchorB().rotate(b->getRotation());
+            const float gap = (pb - pa).magnitude();
+            const float travel = (b->getPosition() - settled[i]).magnitude();
+            ASSERT_TRUE(std::isfinite(gap) && std::isfinite(travel));
+            peakGap = std::max(peakGap, gap);
+            peakTravel = std::max(peakTravel, travel);
+        }
+    }
+    EXPECT_LT(peakGap, PENETRATION_SLOP);
+    EXPECT_LT(peakTravel, 0.001f); // Less than a millimetre over ten seconds at rest.
+
+    for (int i = 0; i < 20; ++i) world.getBody(i + 2)->canSleep = true;
+    for (int step = 0; step < 300; ++step) world.step();
+    for (int i = 0; i < 20; ++i) {
+        const Body* body = world.getBody(i + 2);
+        ASSERT_TRUE(body->isSleeping);
+        EXPECT_FLOAT_EQ(body->getVelocity().magnitude(), 0.0f);
+    }
+
+    Body* tip = world.getBody(21);
+    const Vec2 start = tip->getPosition();
+    tip->setVelocity(Vec2(0.25f, 0.0f));
+    world.step();
+    const Vec2 displacement = tip->getPosition() - start;
+    EXPECT_GT(displacement.x, 0.0f);
+    EXPECT_LT(displacement.magnitude(), 0.25f / 60.0f);
+}
+
+TEST_F(DistanceJointTest, EditedPinHoldsBothAxesAndAllowsRotation) {
+    world.setGravity(0.0f, 0.0f);
+    options["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    world.createBody(1, options);
+    options["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    options["x"] = 1.0f;
+    options["canSleep"] = false;
+    world.createBody(2, options);
+    world.createDistanceJoint(100, 1, 2, 0, 0, 0, 0, 1.0f);
+    Joint* joint = world.getJoint(100);
+    Body* body = world.getBody(2);
+    joint->setLength(0.0f);
+    joint->setLocalAnchorA(Vec2(1, 0));
+    body->setVelocity(Vec2(3, -2));
+    body->setAngularVelocity(1.0f);
+    world.step();
+    EXPECT_LT(body->getVelocity().magnitude(), 1e-4f);
+    EXPECT_GT(body->getAngularVelocity(), 0.9f);
+    EXPECT_LT(joint->getReactionForce(60).x, 0.0f);
+    EXPECT_GT(joint->getReactionForce(60).y, 0.0f);
+
+    joint->setLength(1.0f);
+    body->setX(2.0f);
+    body->setVelocity(Vec2(0, 1));
+    world.step();
+    EXPECT_GT(body->getVelocityY(), 0.9f);
+}

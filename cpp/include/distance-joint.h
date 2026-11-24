@@ -1,7 +1,8 @@
 #ifndef DISTANCE_JOINT_H
 #define DISTANCE_JOINT_H
 
-#include "joint.h"
+#include "hinge-joint.h"
+#include <memory>
 
 class DistanceJoint : public Joint {
 public:
@@ -31,9 +32,12 @@ public:
     void setLocalAnchorB(Vec2 b) override;
     Vec2 getLocalAnchorB() const override;
 
-    void clearAccumulatedImpulse() override { impulse = 0.0f; }
+    void clearAccumulatedImpulse() override;
 
 private:
+    // A zero-length rod constrains both components of anchor separation.
+    std::unique_ptr<HingeJoint> pointConstraint;
+    void updateConstraintType();
     float impulse;
     Vec2 normal;
     Vec2 rA, rB;

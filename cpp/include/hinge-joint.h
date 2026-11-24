@@ -8,7 +8,9 @@ public:
     Vec2 localAnchorA;
     Vec2 localAnchorB;
 
-    HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB);
+    enum class Stabilization { VelocityAndPosition, PositionOnly };
+    HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB,
+               Stabilization stabilization = Stabilization::VelocityAndPosition);
 
     JointType getType() const override { return JointType::HINGE; }
     void preSolve(float dt) override;
@@ -29,6 +31,7 @@ public:
     void clearAccumulatedImpulse() override { impulse = Vec2(0.0f, 0.0f); }
 
 private:
+    const Stabilization stabilization;
     Vec2 impulse;
     Vec2 rA, rB;
     float massMatrix[2][2];

@@ -379,7 +379,11 @@ export class World {
 		const anchorA = options.anchorA || { x: 0, y: 0 };
 		const anchorB = options.anchorB || { x: 0, y: 0 };
 
+		let length = options.length;
 		if (options.worldAnchor) {
+			// Both anchors denote the same point, even if rotating them back to
+			// world space would leave a floating-point residual.
+			length ??= 0;
 			const worldAnchor = options.worldAnchor;
 			const cosA = Math.cos(-bodyA.r),
 				sinA = Math.sin(-bodyA.r);
@@ -396,7 +400,6 @@ export class World {
 			anchorB.y = bx * sinB + by * cosB;
 		}
 
-		let length = options.length;
 		if (length === undefined) {
 			const wa = bodyA.localToWorld(anchorA);
 			const wb = bodyB.localToWorld(anchorB);

@@ -7,6 +7,7 @@
 struct Island;
 class Body;
 class DistanceJoint;
+class Joint;
 
 constexpr float kChainResidualEps = 1e-4f;
 constexpr float kChainRestitutionMin = 1.0f - 1e-6f;
@@ -15,7 +16,8 @@ constexpr float kChainJointReprojectMinDist = 1e-4f;
 
 bool islandHasOverlappingContact(const Island& island);
 bool applyDistanceJointCdotOnly(DistanceJoint* joint, std::vector<SolverData>& solverBodies);
-bool bodyHasDistanceJoint(Body* body);
+bool isPendulumRod(const Joint* joint);
+bool bodyHasPendulumRod(Body* body);
 float pendulumHeightAboveRest(Body* body);
 void snapPendulumVelocityToTangent(Body* body, SolverData& s);
 

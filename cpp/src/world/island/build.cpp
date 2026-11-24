@@ -48,7 +48,7 @@ static bool isPendulumSiblingSpacing(Body* ref, Body* cand, float walkStep, floa
     if (!ref || !cand || cand == ref || cand->type == ObjectType::FIXED_OBJECT) {
         return false;
     }
-    if (!bodyHasDistanceJoint(cand)) {
+    if (!bodyHasPendulumRod(cand)) {
         return false;
     }
     if (!bodiesEqualInverseMass(ref, cand)) {
@@ -315,7 +315,7 @@ static void expandSleepingImpactChain(
     }
 }
 
-static bool bodyOnlyHasDistanceJointsToFixed(Body* body) {
+static bool bodyHasOnlyFixedPendulumRods(Body* body) {
     if (!body) {
         return false;
     }
@@ -324,6 +324,7 @@ static bool bodyOnlyHasDistanceJointsToFixed(Body* body) {
         if (joint->getType() != JointType::DISTANCE) {
             continue;
         }
+        if (!isPendulumRod(joint)) return false;
         hasDistance = true;
         Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;
         if (!other || other->type != ObjectType::FIXED_OBJECT) {
@@ -465,7 +466,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     }
     for (int i = 0; i < bodyCount; ++i) {
         Body* b = bodiesList[i];
-        if (!b || b->type == ObjectType::FIXED_OBJECT || !bodyHasDistanceJoint(b)) {
+        if (!b || b->type == ObjectType::FIXED_OBJECT || !bodyHasPendulumRod(b)) {
             continue;
         }
         SolverData& s = solverBodies[i];
@@ -621,7 +622,7 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
                 if (b->worldIndex < 0 || static_cast<size_t>(b->worldIndex) >= solverBodies.size()) {
                     continue;
                 }
-                if (!bodyOnlyHasDistanceJointsToFixed(b)) {
+                if (!bodyHasOnlyFixedPendulumRods(b)) {
                     continue;
                 }
                 snapPendulumVelocityToTangent(b, solverBodies[b->worldIndex]);

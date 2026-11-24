@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <cmath>
 
-HingeJoint::HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB)
-    : Joint(id, a, b), localAnchorA(anchorA), localAnchorB(anchorB), impulse(0, 0) {}
+HingeJoint::HingeJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchorB, Stabilization stabilization)
+    : Joint(id, a, b), localAnchorA(anchorA), localAnchorB(anchorB), stabilization(stabilization), impulse(0, 0) {}
 
 void HingeJoint::preSolve(float dt) {
     _dt = dt;
@@ -31,33 +31,26 @@ void HingeJoint::preSolve(float dt) {
     } else {
         massMatrix[0][0] = massMatrix[0][1] = massMatrix[1][0] = massMatrix[1][1] = 0.0f;
     }
-    Vec2 posA = bodyA->getPosition(), posB = bodyB->getPosition();
-    Vec2 C = (posB + rB) - (posA + rA);
-    
-#ifdef GEARBOX_DISABLE_KRB
-    const bool useKrb = false;
-#else
-    const bool useKrb = bodyA->world.getHasKrb();
+    bias = Vec2();
+    if (stabilization == Stabilization::VelocityAndPosition) {
+        const Vec2 error = (bodyB->getPosition() + rB) - (bodyA->getPosition() + rA);
+        bias = error * (BAUMGARTE_FACTOR / dt);
+#ifndef GEARBOX_DISABLE_KRB
+        if (bodyA->world.getHasKrb()) {
+            bias -= bodyB->getForceVelocity() - bodyA->getForceVelocity();
+        }
 #endif
-    if (useKrb) {
-    // Kinematic Restitution Balancing (KRB) for Hinge Joint
-    // Component A: Force Velocity Compensation
-    Vec2 vB = C * (BAUMGARTE_FACTOR / dt);
-    Vec2 forceVelDiff = bodyB->getForceVelocity() - bodyA->getForceVelocity();
-    
-    bias = vB - forceVelDiff;
-    } else {
-    bias = C * (BAUMGARTE_FACTOR / dt);
-    }
-    const float age = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
-    if (age < 25.0f * dt && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
-        bias = Vec2(0.0f, 0.0f);
+        const float age = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
+        if (age < 25.0f * dt && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
+            bias = Vec2();
+        }
     }
 
     // Sleep zeroed v; applying the rest-holding impulse would dump it as KE.
     // Keep the accumulator so PGS continues from support, but skip the apply.
     const float warmAge = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
-    if (warmAge >= 25.0f * dt || (!bodyA->sleptOnSupport && !bodyB->sleptOnSupport)) {
+    if (bodyA->isSleeping && bodyB->isSleeping) return;
+    if (stabilization == Stabilization::PositionOnly || warmAge >= 25.0f * dt || (!bodyA->sleptOnSupport && !bodyB->sleptOnSupport)) {
         bodyA->setVelocityInternal(bodyA->getVelocity() - impulse * imA);
         bodyA->setAngularVelocityInternal(bodyA->getAngularVelocity() - rA.cross(impulse) * iIA);
         bodyB->setVelocityInternal(bodyB->getVelocity() + impulse * imB);
@@ -223,7 +216,7 @@ void HingeJoint::solvePosition() {
     // Frozen hinge C after sleep() is rest error, not impact. Same travel=0
     // identity as overlapping non-bounce contacts. Function still runs.
     const float posAge = std::min(bodyA->timeSinceWake, bodyB->timeSinceWake);
-    if (posAge < 25.0f * std::max(_dt, 1e-6f) && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
+    if (stabilization == Stabilization::VelocityAndPosition && posAge < 25.0f * std::max(_dt, 1e-6f) && (bodyA->sleptOnSupport || bodyB->sleptOnSupport)) {
         correction = Vec2(0.0f, 0.0f);
     }
     float corrMag = correction.magnitude();

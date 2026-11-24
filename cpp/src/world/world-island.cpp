@@ -19,9 +19,14 @@
 // Nested .cpp files are separate TUs via Makefile glob; do not #include implementation files.
 // Modules: chain-map (island/chain-map.cpp), solve (island/solve.cpp), build (island/build.cpp); island-internal.h seam.
 
-bool bodyHasDistanceJoint(Body* body) {
+// A point pin has no rod tangent. Its anchor constraint permits free rotation.
+bool isPendulumRod(const Joint* joint) {
+    return joint->getType() == JointType::DISTANCE && joint->getLength() > 0.0f;
+}
+
+bool bodyHasPendulumRod(Body* body) {
     for (Joint* joint : body->joints) {
-        if (joint->getType() == JointType::DISTANCE) {
+        if (isPendulumRod(joint)) {
             return true;
         }
     }
@@ -39,7 +44,7 @@ float pendulumHeightAboveRest(Body* body) {
     }
     Vec2 gHat = g / gMag;
     for (Joint* joint : body->joints) {
-        if (joint->getType() != JointType::DISTANCE) {
+        if (!isPendulumRod(joint)) {
             continue;
         }
         Body* other = (joint->bodyA == body) ? joint->bodyB : joint->bodyA;

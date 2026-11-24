@@ -16,9 +16,36 @@ DistanceJoint::DistanceJoint(int id, Body* a, Body* b, Vec2 anchorA, Vec2 anchor
       mass(0.0f),
       bias(0.0f),
       _dt(0.0f),
-      lastNormal() {}
+      lastNormal() {
+    updateConstraintType();
+}
+
+void DistanceJoint::updateConstraintType() {
+    if (length == 0.0f && !pointConstraint) {
+        pointConstraint = std::make_unique<HingeJoint>(id, bodyA, bodyB, localAnchorA, localAnchorB,
+                                                       HingeJoint::Stabilization::PositionOnly);
+    } else if (length != 0.0f && pointConstraint) {
+        pointConstraint.reset();
+        impulse = 0.0f;
+        hasLastNormal = false;
+    }
+}
+
+void DistanceJoint::clearAccumulatedImpulse() {
+    impulse = 0.0f;
+    if (pointConstraint) pointConstraint->clearAccumulatedImpulse();
+}
 
 void DistanceJoint::preSolve(float dt) {
+    if (pointConstraint) {
+        // At coincidence the distance gradient has no direction. Match anchor
+        // velocities in both axes. The position pass closes geometric drift
+        // without feeding past separation back into the cached support impulse.
+        pointConstraint->localAnchorA = localAnchorA;
+        pointConstraint->localAnchorB = localAnchorB;
+        pointConstraint->preSolve(dt);
+        return;
+    }
     _dt = dt;
     rA = localAnchorA.rotate(bodyA->getRotation());
     rB = localAnchorB.rotate(bodyB->getRotation());
@@ -90,6 +117,12 @@ void DistanceJoint::preSolve(float dt) {
 
 void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
 #if HWY_TARGET != HWY_SCALAR
+    for (int i = 0; i < 4; ++i) {
+        if (joints[i]->pointConstraint) {
+            for (int lane = 0; lane < 4; ++lane) joints[lane]->preSolve(dt);
+            return;
+        }
+    }
     V128 dt_v = v128_splat_f32(dt);
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
@@ -260,6 +293,7 @@ void DistanceJoint::preSolveSIMD(DistanceJoint** joints, float dt) {
 
 
 void DistanceJoint::solve() {
+    if (pointConstraint) return pointConstraint->solve();
     Vec2 vA = bodyA->getVelocity(), vB = bodyB->getVelocity();
     float wA = bodyA->getAngularVelocity(), wB = bodyB->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
@@ -274,6 +308,11 @@ void DistanceJoint::solve() {
 }
 
 void DistanceJoint::solveFast() {
+    if (pointConstraint) {
+        pointConstraint->context.a = context.a;
+        pointConstraint->context.b = context.b;
+        return pointConstraint->solveFast();
+    }
     SolverData& sA = *static_cast<SolverData*>(context.a);
     SolverData& sB = *static_cast<SolverData*>(context.b);
 
@@ -299,6 +338,21 @@ void DistanceJoint::solveFast() {
 
 void DistanceJoint::solveFastSIMD(DistanceJoint** joints) {
 #if HWY_TARGET != HWY_SCALAR
+    if (joints[0]->pointConstraint && joints[1]->pointConstraint &&
+        joints[2]->pointConstraint && joints[3]->pointConstraint) {
+        HingeJoint* pins[4];
+        for (int i = 0; i < 4; ++i) {
+            pins[i] = joints[i]->pointConstraint.get();
+            pins[i]->context.a = joints[i]->context.a;
+            pins[i]->context.b = joints[i]->context.b;
+        }
+        return HingeJoint::solveFastSIMD(pins);
+    }
+    if (joints[0]->pointConstraint || joints[1]->pointConstraint ||
+        joints[2]->pointConstraint || joints[3]->pointConstraint) {
+        for (int i = 0; i < 4; ++i) joints[i]->solveFast();
+        return;
+    }
     // Load joint properties
     V128 mass = v128_make_f32(joints[0]->mass, joints[1]->mass, joints[2]->mass, joints[3]->mass);
     V128 bias = v128_make_f32(joints[0]->bias, joints[1]->bias, joints[2]->bias, joints[3]->bias);
@@ -384,9 +438,9 @@ void DistanceJoint::solveFastSIMD(DistanceJoint** joints) {
 #endif
 }
 
-Vec2 DistanceJoint::getReactionForce(float inv_dt) const { return normal * (impulse * inv_dt); }
+Vec2 DistanceJoint::getReactionForce(float inv_dt) const { return pointConstraint ? pointConstraint->getReactionForce(inv_dt) : normal * (impulse * inv_dt); }
 float DistanceJoint::getReactionTorque(float inv_dt) const { return 0.0f; }
-void DistanceJoint::setLength(float l) { length = l; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
+void DistanceJoint::setLength(float l) { length = l; updateConstraintType(); bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 float DistanceJoint::getLength() const { return length; }
 void DistanceJoint::setLocalAnchorA(Vec2 a) { localAnchorA = a; bodyA->forceWakeUp(); bodyB->forceWakeUp(); }
 Vec2 DistanceJoint::getLocalAnchorA() const { return localAnchorA; }
@@ -394,6 +448,7 @@ void DistanceJoint::setLocalAnchorB(Vec2 b) { localAnchorB = b; bodyA->forceWake
 Vec2 DistanceJoint::getLocalAnchorB() const { return localAnchorB; }
 
 void DistanceJoint::solvePosition() {
+    if (pointConstraint) return pointConstraint->solvePosition();
     float imA = bodyA->getInverseMass(), imB = bodyB->getInverseMass();
     float iIA = bodyA->getInverseInertia(), iIB = bodyB->getInverseInertia();
     if (imA + imB == 0.0f) return;
