@@ -23,6 +23,8 @@ public:
     unsigned completedTasks = 0; // Read only after wait(), while workers are idle.
 #endif
 
+    size_t workerCount() const { return workers.size(); }
+
     // Wait until all tasks in the queue are completed
     void wait();
 

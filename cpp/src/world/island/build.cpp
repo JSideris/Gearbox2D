@@ -16,6 +16,25 @@
 
 #include "island-internal.h"
 
+#ifdef GEARBOX_MT
+// Batching reduces dispatch overhead for uniform small jobs. Keep mixed-size
+// workloads individually schedulable so a long solve can occupy its own worker.
+template<class Solve>
+static void dispatchIslandBatches(ThreadPool& pool, std::vector<Island>& islands, bool allSmall, Solve solve) {
+    constexpr size_t maxBatch = 16;
+    const size_t workers = pool.workerCount();
+    const size_t batchSize = allSmall ? std::min(maxBatch, 1 + (islands.size() - 1) / workers) : 1;
+    for (size_t first = 0; first < islands.size();) {
+        const size_t end = std::min(islands.size(), first + batchSize);
+        pool.enqueue([&islands, solve, first, end] {
+            for (size_t i = first; i < end; ++i) solve(islands[i]);
+        });
+        first = end;
+    }
+    pool.wait();
+}
+#endif
+
 // Combine the load row with the fixed support row that most nearly cancels
 // its force and torque on the intermediate body. Compute the effective mass
 // from the summed Jacobian to avoid subtracting nearly equal terms.
@@ -492,6 +511,9 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
     
     // 2. DFS partitioning
     std::vector<Island> islands;
+#ifdef GEARBOX_MT
+    bool allSmall = true;
+#endif
     lastChainResidual = ChainResidualStats();
 
     // 2.1 Pre-initialize solver data for all bodies to avoid race conditions
@@ -609,6 +631,10 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
         }
         
         if (!currentIsland.bodies.empty()) {
+#ifdef GEARBOX_MT
+            allSmall = allSmall && currentIsland.bodies.size() <= 4 &&
+                       currentIsland.contacts.size() + currentIsland.joints.size() <= 4;
+#endif
             _colorIsland(currentIsland);
             islands.push_back(std::move(currentIsland));
         }
@@ -621,12 +647,9 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             _solveIslandVelocity(islands[0], dt, substepIndex, prePgsAll);
         } else {
 #ifdef GEARBOX_MT
-            for (auto& isl : islands) {
-                threadPool->enqueue([this, &isl, dt, substepIndex, &prePgsAll]() {
-                    this->_solveIslandVelocity(isl, dt, substepIndex, prePgsAll);
-                });
-            }
-            threadPool->wait();
+            dispatchIslandBatches(*threadPool, islands, allSmall, [&](Island& island) {
+                _solveIslandVelocity(island, dt, substepIndex, prePgsAll);
+            });
 #else
             for (auto& isl : islands) {
                 _solveIslandVelocity(isl, dt, substepIndex, prePgsAll);
@@ -704,12 +727,9 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
             _solveIslandPosition(islands[0], dt, substepIndex);
         } else {
 #ifdef GEARBOX_MT
-            for (auto& isl : islands) {
-                threadPool->enqueue([this, &isl, dt, substepIndex]() {
-                    this->_solveIslandPosition(isl, dt, substepIndex);
-                });
-            }
-            threadPool->wait();
+            dispatchIslandBatches(*threadPool, islands, allSmall, [&](Island& island) {
+                _solveIslandPosition(island, dt, substepIndex);
+            });
 #else
             for (auto& isl : islands) {
                 _solveIslandPosition(isl, dt, substepIndex);
