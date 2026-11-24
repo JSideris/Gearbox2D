@@ -10,7 +10,6 @@ import {
 	BODY_VY_OFFSET,
 	BODY_RS_OFFSET,
 	BODY_MASS_OFFSET,
-	BODY_INV_MASS_OFFSET,
 	BODY_G_SCALE_OFFSET,
 	BODY_DAMPING_OFFSET,
 	BODY_ANGULAR_DAMPING_OFFSET,
@@ -28,7 +27,6 @@ import {
 	BODY_PREV_X_OFFSET,
 	BODY_PREV_Y_OFFSET,
 	BODY_PREV_R_OFFSET,
-	BODY_TYPES,
 	WANTS_EVENTS,
 	IS_SLEEPING,
 	MAX_BODIES,
@@ -173,10 +171,7 @@ export class Body {
 		return this.floats.get(BODY_MASS_OFFSET);
 	}
 	set mass(v) {
-		if (this.type !== BODY_TYPES.FIXED_OBJECT && this.type !== BODY_TYPES.KINEMATIC_OBJECT) {
-			this.floats.set(BODY_MASS_OFFSET, v);
-			this.floats.set(BODY_INV_MASS_OFFSET, v !== 0 ? 1 / v : 0);
-		}
+		this.cppBody?.setMass(v);
 	}
 
 	get gScale() {

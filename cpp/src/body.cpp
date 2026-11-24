@@ -209,6 +209,7 @@ void Body::setAngularVelocity(float rs) { world.liveBodyFloatData[GET_BODY_FDATA
 
 float Body::getMass() const { return world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)]; }
 void Body::setMass(float m) {
+    if (type != ObjectType::DYNAMIC_OBJECT) return;
     world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)] = m;
     world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_IM)] = (m > 0) ? 1.0f / m : 0.0f;
     if (m > 0.0f) world.liveBodyIntData[GET_BODY_IDATA_INDEX(worldIndex, BODY_IDATA_FLAGS)] |= HAS_FIXED_MASS;
@@ -370,14 +371,7 @@ void Body::removeContact(Body* other) {
 void Body::updateInverseInertia() { recomputeInverseInertia(); }
 
 void Body::recomputeInverseInertia() {
-    float im = getInverseMass();
     if (type == ObjectType::FIXED_OBJECT || type == ObjectType::KINEMATIC_OBJECT) {
-        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_INV_INERTIA)] = 0.0f;
-        return;
-    }
-    if (fixtures.empty()) {
-        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)] = 0.0f;
-        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_IM)] = 0.0f;
         world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_INV_INERTIA)] = 0.0f;
         return;
     }
@@ -407,18 +401,13 @@ void Body::recomputeInverseInertia() {
         }
     }
     int flags = world.liveBodyIntData[GET_BODY_IDATA_INDEX(worldIndex, BODY_IDATA_FLAGS)];
-    if (totalMass > 0.0f) {
-        if (flags & HAS_FIXED_MASS) {
-            float manualMass = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)];
-            if (manualMass > 0.0f) totalInertia *= (manualMass / totalMass);
-        } else {
-            world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)] = totalMass;
-            world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_IM)] = 1.0f / totalMass;
-        }
-        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_INV_INERTIA)] = (totalInertia > 0.0f) ? 1.0f / totalInertia : 0.0f;
+    if (flags & HAS_FIXED_MASS) {
+        if (totalMass > 0.0f) totalInertia *= getMass() / totalMass;
     } else {
-        if (totalInertia > 0.0f) world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_INV_INERTIA)] = 1.0f / totalInertia;
+        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_M)] = std::max(totalMass, 0.0f);
+        world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_IM)] = totalMass > 0.0f ? 1.0f / totalMass : 0.0f;
     }
+    world.liveBodyFloatData[GET_BODY_FDATA_INDEX(worldIndex, BODY_FDATA_INV_INERTIA)] = totalInertia > 0.0f ? 1.0f / totalInertia : 0.0f;
 }
 
 void Body::addFixture(Fixture* fixture, bool recomputeMass) {

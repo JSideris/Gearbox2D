@@ -40,6 +40,7 @@ EMSCRIPTEN_BINDINGS(world) {
         .function("setY", &Body::setY)
         .function("getRotation", &Body::getRotation)
         .function("setRotation", &Body::setRotation)
+        .function("setMass", &Body::setMass)
         .function("recomputeMassProperties", &Body::recomputeInverseInertia);
 
     emscripten::class_<Fixture>("Fixture")
