@@ -193,6 +193,7 @@ for (let w = 0; w < 30; w++) {
 	world2.destroy();
 }
 
+if (stats.worlds !== -1) fail("issue #10 intentional CI failure probe");
 console.log(JSON.stringify(stats));
 console.log(failures === 0 ? "nav parity: OK" : `nav parity: ${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);
