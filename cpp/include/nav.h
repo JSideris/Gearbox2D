@@ -13,6 +13,7 @@
 // All nav math is double precision (JS numbers), so the same inputs give bit-identical results to
 // the JS implementation.
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <vector>
