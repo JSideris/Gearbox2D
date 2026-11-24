@@ -313,59 +313,36 @@ bool CollisionSolver::_solveCircleBox() {
         distSq = minDist * minDist;
     }
 
-    if (distSq < (rA + _speculativeMargin) * (rA + _speculativeMargin) || inside) {
-        float distance = sqrt(distSq);
-        Vec2 normalLocal;
-        float penetrationDepth;
+    float distance = sqrt(distSq);
+    Vec2 normalLocal;
+    float penetrationDepth;
 
-        if (inside) {
-            normalLocal = diffLocal;
-            penetrationDepth = rA + distance;
-        } else {
-            normalLocal = (distance > 0.0001f) ? diffLocal / distance : Vec2(0.0f, -1.0f);
-            penetrationDepth = rA - distance;
-        }
-
-        // Transform back to world space
-        float cosW = cos(rotB), sinW = sin(rotB);
-        Vec2 normal(normalLocal.x * cosW - normalLocal.y * sinW, normalLocal.x * sinW + normalLocal.y * cosW);
-
-        // Check for speculative contact
-        // Normal points from box to circle center.
-        // We need normal from fixture A (circle) to B (box) for _relativeVelocity.dot(normal).
-        // Wait, solve() calculates _relativeVelocity as vB - vA.
-        // So vn = (vB - vA) . normal_A_to_B.
-        // Here normalLocal points from Box center towards Circle center.
-        // So normal points from Box to Circle center (A).
-        // So -normal points from Circle (A) to Box (B).
-        float vn = _relativeVelocity.dot(normal * -1.0f);
-        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / _dt) {
-            return false;
-        }
-
-        Vec2 contactPoint(closestPointLocal.x * cosW - closestPointLocal.y * sinW + pB.x, 
-                          closestPointLocal.x * sinW + closestPointLocal.y * cosW + pB.y);
-
-        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
-        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
-        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
-        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
-        
-        Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
-        Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
-        Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
-        
-        ContactID id;
-        id.features.indexA = 0; // circle
-        id.features.indexB = inside ? 
-            ((minDist == d1) ? 0 : (minDist == d2) ? 1 : (minDist == d3) ? 2 : 3) : 
-            0; // simplistic for now: inside gets face id, outside gets closest vertex id
-        id.features.typeA = 0; // vertex
-        id.features.typeB = inside ? 1 : 0; // face if inside, vertex if outside
-        
-        collisions.push_back(CollisionInfo{true, contactPoint, normal * -1.0f, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f, id});
-        return true;
+    if (inside) {
+        normalLocal = diffLocal;
+        penetrationDepth = rA + distance;
+    } else {
+        normalLocal = (distance > 0.0001f) ? diffLocal / distance : Vec2(0.0f, -1.0f);
+        penetrationDepth = rA - distance;
     }
 
-    return false;
+    // Transform back to world space
+    float cosW = cos(rotB), sinW = sin(rotB);
+    Vec2 normal(normalLocal.x * cosW - normalLocal.y * sinW, normalLocal.x * sinW + normalLocal.y * cosW);
+
+    Vec2 contactPoint(closestPointLocal.x * cosW - closestPointLocal.y * sinW + pB.x,
+                      closestPointLocal.x * sinW + closestPointLocal.y * cosW + pB.y);
+
+    Vec2 relativeVelocity = contactVelocity(bIdxB, contactPoint) - contactVelocity(bIdxA, contactPoint);
+    if (!reachesContact(penetrationDepth, relativeVelocity.dot(normal * -1.0f))) return false;
+
+    ContactID id;
+    id.features.indexA = 0; // circle
+    id.features.indexB = inside ?
+        ((minDist == d1) ? 0 : (minDist == d2) ? 1 : (minDist == d3) ? 2 : 3) :
+        0; // simplistic for now: inside gets face id, outside gets closest vertex id
+    id.features.typeA = 0; // vertex
+    id.features.typeB = inside ? 1 : 0; // face if inside, vertex if outside
+
+    collisions.push_back(CollisionInfo{true, contactPoint, normal * -1.0f, penetrationDepth, _indexA, _indexB, relativeVelocity, 0.0f, id});
+    return true;
 }

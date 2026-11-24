@@ -56,6 +56,10 @@ private:
     float _speculativeMargin = 0.0f;
     Vec2 _relativeVelocity;
 
+    // For a closest-point pair with signed overlap depth, keep an existing
+    // speculative candidate or one predicted to cross beyond contact slop.
+    bool reachesContact(float depth, float normalSpeed) const;
+    Vec2 contactVelocity(int bodyIndex, Vec2 point) const;
     void _swap();
     float closestPointsBetweenLines(const Vec2& p1, const Vec2& p2, const Vec2& p3, const Vec2& p4, Vec2& pointOnLine1, Vec2& pointOnLine2);
 

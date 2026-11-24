@@ -46,33 +46,21 @@ bool CollisionSolver::_solveCapsuleCircle() {
     float distSq = closestPointsBetweenLines(a1, a2, pB, pB, closestOnA, closestOnB);
     
     float combinedRadius = rA + rB;
-    if (distSq < (combinedRadius + _speculativeMargin) * (combinedRadius + _speculativeMargin)) {
-        float distance = sqrt(distSq);
-        Vec2 normal = (distance > 0.0001f) ? (pB - closestOnA) / distance : Vec2(0.0f, -1.0f);
-        float penetrationDepth = combinedRadius - distance;
+    float distance = sqrt(distSq);
+    Vec2 normal = (distance > 0.0001f) ? (pB - closestOnA) / distance : Vec2(0.0f, -1.0f);
+    float penetrationDepth = combinedRadius - distance;
 
-        float vn = _relativeVelocity.dot(normal);
-        if (penetrationDepth <= 0.0f && vn >= penetrationDepth / _dt) return false;
+    Vec2 contactPoint = closestOnA + normal * (rA - std::max(0.0f, penetrationDepth) * 0.5f);
 
-        Vec2 contactPoint = closestOnA + normal * (rA - std::max(0.0f, penetrationDepth) * 0.5f);
+    Vec2 relativeVelocity = contactVelocity(bIdxB, contactPoint) - contactVelocity(bIdxA, contactPoint);
+    if (!reachesContact(penetrationDepth, relativeVelocity.dot(normal))) return false;
 
-        Vec2 vA(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_VY)]);
-        Vec2 vB(world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VX)], world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_VY)]);
-        float wA = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxA, BODY_FDATA_RS)];
-        float wB = world.liveBodyFloatData[GET_BODY_FDATA_INDEX(bIdxB, BODY_FDATA_RS)];
-        
-        Vec2 rA_vec = contactPoint - pA, rB_vec = contactPoint - pB;
-        Vec2 totalVelocityA = vA + Vec2(-rA_vec.y * wA, rA_vec.x * wA);
-        Vec2 totalVelocityB = vB + Vec2(-rB_vec.y * wB, rB_vec.x * wB);
-        
-        ContactID id;
-        id.features.indexA = 0;
-        id.features.indexB = 0;
-        
-        collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, _indexA, _indexB, totalVelocityB - totalVelocityA, 0.0f, id});
-        return true;
-    }
-    return false;
+    ContactID id;
+    id.features.indexA = 0;
+    id.features.indexB = 0;
+
+    collisions.push_back(CollisionInfo{true, contactPoint, normal, penetrationDepth, _indexA, _indexB, relativeVelocity, 0.0f, id});
+    return true;
 }
 
 bool CollisionSolver::_solveCapsuleCapsule() {

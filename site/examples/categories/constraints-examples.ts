@@ -495,7 +495,9 @@ export const constraintsExamples = [
 			const cx = 5;
 			const cy = 3;
 			const innerRadius = 2.5;
-			const outerRadius = 3.5;
+			const linkRadius = 0.3;
+			const outerRadius = innerRadius + linkRadius;
+			const initialSpeed = 2.5;
 
 			// Hub (fixed center)
 			const hubId = nextId++;
@@ -518,7 +520,7 @@ export const constraintsExamples = [
 				id: rotatorId,
 				x: cx,
 				y: cy,
-				rs: 2.5,
+				rs: initialSpeed,
 				type: gearbox.bodyTypes.DYNAMIC_OBJECT,
 				mass: 10,
 				color: "#888888",
@@ -549,6 +551,11 @@ export const constraintsExamples = [
 					id: shapeId,
 					x: sx,
 					y: sy,
+					r: angle,
+					// Match the surface speed where the belt meets the spinning pulley.
+					vx: -initialSpeed * (sy - cy),
+					vy: initialSpeed * (sx - cx),
+					rs: initialSpeed,
 					mass: 0.1,
 					color: `hsl(${(i * 360) / numShapes}, 70%, 60%)`,
 				});
@@ -562,28 +569,29 @@ export const constraintsExamples = [
 					shape: sType,
 					width: 0.6,
 					height: sType === gearbox.shapes.CAPSULE ? 1.0 : 0.6,
-					radius: 0.3,
+					radius: linkRadius,
 					sFriction: 0.999,
 					kFriction: 0.99,
 				});
 				shapes.push(body);
 			}
 
-			// Connect shapes to each other to form a belt
+			// Attach the springs along the belt tangent. The mounted belt has
+			// a little tension so the pulley can transmit torque through friction.
+			const anchorA = { x: 0, y: linkRadius };
+			const anchorB = { x: 0, y: -linkRadius };
 			for (let i = 0; i < numShapes; i++) {
 				const shapeA = shapes[i];
 				const shapeB = shapes[(i + 1) % numShapes];
-
-				// Calculate distance between centers for slack
-				const dx = shapeB.x - shapeA.x;
-				const dy = shapeB.y - shapeA.y;
-				const dist = Math.sqrt(dx * dx + dy * dy);
-
+				const a = shapeA.localToWorld(anchorA);
+				const b = shapeB.localToWorld(anchorB);
 				world.createSpringJoint(shapeA, shapeB, {
 					id: nextId++,
-					length: dist * 1.1, // 10% slack
-					frequencyHz: 5.0, // Very stretchy
-					dampingRatio: 0.2, // Bouncy
+					anchorA,
+					anchorB,
+					length: 0.9 * Math.hypot(b.x - a.x, b.y - a.y),
+					frequencyHz: 8,
+					dampingRatio: 0.7,
 				});
 			}
 

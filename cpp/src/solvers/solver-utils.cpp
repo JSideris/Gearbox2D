@@ -1,7 +1,24 @@
 #include "collision-solver.h"
+#include "world.h"
+#include "constants.h"
 #include <algorithm>
 
 using namespace std;
+
+Vec2 CollisionSolver::contactVelocity(int bodyIndex, Vec2 point) const {
+    const auto& data = world.liveBodyFloatData;
+    Vec2 arm = point - Vec2(data[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_X)],
+                            data[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_Y)]);
+    float spin = data[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_RS)];
+    return Vec2(data[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_VX)] - spin * arm.y,
+                data[GET_BODY_FDATA_INDEX(bodyIndex, BODY_FDATA_VY)] + spin * arm.x);
+}
+
+bool CollisionSolver::reachesContact(float depth, float normalSpeed) const {
+    if (depth > 0.0f) return true;
+    float predictedDepth = depth - normalSpeed * _dt;
+    return predictedDepth > 0.0f && (-depth < _speculativeMargin || predictedDepth > PENETRATION_SLOP);
+}
 
 float CollisionSolver::closestPointsBetweenLines(
     const Vec2& p1, const Vec2& p2,
