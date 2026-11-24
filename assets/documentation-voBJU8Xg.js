@@ -1568,8 +1568,12 @@ Body properties define the state and movement of an object in the world.
 - \`vr\`: Angular velocity in radians per second.
 
 ### Mass & Inertia
-- \`mass\`: Total mass of the body (sum of all fixture masses).
-- \`inertia\`: The body's resistance to rotational acceleration.
+
+A dynamic body normally gets its mass from the sum of its fixture masses (density times area). Assigning a positive \`body.mass\` in JavaScript or calling \`Body::setMass\` with a positive value in C++ overrides the total immediately. A positive mass at creation has the same effect.
+
+While the override is active, changing a fixture’s density keeps the total mass fixed. The engine recalculates the center of mass and rotational inertia using the fixtures’ relative masses and scales the inertia to the overridden total. With no positive fixture mass, the override still determines the linear impulse response and the angular impulse response is zero.
+
+Assign zero or a negative mass to clear the override. Mass and inertia immediately reflect the current fixture densities and follow subsequent density edits. Fixed and kinematic bodies ignore mass assignments.
 
 ### Damping
 - \`linearDamping\`: Simulates air resistance or drag (0.0 to 1.0).
