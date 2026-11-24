@@ -518,10 +518,17 @@ TEST(ChainResidual, CradleFarEndReceivesIncomingSpeedWithSleep) {
 	float peakOuterHeight = releaseHeight;
 	float latePeak = -1e30f;
 	bool checked = false;
+	bool sawImpactWake = false;
 	int applyFrames = 0;
 	for (int step = 0; step < 600; ++step) {
 		float incomingBefore = speed(balls[0]);
+		const bool receiverAsleep = balls[1]->isSleeping;
 		world.step();
+		if (!checked && receiverAsleep && !balls[1]->isSleeping) {
+			sawImpactWake = true;
+			// A real impact must transfer momentum in the step that wakes the receiver.
+			EXPECT_GT(speed(balls[count - 1]), 0.85f * incomingBefore);
+		}
 		for (int i = 0; i < count; ++i) {
 			ASSERT_NE(balls[i], nullptr);
 			EXPECT_TRUE(std::isfinite(balls[i]->getX()));
@@ -555,6 +562,7 @@ TEST(ChainResidual, CradleFarEndReceivesIncomingSpeedWithSleep) {
 		}
 	}
 
+	EXPECT_TRUE(sawImpactWake);
 	EXPECT_TRUE(checked);
 	EXPECT_GE(applyFrames, 2) << "applyFrames=" << applyFrames;
 	EXPECT_LT(peakOuterHeight, releaseHeight + 0.20f)

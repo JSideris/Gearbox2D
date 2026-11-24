@@ -124,7 +124,10 @@ void setupSimdLane(World& world, int lane, ContactConstraint& c) {
 	const int floorId = 100 + lane * 10;
 	const int bodyId = floorId + 1;
 
-	world.createBody(floorId, makeBoxOptions(0.0f, 0.0f, 0.0f, ObjectType::FIXED_OBJECT));
+	// Lane 1 is an awake striker hitting a supported dynamic receiver.
+	const bool dynamicReceiver = lane == 1;
+	world.createBody(floorId, makeBoxOptions(0.0f, 0.0f, dynamicReceiver ? 1.0f : 0.0f,
+		dynamicReceiver ? ObjectType::DYNAMIC_OBJECT : ObjectType::FIXED_OBJECT));
 
 	if (lane == 3) {
 		world.createBody(bodyId, makeBoxOptions(0.5f, 1.0f, 1.0f, ObjectType::DYNAMIC_OBJECT));
@@ -149,8 +152,8 @@ void setupSimdLane(World& world, int lane, ContactConstraint& c) {
 		dynamic->setVelocity(Vec2(0.0f, 0.5f));
 		dynamic->timeSinceWake = 1e9f;
 		dynamic->sleptOnSupport = false;
-		floor->timeSinceWake = 1e9f;
-		floor->sleptOnSupport = false;
+		floor->timeSinceWake = 0.0f;
+		floor->sleptOnSupport = true;
 		c = makeContact(dynamic, floor, 0.012f, 0.2f, 0.5f, 0.3f);
 	} else if (lane == 2) {
 		dynamic->setVelocity(Vec2(0.0f, -0.1f));

@@ -71,10 +71,16 @@ bool contactRecentlyAwakened(const ContactConstraint& contact) {
 // Grab-from-rest is not an impact. Default e=0.2 plus gΔt otherwise takes
 // the bounce branch, skips resting KRB/seed, and launches the island.
 bool suppressBounceOnSupportedWake(const ContactConstraint& contact) {
-	if (!contactRecentlyAwakened(contact) || !contact.a || !contact.b) {
+	if (!contact.a->sleptOnSupport && !contact.b->sleptOnSupport) {
 		return false;
 	}
-	return contact.a->sleptOnSupport || contact.b->sleptOnSupport;
+	// A body arriving from outside the waking group can deliver a new impact.
+	// Only suppress contacts between waking bodies or against a fixed support.
+	const float window = supportedWakeWindow(contact);
+	auto wakingOrFixed = [window](const Body* body) {
+		return body->type == ObjectType::FIXED_OBJECT || body->timeSinceWake < window;
+	};
+	return wakingOrFixed(contact.a) && wakingOrFixed(contact.b);
 }
 
 // Frozen overlap after sleep() is not an impact. Velocity-level normal PGS
@@ -344,21 +350,9 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 relVelY = v128_sub_f32(v128_add_f32(vBy, tangVelBy), v128_add_f32(vAy, tangVelAy));
     V128 vn = v128_dot_f32(relVelX, relVelY, normalX, normalY);
 
-    auto supportedWakeMask = [&]() {
-        V128 wakeAge = v128_make_f32(
-            std::min(batch[0]->a->timeSinceWake, batch[0]->b->timeSinceWake),
-            std::min(batch[1]->a->timeSinceWake, batch[1]->b->timeSinceWake),
-            std::min(batch[2]->a->timeSinceWake, batch[2]->b->timeSinceWake),
-            std::min(batch[3]->a->timeSinceWake, batch[3]->b->timeSinceWake));
-        V128 wakeWindow = v128_splat_f32(25.0f * dt + 1e-12f);
-        V128 recentlyWoke = v128_lt_f32(wakeAge, wakeWindow);
-        V128 support = v128_make_mask_f32(
-            batch[0]->a->sleptOnSupport || batch[0]->b->sleptOnSupport,
-            batch[1]->a->sleptOnSupport || batch[1]->b->sleptOnSupport,
-            batch[2]->a->sleptOnSupport || batch[2]->b->sleptOnSupport,
-            batch[3]->a->sleptOnSupport || batch[3]->b->sleptOnSupport);
-        return v128_and(recentlyWoke, support);
-    };
+    const V128 supportedWake = v128_make_mask_f32(
+        suppressBounceOnSupportedWake(*batch[0]), suppressBounceOnSupportedWake(*batch[1]),
+        suppressBounceOnSupportedWake(*batch[2]), suppressBounceOnSupportedWake(*batch[3]));
 
     alignas(16) float resRelativeVnSeed[4];
     V128 relativeVn;
@@ -389,7 +383,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
     V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
     shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
-    shouldBounce = v128_and(shouldBounce, v128_not(supportedWakeMask()));
+    shouldBounce = v128_and(shouldBounce, v128_not(supportedWake));
 
     // Component B: Kinematic Energy Balancing
     // Speculative (depth < 0): expectedDisp = 0 (Component A only).
@@ -413,7 +407,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
     bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
-    bias = v128_select(supportedWakeMask(), zero_v, bias);
+    bias = v128_select(supportedWake, zero_v, bias);
 
     // Resting overlap: same Δh predictor as bounce with v_launch = 0, then
     // limit position travel to payable Component B displacement.
@@ -439,7 +433,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 recentlyWoke = v128_lt_f32(wakeAge, wakeWindowRest);
     V128 overlappingRest = v128_and(v128_and(v128_not(shouldBounce), depth_gt_zero), recentlyWoke);
     krbPositionScale = v128_select(overlappingRest, restScale, one_v);
-    krbPositionScale = v128_select(v128_and(supportedWakeMask(), depth_gt_zero), zero_v, krbPositionScale);
+    krbPositionScale = v128_select(v128_and(supportedWake, depth_gt_zero), zero_v, krbPositionScale);
     v128_store_f32(resRelativeVnSeed, relativeVn);
     } else {
     relativeVn = vn;
@@ -456,7 +450,7 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 cond1 = v128_lt_f32(relativeVn, restThresh_v);
     V128 cond2 = v128_and(depth_lt_zero, v128_lt_f32(relativeVn, depth_over_dt));
     shouldBounce = v128_and(v128_ne_f32(enableRestitution_v, zero_v), v128_or(cond1, cond2));
-    shouldBounce = v128_and(shouldBounce, v128_not(supportedWakeMask()));
+    shouldBounce = v128_and(shouldBounce, v128_not(supportedWake));
 
     V128 vFinal = v128_mul_f32(restitution, v128_max_f32(zero_v, v128_neg_f32(relativeVn)));
 
@@ -464,9 +458,9 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
     V128 bias_bounce = v128_select(depth_lt_zero, v128_neg_f32(v128_max_f32(vFinal, depth_over_dt)), v128_neg_f32(vFinal));
     V128 bias_no_bounce = v128_select(depth_lt_zero, v128_neg_f32(depth_over_dt), zero_v);
     bias = v128_select(shouldBounce, bias_bounce, bias_no_bounce);
-    bias = v128_select(supportedWakeMask(), zero_v, bias);
+    bias = v128_select(supportedWake, zero_v, bias);
     krbPositionScale = one_v;
-    krbPositionScale = v128_select(v128_and(supportedWakeMask(), v128_gt_f32(depth, zero_v)), zero_v, krbPositionScale);
+    krbPositionScale = v128_select(v128_and(supportedWake, v128_gt_f32(depth, zero_v)), zero_v, krbPositionScale);
     v128_store_f32(resRelativeVnSeed, relativeVn);
     }
 
