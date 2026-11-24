@@ -2,6 +2,8 @@ import { PhysicsEngineAdapter } from "../utils/physics-protocol";
 
 export interface Scenario {
 	name: string;
+	/** Vertical camera bounds in world units, including visual padding. */
+	viewY?: { top: number; bottom: number };
 	setup(adapter: PhysicsEngineAdapter): void;
 	/** Instantaneous sample. `null` means the series ended (e.g. escaped). */
 	getMetric(adapter: PhysicsEngineAdapter, state: any): number | null;
@@ -280,6 +282,7 @@ export const HighPressureBouncyCircleScenario: Scenario = {
 
 export const FloorBounceScenario: Scenario = {
 	name: "Floor Bounce",
+	viewY: { top: -1.5, bottom: 11.5 },
 	metricLabel: "Energy / E0",
 	tracksEnergy: true,
 	setup(adapter: PhysicsEngineAdapter) {

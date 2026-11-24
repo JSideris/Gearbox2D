@@ -791,6 +791,9 @@
 					canvas.height = canvas.clientHeight;
 					engine.renderer.offsetX = canvas.width / 2;
 					engine.renderer.offsetY = canvas.height / 2;
+					engine.renderer.zoom = engine.zoom;
+					const viewY = scenarios[currentScenarioKey]?.viewY;
+					if (viewY) engine.renderer.fitVerticalRange(viewY.top, viewY.bottom);
 				});
 			}
 			window.addEventListener("resize", syncSize);
@@ -863,12 +866,12 @@
 				}
 
 				const renderer = new ProtocolRenderer(canvas);
-				renderer.zoom = zoom;
 
 				return {
 					type: engineType,
 					adapter,
 					renderer,
+					zoom,
 					canvas,
 					state: {},
 					stepTimes: [],

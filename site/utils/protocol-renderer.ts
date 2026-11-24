@@ -16,6 +16,13 @@ export class ProtocolRenderer {
 		this.offsetY = canvas.height / 2;
 	}
 
+	fitVerticalRange(top: number, bottom: number) {
+		const height = this.canvas.height;
+		this.zoom = Math.min(this.zoom, height / ((bottom - top) * ANIMSCALE));
+		const scale = this.zoom * ANIMSCALE;
+		this.offsetY = Math.max(-top * scale, Math.min(this.offsetY, height - bottom * scale));
+	}
+
 	render(frame: DebugFrame) {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.ctx.save();
