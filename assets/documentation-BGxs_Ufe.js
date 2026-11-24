@@ -1899,13 +1899,13 @@ body.createFixture({
 \`\`\`
 `,Ae=Object.freeze(Object.defineProperty({__proto__:null,default:Se},Symbol.toStringTag,{value:"Module"})),Te=`# Gearbox2D roadmap
 
-## Active work, in priority order
+## Active work
 
-1. **Make spatial queries see a teleport immediately.** After JavaScript changes \`body.x\`, \`body.y\`, or \`body.r\`, queries should use the new pose before the next \`world.step()\`. Cover radius, box, ray, and batched queries through the public API, including a rotated body with an offset fixture. Measure the cost of repeated writes and queries. Run \`npm run test:wasm\` and \`npm run test:wasm:nav\` in CI after building the WASM core and TypeScript wrapper. [Issue #5](https://github.com/JSideris/Gearbox2D/issues/5)
-2. **Verify runtime spring and mass edits.** Change a loaded spring's rest length, frequency, and damping through the public API and check how its motion responds. For mass, the JavaScript setter writes mass and inverse mass, while the native setter also updates inertia and the mass-override flag. Define how an explicit mass interacts with later fixture density changes, then test linear and angular response through both paths.
-3. **Reproduce the remaining collision and stability reports.** Recheck bullet-through-paper and high-energy bounce at a fixed timestep alongside the existing slit, corner, and wall regressions. For chain jitter, chain-belt clipping, stack drift, or motorcycle wheel penetration, isolate any engine failure in a minimal native test. Check scalar/SIMD parity for solver changes. Keep showcase calibration in the example.
-   - Measure slipping and resting drift on steep slopes, recording slope angle, friction, and timestep. Measure penetration and drift in mixed-shape piles and pyramids at fixed solver settings. For jitter at rest, log sleep and wake transitions in the minimal reproduction.
-4. **Measure when browser multithreading pays off.** Compare single-threaded and multithreaded builds on the same mostly sleeping scene, dense pile, and set of independent islands. Vary body count and report median and p95 step times with browser and hardware details. Record broad-phase candidate counts and tree updates to identify the bottleneck. Use the results to decide whether to change tree maintenance, awake-body storage, or parallel integration.
+Measure worker overhead and prototype batching small independent islands. Compare median and p95 step times with the current single-threaded and multithreaded builds on the same browser workloads. Use the measurements to decide whether to change worker dispatch. [Issue #27](https://github.com/JSideris/Gearbox2D/issues/27)
+
+## Completed work
+
+The roadmap sweep covers spatial queries, runtime edits, collision and stability regressions, showcase fixes, and the browser benchmark. It also records the subsequent cradle and slab fixes. [Findings by issue](https://github.com/JSideris/Gearbox2D/blob/master/studies/roadmap-sweep.md)
 
 ## Current architecture
 
