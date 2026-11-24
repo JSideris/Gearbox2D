@@ -9,6 +9,26 @@
 
 #include "island-internal.h"
 
+// PGS along Jload + Jsupport. Use the sum of the two velocity targets.
+// Limit this acceleration of convergence to energy-removing impulses;
+// the ordinary rows supply any restitution launch.
+static void transferContactLoad(const ContactLoadPair& pair, std::vector<SolverData>& bodies) {
+    SolverData& middle = bodies[pair.middleIndex];
+    SolverData& heavy = bodies[pair.loadIndex];
+    const float speed = pair.middleLinear.dot(middle.v) + pair.middleAngular * middle.w
+                      + pair.loadLinear.dot(heavy.v) + pair.loadAngular * heavy.w;
+    const float target = -pair.load->bias - pair.support->bias;
+    const float passiveTarget = std::clamp(target, std::min(0.f, speed), std::max(0.f, speed));
+    const float lowerBound = -std::min(pair.load->normalImpulse, pair.support->normalImpulse);
+    const float impulse = std::max((passiveTarget - speed) * pair.effectiveMass, lowerBound);
+    middle.v += pair.middleLinear * (middle.im * impulse);
+    middle.w += pair.middleAngular * (middle.iI * impulse);
+    heavy.v += pair.loadLinear * (heavy.im * impulse);
+    heavy.w += pair.loadAngular * (heavy.iI * impulse);
+    pair.load->normalImpulse += impulse;
+    pair.support->normalImpulse += impulse;
+}
+
 void World::_colorIsland(Island& island) {
     island.contactBatches.clear();
     island.jointBatches.clear();
@@ -134,7 +154,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
 
     // Apply warm starting impulses. Sleep zeros v; applying leftover
     // rest impulses (normal or friction) dumps them as KE. Keep the
-    // accumulator so PGS still solves; same skip-apply as hinge/gear.
+    // accumulator consistent with the impulse actually applied this step.
     for (ContactConstraint* c : island.contacts) {
         SolverData& sA = *static_cast<SolverData*>(c->context.a);
         SolverData& sB = *static_cast<SolverData*>(c->context.b);
@@ -146,6 +166,7 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
             skipWarmApply = age < window && (c->a->sleptOnSupport || c->b->sleptOnSupport);
         }
         if (skipWarmApply) {
+            c->normalImpulse = c->frictionImpulse = c->frictionNormalBase = 0.0f;
             continue;
         }
 
@@ -180,6 +201,9 @@ void World::_solveIslandVelocity(Island& island, float dt, int substepIndex, std
 
     // Velocity Iterations
     auto solveIslandContacts = [&]() {
+        for (const ContactLoadPair& pair : island.loadPairs) {
+            transferContactLoad(pair, solverBodies);
+        }
         for (const auto& batch : island.contactBatches) {
             size_t i = 0;
             for (; i + 3 < batch.size(); i += 4) {

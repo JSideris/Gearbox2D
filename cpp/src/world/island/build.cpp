@@ -16,6 +16,45 @@
 
 #include "island-internal.h"
 
+// Combine the load row with the fixed support row that most nearly cancels
+// its force and torque on the intermediate body. Compute the effective mass
+// from the summed Jacobian to avoid subtracting nearly equal terms.
+static void findLoadSupport(Island& island, Body* middle, Body* heavy, ContactConstraint* load,
+                            const std::vector<ContactConstraint*>& neighbors) {
+    const bool middleIsA = load->a == middle;
+    const Vec2 normal = middleIsA ? -load->normal : load->normal;
+    const float moment = (middleIsA ? load->rA : load->rB).cross(normal);
+    const float middleIM = middle->getInverseMass();
+    const float middleII = middle->getInverseInertia();
+    ContactLoadPair pair{};
+    float best = middleIM;
+    for (ContactConstraint* row : neighbors) {
+        const bool isA = row->a == middle;
+        Body* base = isA ? row->b : row->a;
+        if (base->type != ObjectType::FIXED_OBJECT || row->depth < 0) continue;
+        const Vec2 supportNormal = isA ? -row->normal : row->normal;
+        const Vec2 linear = normal + supportNormal;
+        const float angular = moment + (isA ? row->rA : row->rB).cross(supportNormal);
+        const float residual = middleIM * linear.magnitudeSquared() + middleII * angular * angular;
+        if (residual < best) {
+            best = residual;
+            pair.support = row;
+            pair.middleLinear = linear;
+            pair.middleAngular = angular;
+        }
+    }
+    if (!pair.support) return;
+
+    pair.load = load;
+    pair.middleIndex = middle->worldIndex;
+    pair.loadIndex = heavy->worldIndex;
+    pair.loadLinear = -normal;
+    pair.loadAngular = (middleIsA ? load->rB : load->rA).cross(pair.loadLinear);
+    pair.effectiveMass = 1.f / (best + heavy->getInverseMass()
+                              + heavy->getInverseInertia() * pair.loadAngular * pair.loadAngular);
+    island.loadPairs.push_back(pair);
+}
+
 static float fixtureCircleRadius(Body* body) {
     if (!body) {
         return 0.0f;
@@ -517,6 +556,13 @@ void World::_buildAndProcessIslands(float dt, int substepIndex) {
                 }
                 
                 Body* other = (c->a == b) ? c->b : c->a;
+                // In a collinear stack the error left by a sweep scales as
+                // mHeavy / (mHeavy + mLight). Look for a coupled direction
+                // when the mass ratio exceeds the number of available sweeps.
+                const float otherIM = solverBodies[other->worldIndex].im;
+                if (otherIM > 0 && c->depth >= 0 && solverBodies[b->worldIndex].im > velocityIterations * otherIM) {
+                    findLoadSupport(currentIsland, b, other, c, bodyToContacts[b->worldIndex]);
+                }
                 if (other->type != ObjectType::FIXED_OBJECT && !visited[other->worldIndex]) {
                     visited[other->worldIndex] = true;
                     stack.push_back(other);

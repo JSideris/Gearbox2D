@@ -83,12 +83,6 @@ bool suppressBounceOnSupportedWake(const ContactConstraint& contact) {
 	return wakingOrFixed(contact.a) && wakingOrFixed(contact.b);
 }
 
-// Frozen overlap after sleep() is not an impact. Velocity-level normal PGS
-// would dump pre-solve joint drift into KE; position dual is already krb=0.
-bool skipNormalVelocityOnSupportedWakeOverlap(const ContactConstraint& contact) {
-	return suppressBounceOnSupportedWake(contact) && contact.depth > 0.0f;
-}
-
 // Empty reconstructed resting contacts start at impulse 0, so the first
 // PGS step must cancel gΔt from scratch. Seed only the KRB relative normal
 // (forceVn), not raw vn polluted by joint-only wake motion.
@@ -540,20 +534,6 @@ void ContactConstraint::preSolveSIMD(ContactConstraint** batch, float dt, bool e
 
 void ContactConstraint::solveFastSIMD(ContactConstraint** batch) {
 #if HWY_TARGET != HWY_SCALAR
-    bool anySkipNormal = false;
-    for (int i = 0; i < 4; ++i) {
-        if (skipNormalVelocityOnSupportedWakeOverlap(*batch[i])) {
-            anySkipNormal = true;
-            break;
-        }
-    }
-    if (anySkipNormal) {
-        for (int i = 0; i < 4; ++i) {
-            batch[i]->solveFast();
-        }
-        return;
-    }
-
     V128 zero_v = v128_splat_f32(0.0f);
     V128 one_v = v128_splat_f32(1.0f);
     V128 neg_one_v = v128_splat_f32(-1.0f);
@@ -704,31 +684,29 @@ void ContactConstraint::solveFast() {
     SolverData& sA = *static_cast<SolverData*>(context.a);
     SolverData& sB = *static_cast<SolverData*>(context.b);
 
-    if (!skipNormalVelocityOnSupportedWakeOverlap(*this)) {
-        // Normal constraint
-        Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
-        Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
-        Vec2 relVel = (sB.v + vrB) - (sA.v + vrA);
+    // Normal constraint
+    Vec2 vrA(-sA.w * rA.y, sA.w * rA.x);
+    Vec2 vrB(-sB.w * rB.y, sB.w * rB.x);
+    Vec2 relVel = (sB.v + vrB) - (sA.v + vrA);
 
-        float vn = relVel.dot(normal);
-        float dLambda = -(vn + bias) * normalMass;
+    float vn = relVel.dot(normal);
+    float dLambda = -(vn + bias) * normalMass;
 
-        float oldImpulse = normalImpulse;
-        normalImpulse = std::max(oldImpulse + dLambda, 0.0f);
-        dLambda = normalImpulse - oldImpulse;
+    float oldImpulse = normalImpulse;
+    normalImpulse = std::max(oldImpulse + dLambda, 0.0f);
+    dLambda = normalImpulse - oldImpulse;
 
-        Vec2 impulse = normal * dLambda;
-        if (sA.im > 0) {
-            float torqueA = rA.cross(impulse);
-            sA.v.x -= impulse.x * sA.im;
-            sA.v.y -= impulse.y * sA.im;
-            sA.w -= torqueA * sA.iI;
-        }
-        if (sB.im > 0) {
-            sB.v.x += impulse.x * sB.im;
-            sB.v.y += impulse.y * sB.im;
-            sB.w += rB.cross(impulse) * sB.iI;
-        }
+    Vec2 impulse = normal * dLambda;
+    if (sA.im > 0) {
+        float torqueA = rA.cross(impulse);
+        sA.v.x -= impulse.x * sA.im;
+        sA.v.y -= impulse.y * sA.im;
+        sA.w -= torqueA * sA.iI;
+    }
+    if (sB.im > 0) {
+        sB.v.x += impulse.x * sB.im;
+        sB.v.y += impulse.y * sB.im;
+        sB.w += rB.cross(impulse) * sB.iI;
     }
 
     // Friction constraint. Grab-from-rest is not a slide: leftover or
@@ -772,7 +750,7 @@ void ContactConstraint::solve(bool enableNormal, bool enableFriction) {
     float wA = a->getAngularVelocity(), wB = b->getAngularVelocity();
     Vec2 vrA(-wA * rA.y, wA * rA.x), vrB(-wB * rB.y, wB * rB.x);
     Vec2 relVel = (vB + vrB) - (vA + vrA);
-    if (enableNormal && !skipNormalVelocityOnSupportedWakeOverlap(*this)) {
+    if (enableNormal) {
         float vn = relVel.dot(normal);
         float dLambda = -(vn + bias) * normalMass;
         if (std::isfinite(dLambda)) {
@@ -823,7 +801,18 @@ void ContactConstraint::solvePosition() {
     float current_depth = depth - separation_vec.dot(normal_curr);
     if (current_depth <= PENETRATION_SLOP) return;
 
-    float correction = std::min(current_depth - PENETRATION_SLOP, MAX_POSITION_CORRECTION) * BAUMGARTE_FACTOR * krbPositionScale;
+    float error = current_depth - PENETRATION_SLOP;
+    float scale = krbPositionScale;
+    if (scale == 0.f) {
+        // Preserve overlap inherited from sleep, but resist additional
+        // compression this step. Splitting displacement between dynamics
+        // under equal normal acceleration costs no pair potential energy.
+        if (imA == 0.f || imB == 0.f || current_depth <= depth ||
+            (b->getForceVelocity() - a->getForceVelocity()).dot(normal) != 0.f) return;
+        error = std::min(error, current_depth - depth);
+        scale = 1.f;
+    }
+    float correction = std::min(error, MAX_POSITION_CORRECTION) * BAUMGARTE_FACTOR * scale;
     float rnA = rA_curr.x * normal_curr.y - rA_curr.y * normal_curr.x;
     float rnB = rB_curr.x * normal_curr.y - rB_curr.y * normal_curr.x;
     float kNormal = imA + imB + iIA * rnA * rnA + iIB * rnB * rnB;

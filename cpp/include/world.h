@@ -120,6 +120,17 @@ struct ChainResidualStats {
     int reprojectedJointCount = 0;
 };
 
+// A positive impulse on both contact normals can transfer load through a
+// light intermediate body without alternately accelerating it up and down.
+struct ContactLoadPair {
+    ContactConstraint* load;
+    ContactConstraint* support;
+    int middleIndex, loadIndex;
+    Vec2 middleLinear, loadLinear;
+    float middleAngular, loadAngular;
+    float effectiveMass;
+};
+
 struct Island {
     std::vector<Body*> bodies;
     std::vector<ContactConstraint*> contacts;
@@ -128,6 +139,7 @@ struct Island {
     std::vector<std::vector<ContactConstraint*>> contactBatches;
     std::vector<std::vector<Joint*>> jointBatches;
 
+    std::vector<ContactLoadPair> loadPairs;
     bool canSleep;
     int chainPathCount = 0;
     int chainEligibleContactCount = 0;
@@ -142,6 +154,7 @@ struct Island {
         bodies.clear();
         contacts.clear();
         joints.clear();
+        loadPairs.clear();
         contactBatches.clear();
         jointBatches.clear();
         canSleep = false;
