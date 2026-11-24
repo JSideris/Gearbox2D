@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <vector>
 #include <gtest/gtest.h>
 #include "world.h"
 #include "body.h"
@@ -102,3 +106,77 @@ TEST(SleepEventTest, OptInMechanism) {
     EXPECT_EQ(world.getEventCount(), 0);
 }
 
+
+TEST(SleepEventTest, TC9RestingBoxWakesOnlyWhenDisturbed) {
+    World world;
+    world.setGravity(0.0f, 1.0f);
+    world.setTimeStep(1.0f / 60.0f);
+    // Reproduce the rotated platform and offset resting box from site TC-9.
+    emscripten_val platform;
+    platform["x"] = 5.0f;
+    platform["y"] = 6.0f;
+    platform["r"] = std::acos(-1.0f) / 2.0f;
+    platform["type"] = static_cast<int>(ObjectType::FIXED_OBJECT);
+    platform["shape"] = static_cast<int>(ObjectShape::BOX);
+    platform["width"] = 1.0f;
+    platform["height"] = 8.0f;
+    world.createBody(1, platform);
+
+    emscripten_val options;
+    options["x"] = 7.0f;
+    options["y"] = 5.0f;
+    options["type"] = static_cast<int>(ObjectType::DYNAMIC_OBJECT);
+    options["shape"] = static_cast<int>(ObjectShape::BOX);
+    options["width"] = 1.0f;
+    options["height"] = 1.0f;
+    options["mass"] = 0.2f;
+    options["wantsEvents"] = true;
+    world.createBody(2, options);
+    Body* box = world.getBody(2);
+
+    for (bool disturbed : {false, true}) {
+        SCOPED_TRACE(disturbed ? "after lift" : "undisturbed");
+        const float startAngle = box->getRotation();
+        float peakTravel = 0.0f, peakRotation = 0.0f;
+        std::vector<int> sleeps, wakes;
+        auto recordEvents = [&](int step, size_t offset) {
+            const auto& events = world.getEventBuffer();
+            for (size_t i = offset; i + 5 < events.size(); i += 6) {
+                if (events[i + 1] != box->id) continue;
+                auto type = static_cast<EventType>(static_cast<int>(events[i]));
+                if (type == EventType::SLEEP) sleeps.push_back(step);
+                if (type == EventType::WAKE) wakes.push_back(step);
+            }
+        };
+
+        if (disturbed) {
+            // The wake is emitted synchronously. step() will clear it.
+            const auto offset = world.getEventBuffer().size();
+            box->setY(box->getY() - 0.25f);
+            recordEvents(0, offset);
+        }
+        const Vec2 start(box->getX(), box->getY());
+        for (int step = 1; step <= 300; ++step) {
+            world.step();
+            recordEvents(step, 0);
+            const Vec2 position(box->getX(), box->getY());
+            peakTravel = std::max(peakTravel, (position - start).magnitude());
+            peakRotation = std::max(peakRotation, std::abs(box->getRotation() - startAngle));
+        }
+
+        const std::string prefix = disturbed ? "lift_" : "rest_";
+        RecordProperty(prefix + "sleep_steps", ::testing::PrintToString(sleeps));
+        RecordProperty(prefix + "wake_steps", ::testing::PrintToString(wakes));
+        RecordProperty(prefix + "peak_travel_m", std::to_string(peakTravel));
+        RecordProperty(prefix + "peak_rotation_rad", std::to_string(peakRotation));
+        EXPECT_TRUE(box->isSleeping);
+        EXPECT_EQ(sleeps.size(), 1u);
+        if (disturbed) {
+            EXPECT_EQ(wakes, std::vector<int>{0});
+            EXPECT_NEAR(box->getY() - start.y, 0.25f, PENETRATION_SLOP);
+        } else {
+            EXPECT_TRUE(wakes.empty());
+            EXPECT_LT(peakTravel, PENETRATION_SLOP);
+        }
+    }
+}
