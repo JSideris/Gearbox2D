@@ -4,6 +4,8 @@ export interface Scenario {
 	name: string;
 	/** Vertical camera bounds in world units, including visual padding. */
 	viewY?: { top: number; bottom: number };
+	viewWidth?: number;
+	compareThreads?: boolean;
 	setup(adapter: PhysicsEngineAdapter): void;
 	/** Instantaneous sample. `null` means the series ended (e.g. escaped). */
 	getMetric(adapter: PhysicsEngineAdapter, state: any): number | null;
@@ -446,8 +448,33 @@ export const RagdollScenario: Scenario = {
 	},
 };
 
+const independentPairs: Scenario = {
+	name: "512 Independent Pairs",
+	metricLabel: "Avg Step Time (ms)",
+	compareThreads: true,
+	viewWidth: 81,
+	viewY: { top: -21, bottom: 21 },
+	setup(adapter) {
+		adapter.setGravity(0, 0);
+		for (let pair = 0; pair < 512; pair++) {
+			const x = ((pair % 32) - 15.5) * 2.5;
+			const y = (Math.floor(pair / 32) - 7.5) * 2.5;
+			const first = 2 * pair + 1;
+			// Opposite tangential velocities keep each pair rotating about its own center.
+			const options = { canSleep: false, linearDamping: 0 };
+			adapter.createCircle(first, x - 0.5, y, 0.25, false, { ...options, vy: -0.5 });
+			adapter.createCircle(first + 1, x + 0.5, y, 0.25, false, { ...options, vy: 0.5 });
+			adapter.createDistanceJoint(pair + 1, first, first + 1, { length: 1 });
+		}
+	},
+	getMetric(_adapter, state) {
+		return state.avgStepTime ?? null;
+	},
+};
+
 export const scenarios: Record<string, Scenario> = {
 	"large-stack": LargeStackScenario,
+	"independent-pairs": independentPairs,
 	"high-density": HighDensityScenario,
 	"floor-bounce": FloorBounceScenario,
 	"newtons-cradle": NewtonsCradleScenario,

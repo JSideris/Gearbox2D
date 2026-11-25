@@ -432,6 +432,9 @@
 							<span class="legend-color" style="color: #fbbf24; background: #fbbf24"></span>Gearbox2D (KRB
 							off)
 						</div>
+						<div class="legend-item" id="legend-st" style="display: none">
+							<span class="legend-color" style="color: #38bdf8; background: #38bdf8"></span>Gearbox2D (single-threaded)
+						</div>
 						<div class="legend-item" id="legend-clone" style="display: none">
 							<span class="legend-color" style="color: #8fbc8f; background: #8fbc8f"></span>Gearbox2D
 							(Clone)
@@ -523,6 +526,7 @@
 									tension: 0.1,
 									pointRadius: 0,
 								},
+								{ label: "Gearbox2D (single-threaded)", borderColor: "#38bdf8", data: [], tension: 0.1, pointRadius: 0 },
 							],
 						},
 						options: {
@@ -561,6 +565,7 @@
 						p2js: 3,
 						box2dwasm: 4,
 						"gearbox2d-nokrb": 5,
+						"gearbox2d-st": 6,
 					};
 				}
 
@@ -794,6 +799,8 @@
 					engine.renderer.zoom = engine.zoom;
 					const viewY = scenarios[currentScenarioKey]?.viewY;
 					if (viewY) engine.renderer.fitVerticalRange(viewY.top, viewY.bottom);
+					const width = scenarios[currentScenarioKey]?.viewWidth;
+					if (width) engine.renderer.fitHorizontalRange(width);
 				});
 			}
 			window.addEventListener("resize", syncSize);
@@ -824,6 +831,10 @@
 									: engineType === "p2js"
 										? "P2.js"
 										: "Box2D-WASM";
+				if (engineType === "gearbox2d-st") label.textContent = "Gearbox2D (single-threaded)";
+				if (engineType === "gearbox2d" && scenarios[currentScenarioKey].compareThreads) {
+					label.textContent = threadModeLabel();
+				}
 				wrapper.appendChild(label);
 
 				const canvas = document.createElement("canvas");
@@ -835,8 +846,12 @@
 
 				let adapter;
 				switch (engineType) {
+					case "gearbox2d-st":
+						await ensureKrbCompareWorlds();
+						adapter = new GearboxAdapter(gearboxWorldKrb, krbCompareEngine);
+						break;
 					case "gearbox2d":
-						if (krbAblation) {
+						if (krbAblation && !scenarios[currentScenarioKey].compareThreads) {
 							await ensureKrbCompareWorlds();
 							adapter = new GearboxAdapter(gearboxWorldKrb, krbCompareEngine, { krb: true });
 							break;
@@ -874,6 +889,7 @@
 					zoom,
 					canvas,
 					state: {},
+					sampleStepMs: 0,
 					stepTimes: [],
 					simSteps: 0,
 					samples: [],
@@ -881,6 +897,10 @@
 					escapedAt: null,
 					logging: true,
 				};
+			}
+
+			function threadModeLabel() {
+				return gearbox.mode === "mt" ? "Gearbox2D (4 workers)" : "Gearbox2D (single-threaded · workers unavailable)";
 			}
 
 			async function startBenchmark() {
@@ -898,13 +918,29 @@
 				canvasContainer.innerHTML = "";
 				activeEngines = [];
 				canvasContainer.className = "";
-				engineTabs.classList.toggle("krb-ablation-mode", krbAblation);
+				engineTabs.classList.toggle("krb-ablation-mode", krbAblation || scenario.compareThreads);
+				krbAblationControl.style.display = isLocalHost() && !scenario.compareThreads ? "flex" : "none";
 				document.getElementById("legend-gearbox2d-text").textContent = krbAblation
 					? "Gearbox2D (KRB on)"
 					: "Gearbox2D";
 				benchmarkChart.chart.data.datasets[0].label = krbAblation ? "Gearbox2D (KRB on)" : "Gearbox2D";
 
-				if (krbAblation) {
+				if (scenario.compareThreads) {
+					const threaded = gearbox.mode === "mt";
+					canvasContainer.classList.toggle("all-mode", threaded);
+					if (threaded) canvasContainer.classList.add("layout-2");
+					metricsContainer.classList.toggle("all-mode", threaded);
+					metricsContainer.classList.remove("krb-ablation-metrics");
+					engineLegend.style.display = "grid";
+					engineNameEl.style.display = "none";
+					document.getElementById("legend-gearbox2d-text").textContent = threadModeLabel();
+					benchmarkChart.chart.data.datasets[0].label = threadModeLabel();
+					for (const el of engineLegend.children) {
+						el.style.display = el.id === "legend-gearbox2d" || (threaded && el.id === "legend-st") ? "flex" : "none";
+					}
+					activeEngines.push(await createEngineInstance("gearbox2d"));
+					if (threaded) activeEngines.push(await createEngineInstance("gearbox2d-st", true));
+				} else if (krbAblation) {
 					canvasContainer.classList.add("all-mode", "layout-2");
 					metricsContainer.classList.add("all-mode", "krb-ablation-metrics");
 					engineLegend.style.display = "grid";
@@ -934,7 +970,7 @@
 					} else {
 						Array.from(engineLegend.children).forEach((el) => {
 							el.style.display =
-								el.id === "legend-clone" || el.id === "legend-gearbox2d-nokrb" ? "none" : "flex";
+								["legend-clone", "legend-gearbox2d-nokrb", "legend-st"].includes(el.id) ? "none" : "flex";
 						});
 
 						const engineConfigs = [
@@ -1093,8 +1129,14 @@
 					const startTime = performance.now();
 					let stepped = 0;
 					for (let s = 0; s < stepsThisFrame; s++) {
+						const stepStart = scenario.compareThreads ? performance.now() : 0;
 						engine.adapter.step(SIM_DT);
+						if (scenario.compareThreads) engine.sampleStepMs += performance.now() - stepStart;
 						engine.simSteps++;
+						if (scenario.compareThreads && engine.simSteps % SAMPLE_EVERY === 0) {
+							engine.state.avgStepTime = engine.sampleStepMs / SAMPLE_EVERY;
+							engine.sampleStepMs = 0;
+						}
 						stepped++;
 
 						if (engine.logging) {
@@ -1117,7 +1159,7 @@
 					engine.stepTimes.push(stepTimeMicros);
 					if (engine.stepTimes.length > 60) engine.stepTimes.shift();
 					const avgStepMicros = engine.stepTimes.reduce((a, b) => a + b, 0) / engine.stepTimes.length;
-					engine.state.avgStepTime = avgStepMicros / 1000;
+					if (!scenario.compareThreads) engine.state.avgStepTime = avgStepMicros / 1000;
 
 					if (engine.logging) stillLogging = true;
 					updateEngineHud(engine, avgStepMicros);
@@ -1163,10 +1205,11 @@
 						lines.push(`# engine=${engine.type} escaped_at_s=${engine.escapedAt}`);
 					}
 				}
-				lines.push("engine,t_s,e_over_e0");
+				lines.push(scenario.compareThreads ? "engine,t_s,avg_step_ms" : "engine,t_s,e_over_e0");
 				for (const engine of activeEngines) {
+					const mode = scenario.compareThreads && engine.type === "gearbox2d" ? `gearbox2d-${gearbox.mode}` : engine.type;
 					for (const sample of engine.samples) {
-						lines.push(`${engine.type},${sample.t},${sample.y}`);
+						lines.push(`${mode},${sample.t},${sample.y}`);
 					}
 				}
 

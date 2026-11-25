@@ -23,6 +23,10 @@ export class ProtocolRenderer {
 		this.offsetY = Math.max(-top * scale, Math.min(this.offsetY, height - bottom * scale));
 	}
 
+	fitHorizontalRange(width: number) {
+		this.zoom = Math.min(this.zoom, this.canvas.width / (width * ANIMSCALE));
+	}
+
 	render(frame: DebugFrame) {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.ctx.save();
